@@ -6,13 +6,12 @@ import Mathlib.Tactic.Common
 namespace NFA
 
 def addNode (nodes : Array Node) (node : Node) :
-  (nodes' : { nodes' : Array Node // nodes.size < nodes'.size}) ×
-  { i : Fin nodes'.val.size // i = nodes.size } :=
+  (nodes' : { nodes' : Array Node // nodes.size < nodes'.size}) × Fin nodes'.val.size :=
   have lt_size : nodes.size < (nodes.push node).size := by
     simp [Array.size_push]
   have isLt : nodes.size < (nodes.push node).size := by
     simp [Array.size_push]
-  ⟨⟨nodes.push node, lt_size⟩, ⟨⟨nodes.size, isLt⟩, rfl⟩⟩
+  ⟨⟨nodes.push node, lt_size⟩, ⟨nodes.size, isLt⟩⟩
 
 theorem addNode.get_lt {nodes : Array Node} {node : Node} {i : Nat} (h : i < nodes.size) :
   (addNode nodes node).1.val[i]'(Nat.lt_trans h (addNode nodes node).1.property) = nodes[i] := by
@@ -22,7 +21,7 @@ theorem addNode.get_lt {nodes : Array Node} {node : Node} {i : Nat} (h : i < nod
 @[simp]
 theorem addNode.get_node {nodes : Array Node} {node : Node} :
   (addNode nodes node).1.val[(addNode nodes node).2.val] = node := by
-  show (addNode nodes node).1.val[(addNode nodes node).2.val.val] = node
+  show (addNode nodes node).1.val[(addNode nodes node).2.val] = node
   simp [addNode]
 
 /--
@@ -42,15 +41,9 @@ where
   -/
   loop (nodes : Array Node) (next : Nat) :
     Regex → (nodes' : { nodes' : Array Node // nodes.size < nodes'.size}) × Fin nodes'.val.size
-  | .empty =>
-    let ⟨nodes, start⟩ := addNode nodes .fail
-    ⟨nodes, start.val⟩
-  | .epsilon =>
-    let ⟨nodes, start⟩ := addNode nodes (.epsilon next)
-    ⟨nodes, start.val⟩
-  | .char c =>
-    let ⟨nodes, start⟩ := addNode nodes (.char c next)
-    ⟨nodes, start.val⟩
+  | .empty => addNode nodes .fail
+  | .epsilon => addNode nodes (.epsilon next)
+  | .char c => addNode nodes (.char c next)
   | .alternate r₁ r₂ =>
     let ⟨nodes₁, start₁⟩ := loop nodes next r₁
     let ⟨nodes₂, start₂⟩ := loop nodes₁ next r₂
@@ -76,7 +69,7 @@ where
   | .star r =>
     -- We need to generate a placeholder node first. We use `done` for it to save an allocation.
     -- TODO: check generated code
-    let ⟨nodes', ⟨start, _⟩⟩ := addNode nodes .done
+    let ⟨nodes', start⟩ := addNode nodes .done
     let ⟨nodes'', target⟩ := loop nodes' start r
 
     have property : nodes.size < nodes''.val.size :=
@@ -138,9 +131,9 @@ def compileRaw.loop.get_lt {i : Nat} (h : i < nodes.size) :
       calc nodes.size
         _ < result.1.val.size := result.1.property
         _ < result'.1.val.size := result'.1.property
-    have startIsLt : result.2.val.val < result'.1.val.size :=
-      calc result.2.val.val
-        _ < result.1.val.size := result.2.val.isLt
+    have startIsLt : result.2.val < result'.1.val.size :=
+      calc result.2.val
+        _ < result.1.val.size := result.2.isLt
         _ < result'.1.val.size := result'.1.property
 
     let nodes' := result'.1.val.set ⟨result.2.val, startIsLt⟩ (.split result'.2 next)
@@ -155,8 +148,9 @@ def compileRaw.loop.get_lt {i : Nat} (h : i < nodes.size) :
 
     calc nodes'[i]
       _ = result'.1.val[i] := by
+        have eq : nodes.size = result.2.val := rfl
         rw [Array.get_set_ne]
-        exact Nat.ne_of_gt (result.2.property.symm ▸ h)
+        exact Nat.ne_of_gt (eq ▸ h)
       _ = result.1.val[i] := ih isLt
       _ = nodes[i] := addNode.get_lt h
 
