@@ -19,7 +19,7 @@ theorem addNode.get_lt {nodes : Array Node} {node : Node} {i : Nat} (h : i < nod
   apply Array.get_push_lt
 
 @[simp]
-theorem addNode.get_node {nodes : Array Node} {node : Node} :
+theorem addNode.get_eq {nodes : Array Node} {node : Node} :
   (addNode nodes node).1.val[(addNode nodes node).2.val] = node := by
   show (addNode nodes node).1.val[(addNode nodes node).2.val] = node
   simp [addNode]
