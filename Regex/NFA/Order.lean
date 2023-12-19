@@ -1,6 +1,5 @@
 import Regex.Lemmas
 import Regex.NFA.Basic
-import Regex.NFA.Transition
 
 namespace NFA
 
@@ -27,6 +26,10 @@ theorem Node.le_of_eq {n₁ n₂ : Node} : n₁ = n₂ → n₁ ≤ n₂ := fun 
 def _instLENode : LE Node := inferInstance
 instance : Trans Node.le Node.le Node.le := ⟨Node.le_trans⟩
 instance : Trans _instLENode.le _instLENode.le _instLENode.le := ⟨Node.le_trans⟩
+
+instance : Preorder Node where
+  le_refl := @Node.le_rfl
+  le_trans := @Node.le_trans
 
 /--
   Extend the ordering to εNFA.
@@ -57,5 +60,9 @@ theorem NFA.le_of_eq {nfa₁ nfa₂ : NFA} : nfa₁ = nfa₂ → nfa₁ ≤ nfa�
 def _instLENFA : LE NFA := inferInstance
 instance : Trans NFA.le NFA.le NFA.le := ⟨NFA.le_trans⟩
 instance : Trans _instLENFA.le _instLENFA.le _instLENFA.le := ⟨NFA.le_trans⟩
+
+instance : Preorder NFA where
+  le_refl := @NFA.le_rfl
+  le_trans := @NFA.le_trans
 
 end NFA

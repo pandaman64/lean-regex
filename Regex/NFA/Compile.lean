@@ -21,6 +21,12 @@ def NFA.addNode (nfa : NFA) (node : Node) :
 
   ⟨nfa', property⟩
 
+@[simp]
+theorem NFA.get_addNode {nfa : NFA} {node : Node} :
+  (nfa.addNode node).val[(nfa.addNode node).val.start.val]? = some node := by
+  simp [NFA.addNode]
+  apply Array.get?_push_eq
+
 def compile (r : Regex) : NFA :=
   let result := loop r 0 ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
   result.val
@@ -53,7 +59,7 @@ where
     ⟨nfa', property⟩
   | .concat r₁ r₂ =>
     let nfa₂ := loop r₂ next nfa
-    let nfa₁ := loop r₁ next nfa₂
+    let nfa₁ := loop r₁ nfa₂.val.start nfa₂
 
     have property : nfa ≤ nfa₁ :=
       calc nfa
@@ -100,7 +106,7 @@ where
     ⟨nfa''', property'⟩
 
 #eval compile (Regex.star (Regex.char 'a'))
-#eval compile (Regex.alternate (Regex.char 'a') (Regex.star (Regex.concat (Regex.char 'a') (Regex.char 'b'))))
+#eval compile (Regex.alternate (Regex.char 'x') (Regex.star (Regex.concat (Regex.char 'a') (Regex.char 'b'))))
 #eval compile (Regex.alternate Regex.empty (Regex.concat (Regex.char 'a') Regex.empty))
 
 end NFA

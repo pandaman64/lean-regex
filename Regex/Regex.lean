@@ -10,8 +10,8 @@ deriving Repr
 inductive Regex.matches : String → Regex → Prop where
   | char (c : Char) (eq : s = ⟨[c]⟩): Regex.matches s (.char c)
   | epsilon (eq : s = "") : Regex.matches s .epsilon
-  | alternateLeft : Regex.matches s r₁ → Regex.matches s (.alternate r₁ r₂)
-  | alternateRight : Regex.matches s r₂ → Regex.matches s (.alternate r₁ r₂)
+  | alternateLeft {s : String} {r₁ r₂ : Regex} : Regex.matches s r₁ → Regex.matches s (.alternate r₁ r₂)
+  | alternateRight {s : String} {r₁ r₂ : Regex} : Regex.matches s r₂ → Regex.matches s (.alternate r₁ r₂)
   | concat (s s₁ s₂ : String) (r₁ r₂ : Regex) (eq : s = s₁ ++ s₂) :
     Regex.matches s₁ r₁ → Regex.matches s₂ r₂ → Regex.matches s (.concat r₁ r₂)
   | star (m : Regex.matches s (.alternate .epsilon (.concat r (.star r)))) : Regex.matches s (.star r)
