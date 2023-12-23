@@ -37,4 +37,7 @@ def NFA.get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : Node :=
 instance : GetElem NFA Nat Node (fun nfa i => i < nfa.nodes.size) where
   getElem := NFA.get
 
+theorem NFA.eq_get {nfa : NFA} {i : Nat} {h : i < nfa.nodes.size} :
+  nfa[i] = nfa.nodes[i] := rfl
+
 end NFA

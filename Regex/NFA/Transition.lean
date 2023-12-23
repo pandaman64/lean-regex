@@ -303,6 +303,7 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
           simp [getElem, NFA.get]
           rw [←eq]
           simp [compile.loop]
+        sorry
       have head : next ∈ nfa'.val[nfa'.val.start]?.εStep := by
         unfold getElem?
         simp [this, Option.εStep, Node.εStep]
@@ -319,7 +320,7 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
         let ih := NFA.evalFrom_of_matches rfl m₁ nfa' this
 
         rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
-        
+
         sorry
 
 -- theorem evalFrom_of_matches (eq : compileRaw.loop nodes next r = result)

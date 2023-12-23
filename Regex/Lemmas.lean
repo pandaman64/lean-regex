@@ -12,3 +12,7 @@ theorem String.eq_of_append_of_eq_of_append {s s₁ s₂ : String} (h : s = s₁
   s.data = s₁.data ++ s₂.data := by
   subst h
   simp only [data_append]
+
+theorem Nat.eq_of_ge_of_lt {m n : Nat} (ge : m ≥ n) (lt : m < n + 1) : m = n := by
+  have le : m ≤ n := Nat.le_of_lt_succ lt
+  exact Nat.le_antisymm le ge
