@@ -91,6 +91,12 @@ theorem εClosureSet_singleton_step {nfa : NFA} {i j : Nat} (h : j ∈ nfa[i]?.�
   exact .step h .base
 
 @[simp]
+theorem εClosureSet_singleton {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i):
+  j ∈ nfa.εClosureSet {i} := by
+  apply mem_iUnion_of_mem i
+  simp [h]
+
+@[simp]
 theorem εClosureSet_empty {nfa : NFA} : nfa.εClosureSet ∅ = ∅ := by
   simp [NFA.εClosureSet]
 
@@ -191,87 +197,81 @@ theorem evalFrom_append {nfa : NFA} (eq : s = s₁ ++ s₂) :
     lhs
     rw [eq, NFA.evalFrom, List.foldl_append]
 
+theorem mem_evalFrom_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) (h : next ∈ nfa₁.evalFrom S s) :
+  next ∈ nfa₂.evalFrom S s :=
+  evalFrom_subset le (le_refl _) h
+
 theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
   (m : r.matches s) : ∀ nfa'' : NFA, nfa' ≤ nfa'' → next ∈ nfa''.evalFrom {nfa'.val.start.val} s.data := by
-  match m with
-  | @Regex.matches.char s c eqs =>
+  induction m generalizing next nfa with
+  | @char s c eqs =>
     intro nfa'' le
-    suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-      evalFrom_subset le (le_refl _) this
+    apply mem_evalFrom_le le
     simp [eqs, evalFrom, List.foldl]
     simp [compile.loop] at eq
     apply mem_iUnion_of_mem nfa'.val.start.val
     subst eq
     simp [Option.charStep, Node.charStep]
-  | @Regex.matches.epsilon s eqs =>
+  | @epsilon s eqs =>
     intro nfa'' le
-    suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-      evalFrom_subset le (le_refl _) this
+    apply mem_evalFrom_le le
     simp [eqs, evalFrom, List.foldl]
     simp [compile.loop] at eq
     apply mem_iUnion_of_mem nfa'.val.start.val
     subst eq
     simp [Option.charStep, Node.charStep]
     exact εClosure.step (by simp [Option.εStep, Node.εStep]) .base
-  | @Regex.matches.alternateLeft s r₁ r₂ m =>
+  | @alternateLeft s r₁ r₂ m ih =>
     intro nfa'' le
-    suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-      evalFrom_subset le (le_refl _) this
+    apply mem_evalFrom_le le
 
-    let nfa₁ := compile.loop r₁ next nfa
-    let start₁ := nfa₁.val.start
-    let nfa₂ := compile.loop r₂ next nfa₁
-    let start₂ := nfa₂.val.start
-    let final := nfa₂.val.addNode (.split start₁ start₂)
-
-    have : nfa'.val = final.val := by
-      simp [eq.symm]
-      rfl
-    rw [this]
+    apply compile.loop.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ eq₃ eq₄ eq₅ eq
 
     have property : nfa₁.val ≤ final.val :=
       calc nfa₁.val
         _ ≤ nfa₂.val := nfa₂.property
         _ ≤ final.val := final.property
 
-    apply mem_evalFrom_subset (evalFrom_of_matches rfl m final property)
+    rw [eq]
+    simp
+
+    apply mem_evalFrom_subset (ih eq₁.symm final property)
+    simp
+    apply εClosureSet_singleton_step
+    rw [eq₅]
     simp [Option.εStep, Node.εStep]
-  | @Regex.matches.alternateRight s r₁ r₂ m =>
+    exact .inl (by rw [eq₂])
+  | @alternateRight s r₁ r₂ m ih =>
     intro nfa'' le
-    suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-      evalFrom_subset le (le_refl _) this
+    apply mem_evalFrom_le le
 
-    let nfa₁ := compile.loop r₁ next nfa
-    let start₁ := nfa₁.val.start
-    let nfa₂ := compile.loop r₂ next nfa₁
-    let start₂ := nfa₂.val.start
-    let final := nfa₂.val.addNode (.split start₁ start₂)
+    apply compile.loop.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ eq₃ eq₄ eq₅ eq
 
-    have : nfa'.val = final.val := by
-      simp [eq.symm]
-      rfl
-    rw [this]
+    rw [eq]
+    simp
 
-    apply mem_evalFrom_subset (evalFrom_of_matches rfl m final final.property)
+    apply mem_evalFrom_subset (ih eq₃.symm final final.property)
+    simp
+    apply εClosureSet_singleton_step
+    rw [eq₅]
     simp [Option.εStep, Node.εStep]
-  | Regex.matches.concat s s₁ s₂ r₁ r₂ eqs m₁ m₂ =>
+    exact .inr (by rw [eq₄])
+  | concat s s₁ s₂ r₁ r₂ eqs m₁ m₂ ih₁ ih₂ =>
     intro nfa'' le
-    suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-      evalFrom_subset le (le_refl _) this
+    apply mem_evalFrom_le le
 
-    let nfa₂ := compile.loop r₂ next nfa
-    let nfa₁ := compile.loop r₁ nfa₂.val.start nfa₂
+    apply compile.loop.concat eq
+    intro nfa₂ nfa₁ property eq₂ eq₁ eq
 
-    have : nfa'.val = nfa₁.val := by
-      simp [eq.symm]
-      rfl
-    rw [this]
+    rw [eq]
+    simp
 
-    let ih₁ := evalFrom_of_matches rfl m₁ nfa₁ (le_refl _)
-    let ih₂ := evalFrom_of_matches rfl m₂ nfa₁ nfa₁.property
+    let ih₁ := ih₁ eq₁.symm nfa₁ (le_refl _)
+    let ih₂ := ih₂ eq₂.symm nfa₁ nfa₁.property
 
     apply mem_of_mem_of_subset ih₂
-    show nfa₁.val.evalFrom {nfa₂.val.start.val} s₂.data ⊆ nfa₁.val.evalFrom {nfa₁.val.start.val} s.data
     rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
     apply le_foldl_of_le
     . intro _ _ _ hs
@@ -283,44 +283,45 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
         εClosureSet_subset (le_refl _) this
       rw [εClosureSet_evalFrom] at this
       exact this
-  | @Regex.matches.star s r m =>
-    let added := nfa.addNode .done
-    let start := added.val.start
-    let intermediate := compile.loop r start added.val
+  | @star s r m ih =>
+    intro nfa'' le
+    apply mem_evalFrom_le le
+
+    apply compile.loop.star eq
+    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
+      eq₁ eq₂ eq₃ eq₄ eq₅ eq'
+
+    rw [eq']
+    simp
 
     cases m with
     | alternateLeft m =>
-      intro nfa'' le
-      suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-        evalFrom_subset le (le_refl _) this
-
       have : s = "" := Regex.epsilon_matches_only_empty s m
       simp [this, NFA.evalFrom, NFA.εClosureSet]
 
-      have : nfa'.val[nfa'.val.start.val]'(nfa'.val.start.isLt) = .split intermediate.val.start next := by
-        conv =>
-          lhs
-          simp [getElem, NFA.get]
-          rw [←eq]
-          simp [compile.loop]
-        sorry
-      have head : next ∈ nfa'.val[nfa'.val.start]?.εStep := by
+      have : nfa'''[nfa'''.start.val] = .split nfa''.val.start next := by
+        rw [eq₅, NFA.eq_get]
+        simp [eq₄]
+      have head : next ∈ nfa'''[nfa'''.start]?.εStep := by
         unfold getElem?
         simp [this, Option.εStep, Node.εStep]
-      have tail : next ∈ nfa'.val.εClosure next := .base
+      have tail : next ∈ nfa'''.εClosure next := .base
       exact NFA.εClosure.step head tail
     | alternateRight m => cases m with
       | concat s s₁ s₂ r₁ r₂ eqs m₁ m₂ =>
-        intro nfa'' le
-        suffices next ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data from
-          evalFrom_subset le (le_refl _) this
-        let ih := NFA.evalFrom_of_matches (next := start) (nfa := added.val) rfl m₁
+        have eq'' : compile.loop (.star r) next nfa = ⟨nfa''', property'⟩ := by sorry
+        have : nfa''.val ≤ nfa''' := sorry
+        -- have ih₁ := NFA.evalFrom_of_matches eq₃.symm m₁ nfa''' this
+        -- have ih₂ := NFA.evalFrom_of_matches eq'' m₂ nfa''' (le_refl _)
 
-        have : intermediate.val ≤ nfa'.val := sorry
-        let ih := NFA.evalFrom_of_matches rfl m₁ nfa' this
-
-        rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
-
+        -- rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
+        -- suffices next ∈ nfa'''.evalFrom (nfa'''.evalFrom {nfa'''.start.val} s₁.data) s₂.data by
+        --   have : next ∈ List.foldl nfa'''.stepSet (nfa'''.εClosureSet (nfa'''.evalFrom {nfa'''.start.val} s₁.data)) s₂.data := by
+        --     exact this
+        --   simp [εClosureSet_evalFrom] at this
+        --   exact this
+        -- apply mem_evalFrom_subset ih₂
+        -- simp [εClosureSet_evalFrom]
         sorry
 
 -- theorem evalFrom_of_matches (eq : compileRaw.loop nodes next r = result)
