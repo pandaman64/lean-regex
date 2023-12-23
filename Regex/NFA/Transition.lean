@@ -221,12 +221,12 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     subst eq
     simp [Option.charStep, Node.charStep]
     exact εClosure.step (by simp [Option.εStep, Node.εStep]) .base
-  | @alternateLeft s r₁ r₂ m ih =>
+  | @alternateLeft s r₁ r₂ _ ih =>
     intro nfa'' le
     apply mem_evalFrom_le le
 
     apply compile.loop.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ eq₃ eq₄ eq₅ eq
+    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ _ _ eq₅ eq
 
     have property : nfa₁.val ≤ final.val :=
       calc nfa₁.val
@@ -242,12 +242,12 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     rw [eq₅]
     simp [Option.εStep, Node.εStep]
     exact .inl (by rw [eq₂])
-  | @alternateRight s r₁ r₂ m ih =>
+  | @alternateRight s r₁ r₂ _ ih =>
     intro nfa'' le
     apply mem_evalFrom_le le
 
     apply compile.loop.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ eq₃ eq₄ eq₅ eq
+    intro nfa₁ start₁ nfa₂ start₂ final property _ _ eq₃ eq₄ eq₅ eq
 
     rw [eq]
     simp
@@ -258,7 +258,7 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     rw [eq₅]
     simp [Option.εStep, Node.εStep]
     exact .inr (by rw [eq₄])
-  | concat s s₁ s₂ r₁ r₂ eqs m₁ m₂ ih₁ ih₂ =>
+  | concat s s₁ s₂ r₁ r₂ eqs _ _ ih₁ ih₂ =>
     intro nfa'' le
     apply mem_evalFrom_le le
 
@@ -283,7 +283,28 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
         εClosureSet_subset (le_refl _) this
       rw [εClosureSet_evalFrom] at this
       exact this
-  | @star s r m ih =>
+  | starEpsilon eqs =>
+    intro nfa'' le
+    apply mem_evalFrom_le le
+
+    apply compile.loop.star eq
+    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
+      _ _ _ eq₄ eq₅ eq'
+
+    rw [eq']
+    simp
+
+    simp [eqs, NFA.evalFrom, NFA.εClosureSet]
+
+    have : nfa'''[nfa'''.start.val] = .split nfa''.val.start next := by
+      rw [eq₅, NFA.eq_get]
+      simp [eq₄]
+    have head : next ∈ nfa'''[nfa'''.start]?.εStep := by
+      unfold getElem?
+      simp [this, Option.εStep, Node.εStep]
+    have tail : next ∈ nfa'''.εClosure next := .base
+    exact NFA.εClosure.step head tail
+  | starConcat s s₁ s₂ r eqs _ _ ih₁ ih₂ =>
     intro nfa'' le
     apply mem_evalFrom_le le
 
@@ -294,84 +315,58 @@ theorem NFA.evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     rw [eq']
     simp
 
-    cases m with
-    | alternateLeft m =>
-      have : s = "" := Regex.epsilon_matches_only_empty s m
-      simp [this, NFA.evalFrom, NFA.εClosureSet]
-
-      have : nfa'''[nfa'''.start.val] = .split nfa''.val.start next := by
-        rw [eq₅, NFA.eq_get]
+    have eq'' : compile.loop (.star r) next nfa = ⟨nfa''', property'⟩ := by
+      rw [eq'] at eq
+      exact eq
+    have : nfa''.val ≤ nfa''' := by
+      intro i h
+      have : nodes'''.size = nfa''.val.nodes.size := by
         simp [eq₄]
-      have head : next ∈ nfa'''[nfa'''.start]?.εStep := by
-        unfold getElem?
-        simp [this, Option.εStep, Node.εStep]
-      have tail : next ∈ nfa'''.εClosure next := .base
-      exact NFA.εClosure.step head tail
-    | alternateRight m => cases m with
-      | concat s s₁ s₂ r₁ r₂ eqs m₁ m₂ =>
-        have eq'' : compile.loop (.star r) next nfa = ⟨nfa''', property'⟩ := by sorry
-        have : nfa''.val ≤ nfa''' := sorry
-        -- have ih₁ := NFA.evalFrom_of_matches eq₃.symm m₁ nfa''' this
-        -- have ih₂ := NFA.evalFrom_of_matches eq'' m₂ nfa''' (le_refl _)
+      have : i < nodes'''.size := by
+        simp [this, h]
+      have h' : i < nfa'''.nodes.size := by
+        simp [eq₅, this]
+      exists h'
+      cases Nat.decEq start i with
+      | isTrue eq =>
+        have lhs : nfa''.val[i] = .fail := by
+          simp [eq₃, eq.symm]
+          have : start.val < nfa'.val.nodes.size := by
+            rw [eq₂, eq₁]
+            simp
+          simp [compile.loop.get_lt rfl this]
+          have : start.val = (nfa.addNode .fail).val.start.val := by
+            rw [eq₂, eq₁]
+          simp [this, eq₁]
+        have rhs : nfa'''[i] = .split nfa''.val.start next := by
+          simp [NFA.eq_get, eq₅, eq₄, eq.symm]
+        simp [lhs, rhs]
+      | isFalse neq =>
+        have : nodes'''[i] = nfa''.val.nodes[i] := by
+          simp [eq₄]
+          apply Array.get_set_ne
+          exact neq
+        simp [NFA.eq_get, eq₅, this]
+    have ih₁ := ih₁ eq₃.symm nfa''' this
+    have ih₂ := ih₂ eq'' nfa''' (le_refl _)
 
-        -- rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
-        -- suffices next ∈ nfa'''.evalFrom (nfa'''.evalFrom {nfa'''.start.val} s₁.data) s₂.data by
-        --   have : next ∈ List.foldl nfa'''.stepSet (nfa'''.εClosureSet (nfa'''.evalFrom {nfa'''.start.val} s₁.data)) s₂.data := by
-        --     exact this
-        --   simp [εClosureSet_evalFrom] at this
-        --   exact this
-        -- apply mem_evalFrom_subset ih₂
-        -- simp [εClosureSet_evalFrom]
-        sorry
+    rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
+    suffices next ∈ nfa'''.evalFrom (nfa'''.evalFrom {nfa'''.start.val} s₁.data) s₂.data by
+      have : next ∈ List.foldl nfa'''.stepSet (nfa'''.εClosureSet (nfa'''.evalFrom {nfa'''.start.val} s₁.data)) s₂.data := by
+        exact this
+      simp [εClosureSet_evalFrom] at this
+      exact this
+    apply mem_evalFrom_subset ih₂
+    simp [εClosureSet_evalFrom]
 
--- theorem evalFrom_of_matches (eq : compileRaw.loop nodes next r = result)
---   (m : r.matches s) : next ∈ evalFrom result.1 {result.2.val} s.data := by
---   induction m generalizing nodes next result with
---   | char c eqs =>
---     simp [eqs, evalFrom, List.foldl]
---     simp [compileRaw.loop] at eq
---     exists result.2
---     subst eq
---     simp [addNode, charStep]
---   | epsilon eqs =>
---     simp [eqs, evalFrom, List.foldl]
---     simp [compileRaw.loop] at eq
---     subst eq
---     exists nodes.size
---     simp [addNode]
---     exact εClosure.step (by simp [εStep]) .base
---   | @alternateLeft s r₁ r₂ m ih =>
---     let result₁ := compileRaw.loop nodes next r₁
---     let result₂ := compileRaw.loop result₁.1 next r₂
---     let result' := addNode result₂.1 (.split result₁.2 result₂.2)
-
---     let x := ih (nodes := nodes) (next := next) rfl
-
---     have : result.2.val = result'.2.val := by rw [eq.symm, compileRaw.loop]
---     rw [this]
---     have : result.1.val = result'.1.val := by rw [eq.symm, compileRaw.loop]
---     rw [this]
-
---     simp [addNode, evalFrom]
-
---     sorry
---   | alternateRight => sorry
---   | concat s s₁ s₂ r₁ r₂ eqs m₁ m₂ ih₁ ih₂ =>
---     let result₂ := compileRaw.loop nodes next r₂
---     let result₁ := compileRaw.loop result₂.1 result₂.2 r₁
-
---     have : result.2.val = result₁.2.val := by rw [eq.symm, compileRaw.loop]
---     rw [this]
---     have : result.1.val = result₁.1.val := by rw [eq.symm, compileRaw.loop]
---     rw [this]
-
---     have eqs : s.data = s₁.data ++ s₂.data := by rw [eqs, String.data_append]
---     let x := subset_evalFrom_append result₂.1.val {result₂.2.val} eqs
-
---     let ih₁ : result₂.2.val ∈ evalFrom result₁.1.val {result₁.2.val} s₁.data := ih₁ rfl
---     let ih₂ : next ∈ evalFrom result₂.1.val {result₂.2.val} s₂.data := ih₂ rfl
-
---     sorry
---   | star => sorry
+    have : nfa'''.start.val = start.val := by
+      rw [eq₅]
+    apply mem_evalFrom_subset (this.symm ▸ ih₁)
+    simp
+    apply εClosureSet_singleton_step
+    have : nfa'''[nfa'''.start.val] = .split nfa''.val.start next := by
+      rw [eq₅, NFA.eq_get]
+      simp [eq₄]
+    simp [this, getElem?, Option.εStep, Node.εStep]
 
 end NFA

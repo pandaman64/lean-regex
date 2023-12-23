@@ -31,6 +31,10 @@ instance : Preorder Node where
   le_refl := @Node.le_rfl
   le_trans := @Node.le_trans
 
+@[simp]
+theorem Node.minimal_fail {n : Node} : .fail ≤ n :=
+  ⟨fun _ => Set.empty_subset _, Set.empty_subset _⟩
+
 /--
   Extend the ordering to εNFA.
 -/

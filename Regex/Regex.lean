@@ -14,7 +14,9 @@ inductive Regex.matches : String → Regex → Prop where
   | alternateRight {s : String} {r₁ r₂ : Regex} : Regex.matches s r₂ → Regex.matches s (.alternate r₁ r₂)
   | concat (s s₁ s₂ : String) (r₁ r₂ : Regex) (eq : s = s₁ ++ s₂) :
     Regex.matches s₁ r₁ → Regex.matches s₂ r₂ → Regex.matches s (.concat r₁ r₂)
-  | star (m : Regex.matches s (.alternate .epsilon (.concat r (.star r)))) : Regex.matches s (.star r)
+  | starEpsilon (eq : s = "") : Regex.matches s (.star r)
+  | starConcat (s s₁ s₂ : String) (r : Regex) (eq : s = s₁ ++ s₂) :
+    Regex.matches s₁ r → Regex.matches s₂ (.star r) → Regex.matches s (.star r)
 
 theorem Regex.empty_not_matches {s : String} (m : Regex.empty.matches s) : False := nomatch m
 
