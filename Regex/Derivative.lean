@@ -71,7 +71,7 @@ theorem Regex.matches_empty_eq_matches_empty (r : Regex) :
       apply And.intro
       . decide
       . simp [*]
-  case star r _ => exact .star (.alternateLeft epsilon_matches_empty)
+  case star r _ => exact .starEpsilon rfl
 
 def Regex.derivative (c : Char) : Regex → Regex
   | .empty => .empty
@@ -158,16 +158,20 @@ theorem Regex.derivative_matches_of_matches {c : Char} {cs : List Char} {r : Reg
       cases r₁.matches_empty with
       | true => simp; exact .alternateLeft m
       | false => simp; exact m
-  | @star s r _ ih =>
-    simp [derivative] at *
-    cases ih h with
-    | alternateLeft m => have : False := empty_not_matches m; contradiction
-    | alternateRight m =>
-      match r.matches_empty, m with
-      | true, m =>
-        simp at m
-        exact matches_of_alternate_matches m
-      | false, m => simp at m; assumption
+  | @starEpsilon s r eq =>
+    simp [derivative]
+    subst eq
+    apply String.noConfusion h
+    intro h
+    contradiction
+  | @starConcat s s₁ s₂ r eq _ m₂ ih₁ ih₂ =>
+    cases String.cons_eq_append_split (eq ▸ h) with
+    | inl h => exact ih₂ h.right
+    | inr h =>
+      simp [derivative]
+      let ⟨s₁', h₁, h₂⟩ := h
+      have ih₁ := ih₁ h₁.symm
+      exact .concat ⟨cs⟩ s₁' s₂ _ _ h₂ ih₁ m₂
 
 theorem Regex.matches_of_derivative_matches {c : Char} {cs : List Char} {r : Regex}
   (m : (r.derivative c).matches ⟨cs⟩) : r.matches ⟨c :: cs⟩ := by
@@ -242,8 +246,6 @@ theorem Regex.matches_of_derivative_matches {c : Char} {cs : List Char} {r : Reg
       exact .concat _ _ _ _ _ eq' m₁' m₂
   | .star r =>
     simp [derivative] at m
-    apply matches.star
-    apply matches.alternateRight
     let ⟨s₁, s₂, eq, m₁, m₂⟩ := concat_matches.mp m
     let m₁' := matches_of_derivative_matches m₁
     have eq' : ⟨c :: cs⟩ = ⟨c :: s₁.data⟩ ++ s₂ := by
@@ -253,8 +255,29 @@ theorem Regex.matches_of_derivative_matches {c : Char} {cs : List Char} {r : Reg
         intro eq
         simp [eq]
       rw [this]
-    exact .concat _ _ _ _ _ eq' m₁' m₂
+    exact .starConcat _ _ _ _ eq' m₁' m₂
 
 theorem Regex.derivative_matches (c : Char) (cs : List Char) (r : Regex) :
   r.matches ⟨c :: cs⟩ ↔ (r.derivative c).matches ⟨cs⟩ :=
   ⟨Regex.derivative_matches_of_matches, Regex.matches_of_derivative_matches⟩
+
+theorem Regex.matches_iff_matches_derivative {cs : List Char} {r : Regex} :
+  r.matches ⟨cs⟩ ↔ r.matches_derivative cs := by
+  apply Iff.intro
+  . intro m
+    induction cs generalizing r with
+    | nil =>
+      simp [matches_derivative]
+      exact (matches_empty_eq_matches_empty r).mp m
+    | cons c cs ih =>
+      simp [matches_derivative]
+      have m := (derivative_matches c cs r).mp m
+      exact ih m
+  . intro md
+    induction cs generalizing r with
+    | nil =>
+      simp [matches_derivative] at md
+      exact (matches_empty_eq_matches_empty r).mpr md
+    | cons c cs ih =>
+      simp [matches_derivative] at md
+      exact (derivative_matches c cs r).mpr (ih md)
