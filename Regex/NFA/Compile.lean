@@ -391,4 +391,232 @@ theorem compile.get_done_iff_zero (eq : compile r = result) (h : i < result.node
     simp [h, eq'.symm]
     apply compile.loop.get_lt rfl h'
 
+-- When we compile a new regex into an existing NFA, the compiled nodes first
+-- "circulates" within the new nodes, then "escape" to the `next` node.
+
+def compile.loop.NewNodesRange (_ : compile.loop r next nfa = result) : Set Nat :=
+  { i | nfa.nodes.size ≤ i ∧ i < result.val.nodes.size }
+
+theorem compile.loop.start_in_NewNodesRange (eq : compile.loop r next nfa = result) :
+  result.val.start.val ∈ NewNodesRange eq := by
+  simp [NewNodesRange]
+  induction r generalizing next nfa with
+  | empty =>
+    apply compile.loop.empty eq
+    intro eq
+    rw [eq]
+    simp [NFA.addNode]
+  | epsilon =>
+    apply compile.loop.epsilon eq
+    intro eq
+    rw [eq]
+    simp [NFA.addNode]
+  | char c =>
+    apply compile.loop.char eq
+    intro eq
+    rw [eq]
+    simp [NFA.addNode]
+  | alternate r₁ r₂ =>
+    apply compile.loop.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property _ _ _ _ eq₅ eq
+    rw [eq]
+    simp
+    rw [eq₅]
+    simp [NFA.addNode]
+    exact NFA.le_size_of_le (le_trans nfa₁.property nfa₂.property)
+  | concat r₁ r₂ ih₁ =>
+    apply compile.loop.concat eq
+    intro nfa₂ nfa₁ property _ eq₁ eq
+    rw [eq]
+    simp
+    have ih₁ := ih₁ eq₁.symm
+    exact le_trans (NFA.le_size_of_le nfa₂.property) ih₁
+  | star r =>
+    apply compile.loop.star eq
+    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
+      eq₁ eq₂ _ _ eq₅ eq
+    rw [eq]
+    simp
+    rw [eq₅]
+    simp [eq₂]
+    rw [eq₁]
+    simp [NFA.addNode]
+
+theorem compile.loop.step_range (eq : compile.loop r next nfa = result) :
+  ∀i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →
+  result.val[i].charStep c ⊆ {next} ∪ NewNodesRange eq ∧
+  result.val[i].εStep ⊆ {next} ∪ NewNodesRange eq := by
+  induction r generalizing next nfa with
+  | empty =>
+    apply compile.loop.empty eq
+    intro eq i h₁ h₂
+    simp [eq, NFA.addNode] at h₂
+    have h : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
+    simp [eq, h, Node.charStep, Node.εStep]
+  | epsilon =>
+    apply compile.loop.epsilon eq
+    intro eq i h₁ h₂
+    simp [eq, NFA.addNode] at h₂
+    have h : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
+    simp [eq, h, Node.charStep, Node.εStep]
+  | char c' =>
+    apply compile.loop.char eq
+    intro eq i h₁ h₂
+    simp [eq, NFA.addNode] at h₂
+    have h : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
+    simp [eq, h, Node.charStep, Node.εStep]
+    apply le_trans
+    . show (if c = c' then {next} else ∅) ≤ {next}
+      simp
+    . simp
+  | alternate r₁ r₂ ih₁ ih₂ =>
+    apply compile.loop.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ eq₂ eq₃ eq₄ eq₅ eq i h₁ h₂
+    simp [NewNodesRange, eq]
+
+    have size : i < nfa'.val.nodes.size := by
+      simp [eq] at h₂
+      exact h₂
+    have size₂ : nfa₂.val.nodes.size < nfa'.val.nodes.size := by
+      simp [eq₅]
+      exact NFA.lt_size_addNode
+    have size₁ : nfa₁.val.nodes.size < nfa'.val.nodes.size :=
+      Nat.lt_of_le_of_lt (NFA.le_size_of_le nfa₂.property) size₂
+
+    cases Nat.lt_or_ge i nfa₁.val.nodes.size with
+    | inl lt =>
+      have ih₁ := ih₁ eq₁.symm i h₁ lt
+      have : nfa'.val[i] = nfa₁.val[i] := by
+        simp [eq₅]
+        rw [NFA.get_lt_addNode (Nat.lt_of_lt_of_le lt (NFA.le_size_of_le nfa₂.property))]
+        rw [get_lt eq₃.symm lt]
+      rw [this]
+      have : {next} ∪ NewNodesRange eq₁.symm ⊆
+        {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < nfa'.val.nodes.size} := by
+        apply Set.insert_subset_insert
+        apply Set.setOf_subset_setOf.mpr
+        intro i h
+        exact ⟨h.left, lt_trans h.right size₁⟩
+      exact ⟨le_trans ih₁.left this, le_trans ih₁.right this⟩
+    | inr ge =>
+      cases Nat.lt_or_ge i nfa₂.val.nodes.size with
+      | inl lt =>
+        have ih₂ := ih₂ eq₃.symm i ge lt
+        have : nfa'.val[i] = nfa₂.val[i] := by
+          simp [eq₅]
+          rw [NFA.get_lt_addNode lt]
+        rw [this]
+        have : {next} ∪ NewNodesRange eq₃.symm ⊆
+          {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < nfa'.val.nodes.size} := by
+          apply Set.insert_subset_insert
+          apply Set.setOf_subset_setOf.mpr
+          intro i h
+          exact ⟨le_trans (NFA.le_size_of_le nfa₁.property) h.left, lt_trans h.right size₂⟩
+        exact ⟨le_trans ih₂.left this, le_trans ih₂.right this⟩
+      | inr ge =>
+        simp [eq, eq₅, NFA.addNode] at h₂
+        have h : i = nfa₂.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
+        have : nfa'.val[i] = (.split nfa₁.val.start nfa₂.val.start) := by
+          simp [eq₅, h, eq₂, eq₄]
+        simp [this, Node.charStep, Node.εStep]
+        apply Set.insert_subset
+        . simp
+          have h := start_in_NewNodesRange eq₁.symm
+          exact .inr ⟨h.left, lt_trans h.right size₁⟩
+        . simp
+          have h := start_in_NewNodesRange eq₃.symm
+          exact .inr ⟨le_trans (NFA.le_size_of_le nfa₁.property) h.left, lt_trans h.right size₂⟩
+  | concat r₁ r₂ ih₁ ih₂ =>
+    apply compile.loop.concat eq
+    intro nfa₂ nfa₁ property eq₂ eq₁ eq i h₁ h₂
+    simp [NewNodesRange, eq]
+
+    have size : i < nfa₁.val.nodes.size := by
+      simp [eq] at h₂
+      exact h₂
+    have size' : nfa₂.val.nodes.size ≤ nfa₁.val.nodes.size :=
+      NFA.le_size_of_le nfa₁.property
+
+    cases Nat.lt_or_ge i nfa₂.val.nodes.size with
+    | inl lt =>
+      have ih₂ := ih₂ eq₂.symm i h₁ lt
+      have : nfa₁.val[i] = nfa₂.val[i] := get_lt eq₁.symm lt
+      rw [this]
+      have : {next} ∪ NewNodesRange eq₂.symm ⊆
+        {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < nfa₁.val.nodes.size} := by
+        apply Set.insert_subset_insert
+        apply Set.setOf_subset_setOf.mpr
+        intro i h
+        exact ⟨h.left, Nat.lt_of_lt_of_le h.right size'⟩
+      exact ⟨le_trans ih₂.left this, le_trans ih₂.right this⟩
+    | inr ge =>
+      have ih₁ := ih₁ eq₁.symm i ge size
+      have : {nfa₂.val.start.val} ∪ NewNodesRange eq₁.symm ⊆
+        {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < nfa₁.val.nodes.size} := by
+        apply Set.union_subset
+        . simp
+          have h := start_in_NewNodesRange eq₂.symm
+          exact .inr ⟨h.left, Nat.lt_of_lt_of_le h.right size'⟩
+        . simp [Set.subset_def]
+          intro i h
+          exact .inr ⟨le_trans (NFA.le_size_of_le nfa₂.property) h.left, h.right⟩
+      exact ⟨le_trans ih₁.left this, le_trans ih₁.right this⟩
+  | star r ih =>
+    apply compile.loop.star eq
+    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
+      eq₁ eq₂ eq₃ eq₄ eq₅ eq i h₁ h₂
+    simp [NewNodesRange, eq]
+
+    have eqs : start.val = nfa.nodes.size := by
+      simp [eq₂]
+      rw [eq₁]
+      simp [NFA.addNode]
+    have size : i < nfa'''.nodes.size := by
+      simp [eq] at h₂
+      exact h₂
+    have eqsize : nfa''.val.nodes.size = nfa'''.nodes.size := by
+      simp [eq₅, eq₄]
+    have size'' : i < nfa''.val.nodes.size := eqsize ▸ size
+
+    cases Nat.lt_or_ge i nfa'.val.nodes.size with
+    | inl lt =>
+      simp [eq₁, NFA.addNode] at lt
+      have h := Nat.eq_of_ge_of_lt h₁ lt
+      have : nfa'''[i] = .split nfa''.val.start next := by
+        have : i = start := by
+          rw [h, eqs]
+        simp [this, eq₅, NFA.eq_get, eq₄]
+      simp [this, Node.charStep, Node.εStep]
+      apply Set.insert_subset
+      . have h := start_in_NewNodesRange eq₃.symm
+        simp
+        exact .inr ⟨le_trans (NFA.le_size_of_le nfa'.property) h.left, eqsize ▸ nfa''.val.start.isLt⟩
+      . simp
+    | inr ge =>
+      have ih := ih eq₃.symm i ge size''
+      have : nfa'''[i] = nfa''.val[i] := by
+        simp [eq₅, NFA.eq_get, eq₄]
+        apply Array.get_set_ne
+        rw [eqs]
+        apply Nat.ne_of_lt
+        have : nfa.nodes.size + 1 ≤ i := by
+          simp [eq₁, NFA.addNode] at ge
+          exact ge
+        exact this
+      rw [this]
+      have : {start.val} ∪ NewNodesRange eq₃.symm ⊆
+        {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < nfa'''.nodes.size} := by
+        apply Set.union_subset
+        . simp
+          have : start.val < nfa'''.nodes.size :=
+            calc start.val
+              _ < nfa'.val.nodes.size := start.isLt
+              _ ≤ nfa''.val.nodes.size := NFA.le_size_of_le nfa''.property
+              _ = nfa'''.nodes.size := eqsize
+          exact .inr ⟨eqs ▸ le_refl _, this⟩
+        . simp [Set.subset_def]
+          intro i h
+          exact .inr ⟨le_trans (NFA.le_size_of_le nfa'.property) h.left, eqsize ▸ h.right⟩
+      exact ⟨le_trans ih.left this, le_trans ih.right this⟩
+
 end NFA
