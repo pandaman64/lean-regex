@@ -391,6 +391,103 @@ theorem compile.get_done_iff_zero (eq : compile r = result) (h : i < result.node
     simp [h, eq'.symm]
     apply compile.loop.get_lt rfl h'
 
+theorem compile.loop.inBounds (eq : compile.loop r next nfa = result)
+  (h₁ : next < nfa.nodes.size) (h₂ : nfa.inBounds) :
+  result.val.inBounds := by
+  induction r generalizing next nfa with
+  | empty | epsilon | char =>
+    try apply compile.loop.empty eq
+    try apply compile.loop.epsilon eq
+    try apply compile.loop.char eq
+
+    intro eq i
+    subst eq
+    have h' : next < nfa.nodes.size + 1 := lt_trans h₁ (Nat.lt_succ_self _)
+
+    cases Nat.lt_or_ge i nfa.nodes.size with
+    | inl lt =>
+      simp [NFA.get_lt_addNode lt]
+      exact Node.inBounds_of_inBounds_of_le (h₂ ⟨i, lt⟩) (by simp [NFA.addNode]; exact Nat.le_succ _)
+    | inr ge =>
+      let lt := i.isLt
+      simp only [NFA.addNode, Array.size_push] at lt
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [this]
+      try simp [NFA.addNode]
+      try exact Node.inBounds.epsilon h'
+      try exact Node.inBounds.char h'
+  | alternate r₁ r₂ ih₁ ih₂ =>
+    apply compile.loop.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ _ eq₃ _ eq₅ eq i
+
+    have ih : i < nfa₂.val.nodes.size → result.val[i].inBounds result.val.nodes.size := by
+      intro h
+      simp [eq, eq₅]
+      simp [NFA.get_lt_addNode h]
+      simp [NFA.addNode]
+      have ih₁ := ih₁ eq₁.symm h₁ h₂
+      have ih₂ := ih₂ eq₃.symm (Nat.lt_of_lt_of_le h₁ (NFA.le_size_of_le nfa₁.property)) ih₁
+      exact Node.inBounds_of_inBounds_of_le (ih₂ ⟨i, h⟩) (Nat.le_succ _)
+
+    cases Nat.lt_or_ge i nfa₂.val.nodes.size with
+    | inl lt => exact ih lt
+    | inr ge =>
+      let lt := i.isLt
+      simp only [eq, eq₅, NFA.addNode, Array.size_push] at lt
+      have : i = nfa₂.val.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [eq, eq₅, this]
+      simp [NFA.addNode]
+      apply Node.inBounds.split
+      . exact lt_trans start₁.isLt (Nat.lt_of_le_of_lt (NFA.le_size_of_le nfa₂.property) (Nat.lt_succ_self _))
+      . exact lt_trans start₂.isLt (Nat.lt_succ_self _)
+  | concat r₁ r₂ ih₁ ih₂ =>
+    apply compile.loop.concat eq
+    intro nfa₂ nfa₁ property eq₂ eq₁ eq
+    simp [eq]
+    apply ih₁ eq₁.symm nfa₂.val.start.isLt
+    apply ih₂ eq₂.symm h₁ h₂
+  | star r ih =>
+    apply compile.loop.star eq
+    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
+      eq₁ _ eq₃ eq₄ eq₅ eq i
+
+    have eqsize : result.val.nodes.size = nfa''.val.nodes.size := by
+      simp [eq, eq₅, eq₄]
+    have h' : i < nfa''.val.nodes.size :=
+      calc
+        i < result.val.nodes.size := i.isLt
+        _ = _ := eqsize
+    have inBounds' : nfa'.val.inBounds := by
+      simp [eq₁]
+      intro i
+      cases Nat.lt_or_ge i nfa.nodes.size with
+      | inl lt =>
+        simp [NFA.get_lt_addNode lt]
+        exact Node.inBounds_of_inBounds_of_le (h₂ ⟨i, lt⟩) (by simp [NFA.addNode]; exact Nat.le_succ _)
+      | inr ge =>
+        let lt := i.isLt
+        simp only [NFA.addNode, Array.size_push] at lt
+        have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+        simp [this]
+    have ih := ih eq₃.symm start.isLt inBounds'
+
+    simp [eq, eq₅, NFA.eq_get, eq₄, Array.get_set, h']
+    split
+    . apply Node.inBounds.split
+      . exact nfa''.val.start.isLt
+      . exact Nat.lt_of_lt_of_le h₁ (NFA.le_size_of_le (le_trans nfa'.property nfa''.property))
+    . exact ih (i.cast eqsize)
+
+theorem compile.inBounds (eq : compile r = result) : result.inBounds := by
+  let init : NFA := ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
+  have h₁ : 0 < init.nodes.size := by decide
+  have h₂ : init.inBounds := by
+    simp
+    intro i
+    simp [NFA.eq_get, Array.singleton_get']
+  simp [eq.symm, compile]
+  exact compile.loop.inBounds rfl h₁ h₂
+
 -- When we compile a new regex into an existing NFA, the compiled nodes first
 -- "circulates" within the new nodes, then "escape" to the `next` node.
 

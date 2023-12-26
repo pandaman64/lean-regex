@@ -22,3 +22,8 @@ theorem Array.singleton_get (i : Fin 1) :
   match i with
   | ⟨0, isLt⟩ => rfl
   | ⟨i' + 1, _⟩ => contradiction
+
+theorem Array.singleton_get' {i : Nat} {h : i < #[v].size} : #[v][i]'h = v := by
+  match i with
+  | 0 => rfl
+  | i' + 1 => contradiction

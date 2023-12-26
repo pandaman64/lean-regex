@@ -72,7 +72,6 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
 structure NFA where
   nodes : Array Node
   start : Fin nodes.size
-  -- inBounds : ∀ i : Fin nodes.size, nodes[i].inBounds nodes.size
 deriving Repr
 
 def NFA.get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : Node :=
@@ -83,5 +82,8 @@ instance : GetElem NFA Nat Node (fun nfa i => i < nfa.nodes.size) where
 
 theorem NFA.eq_get {nfa : NFA} {i : Nat} {h : i < nfa.nodes.size} :
   nfa[i] = nfa.nodes[i] := rfl
+
+def NFA.inBounds (nfa : NFA) :=
+  ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size
 
 end NFA
