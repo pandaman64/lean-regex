@@ -21,6 +21,49 @@ def Node.εStep (n : Node) : Set Nat :=
   | Node.split next₁ next₂ => {next₁, next₂}
   | _ => ∅
 
+def Node.inBounds (n : Node) (size : Nat) : Prop :=
+  (∀ c, n.charStep c ⊆ { j | j < size }) ∧ n.εStep ⊆ { j | j < size }
+
+@[simp]
+theorem Node.inBounds.done {size : Nat} : Node.done.inBounds size := by
+  simp [inBounds, charStep, εStep]
+
+@[simp]
+theorem Node.inBounds.fail {size : Nat} : Node.fail.inBounds size := by
+  simp [inBounds, charStep, εStep]
+
+@[simp]
+theorem Node.inBounds.epsilon {size next : Nat} (h : next < size) :
+  (Node.epsilon next).inBounds size := by
+  simp [inBounds, charStep, εStep, h]
+
+@[simp]
+theorem Node.inBounds.char {size next : Nat} {c : Char} (h : next < size) :
+  (Node.char c next).inBounds size := by
+  simp [inBounds, charStep, εStep]
+  intro c'
+  split <;> simp [h]
+
+@[simp]
+theorem Node.inBounds.split {size next₁ next₂ : Nat} (h₁ : next₁ < size) (h₂ : next₂ < size) :
+  (Node.split next₁ next₂).inBounds size := by
+  simp [inBounds, charStep, εStep]
+  apply Set.insert_subset <;> simp [h₁, h₂]
+
+theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : size ≤ size') :
+  n.inBounds size' := by
+  simp [inBounds] at *
+  apply And.intro
+  . intro c
+    apply le_trans (h.left c)
+    simp
+    intro j h
+    exact Nat.lt_of_lt_of_le h le
+  . apply le_trans h.right
+    simp
+    intro j h
+    exact Nat.lt_of_lt_of_le h le
+
 /--
   The NFA consists an array of nodes and a designated start node.
 
@@ -29,6 +72,7 @@ def Node.εStep (n : Node) : Set Nat :=
 structure NFA where
   nodes : Array Node
   start : Fin nodes.size
+  -- inBounds : ∀ i : Fin nodes.size, nodes[i].inBounds nodes.size
 deriving Repr
 
 def NFA.get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : Node :=
