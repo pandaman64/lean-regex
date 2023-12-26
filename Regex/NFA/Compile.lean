@@ -442,7 +442,7 @@ theorem compile.loop.start_in_NewNodesRange (eq : compile.loop r next nfa = resu
     rw [eq₁]
     simp [NFA.addNode]
 
-theorem compile.loop.step_range (eq : compile.loop r next nfa = result) :
+theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = result) :
   ∀i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →
   result.val[i].charStep c ⊆ {next} ∪ NewNodesRange eq ∧
   result.val[i].εStep ⊆ {next} ∪ NewNodesRange eq := by
