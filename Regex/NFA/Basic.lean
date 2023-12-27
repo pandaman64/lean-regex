@@ -71,6 +71,7 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
 -/
 structure NFA where
   nodes : Array Node
+  -- TODO: when compiled, start will be the last node. Maybe we should just remove this?
   start : Fin nodes.size
 deriving Repr
 

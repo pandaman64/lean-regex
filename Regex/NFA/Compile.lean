@@ -61,6 +61,9 @@ where
     Returned NFA contains the compiled nodes at the end and starts at the node
     corresponding to the given regex.
   -/
+  -- TODO: now I don't think we use NFA's ordering except for the size inequality.
+  -- Just replace the condition.
+  -- TODO: check all array insertions are handled linearly.
   loop (r : Regex) (next : Nat) (nfa : NFA) : { nfa' // nfa ≤ nfa' } := match r with
   | .empty => nfa.addNode .fail
   | .epsilon => nfa.addNode (.epsilon next)
@@ -92,47 +95,53 @@ where
     ⟨nfa₁, property⟩
   | .star r =>
     -- We need to generate a placeholder node first. We use `fail` for it because
-    -- 1. We'll use the fact that `fail` is a minimal element when strengthening induction hypotheis;
-    -- 2. We want to make sure `done` does not appear except at the first node.
-    -- 3. variants without data are represented as a boxed integer so there is one less allocation.
+    -- 1. We want to make sure `done` does not appear except at the first node.
+    -- 2. variants without data are represented as a boxed integer so there is one less allocation.
     -- TODO: check generated code
-    let nfa' := nfa.addNode .fail
-    let start := nfa'.val.start
-    let nfa'' := loop r start nfa'
+    let placeholder := nfa.addNode .fail
+    let loopStart := placeholder.val.start
+    let compiled := loop r loopStart placeholder
 
-    have property : nfa ≤ nfa'' :=
-      calc nfa
-        _ ≤ nfa'.val := nfa'.property
-        _ ≤ nfa''.val := nfa''.property
-    have isLt : start.val < nfa''.val.nodes.size :=
-      Nat.lt_of_lt_of_le nfa'.val.start.isLt (NFA.le_size_of_le nfa''.property)
+    -- have property : nfa ≤ compiled :=
+    --   calc nfa
+    --     _ ≤ placeholder.val := placeholder.property
+    --     _ ≤ compiled.val := compiled.property
+    have isLt : loopStart.val < compiled.val.nodes.size :=
+      Nat.lt_of_lt_of_le placeholder.val.start.isLt (NFA.le_size_of_le compiled.property)
 
     -- Patch the placeholder node
-    let target := nfa''.val.start
-    let nodes''' := nfa''.val.nodes.set ⟨start.val, isLt⟩ (.split target next)
+    let target := compiled.val.start
+    let nodes := compiled.val.nodes.set ⟨loopStart.val, isLt⟩ (.split target next)
 
-    have eq_size : nodes'''.size = nfa''.val.nodes.size := by simp
-    have isLt' : start.val < nodes'''.size := eq_size ▸ isLt
-    let nfa''' := ⟨nodes''', ⟨start.val, isLt'⟩⟩
+    have eq_size : nodes.size = compiled.val.nodes.size := by simp
+    have isLt' : loopStart.val < nodes.size := eq_size ▸ isLt
+    let patched : NFA := ⟨nodes, ⟨loopStart.val, isLt'⟩⟩
 
-    have property' : nfa ≤ nfa''' := by
+    -- Add the start node
+    -- Creating a split node with the same targets feels a bit waste
+    let final := patched.addNode (.split loopStart loopStart)
+
+    have property' : nfa ≤ final := by
       intro i h
 
-      have le_size : nfa.nodes.size ≤ nfa''.val.nodes.size := NFA.le_size_of_le property
-      have h₂ : i < nodes'''.size := Nat.lt_of_lt_of_le h (eq_size ▸ le_size)
+      -- have le_size : nfa.nodes.size ≤ nfa''.val.nodes.size := NFA.le_size_of_le property
+      -- have h₂ : i < nodes.size := Nat.lt_of_lt_of_le h (eq_size ▸ le_size)
+      have h₂ : i < final.val.nodes.size := sorry
       exists h₂
 
-      have eq : nfa'''[i] = nfa''.val[i]'(Nat.lt_of_lt_of_le h le_size) := by
-        apply Array.get_set_ne
-        exact (Nat.ne_of_gt h)
-      rw [eq]
-      exact (property i _).2
+      -- have eq : nfa'''[i] = nfa''.val[i]'(Nat.lt_of_lt_of_le h le_size) := by
+      --   apply Array.get_set_ne
+      --   exact (Nat.ne_of_gt h)
+      -- rw [eq]
+      -- exact (property i _).2
+      sorry
 
-    ⟨nfa''', property'⟩
+    ⟨final, property'⟩
 
 #eval compile (Regex.star (Regex.char 'a'))
 #eval compile (Regex.alternate (Regex.char 'x') (Regex.star (Regex.concat (Regex.char 'a') (Regex.char 'b'))))
 #eval compile (Regex.alternate Regex.empty (Regex.concat (Regex.char 'a') Regex.empty))
+#eval compile (Regex.concat (Regex.star (Regex.char 'a')) (Regex.star (Regex.char 'b')))
 
 -- Useful lemmas about the compilation
 theorem compile.loop.le : nfa ≤ (compile.loop r next nfa).val :=
@@ -199,49 +208,41 @@ theorem compile.loop.concat (eq : compile.loop (Regex.concat r₁ r₂) next nfa
   exact motive nfa₂ nfa₁ property rfl rfl this
 
 theorem compile.loop.star (eq : compile.loop (Regex.star r) next nfa = result)
-  {motive : ∀nfa' start nfa'' nodes''' nfa''' isLt isLt' property',
-    nfa' = nfa.addNode .fail →
-    start = nfa'.val.start →
-    nfa'' = compile.loop r start nfa' →
-    nodes''' = nfa''.val.nodes.set ⟨start.val, isLt⟩ (.split nfa''.val.start next) →
-    nfa''' = ⟨nodes''', ⟨start.val, isLt'⟩⟩ →
-    result = ⟨nfa''', property'⟩ →
+  {motive : ∀placeholder loopStart compiled nodes patched final isLt isLt' property',
+    placeholder = nfa.addNode .fail →
+    loopStart = placeholder.val.start →
+    compiled = compile.loop r loopStart placeholder →
+    nodes = compiled.val.nodes.set ⟨loopStart.val, isLt⟩ (.split compiled.val.start next) →
+    patched = NFA.mk nodes ⟨loopStart.val, isLt'⟩ →
+    final = patched.addNode (.split loopStart loopStart) →
+    result = ⟨final, property'⟩ →
     P
   } : P := by
-  let nfa' := nfa.addNode .fail
-  let start := nfa'.val.start
-  let nfa'' := loop r start nfa'
+  let placeholder := nfa.addNode .fail
+  let loopStart := placeholder.val.start
+  let compiled := loop r loopStart placeholder
 
-  have property : nfa ≤ nfa'' :=
-    calc nfa
-      _ ≤ nfa'.val := nfa'.property
-      _ ≤ nfa''.val := nfa''.property
-  have isLt : start.val < nfa''.val.nodes.size :=
-    Nat.lt_of_lt_of_le nfa'.val.start.isLt (NFA.le_size_of_le nfa''.property)
+  have isLt : loopStart.val < compiled.val.nodes.size :=
+    Nat.lt_of_lt_of_le placeholder.val.start.isLt (NFA.le_size_of_le compiled.property)
 
   -- Patch the placeholder node
-  let nodes''' := nfa''.val.nodes.set ⟨start.val, isLt⟩ (.split nfa''.val.start next)
+  let target := compiled.val.start
+  let nodes := compiled.val.nodes.set ⟨loopStart.val, isLt⟩ (.split target next)
 
-  have eq_size : nodes'''.size = nfa''.val.nodes.size := by simp
-  have isLt' : start.val < nodes'''.size := eq_size ▸ isLt
-  let nfa''' : NFA := ⟨nodes''', ⟨start.val, isLt'⟩⟩
+  have eq_size : nodes.size = compiled.val.nodes.size := by simp
+  have isLt' : loopStart.val < nodes.size := eq_size ▸ isLt
+  let patched : NFA := ⟨nodes, ⟨loopStart.val, isLt'⟩⟩
 
-  have property' : nfa ≤ nfa''' := by
-    intro i h
+  -- Add the start node
+  -- Creating a split node with the same targets feels a bit waste
+  let final := patched.addNode (.split loopStart loopStart)
 
-    have le_size : nfa.nodes.size ≤ nfa''.val.nodes.size := NFA.le_size_of_le property
-    have h₂ : i < nodes'''.size := Nat.lt_of_lt_of_le h (eq_size ▸ le_size)
-    exists h₂
+  have property' : nfa ≤ final := sorry
 
-    have eq : nfa'''[i] = nfa''.val[i]'(Nat.lt_of_lt_of_le h le_size) := by
-      apply Array.get_set_ne
-      exact (Nat.ne_of_gt h)
-    rw [eq]
-    exact (property i _).2
-
-  have : result = ⟨nfa''', property'⟩ := by
+  have : result = ⟨final, property'⟩ := by
     simp [eq.symm, compile.loop]
-  exact motive nfa' start nfa'' nodes''' nfa''' isLt isLt' property' rfl rfl rfl rfl rfl this
+  exact motive placeholder loopStart compiled nodes patched final isLt isLt' property'
+    rfl rfl rfl rfl rfl rfl this
 
 theorem compile.loop.get_lt (eq : compile.loop r next nfa = result)
   (h : i < nfa.nodes.size) :
@@ -278,24 +279,29 @@ theorem compile.loop.get_lt (eq : compile.loop r next nfa = result)
     simp [ih₂ eq₂.symm h]
   | star r ih =>
     apply compile.loop.star eq
-    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
-      eq₁ eq₂ eq₃ eq₄ eq₅ eq
+    intro placeholder loopStart compiled nodes patched final isLt isLt' property'
+      eq₁ eq₂ eq₃ eq₄ eq₅ eq₆ eq
 
-    have h' : i < nfa'.val.nodes.size :=
-      Nat.lt_of_lt_of_le h (NFA.le_size_of_le nfa'.property)
-    have h'' : i < nfa''.val.nodes.size :=
-      Nat.lt_of_lt_of_le h' (NFA.le_size_of_le nfa''.property)
-    have ih := ih eq₃.symm h'
-    have ne : (Fin.mk start isLt).val ≠ i := by
+    have h' : i < placeholder.val.nodes.size :=
+      Nat.lt_of_lt_of_le h (NFA.le_size_of_le placeholder.property)
+    have h'' : i < compiled.val.nodes.size :=
+      Nat.lt_of_lt_of_le h' (NFA.le_size_of_le compiled.property)
+    have h''' : i < patched.nodes.size := by
+      simp [eq₅, eq₄]
+      exact h''
+    have ne : (Fin.mk loopStart isLt).val ≠ i := by
       simp [eq₂]
       rw [eq₁]
       simp [NFA.addNode]
       exact Nat.ne_of_gt h
+    have ih := ih eq₃.symm h'
 
     conv =>
       lhs
-      simp [eq, eq₅, NFA.eq_get, eq₄]
-      rw [Array.get_set_ne nfa''.val.nodes ⟨start, isLt⟩ _ h'' ne]
+      simp [eq, eq₆, eq₅]
+      rw [NFA.get_lt_addNode h''', NFA.eq_get]
+      simp [eq₅, eq₄]
+      rw [Array.get_set_ne compiled.val.nodes ⟨loopStart, isLt⟩ _ h'' ne]
       simp [NFA.eq_get.symm, ih]
       simp [eq₁, NFA.get_lt_addNode h]
 
@@ -345,10 +351,10 @@ theorem compile.loop.get_done_of_zero (eq : compile.loop r next nfa = result)
     apply ih₂ eq₂.symm assm
   | star r ih =>
     apply compile.loop.star eq
-    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
-      eq₁ _ eq₃ eq₄ eq₅ eq i h done
+    intro placeholder loopStart compiled nodes patched final isLt isLt' property'
+      eq₁ _ eq₃ eq₄ eq₅ eq₆ eq i h done
 
-    have assm' : ∀i, (_ : i < nfa'.val.nodes.size) → nfa'.val[i] = .done → i = 0 := by
+    have assm' : ∀i, (_ : i < placeholder.val.nodes.size) → placeholder.val[i] = .done → i = 0 := by
       intro i h done
       cases Nat.lt_or_ge i nfa.nodes.size with
       | inl lt =>
@@ -358,15 +364,28 @@ theorem compile.loop.get_done_of_zero (eq : compile.loop r next nfa = result)
         simp [eq₁, NFA.addNode] at h
         have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge h
         simp [this, eq₁] at done
-    have h' : i < nfa''.val.nodes.size := by
-      simp [eq, eq₅, eq₄] at h
-      exact h
-    have ih := ih eq₃.symm assm' i h'
+    cases Nat.lt_or_ge i compiled.val.nodes.size with
+    | inl h' =>
+      have h'' : i < patched.nodes.size := by
+        simp [eq₅, eq₄]
+        exact h'
+      have ih := ih eq₃.symm assm' i h'
 
-    simp [eq, eq₅, NFA.eq_get, eq₄, Array.get_set, h'] at done
-    split at done
-    . exact done.elim
-    . exact ih done
+      simp [eq, eq₆] at done
+      have done : patched[i] = .done := by
+        rw [NFA.get_lt_addNode h''] at done
+        exact done
+      simp [eq₅, NFA.eq_get, eq₄, Array.get_set, h'] at done
+      split at done
+      . exact done.elim
+      . exact ih done
+    | inr ge =>
+      simp [eq, eq₆, NFA.addNode, eq₅, eq₄] at h
+      have : i = compiled.val.nodes.size := Nat.eq_of_ge_of_lt ge h
+      have : i = patched.nodes.size := by
+        simp [eq₅, eq₄]
+        exact this
+      simp [this, eq, eq₆] at done
 
 theorem compile.get_done_iff_zero (eq : compile r = result) (h : i < result.nodes.size) :
   result[i] = .done ↔ i = 0 := by
@@ -448,16 +467,10 @@ theorem compile.loop.inBounds (eq : compile.loop r next nfa = result)
     apply ih₂ eq₂.symm h₁ h₂
   | star r ih =>
     apply compile.loop.star eq
-    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
-      eq₁ _ eq₃ eq₄ eq₅ eq i
+    intro placeholder loopStart compiled nodes patched final isLt isLt' property'
+      eq₁ _ eq₃ eq₄ eq₅ eq₆ eq i
 
-    have eqsize : result.val.nodes.size = nfa''.val.nodes.size := by
-      simp [eq, eq₅, eq₄]
-    have h' : i < nfa''.val.nodes.size :=
-      calc
-        i < result.val.nodes.size := i.isLt
-        _ = _ := eqsize
-    have inBounds' : nfa'.val.inBounds := by
+    have inBounds' : placeholder.val.inBounds := by
       simp [eq₁]
       intro i
       cases Nat.lt_or_ge i nfa.nodes.size with
@@ -469,14 +482,48 @@ theorem compile.loop.inBounds (eq : compile.loop r next nfa = result)
         simp only [NFA.addNode, Array.size_push] at lt
         have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
         simp [this]
-    have ih := ih eq₃.symm start.isLt inBounds'
+    have ih := ih eq₃.symm loopStart.isLt inBounds'
 
-    simp [eq, eq₅, NFA.eq_get, eq₄, Array.get_set, h']
-    split
-    . apply Node.inBounds.split
-      . exact nfa''.val.start.isLt
-      . exact Nat.lt_of_lt_of_le h₁ (NFA.le_size_of_le (le_trans nfa'.property nfa''.property))
-    . exact ih (i.cast eqsize)
+    cases Nat.lt_or_ge i patched.nodes.size with
+    | inl lt =>
+      have hj : i < compiled.val.nodes.size := by
+        simp [eq₅, eq₄] at lt
+        exact lt
+      have : result.val[i] = patched.nodes[i] := by
+        simp [eq, eq₆, NFA.get_lt_addNode lt]
+        exact NFA.eq_get
+      rw [this]
+      simp [eq₅, eq₄]
+      rw [Array.get_set _ _ _ hj]
+      have h' : compiled.val.nodes.size ≤ result.val.nodes.size := by
+        simp [eq, eq₆, NFA.addNode, eq₅, eq₄]
+        exact Nat.le_succ _
+      split
+      . apply Node.inBounds.split
+        . calc compiled.val.start.val
+            _ < compiled.val.nodes.size := compiled.val.start.isLt
+            _ ≤ _ := h'
+        . calc next
+            _ < nfa.nodes.size := h₁
+            _ ≤ placeholder.val.nodes.size := NFA.le_size_of_le placeholder.property
+            _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
+            _ ≤ _ := h'
+      . exact Node.inBounds_of_inBounds_of_le (ih ⟨i, hj⟩) h'
+    | inr ge =>
+      have h : loopStart < patched.nodes.size + 1 :=
+        calc loopStart.val
+          _ < placeholder.val.nodes.size := loopStart.isLt
+          _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
+          _ = patched.nodes.size := by simp [eq₅, eq₄]
+          _ < _ := Nat.lt_succ_self _
+      have lt : i < patched.nodes.size + 1 := by
+        have : i < result.val.nodes.size := i.isLt
+        simp [eq, eq₆, NFA.addNode] at this
+        exact this
+      have : i = patched.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [this, eq, eq₆]
+      simp [NFA.addNode]
+      apply Node.inBounds.split <;> exact h
 
 theorem compile.inBounds (eq : compile r = result) : result.inBounds := by
   let init : NFA := ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
@@ -530,14 +577,15 @@ theorem compile.loop.start_in_NewNodesRange (eq : compile.loop r next nfa = resu
     exact le_trans (NFA.le_size_of_le nfa₂.property) ih₁
   | star r =>
     apply compile.loop.star eq
-    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
-      eq₁ eq₂ _ _ eq₅ eq
+    intro placeholder loopStart compiled nodes patched final isLt isLt' property'
+      _ _ _ eq₄ eq₅ eq₆ eq
     rw [eq]
     simp
-    rw [eq₅]
-    simp [eq₂]
-    rw [eq₁]
-    simp [NFA.addNode]
+    rw [eq₆, eq₅]
+    simp [NFA.addNode, eq₄]
+    calc nfa.nodes.size
+      _ ≤ placeholder.val.nodes.size := NFA.le_size_of_le placeholder.property
+      _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
 
 theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = result) :
   ∀i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →
@@ -661,60 +709,93 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
       exact ⟨le_trans ih₁.left this, le_trans ih₁.right this⟩
   | star r ih =>
     apply compile.loop.star eq
-    intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
-      eq₁ eq₂ eq₃ eq₄ eq₅ eq i h₁ h₂
+    intro placeholder loopStart compiled nodes patched final isLt isLt' property'
+      eq₁ eq₂ eq₃ eq₄ eq₅ eq₆ eq i h₁ h₂
     simp [NewNodesRange, eq]
 
-    have eqs : start.val = nfa.nodes.size := by
-      simp [eq₂]
-      rw [eq₁]
-      simp [NFA.addNode]
-    have size : i < nfa'''.nodes.size := by
+    have : i < final.val.nodes.size := by
       simp [eq] at h₂
       exact h₂
-    have eqsize : nfa''.val.nodes.size = nfa'''.nodes.size := by
-      simp [eq₅, eq₄]
-    have size'' : i < nfa''.val.nodes.size := eqsize ▸ size
 
-    cases Nat.lt_or_ge i nfa'.val.nodes.size with
+    cases Nat.lt_or_ge i placeholder.val.nodes.size with
     | inl lt =>
       simp [eq₁, NFA.addNode] at lt
       have h := Nat.eq_of_ge_of_lt h₁ lt
-      have : nfa'''[i] = .split nfa''.val.start next := by
-        have : i = start := by
-          rw [h, eqs]
-        simp [this, eq₅, NFA.eq_get, eq₄]
+      have : final.val[i] = .split compiled.val.start next := by
+        have : i = loopStart := by
+          simp [eq₂]
+          rw [eq₁]
+          simp [NFA.addNode]
+          exact h
+        simp [this, eq₆]
+        have : loopStart.val < patched.nodes.size :=
+          calc loopStart.val
+            _ < nodes.size := isLt'
+            _ = patched.nodes.size := by simp [eq₅, eq₄]
+        simp [NFA.get_lt_addNode this]
+        simp [eq₅, NFA.eq_get, eq₄]
       simp [this, Node.charStep, Node.εStep]
       apply Set.insert_subset
       . have h := start_in_NewNodesRange eq₃.symm
         simp
-        exact .inr ⟨le_trans (NFA.le_size_of_le nfa'.property) h.left, eqsize ▸ nfa''.val.start.isLt⟩
+        refine .inr ⟨le_trans (NFA.le_size_of_le placeholder.property) h.left, ?_⟩
+        calc compiled.val.start.val
+          _ < compiled.val.nodes.size := compiled.val.start.isLt
+          _ ≤ patched.nodes.size := by simp [eq₅, eq₄]
+          _ < _ := by simp [eq₆, NFA.addNode]
       . simp
     | inr ge =>
-      have ih := ih eq₃.symm i ge size''
-      have : nfa'''[i] = nfa''.val[i] := by
-        simp [eq₅, NFA.eq_get, eq₄]
-        apply Array.get_set_ne
-        rw [eqs]
-        apply Nat.ne_of_lt
-        have : nfa.nodes.size + 1 ≤ i := by
-          simp [eq₁, NFA.addNode] at ge
+      cases Nat.lt_or_ge i compiled.val.nodes.size with
+      | inl lt =>
+        have ih := ih eq₃.symm i ge lt
+        have : i < patched.nodes.size := by
+          simp [eq₅, eq₄]
+          exact lt
+        simp [eq₆]
+        rw [NFA.get_lt_addNode this]
+        simp [NFA.eq_get, eq₅, eq₄]
+        have ne : (Fin.mk loopStart isLt).val ≠ i := Nat.ne_of_lt (Nat.lt_of_lt_of_le loopStart.isLt ge)
+        rw [Array.get_set_ne _ _ _ lt ne]
+        simp [NFA.addNode]
+        have : {loopStart.val} ∪ NewNodesRange eq₃.symm ⊆
+          {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < patched.nodes.size + 1} := by
+          apply Set.union_subset
+          . simp [eq₂]
+            rw [eq₁]
+            simp [NFA.addNode]
+            apply Or.inr
+            calc nfa.nodes.size
+              _ ≤ placeholder.val.nodes.size := NFA.le_size_of_le placeholder.property
+              _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
+              _ ≤ patched.nodes.size := by simp [eq₅, eq₄]
+              _ < _ := by simp [eq₆, NFA.addNode]
+          . simp [Set.subset_def]
+            intro i h
+            refine .inr ⟨le_trans (NFA.le_size_of_le placeholder.property) h.left, ?_⟩
+            calc
+              i < compiled.val.nodes.size := h.right
+              _ ≤ patched.nodes.size := by simp [eq₅, eq₄]
+              _ < _ := Nat.lt_succ_self _
+        exact ⟨le_trans ih.left this, le_trans ih.right this⟩
+      | inr ge =>
+        have ge : i ≥ patched.nodes.size := by
+          simp [eq₅, eq₄]
           exact ge
-        exact this
-      rw [this]
-      have : {start.val} ∪ NewNodesRange eq₃.symm ⊆
-        {next} ∪ {i | nfa.nodes.size ≤ i ∧ i < nfa'''.nodes.size} := by
-        apply Set.union_subset
-        . simp
-          have : start.val < nfa'''.nodes.size :=
-            calc start.val
-              _ < nfa'.val.nodes.size := start.isLt
-              _ ≤ nfa''.val.nodes.size := NFA.le_size_of_le nfa''.property
-              _ = nfa'''.nodes.size := eqsize
-          exact .inr ⟨eqs ▸ le_refl _, this⟩
-        . simp [Set.subset_def]
-          intro i h
-          exact .inr ⟨le_trans (NFA.le_size_of_le nfa'.property) h.left, eqsize ▸ h.right⟩
-      exact ⟨le_trans ih.left this, le_trans ih.right this⟩
+        have lt : i < patched.nodes.size + 1 := by
+          simp [eq, eq₆, NFA.addNode] at h₂
+          exact h₂
+        have : i = patched.nodes.size := Nat.eq_of_ge_of_lt ge lt
+        simp [eq₆, this, Node.charStep, Node.εStep]
+        simp [NFA.addNode]
+        apply Or.inr
+        apply And.intro
+        . rw [eq₂, eq₁]
+          simp [NFA.addNode]
+        . calc loopStart.val
+            _ < nodes.size := isLt'
+            _ = patched.nodes.size := by simp [eq₅, eq₄]
+            _ < _ := by simp [eq₆, NFA.addNode]
+
+-- TODO: prove no edge to the start
 
 end NFA

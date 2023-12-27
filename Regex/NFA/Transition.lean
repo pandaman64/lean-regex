@@ -678,8 +678,8 @@ theorem matches_prefix_of_eval (eq : compile.loop r next nfa = nfa')
     exact ⟨s₁ ++ s₂, by simp [eqs₁, eqs₂], .concat ⟨s₁ ++ s₂⟩ ⟨s₁⟩ ⟨s₂⟩ r₁ r₂ rfl m₁ m₂⟩
   | star r ih =>
     apply compile.loop.star eq
-    intro placeholder start compiled nodes final isLt isLt' property'
-      eq₁ eq₂ eq₃ eq₄ eq₅ eq'
+    intro placeholder loopStart compiled nodes patched final isLt isLt' property'
+      eq₁ eq₂ eq₃ eq₄ eq₅ eq₆ eq'
 
     have placeholder.inBounds : placeholder.val.inBounds := by
       intro i
@@ -701,7 +701,6 @@ theorem matches_prefix_of_eval (eq : compile.loop r next nfa = nfa')
         simp
     have inBounds' : nfa'.val.inBounds := compile.loop.inBounds eq h₁ h₂
 
-    have tmp := eval_last inBounds' ev
     match eval_last inBounds' ev with
     | .inl ⟨eqi, _⟩ =>
       -- contradiction
