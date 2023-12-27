@@ -497,6 +497,19 @@ theorem eval_last {nfa : NFA} (inBounds : nfa.inBounds) (ev : nfa ⊢ (i, s) ⟶
     | .inr (.inl ⟨j', c', ev', step'⟩) => exact .inr (.inl ⟨j', c', .εStep h step ev', step'⟩)
     | .inr (.inr ⟨j', ev', step'⟩) => exact .inr (.inr ⟨j', .εStep h step ev', step'⟩)
 
+theorem eval_inBounds {nfa : NFA} (inBounds : nfa.inBounds) (h : i < nfa.nodes.size)
+  (ev : nfa ⊢ (i, s) ⟶* (j, s')) : j < nfa.nodes.size := by
+  induction ev with
+  | base eqi => exact eqi ▸ h
+  | @charStep i j _ c _ _ h' step _ ih =>
+    apply ih
+    show j ∈ { j | j < nfa.nodes.size }
+    exact mem_of_mem_of_subset step ((inBounds ⟨i, h'⟩).left c)
+  | @εStep i j _ _ _ h' step _ ih =>
+    apply ih
+    show j ∈ { j | j < nfa.nodes.size }
+    exact mem_of_mem_of_subset step (inBounds ⟨i, h'⟩).right
+
 -- When we expand the NFA by appending nodes, the evaluation relation is preserved in the original range.
 
 theorem eval_ge_of_get_lt {nfa nfa' : NFA} (le : nfa.nodes.size ≤ nfa'.nodes.size)
