@@ -541,6 +541,7 @@ theorem compile.loop.start_in_NewNodesRange (eq : compile.loop r next nfa = resu
 
 theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = result) :
   ∀i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →
+  -- TODO: bind c here
   result.val[i].charStep c ⊆ {next} ∪ NewNodesRange eq ∧
   result.val[i].εStep ⊆ {next} ∪ NewNodesRange eq := by
   induction r generalizing next nfa with
