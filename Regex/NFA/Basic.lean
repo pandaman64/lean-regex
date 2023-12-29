@@ -75,6 +75,9 @@ structure NFA where
   start : Fin nodes.size
 deriving Repr
 
+instance : ToString NFA where
+  toString nfa := reprStr nfa
+
 def NFA.get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : Node :=
   nfa.nodes[i]
 
