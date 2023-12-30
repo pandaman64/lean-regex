@@ -482,6 +482,19 @@ theorem le_of_pathIn_right (path : NFA.pathIn nfa start i cs j cs') : start ≤ 
   | charStep _ _ _ _ ih => exact ih
   | εStep _ _ _ _ ih => exact ih
 
+theorem NFA.pathIn.cast {nfa nfa' : NFA} (start : Nat)
+  (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
+  (path : NFA.pathIn nfa start i cs j cs') :
+  NFA.pathIn nfa' start i cs j cs' := by
+  induction path with
+  | base h eqi eqs => exact .base h eqi eqs
+  | charStep h₁ h₂ step _ ih =>
+    let ⟨h₂', eq⟩ := eq _ h₁ h₂
+    exact .charStep h₁ h₂' (eq ▸ step) ih
+  | εStep h₁ h₂ step _ ih =>
+    let ⟨h₂', eq⟩ := eq _ h₁ h₂
+    exact .εStep h₁ h₂' (eq ▸ step) ih
+
 inductive NFA.pathToNext (nfa : NFA) (next start i : Nat) (cs cs' : List Char) : Prop where
   | charStep (i' : Nat) (h : i' < nfa.nodes.size) (c : Char)
     (step : next ∈ nfa[i'].charStep c) (path : nfa.pathIn start i cs i' (c :: cs'))
@@ -508,6 +521,18 @@ theorem NFA.pathToNext.cons_ε {start}
   cases path with
   | charStep i' h c step' path => exact .charStep i' h c step' (.εStep h₁ h₂ step path)
   | εStep i' h step' path => exact .εStep i' h step' (.εStep h₁ h₂ step path)
+
+theorem NFA.pathToNext.cast {nfa nfa' : NFA} {next start i : Nat} {cs cs' : List Char}
+  (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
+  (path : NFA.pathToNext nfa next start i cs cs') :
+  NFA.pathToNext nfa' next start i cs cs' := by
+  induction path with
+  | charStep i' h c step path =>
+    let ⟨h', eq'⟩ := eq _ (le_of_pathIn_right path) h
+    exact .charStep i' h' c (eq' ▸ step) (NFA.pathIn.cast start eq path)
+  | εStep i' h step path =>
+    let ⟨h', eq'⟩ := eq _ (le_of_pathIn_right path) h
+    exact .εStep i' h' (eq' ▸ step) (NFA.pathIn.cast start eq path)
 
 inductive NFA.starLoop (eq : compile.loop (.star r) next nfa = result) : List Char → List Char → Prop where
   | complete (eqs : cs = cs') : starLoop eq cs cs'
@@ -760,6 +785,9 @@ theorem matches_prefix_of_eval (eq : compile.loop r next nfa = result)
     have firstNode : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split compiled.val.start next := by
       simp [eq']
       simp [eq₅, NFA.eq_get, eq₄, eql.symm]
+
+    -- Within the range of the nodes for `r`, we can use the induction hypothesis
+    -- by casting the path from `result` to `compiled`.
     have mr {cs cs' : List Char}
       (rStart : Nat)
       (eqr : result.val[Array.size nfa.nodes]'(compile.loop.star.lt_size eq) = Node.split rStart next)
@@ -770,8 +798,17 @@ theorem matches_prefix_of_eval (eq : compile.loop r next nfa = result)
       have : NFA.pathToNext compiled loopStart placeholder.val.nodes.size compiled.val.start cs cs' := by
         simp [eq₁, NFA.addNode]
         simp [eql]
-        -- TODO: transport `path` to `compiled`
-        sorry
+        apply path.cast
+        intro i h₁ h₂
+        rw [eq'] at h₂
+        simp [eq₅, eq₄] at h₂
+        exists h₂
+        have ne : (Fin.mk loopStart.val isLt).val ≠ i := by
+          simp [eql]
+          exact Nat.ne_of_lt h₁
+        conv =>
+          lhs
+          simp [eq', eq₅, NFA.eq_get, eq₄, Array.get_set_ne _ _ _ h₂ ne]
       exact ih (s := cs) (s' := cs') eq₃.symm loopStart.isLt placeholder.inBounds this
     have ih (s s' : List Char) := ih (s := s) (s' := s') eq₃.symm loopStart.isLt placeholder.inBounds
 
