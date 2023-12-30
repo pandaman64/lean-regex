@@ -92,6 +92,7 @@ theorem mem_embedR_union (i : Fin m) (S₁ : Finset (Fin n)) (S₂ : Finset (Fin
   embedR i ∈ S₁.map embedL ∪ S₂.map embedR ↔ i ∈ S₂ := by simp
 
 def union (nfa₁ : NFA n) (nfa₂ : NFA m) : NFA (1 + n + m) :=
+  let zero : Fin 1 := ⟨0, by decide⟩
   let δ (i : Fin (1 + n + m)) c :=
     match splitAt i with
     | .inl i =>
@@ -100,11 +101,11 @@ def union (nfa₁ : NFA n) (nfa₂ : NFA m) : NFA (1 + n + m) :=
       | .inr i => ((nfa₁.δ i c).map embedR).map embedL
     | .inr i => (nfa₂.δ i c).map embedR
   let sf : Finset (Fin (1 + n + m)) :=
-    if nfa₁ ⇓ [] && nfa₂ ⇓ [] then
-      {⟨0, by simp⟩}
+    if nfa₁ ⇓ [] || nfa₂ ⇓ [] then
+      (({zero} : Finset (Fin 1)).map embedL).map embedL
     else
       ∅
-  { start := ⟨0, by simp⟩,
+  { start := embedL (embedL zero),
     δ := δ,
     final := sf ∪ (nfa₁.final.map embedR).map embedL ∪ nfa₂.final.map embedR }
 
@@ -138,16 +139,116 @@ def concat (nfa₁ : NFA n) (nfa₂ : NFA m) : NFA (1 + n + m) :=
     final := final }
 
 def star (nfa : NFA n) : NFA (1 + n) :=
-  let zero := ⟨0, by simp⟩
+  let zero : Fin 1 := ⟨0, by decide⟩
   let δ (i : Fin (1 + n)) c :=
     match splitAt i with
     | .inl _ => (nfa.δ nfa.start c).map embedR
-    | .inr i => (nfa.δ i c).map embedR
-  { start := zero,
+    | .inr i =>
+      let start := if i ∈ nfa.final then
+        nfa.δ nfa.start c
+      else
+        ∅
+      (start ∪ nfa.δ i c).map embedR
+  { start := embedL zero,
     δ := δ,
-    final := {⟨0, by simp⟩} ∪ nfa.final.map embedR }
+    final := ({zero} : Finset (Fin 1)).map embedL ∪ nfa.final.map embedR }
 
 -- Correctness proofs
+
+theorem union_preserve₁ {nfa₁ : NFA n} {i : Fin n} {cs : List Char} :
+  (union nfa₁ nfa₂).accepts (embedL (embedR i)) cs ↔ nfa₁.accepts i cs := by
+  apply Iff.intro
+  . intro acc
+    induction cs generalizing i with
+    | nil =>
+      simp [accepts, union] at *
+      split at acc <;> simp at acc <;> exact acc
+    | cons head tail ih =>
+      simp [accepts] at *
+      let ⟨j, step, rest⟩ := acc
+      simp [union] at step
+      let ⟨j', step', eq⟩ := step
+      exact ⟨j', step', ih (eq.symm ▸ rest)⟩
+  . intro acc
+    induction cs generalizing i with
+    | nil =>
+      simp [accepts, union] at *
+      split <;> simp [acc]
+    | cons head tail ih =>
+      simp [accepts] at *
+      let ⟨j, step, rest⟩ := acc
+      exact ⟨embedL (embedR j), by simp [union, step], ih rest⟩
+
+theorem union_preserve₂ {nfa₂ : NFA m} {i : Fin m} {cs : List Char} :
+  (union nfa₁ nfa₂).accepts (embedR i) cs ↔ nfa₂.accepts i cs := by
+  apply Iff.intro
+  . intro acc
+    induction cs generalizing i with
+    | nil =>
+      simp [accepts, union] at *
+      split at acc <;> simp at acc <;> exact acc
+    | cons head tail ih =>
+      simp [accepts] at *
+      let ⟨j, step, rest⟩ := acc
+      simp [union] at step
+      let ⟨j', step', eq⟩ := step
+      exact ⟨j', step', ih (eq.symm ▸ rest)⟩
+  . intro acc
+    induction cs generalizing i with
+    | nil =>
+      simp [accepts, union] at *
+      split <;> simp [acc]
+    | cons head tail ih =>
+      simp [accepts] at *
+      let ⟨j, step, rest⟩ := acc
+      exact ⟨embedR j, by simp [union, step], ih rest⟩
+
+theorem union_correct :
+  (union nfa₁ nfa₂) ⇓ cs ↔ nfa₁ ⇓ cs ∨ nfa₂ ⇓ cs := by
+  apply Iff.intro
+  . intro acc
+    cases cs with
+    | nil =>
+      simp [accepts, union] at *
+      split at acc <;> simp at acc
+      next h => exact h
+    | cons head tail =>
+      simp [accepts] at *
+      let ⟨j, step, rest⟩ := acc
+      simp [union] at step
+      match step with
+      | .inl ⟨j', step', eq⟩ =>
+        let acc₁ := union_preserve₁.mp (eq.symm ▸ rest)
+        exact Or.inl ⟨j', step', acc₁⟩
+      | .inr ⟨j', step', eq⟩ =>
+        let acc₂ := union_preserve₂.mp (eq.symm ▸ rest)
+        exact Or.inr ⟨j', step', acc₂⟩
+  . intro acc
+    cases cs with
+    | nil =>
+      simp [accepts, union] at *
+      simp [acc]
+    | cons head tail =>
+      simp [accepts] at *
+      match acc with
+      | .inl ⟨j, step, rest⟩ =>
+        have step' : embedL (embedR j) ∈ (union nfa₁ nfa₂).δ (embedL (embedR nfa₁.start)) head := by
+          simp [union]
+          exact step
+        have step' : embedL (embedR j) ∈ (union nfa₁ nfa₂).δ (union nfa₁ nfa₂).start head := by
+          apply Finset.mem_of_subset _ step'
+          simp [union, Finset.subset_union_left]
+        have rest' : (union nfa₁ nfa₂).accepts (embedL (embedR j)) tail := union_preserve₁.mpr rest
+        exact ⟨embedL (embedR j), step', rest'⟩
+      | .inr ⟨j, step, rest⟩ =>
+        have step' : embedR j ∈ (union nfa₁ nfa₂).δ (embedR nfa₂.start) head := by
+          simp [union]
+          exact step
+        have step' : embedR j ∈ (union nfa₁ nfa₂).δ (union nfa₁ nfa₂).start head := by
+          apply Finset.mem_of_subset _ step'
+          simp [union, Finset.subset_union_right]
+        have rest' : (union nfa₁ nfa₂).accepts (embedR j) tail := union_preserve₂.mpr rest
+        exact ⟨embedR j, step', rest'⟩
 
 theorem concat_preserve₂ {nfa₂ : NFA m} {i : Fin m} {cs : List Char} :
   (concat nfa₁ nfa₂).accepts (embedR i) cs ↔ nfa₂.accepts i cs := by
@@ -277,6 +378,78 @@ theorem concat_correct :
       refine ⟨j, ?_, rest⟩
       apply Finset.mem_of_subset _ step
       simp [concat, accepts]
+
+theorem star_preserve {nfa : NFA n} {i : Fin n} {cs : List Char} :
+  (star nfa).accepts (embedR i) cs ↔ ∃ cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ nfa.accepts i cs₁ ∧ (star nfa) ⇓ cs₂ := by
+  apply Iff.intro
+  . intro acc
+    induction cs generalizing i with
+    | nil =>
+      simp [accepts, star] at *
+      exists [], []
+      simp [accepts, acc]
+    | cons head tail ih =>
+      simp [accepts] at *
+      let ⟨j, step, rest⟩ := acc
+      simp [star] at step
+      let ⟨j', step', eq⟩ := step
+      let ⟨cs₁, cs₂, eqs, acc₁, acc₂⟩ := ih (eq.symm ▸ rest)
+      split at step' <;> try simp at step'
+      next h =>
+        cases step' with
+        | inl step' =>
+          refine ⟨[], head :: tail, rfl, by simp [accepts, h], ?_⟩
+          simp [accepts]
+          exact ⟨j, by simp [eq.symm, star, step'], rest⟩
+        | inr step' => exact ⟨head :: cs₁, cs₂, by simp [eqs], accepts_cons step' acc₁, acc₂⟩
+      next h => exact ⟨head :: cs₁, cs₂, by simp [eqs], accepts_cons step' acc₁, acc₂⟩
+  . intro acc
+    induction cs generalizing i with
+    | nil =>
+      simp [accepts] at *
+      let ⟨_, _, eq, acc₁, _⟩ := acc
+      simp [eq.left, accepts] at acc₁
+      simp [star, acc₁]
+    | cons head tail ih =>
+      simp [accepts]
+      let ⟨cs₁, cs₂, eqs, acc₁, acc₂⟩ := acc
+      cases cs₁ with
+      | nil =>
+        simp [accepts] at eqs acc₁
+        simp [eqs.symm, accepts] at acc₂
+        let ⟨j, step, rest⟩ := acc₂
+        simp [star] at step
+        let ⟨j', step', eq⟩ := step
+        exact ⟨embedR j', by simp [star, acc₁, step'], eq.symm ▸ rest⟩
+      | cons head' tail' =>
+        simp at eqs
+        simp [accepts] at acc₁
+        let ⟨j, step, rest₁⟩ := acc₁
+        let ih := ih ⟨tail', cs₂, eqs.right, rest₁, acc₂⟩
+        have step': embedR j ∈ (star nfa).δ (embedR i) head := by
+          simp [eqs.left, star, step]
+        exact ⟨embedR j, step', ih⟩
+
+theorem star_correct₁ (acc₁ : nfa ⇓ cs₁) (acc₂ : (star nfa) ⇓ cs₂) :
+  star nfa ⇓ cs₁ ++ cs₂ := by
+  cases cs₁ with
+  | nil => simp [acc₂]
+  | cons head tail =>
+    simp [accepts] at *
+    let ⟨j, step, rest⟩ := acc₁
+    have acc := star_preserve.mpr ⟨tail, cs₂, rfl, rest, acc₂⟩
+    exact ⟨embedR j, by simp [star, step], acc⟩
+
+theorem star_correct₂ (acc : star nfa ⇓ c :: cs) :
+  ∃ cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ nfa ⇓ (c :: cs₁) ∧ star nfa ⇓ cs₂ := by
+  simp [accepts] at acc
+  let ⟨j, step, rest⟩ := acc
+  simp [star] at step
+  let ⟨j', step', eq⟩ := step
+  let ⟨cs₁, cs₂, eqs, acc₁, acc₂⟩ := star_preserve.mp (eq.symm ▸ rest)
+  refine ⟨cs₁, cs₂, eqs, ?_, acc₂⟩
+  simp [accepts]
+  exact ⟨j', step', acc₁⟩
 
 end NFA
 
