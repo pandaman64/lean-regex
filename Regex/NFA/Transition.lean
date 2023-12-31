@@ -817,9 +817,68 @@ theorem matches_prefix_of_path (eq : compile.loop r next nfa = result)
   (path : NFA.pathToNext result next nfa.nodes.size result.val.start.val s s') :
   ∃ p, s = p ++ s' ∧ r.matches ⟨p⟩ := by
   induction r generalizing next nfa s s' with
-  | empty => sorry
-  | epsilon => sorry
-  | char c => sorry
+  | empty =>
+    apply compile.loop.empty eq
+    intro eq
+    rw [eq] at path
+    cases path with
+    | charStep i lt _ step path =>
+      have ge := le_of_pathIn_right path
+      simp [NFA.addNode] at lt ge
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [this, Node.charStep] at step
+    | εStep i lt step path =>
+      have ge := le_of_pathIn_right path
+      simp [NFA.addNode] at lt ge
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [this, Node.εStep] at step
+  | epsilon =>
+    apply compile.loop.epsilon eq
+    intro eq
+    rw [eq] at path
+    cases path with
+    | @charStep i lt _ step path =>
+      have ge := le_of_pathIn_right path
+      simp [NFA.addNode] at lt ge
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [this, Node.charStep] at step
+    | εStep i lt step path =>
+      have ge := le_of_pathIn_right path
+      simp [NFA.addNode] at lt ge
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      rw [this] at path
+      cases path with
+      | base _ _ eqs => exact ⟨[], eqs, .epsilon rfl⟩
+      | charStep _ _ step => simp [Node.charStep] at step
+      | @εStep _ j _ _ _ _ _ step path =>
+        simp [Node.εStep] at step
+        have : nfa.nodes.size ≤ j := le_of_pathIn_left path
+        exact absurd h₁ (Nat.not_lt_of_ge (step ▸ this))
+  | char c =>
+    apply compile.loop.char eq
+    intro eq
+    rw [eq] at path
+    cases path with
+    | @charStep i lt c' step path =>
+      have ge := le_of_pathIn_right path
+      simp [NFA.addNode] at lt ge
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      rw [this] at path
+      cases path with
+      | base _ _ eqs =>
+        simp [this, Node.charStep] at step
+        subst step
+        exact ⟨[c'], eqs, .char c' rfl⟩
+      | @charStep _ j _ _ _ _ _ _ step path =>
+        simp [Node.charStep] at step
+        have : nfa.nodes.size ≤ j := le_of_pathIn_left path
+        exact absurd h₁ (Nat.not_lt_of_ge (step.right ▸ this))
+      | εStep _ _ step => simp [Node.εStep] at step
+    | εStep i lt step path =>
+      have ge := le_of_pathIn_right path
+      simp [NFA.addNode] at lt ge
+      have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt ge lt
+      simp [this, Node.εStep] at step
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply compile.loop.alternate eq
     intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ eq₃ eq₄ eq₅ eq
@@ -977,12 +1036,12 @@ theorem matches_prefix_of_path (eq : compile.loop r next nfa = result)
     have not_le : ¬ nfa₂.val.nodes.size ≤ next := by
       apply Nat.not_le_of_gt
       exact lt_trans h₁ lt_size
-    have cast_path₂ {cs cs'} (i' : Nat) (h : i' < nfa₂.val.nodes.size)
+    have cast_path₂ {cs cs'} (i' : Nat) (_ : i' < nfa₂.val.nodes.size)
       (path : NFA.pathIn nfa₁ nfa.nodes.size nfa₂.val.start cs i' cs') :
       NFA.pathIn nfa₂ nfa.nodes.size nfa₂.val.start cs i' cs' := by
       refine NFA.pathIn.cast' nfa₂.val.start.isLt (NFA.le_size_of_le nfa₁.property) ?eq ?inBounds path
       case eq =>
-        intro i h₁ h₂
+        intro i _ h₂
         rw [compile.loop.get_lt eq₁.symm]
       case inBounds =>
         intro i j h step
@@ -1117,7 +1176,6 @@ theorem matches_prefix_of_path (eq : compile.loop r next nfa = result)
           lhs
           simp [eq', eq₅, NFA.eq_get, eq₄, Array.get_set_ne _ _ _ h₂ ne]
       exact ih (s := cs) (s' := cs') eq₃.symm loopStart.isLt placeholder.inBounds this
-    have ih (s s' : List Char) := ih (s := s) (s' := s') eq₃.symm loopStart.isLt placeholder.inBounds
 
     cases path with
     | charStep i' h c step path =>
