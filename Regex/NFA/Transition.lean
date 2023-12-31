@@ -782,9 +782,36 @@ theorem matches_prefix_of_eval (eq : compile.loop r next nfa = result)
       rw [eq₅]
       simp [eql]
     rw [eqStart] at ev
+
+    have eqSize : result.val.nodes.size = compiled.val.nodes.size := by
+      simp [eq', eq₅, eq₄]
     have firstNode : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split compiled.val.start next := by
       simp [eq']
       simp [eq₅, NFA.eq_get, eq₄, eql.symm]
+    have compiledNodes (i : Nat) (h₁ : nfa.nodes.size < i) (h₂ : i < result.val.nodes.size) :
+      result.val[i] = compiled.val[i]'(eqSize ▸ h₂) := by
+      simp [eq', eq₅, NFA.eq_get, eq₄]
+      have : (Fin.mk loopStart.val isLt).val ≠ i := by
+        rw [eql]
+        exact Nat.ne_of_lt h₁
+      apply Array.get_set_ne _ _ _ _ this
+    have compiledNodesRange (i : Nat) (h₁ : nfa.nodes.size < i) (h₂ : i < result.val.nodes.size) :
+      (∀ c, next ∉ result.val[i].charStep c) ∧ next ∉ result.val[i].εStep := by
+      rw [compiledNodes i h₁ h₂]
+      have : nfa.nodes.size + 1 = placeholder.val.nodes.size := by simp [eq₁, NFA.addNode]
+      have range := compile.loop.step_range eq₃.symm i (this ▸ h₁) (eqSize ▸ h₂)
+      have : next ∉ {loopStart.val} ∪ compile.loop.NewNodesRange eq₃.symm := by
+        simp [eql, compile.loop.NewNodesRange]
+        intro h
+        match h with
+        | .inl eq => exact absurd eq (Nat.ne_of_lt ‹next < nfa.nodes.size›)
+        | .inr ⟨h₁', _⟩ =>
+          simp [eq₁, NFA.addNode] at h₁'
+          exact absurd (le_trans (Nat.le_succ _) h₁') (Nat.not_le_of_lt ‹next < nfa.nodes.size›)
+      exact ⟨
+        fun c h => this (Set.mem_of_mem_of_subset h (range.left c)),
+        fun h => this (Set.mem_of_mem_of_subset h range.right)
+      ⟩
 
     -- Within the range of the nodes for `r`, we can use the induction hypothesis
     -- by casting the path from `result` to `compiled`.
@@ -814,13 +841,16 @@ theorem matches_prefix_of_eval (eq : compile.loop r next nfa = result)
 
     cases ev with
     | charStep i' h c step path =>
-      -- contra as no char edge to next from [nfa.nodes.size, result.val.nodes.size)
-      -- TODO: use inBounds of compiled's new nodes
-      sorry
+      -- No nodes can perform charStep to `next`.
+      cases Nat.eq_or_lt_of_le (le_of_pathIn_right path) with
+      | inl eq => simp [eq.symm, firstNode, Node.charStep] at step
+      | inr lt => exact absurd step ((compiledNodesRange i' lt h).left c)
     | εStep i' h step path =>
+      -- Only the loop start can perform εStep to `next`.
       have : i' = nfa.nodes.size := by
-        -- only loopStart has an edge to it
-        sorry
+        cases Nat.eq_or_lt_of_le (le_of_pathIn_right path) with
+        | inl eq => exact eq.symm
+        | inr lt => exact absurd step (compiledNodesRange i' lt h).right
       subst this
       have loop := NFA.starLoop.intro eq h₁ inBounds' path
       exact matches_prefix_of_starLoop eq mr loop

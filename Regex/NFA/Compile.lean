@@ -545,10 +545,9 @@ theorem compile.loop.start_in_NewNodesRange (eq : compile.loop r next nfa = resu
     rw [eq₁]
     simp [NFA.addNode]
 
-theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = result) :
-  ∀i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →
-  -- TODO: bind c here
-  result.val[i].charStep c ⊆ {next} ∪ NewNodesRange eq ∧
+theorem compile.loop.step_range (eq : compile.loop r next nfa = result) :
+  ∀ i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →
+  (∀ c, result.val[i].charStep c ⊆ {next} ∪ NewNodesRange eq) ∧
   result.val[i].εStep ⊆ {next} ∪ NewNodesRange eq := by
   induction r generalizing next nfa with
   | empty =>
@@ -569,6 +568,7 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
     simp [eq, NFA.addNode] at h₂
     have h : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
     simp [eq, h, Node.charStep, Node.εStep]
+    intro c
     apply le_trans
     . show (if c = c' then {next} else ∅) ≤ {next}
       simp
@@ -601,7 +601,7 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
         apply Set.setOf_subset_setOf.mpr
         intro i h
         exact ⟨h.left, lt_trans h.right size₁⟩
-      exact ⟨le_trans ih₁.left this, le_trans ih₁.right this⟩
+      exact ⟨fun c => le_trans (ih₁.left c) this, le_trans ih₁.right this⟩
     | inr ge =>
       cases Nat.lt_or_ge i nfa₂.val.nodes.size with
       | inl lt =>
@@ -616,7 +616,7 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
           apply Set.setOf_subset_setOf.mpr
           intro i h
           exact ⟨le_trans (NFA.le_size_of_le nfa₁.property) h.left, lt_trans h.right size₂⟩
-        exact ⟨le_trans ih₂.left this, le_trans ih₂.right this⟩
+        exact ⟨fun c => le_trans (ih₂.left c) this, le_trans ih₂.right this⟩
       | inr ge =>
         simp [eq, eq₅, NFA.addNode] at h₂
         have h : i = nfa₂.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
@@ -652,7 +652,7 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
         apply Set.setOf_subset_setOf.mpr
         intro i h
         exact ⟨h.left, Nat.lt_of_lt_of_le h.right size'⟩
-      exact ⟨le_trans ih₂.left this, le_trans ih₂.right this⟩
+      exact ⟨fun c => le_trans (ih₂.left c) this, le_trans ih₂.right this⟩
     | inr ge =>
       have ih₁ := ih₁ eq₁.symm i ge size
       have : {nfa₂.val.start.val} ∪ NewNodesRange eq₁.symm ⊆
@@ -664,7 +664,7 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
         . simp [Set.subset_def]
           intro i h
           exact .inr ⟨le_trans (NFA.le_size_of_le nfa₂.property) h.left, h.right⟩
-      exact ⟨le_trans ih₁.left this, le_trans ih₁.right this⟩
+      exact ⟨fun c => le_trans (ih₁.left c) this, le_trans ih₁.right this⟩
   | star r ih =>
     apply compile.loop.star eq
     intro nfa' start nfa'' nodes''' nfa''' isLt isLt' property'
@@ -721,56 +721,43 @@ theorem compile.loop.step_range (c : Char) (eq : compile.loop r next nfa = resul
         . simp [Set.subset_def]
           intro i h
           exact .inr ⟨le_trans (NFA.le_size_of_le nfa'.property) h.left, eqsize ▸ h.right⟩
-      exact ⟨le_trans ih.left this, le_trans ih.right this⟩
+      exact ⟨fun c => le_trans (ih.left c) this, le_trans ih.right this⟩
 
 theorem compile.loop.star.lt_size (eq : compile.loop (.star r) next nfa = result) :
   nfa.nodes.size < result.val.nodes.size := by
-  sorry
-
--- def compile.loop.star.rStart (_ : compile.loop (.star r) next nfa = result) : Nat :=
---   -- This assumes that the start node of compiled NFAs is always at the end
---   -- result.val.nodes.size - 1 is the start node of `result`, and `r` starts one node before that.
---   result.val.nodes.size - 2
-
--- theorem compile.loop.star.loopStartNode (eq : compile.loop (.star r) next nfa = result) :
---   result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split (compile.loop.star.rStart eq) next := by
---   apply compile.loop.star eq
---   intro placeholder loopStart compiled nodes patched final isLt isLt' property'
---     eq₁ eq₂ eq₃ eq₄ eq₅ eq₆ eq'
---   have h₁ : nfa.nodes.size < compiled.val.nodes.size :=
---     calc nfa.nodes.size
---       _ < placeholder.val.nodes.size := by simp [eq₁, NFA.addNode]
---       _ ≤ _ := NFA.le_size_of_le compiled.property
---   have h₂ : nfa.nodes.size < patched.nodes.size :=
---     calc nfa.nodes.size
---       _ < compiled.val.nodes.size := h₁
---       _ = patched.nodes.size := by simp [eq₅, eq₄]
---   have h₃ : Fin.mk loopStart isLt = ⟨nfa.nodes.size, h₁⟩ := by
---     apply Fin.eq_of_val_eq
---     simp [eq₂]
---     rw [eq₁]
---     simp [NFA.addNode]
---   have h₄ : compiled.val.start = rStart eq := by
---     rw [compile.loop.start eq₃.symm, rStart, eq']
---     simp [eq₆, NFA.addNode, eq₅, eq₄]
---   conv =>
---     lhs
---     simp [eq', eq₆]
---     rw [NFA.get_lt_addNode h₂]
---     simp [eq₅, NFA.eq_get, eq₄, h₃]
---     rw [Array.get_set_eq]
---     simp [h₄]
+  apply compile.loop.star eq
+  intro placeholder loopStart compiled nodes patched isLt isLt' property'
+    eq₁ _ _ eq₄ eq₅ eq'
+  calc nfa.nodes.size
+    _ < placeholder.val.nodes.size := by simp [eq₁, NFA.addNode]
+    _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
+    _ = _ := by
+      rw [eq']
+      simp [eq₅, eq₄]
 
 theorem compile.loop.star.loopStartNode (eq : compile.loop (.star r) next nfa = result) :
   ∃ rStart ∈ { i | nfa.nodes.size + 1 ≤ i ∧ i < result.val.nodes.size },
-  result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split rStart next := sorry
+  result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split rStart next := by
+  apply compile.loop.star eq
+  intro placeholder loopStart compiled nodes patched isLt isLt' property'
+    eq₁ eq₂ eq₃ eq₄ eq₅ eq'
+  exists compiled.val.start.val
+  have : nfa.nodes.size = (Fin.mk loopStart.val isLt).val := by
+    simp [eq₂]
+    rw [eq₁]
+    simp [NFA.addNode]
+  simp [this, eq', eq₅, NFA.eq_get, eq₄]
+  calc loopStart.val + 1
+    _ ≤ placeholder.val.nodes.size := loopStart.isLt
+    _ ≤ _ := by
+      have startRange := compile.loop.start_in_NewNodesRange eq₃.symm
+      simp [NewNodesRange] at startRange
+      exact startRange
 
 @[simp]
 theorem compile.loop.star.charStep_loopStartNode {c} (eq : compile.loop (.star r) next nfa = result) :
   (result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq)).charStep c = ∅ := by
   let ⟨_, _, eq⟩ := compile.loop.star.loopStartNode eq
   simp [eq, Node.charStep]
-
--- TODO: prove no edge to the start
 
 end NFA
