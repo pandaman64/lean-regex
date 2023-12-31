@@ -57,9 +57,10 @@ theorem NFA.start_addNode {nfa : NFA} {node : Node} {result : { nfa' : NFA // nf
   simp [NFA.addNode]
 
 def compile (r : Regex) : NFA :=
-  let result := loop r 0 ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
+  let result := loop r 0 init
   result.val
 where
+  init : NFA := ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
   /--
     The main loop of the compilation.
 
@@ -376,7 +377,7 @@ theorem compile.loop.get_done_of_zero (eq : compile.loop r next nfa = result)
 
 theorem compile.get_done_iff_zero (eq : compile r = result) (h : i < result.nodes.size) :
   result[i] = .done ↔ i = 0 := by
-  let init : NFA := ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
+  let init : NFA := compile.init
   generalize eq' : compile.loop r 0 init = result'
   have : result = result'.val := by
     simp [eq.symm, compile, eq'.symm]
@@ -484,15 +485,13 @@ theorem compile.loop.inBounds (eq : compile.loop r next nfa = result)
       . exact Nat.lt_of_lt_of_le h₁ (NFA.le_size_of_le (le_trans nfa'.property nfa''.property))
     . exact ih (i.cast eqsize)
 
+theorem compile.init.inBounds : compile.init.inBounds := by
+  intro i
+  simp [NFA.eq_get, init, Array.singleton_get']
+
 theorem compile.inBounds (eq : compile r = result) : result.inBounds := by
-  let init : NFA := ⟨#[.done], ⟨0, Nat.zero_lt_succ _⟩⟩
-  have h₁ : 0 < init.nodes.size := by decide
-  have h₂ : init.inBounds := by
-    simp
-    intro i
-    simp [NFA.eq_get, Array.singleton_get']
   simp [eq.symm, compile]
-  exact compile.loop.inBounds rfl h₁ h₂
+  exact compile.loop.inBounds rfl (by decide) compile.init.inBounds
 
 -- When we compile a new regex into an existing NFA, the compiled nodes first
 -- "circulates" within the new nodes, then "escape" to the `next` node.

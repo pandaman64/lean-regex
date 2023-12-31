@@ -7,6 +7,8 @@ import Mathlib.Data.Set.Lattice
 
 open Set
 
+---------- When the regex matches a string, the compiled NFA accepts it.
+
 -- TODO: we may want to prove that all indices are in bounds get rid of Option helpers.
 def Option.charStep : Option NFA.Node → Char → Set Nat
   | some n, c => n.charStep c
@@ -171,6 +173,15 @@ theorem stepSet_subset {nfa₁ nfa₂ : NFA} (hn : nfa₁ ≤ nfa₂) (hs : S₁
     mem_of_subset_of_mem hs h₁,
     mem_of_subset_of_mem (εClosureSet_subset hn (Option.charStep.subset_of_le hn)) h₂
   ⟩
+
+theorem foldl_stepSet_subset {nfa : NFA} (h : S₁ ⊆ S₂) :
+  List.foldl (nfa.stepSet) S₁ cs ⊆ List.foldl (nfa.stepSet) S₂ cs := by
+  induction cs generalizing S₁ S₂ with
+  | nil => simp [h]
+  | cons c _ ih =>
+    simp
+    apply ih
+    exact stepSet_subset (le_refl _) h
 
 def NFA.evalFrom (nfa : NFA) (S : Set Nat) : List Char → Set Nat :=
   List.foldl (nfa.stepSet) (nfa.εClosureSet S)
@@ -390,6 +401,16 @@ theorem evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
       simp [eq₄]
     simp [this, getElem?, Option.εStep, Node.εStep]
 
+theorem evalFrom_of_matches' (eq : compile r = nfa) (m : r.matches ⟨cs⟩) :
+  0 ∈ nfa.evalFrom {nfa.start.val} cs := by
+  generalize eq' : compile.loop r 0 compile.init = result
+  have : nfa = result.val := by
+    simp [eq.symm, compile, eq'.symm]
+  rw [this]
+  exact evalFrom_of_matches eq' m result.val (le_refl _)
+
+---------- When the NFA accepts a string, it matches the original regex.
+
 -- Maybe we should recurse from the last as we reason about the last step often
 inductive NFA.pathIn (nfa : NFA) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
   | base (h : start ≤ i) (eqi : i = j) (eqs : cs = cs') : nfa.pathIn start i cs j cs'
@@ -413,6 +434,15 @@ theorem le_of_pathIn_right (path : NFA.pathIn nfa start i cs j cs') : start ≤ 
   | base h eqi => exact eqi ▸ h
   | charStep _ _ _ _ ih => exact ih
   | εStep _ _ _ _ ih => exact ih
+
+theorem NFA.pathIn.castStart {nfa : NFA} {start start' : Nat}
+  (le : start' ≤ start)
+  (path : nfa.pathIn start i cs j cs') :
+  nfa.pathIn start' i cs j cs' := by
+  induction path with
+  | base h eqi eqs => exact .base (Nat.le_trans le h) eqi eqs
+  | charStep h₁ h₂ step _ ih => exact .charStep (Nat.le_trans le h₁) h₂ step ih
+  | εStep h₁ h₂ step _ ih => exact .εStep (Nat.le_trans le h₁) h₂ step ih
 
 theorem NFA.pathIn.cast {nfa nfa' : NFA} (start : Nat)
   (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
@@ -1123,5 +1153,19 @@ theorem matches_prefix_of_path (eq : compile.loop r next nfa = result)
       subst this
       have loop := NFA.starLoop.intro eq h₁ inBounds' path
       exact matches_prefix_of_starLoop eq mr loop
+
+theorem matches_prefix_of_path' (eq : compile r = nfa)
+  (path : nfa.pathToNext 0 1 nfa.start.val s s') :
+  ∃ p, s = p ++ s' ∧ r.matches ⟨p⟩ := by
+  generalize eq' : compile.loop r 0 compile.init = result
+  have : nfa = result.val := by
+    simp [eq.symm, compile, eq'.symm]
+  exact matches_prefix_of_path eq' (by decide) compile.init.inBounds (this ▸ path)
+
+theorem matches_of_path (eq : compile r = nfa) (path : nfa.pathToNext 0 1 nfa.start.val s []) :
+  r.matches ⟨s⟩ := by
+  let ⟨_, eqs, m⟩ := matches_prefix_of_path' eq path
+  simp [eqs]
+  exact m
 
 end NFA
