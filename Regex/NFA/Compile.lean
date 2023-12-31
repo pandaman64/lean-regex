@@ -723,6 +723,9 @@ theorem compile.loop.step_range (eq : compile.loop r next nfa = result) :
           exact .inr ⟨le_trans (NFA.le_size_of_le nfa'.property) h.left, eqsize ▸ h.right⟩
       exact ⟨fun c => le_trans (ih.left c) this, le_trans ih.right this⟩
 
+theorem compile.loop.lt_size (eq : compile.loop r next nfa = result) :
+  nfa.nodes.size < result.val.nodes.size := sorry
+
 theorem compile.loop.star.lt_size (eq : compile.loop (.star r) next nfa = result) :
   nfa.nodes.size < result.val.nodes.size := by
   apply compile.loop.star eq
