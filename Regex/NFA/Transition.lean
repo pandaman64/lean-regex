@@ -680,16 +680,15 @@ theorem pathIn_split (eq : compile.loop r next nfa = result)
 
 inductive NFA.starLoop (eq : compile.loop (.star r) next nfa = result) : List Char → List Char → Prop where
   | complete (eqs : cs = cs') : starLoop eq cs cs'
-  | loop (eqr : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split rStart next)
+  | loop (eqr : result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split rStart next)
     (path : pathToNext result nfa.nodes.size (nfa.nodes.size + 1) rStart cs cs'')
     (rest : NFA.starLoop eq cs'' cs') : starLoop eq cs cs'
 
 theorem eqr_of_mem_of_le (eq : compile.loop (.star r) next nfa = result)
   (prem₁ : next < nfa.nodes.size)
-  (mem : rStart ∈ (result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq)).εStep)
+  (mem : rStart ∈ (result.val[nfa.nodes.size]'(compile.loop.lt_size eq)).εStep)
   (le : nfa.nodes.size + 1 ≤ rStart) :
-  result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split rStart next := by
-  -- have : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split j' next := by
+  result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split rStart next := by
   let ⟨_, _, node⟩ := compile.loop.star.loopStartNode eq
   have : rStart ≠ next := Nat.ne_of_gt (lt_trans prem₁ le)
   simp [node, Node.εStep, this] at mem
@@ -730,7 +729,7 @@ theorem NFA.starLoop.intro' (eq : compile.loop (.star r) next nfa = result)
         let ⟨j', cs'', _, h', path', l⟩ := cond
         refine ⟨cs, ?_, ?_⟩
         . exact .charStep i assm₁ c (h ▸ step) (.base h₁' rfl rfl)
-        . have : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split j' next :=
+        . have : result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split j' next :=
             eqr_of_mem_of_le eq prem₁ (h ▸ h') (le_of_pathToNext path')
           exact .loop this path' l
     next h =>
@@ -759,7 +758,7 @@ theorem NFA.starLoop.intro' (eq : compile.loop (.star r) next nfa = result)
           let ⟨j', cs'', _, h', path', l⟩ := cond
           refine ⟨cs, ?_, ?_⟩
           . exact .εStep i assm₁ (h ▸ step) (.base h₁' rfl rfl)
-          . have : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split j' next :=
+          . have : result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split j' next :=
               eqr_of_mem_of_le eq prem₁ (h ▸ h') (le_of_pathToNext path')
             exact .loop this path' l
       next h =>
@@ -788,19 +787,19 @@ theorem NFA.starLoop.intro (eq : compile.loop (.star r) next nfa = result)
   (prem₁ : next < nfa.nodes.size) (prem₂ : result.val.inBounds)
   (ev : pathIn result nfa.nodes.size nfa.nodes.size cs nfa.nodes.size cs') :
   starLoop eq cs cs' := by
-  have : nfa.nodes.size < result.val.nodes.size := compile.loop.star.lt_size eq
+  have : nfa.nodes.size < result.val.nodes.size := compile.loop.lt_size eq
   let loop := starLoop.intro' eq prem₁ prem₂ this rfl ev
   simp at loop
   match loop with
   | .inl eqs => exact .complete eqs
   | .inr ⟨rStart, _, step, ⟨_, path, loop⟩⟩ =>
-    have : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split rStart next :=
+    have : result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split rStart next :=
         eqr_of_mem_of_le eq prem₁ step (le_of_pathToNext path)
     exact .loop this path loop
 
 theorem matches_prefix_of_starLoop (eq : compile.loop (.star r) next nfa = result)
   (mr : ∀ {cs cs'} rStart,
-    result.val[Array.size nfa.nodes]'(compile.loop.star.lt_size eq) = Node.split rStart next →
+    result.val[Array.size nfa.nodes]'(compile.loop.lt_size eq) = Node.split rStart next →
     NFA.pathToNext result (Array.size nfa.nodes) (Array.size nfa.nodes + 1) rStart cs cs' →
     ∃ p, cs = p ++ cs' ∧ r.matches ⟨p⟩)
   (loop : NFA.starLoop eq cs cs') :
@@ -1124,7 +1123,7 @@ theorem matches_prefix_of_path (eq : compile.loop r next nfa = result)
 
     have eqSize : result.val.nodes.size = compiled.val.nodes.size := by
       simp [eq', eq₅, eq₄]
-    have firstNode : result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split compiled.val.start next := by
+    have firstNode : result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split compiled.val.start next := by
       simp [eq']
       simp [eq₅, NFA.eq_get, eq₄, eql.symm]
     have compiledNodes (i : Nat) (h₁ : nfa.nodes.size < i) (h₂ : i < result.val.nodes.size) :
@@ -1156,7 +1155,7 @@ theorem matches_prefix_of_path (eq : compile.loop r next nfa = result)
     -- by casting the path from `result` to `compiled`.
     have mr {cs cs' : List Char}
       (rStart : Nat)
-      (eqr : result.val[Array.size nfa.nodes]'(compile.loop.star.lt_size eq) = Node.split rStart next)
+      (eqr : result.val[Array.size nfa.nodes]'(compile.loop.lt_size eq) = Node.split rStart next)
       (path : NFA.pathToNext result (Array.size nfa.nodes) (Array.size nfa.nodes + 1) rStart cs cs') :
       ∃ p, cs = p ++ cs' ∧ r.matches ⟨p⟩ := by
       simp [firstNode] at eqr

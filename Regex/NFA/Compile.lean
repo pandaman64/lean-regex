@@ -724,23 +724,49 @@ theorem compile.loop.step_range (eq : compile.loop r next nfa = result) :
       exact ⟨fun c => le_trans (ih.left c) this, le_trans ih.right this⟩
 
 theorem compile.loop.lt_size (eq : compile.loop r next nfa = result) :
-  nfa.nodes.size < result.val.nodes.size := sorry
-
-theorem compile.loop.star.lt_size (eq : compile.loop (.star r) next nfa = result) :
   nfa.nodes.size < result.val.nodes.size := by
-  apply compile.loop.star eq
-  intro placeholder loopStart compiled nodes patched isLt isLt' property'
-    eq₁ _ _ eq₄ eq₅ eq'
-  calc nfa.nodes.size
-    _ < placeholder.val.nodes.size := by simp [eq₁, NFA.addNode]
-    _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
-    _ = _ := by
-      rw [eq']
-      simp [eq₅, eq₄]
+  induction r generalizing next nfa with
+  | empty =>
+    apply compile.loop.empty eq
+    intro eq
+    simp [eq, NFA.addNode]
+  | epsilon =>
+    apply compile.loop.epsilon eq
+    intro eq
+    simp [eq, NFA.addNode]
+  | char c' =>
+    apply compile.loop.char eq
+    intro eq
+    simp [eq, NFA.addNode]
+  | alternate r₁ r₂ ih₁ ih₂ =>
+    apply compile.loop.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ _ eq₃ _ eq₅ eq
+    simp [eq, eq₅, NFA.addNode]
+    calc nfa.nodes.size
+      _ < nfa₁.val.nodes.size := ih₁ eq₁.symm
+      _ < nfa₂.val.nodes.size := ih₂ eq₃.symm
+      _ < _ := Nat.lt_succ_self _
+  | concat r₁ r₂ ih₁ ih₂ =>
+    apply compile.loop.concat eq
+    intro nfa₂ nfa₁ property eq₂ eq₁ eq
+    simp [eq]
+    calc nfa.nodes.size
+      _ < nfa₂.val.nodes.size := ih₂ eq₂.symm
+      _ < nfa₁.val.nodes.size := ih₁ eq₁.symm
+  | star r _ =>
+    apply compile.loop.star eq
+    intro placeholder loopStart compiled nodes patched isLt isLt' property'
+      eq₁ _ _ eq₄ eq₅ eq'
+    calc nfa.nodes.size
+      _ < placeholder.val.nodes.size := by simp [eq₁, NFA.addNode]
+      _ ≤ compiled.val.nodes.size := NFA.le_size_of_le compiled.property
+      _ = _ := by
+        rw [eq']
+        simp [eq₅, eq₄]
 
 theorem compile.loop.star.loopStartNode (eq : compile.loop (.star r) next nfa = result) :
   ∃ rStart ∈ { i | nfa.nodes.size + 1 ≤ i ∧ i < result.val.nodes.size },
-  result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq) = .split rStart next := by
+  result.val[nfa.nodes.size]'(compile.loop.lt_size eq) = .split rStart next := by
   apply compile.loop.star eq
   intro placeholder loopStart compiled nodes patched isLt isLt' property'
     eq₁ eq₂ eq₃ eq₄ eq₅ eq'
@@ -759,7 +785,7 @@ theorem compile.loop.star.loopStartNode (eq : compile.loop (.star r) next nfa = 
 
 @[simp]
 theorem compile.loop.star.charStep_loopStartNode {c} (eq : compile.loop (.star r) next nfa = result) :
-  (result.val[nfa.nodes.size]'(compile.loop.star.lt_size eq)).charStep c = ∅ := by
+  (result.val[nfa.nodes.size]'(compile.loop.lt_size eq)).charStep c = ∅ := by
   let ⟨_, _, eq⟩ := compile.loop.star.loopStartNode eq
   simp [eq, Node.charStep]
 
