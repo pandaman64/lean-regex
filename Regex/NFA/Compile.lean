@@ -493,6 +493,9 @@ theorem compile.inBounds (eq : compile r = result) : result.inBounds := by
   simp [eq.symm, compile]
   exact compile.loop.inBounds rfl (by decide) compile.init.inBounds
 
+theorem compile.init.get : compile.init[0] = .done := by
+  simp [compile.init, NFA.eq_get, Array.singleton_get']
+
 -- When we compile a new regex into an existing NFA, the compiled nodes first
 -- "circulates" within the new nodes, then "escape" to the `next` node.
 
@@ -543,6 +546,15 @@ theorem compile.loop.start_in_NewNodesRange (eq : compile.loop r next nfa = resu
     simp [eq₂]
     rw [eq₁]
     simp [NFA.addNode]
+
+theorem compile.start_gt (eq : compile r = nfa) : 0 < nfa.start.val := by
+  generalize eq' : compile.loop r 0 compile.init = result
+  have : nfa = result.val := by
+    simp [eq.symm, compile, eq'.symm]
+  rw [this]
+  have inRange := compile.loop.start_in_NewNodesRange eq'
+  simp [compile.loop.NewNodesRange, compile.init] at inRange
+  exact inRange
 
 theorem compile.loop.step_range (eq : compile.loop r next nfa = result) :
   ∀ i, nfa.nodes.size ≤ i → (_ : i < result.val.nodes.size) →

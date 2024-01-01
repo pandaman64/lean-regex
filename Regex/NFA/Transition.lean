@@ -401,14 +401,6 @@ theorem evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
       simp [eq₄]
     simp [this, getElem?, Option.εStep, Node.εStep]
 
-theorem evalFrom_of_matches' (eq : compile r = nfa) (m : r.matches ⟨cs⟩) :
-  0 ∈ nfa.evalFrom {nfa.start.val} cs := by
-  generalize eq' : compile.loop r 0 compile.init = result
-  have : nfa = result.val := by
-    simp [eq.symm, compile, eq'.symm]
-  rw [this]
-  exact evalFrom_of_matches eq' m result.val (le_refl _)
-
 ---------- When the NFA accepts a string, it matches the original regex.
 
 -- Maybe we should recurse from the last as we reason about the last step often
@@ -537,6 +529,14 @@ theorem NFA.pathIn.snoc_ε {start}
   | εStep h₁ h₂ step' rest ih =>
     have ih := ih assm step
     exact .εStep (Nat.le_trans (Nat.min_le_left _ _) h₁) h₂ step' ih
+
+theorem NFA.pathIn.trans {start}
+  (path₁ : NFA.pathIn nfa start i cs j cs') (path₂ : NFA.pathIn nfa start j cs' k cs'') :
+  NFA.pathIn nfa start i cs k cs'' := by
+  induction path₁ with
+  | base _ eqi eqs => exact eqi ▸ eqs ▸ path₂
+  | charStep h₁ h₂ step _ ih => exact .charStep h₁ h₂ step (ih path₂)
+  | εStep h₁ h₂ step _ ih => exact .εStep h₁ h₂ step (ih path₂)
 
 inductive NFA.pathToNext (nfa : NFA) (next start i : Nat) (cs cs' : List Char) : Prop where
   | charStep (i' : Nat) (h : i' < nfa.nodes.size) (c : Char)
