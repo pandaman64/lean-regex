@@ -1,6 +1,13 @@
 import Regex.Lemmas
 import Regex.NFA.Basic
 
+def Array.back' (a : Array α) (hemp : ¬ a.isEmpty) : α :=
+  have : 0 < a.size := by
+    simp [isEmpty] at hemp
+    exact Nat.zero_lt_of_ne_zero hemp
+  have : a.size - 1 < a.size := Nat.sub_lt_of_pos_le (by decide) this
+  a[a.size - 1]
+
 namespace NFA.VM
 
 -- TODO: use a bitvec?
@@ -257,6 +264,39 @@ def addεClosure (nfa : NFA) (i : Nat) (sets : NodeSets nfa.nodes.size) :
 termination_by _ => sets.visited.count_unset
 
 -- TODO: reuse allocation
+-- TODO: check if the modifications don't cause copying
+def addεClosureTR (nfa : NFA)
+  (ns : NodeSet nfa.nodes.size) (visited : NodeSet nfa.nodes.size) (stack : Array Nat) :
+  NodeSet nfa.nodes.size :=
+  if hemp : stack.isEmpty then
+    ns
+  else
+    let n := stack.back' hemp
+    let stack' := stack.pop
+    have : stack'.size < stack.size := by
+      have : 0 < stack.size := by
+        simp [Array.isEmpty] at hemp
+        exact Nat.zero_lt_of_ne_zero hemp
+      have : stack.size - 1 < stack.size := Nat.sub_lt_of_pos_le (by decide) this
+      simp [this]
+    if hlt : n < nfa.nodes.size then
+      if hvis : visited.get ⟨n, hlt⟩ then
+        addεClosureTR nfa ns visited stack'
+      else
+        let visited' := visited.set ⟨n, hlt⟩
+        have : visited'.count_unset < visited.count_unset := visited.lt_count_unset hlt hvis
+        let ns' := ns.set ⟨n, hlt⟩
+        let stack'' :=
+          match nfa[n] with
+          | .epsilon next => stack'.push next
+          | .split next₁ next₂ => (stack'.push next₁).push next₂
+          | _ => stack'
+        addεClosureTR nfa ns' visited' stack''
+    else
+      addεClosureTR nfa ns visited stack'
+termination_by _ => (visited.count_unset, stack.size)
+
+-- TODO: reuse allocation
 def charStep (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
   NodeSet nfa.nodes.size := go nfa (NodeSets.init NodeSet.empty) init c 0 (Nat.zero_le _)
 where
@@ -274,6 +314,31 @@ where
       go nfa accum init c (i + 1) hlt
 termination_by go _ => nfa.nodes.size - i
 
+def charStep' (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
+  NodeSet nfa.nodes.size := go nfa .empty init c 0 (Nat.zero_le _)
+where
+  go (nfa : NFA) (accum : NodeSet nfa.nodes.size) (init : NodeSet nfa.nodes.size) (c : Char)
+    (i : Nat) (hle : i ≤ nfa.nodes.size) : NodeSet nfa.nodes.size :=
+    if h : i = nfa.nodes.size then
+      accum
+    else
+      have hlt : i < nfa.nodes.size := Nat.lt_of_le_of_ne hle h
+      let accum := if init.get ⟨i, hlt⟩ then
+        match nfa[i] with
+        | .char c' next =>
+          if c = c' then
+            addεClosureTR nfa accum .empty #[next]
+          else
+            accum
+        | _ => accum
+      else accum
+      go nfa accum init c (i + 1) hlt
+termination_by go _ => nfa.nodes.size - i
+
+end NFA.VM
+
+open NFA.VM
+
 partial def NFA.NFA.match (nfa : NFA) (s : String) : Bool :=
   if h : 0 < nfa.nodes.size then
     let ns := addεClosure (dbgTraceVal nfa) nfa.start (NodeSets.init NodeSet.empty)
@@ -288,7 +353,5 @@ where
       ns
     else
       let c := s.get i
-      let ns' := charStep nfa c ns
+      let ns' := charStep' nfa c ns
       dbgTrace s!"{ns} ⟶{c} {ns'}" (fun () => go nfa s (s.next i) ns')
-
-end NFA.VM
