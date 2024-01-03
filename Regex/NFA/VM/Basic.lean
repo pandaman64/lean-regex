@@ -375,11 +375,11 @@ def εClosureTR (nfa : NFA) (inBounds : nfa.inBounds)
 termination_by _ => (visited.count_unset, stack.size)
 
 def charStepTR (nfa : NFA) (inBounds : nfa.inBounds) (c : Char) (init : NodeSet nfa.nodes.size) :
-  NodeSet nfa.nodes.size := go nfa inBounds .empty init c 0 (Nat.zero_le _)
+  NodeSet nfa.nodes.size := go nfa inBounds c init .empty 0 (Nat.zero_le _)
 where
-  go (nfa : NFA) (inBounds : nfa.inBounds)
-    (accum : NodeSet nfa.nodes.size) (init : NodeSet nfa.nodes.size)
-    (c : Char) (i : Nat) (hle : i ≤ nfa.nodes.size) : NodeSet nfa.nodes.size :=
+  go (nfa : NFA) (inBounds : nfa.inBounds) (c : Char) (init : NodeSet nfa.nodes.size)
+    (accum : NodeSet nfa.nodes.size) (i : Nat) (hle : i ≤ nfa.nodes.size) :
+    NodeSet nfa.nodes.size :=
     if h : i = nfa.nodes.size then
       accum
     else
@@ -398,7 +398,7 @@ where
             accum
         | _ => accum
       else accum
-      go nfa inBounds accum init c (i + 1) hlt
+      go nfa inBounds c init accum (i + 1) hlt
 termination_by go _ => nfa.nodes.size - i
 
 end NFA.VM

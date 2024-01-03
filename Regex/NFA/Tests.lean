@@ -20,3 +20,10 @@ def NFA₃ := NFA.compile (Regex.alternate Regex.empty (Regex.concat (Regex.char
 def inBounds₃ : NFA₃.inBounds := NFA.compile.inBounds rfl
 #eval NFA₃.match inBounds₃ ""
 #eval NFA₃.match inBounds₃ "a"
+
+def NFA₄ := NFA.compile (Regex.concat (Regex.alternate (Regex.char 'a') (Regex.char 'b')) (Regex.char 'c'))
+def inBounds₄ : NFA₄.inBounds := NFA.compile.inBounds rfl
+#eval NFA₄.match inBounds₄ "ac"
+#eval NFA₄.match inBounds₄ "bc"
+#eval NFA₄.match inBounds₄ "a"
+#eval NFA₄.match inBounds₄ ""

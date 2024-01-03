@@ -359,4 +359,74 @@ theorem εClosureTR_spec {i : Fin nfa.nodes.size} (inBounds : nfa.inBounds) :
     exact this ▸ h₄
 termination_by go _ => (visited.count_unset, stack.size)
 
+theorem charStepTR_spec {nfa : NFA} {init : NodeSet nfa.nodes.size} {k : Fin nfa.nodes.size}
+  (inBounds : nfa.inBounds) :
+  (charStepTR nfa inBounds c init).get k ↔
+  k.val ∈ nfa.stepSet { j | ∃ j', init.get j' ∧ j = j'.val } c := by
+  let inv (accum : NodeSet nfa.nodes.size) (i : Nat) : Prop :=
+    ∀ k, accum.get k ↔ k.val ∈ nfa.stepSet { j | ∃ j', init.get j' ∧ j'.val < i ∧ j = j'.val } c
+
+  let lem (i : Nat) (hlt : i < nfa.nodes.size) :
+    { j | ∃ j', init.get j' ∧ j' < i + 1 ∧ j = j'.val } =
+    if init.get ⟨i, hlt⟩ then
+      { j | ∃ j', init.get j' ∧ j' < i ∧ j = j'.val } ∪ {i}
+    else
+      { j | ∃ j', init.get j' ∧ j' < i ∧ j = j'.val } := by
+    split
+    case inl h =>
+      apply Set.eq_of_subset_of_subset
+      . sorry
+      . sorry
+    case inr h =>
+      sorry
+
+  let rec go (accum : NodeSet nfa.nodes.size) (i : Nat) (hle : i ≤ nfa.nodes.size)
+    (inv₀ : inv accum i) :
+    ∀ k, (charStepTR.go nfa inBounds c init accum i hle).get k ↔
+      k.val ∈ nfa.stepSet { j | ∃ j', init.get j' ∧ j = j'.val } c := by
+    unfold charStepTR.go
+    cases decEq i nfa.nodes.size with
+    | isTrue h =>
+      simp [h]
+      simp [h] at inv₀
+      exact inv₀
+    | isFalse h =>
+      simp [h]
+      have hlt : i < nfa.nodes.size := Nat.lt_of_le_of_ne hle h
+      cases hset : init.get ⟨i, hlt⟩ with
+      | true =>
+        simp
+        split
+        next c' next hn =>
+          split
+          case inl eq =>
+            have : next < nfa.nodes.size :=
+              show next ∈ { j | j < nfa.nodes.size } from
+              Set.mem_of_mem_of_subset (by simp [hn, Node.charStep]) ((inBounds ⟨i, hlt⟩).left c')
+            set εCls := εClosureTR nfa inBounds .empty #[⟨next, this⟩]
+            set accum' := accum.merge εCls
+            have inv' : inv accum' (i + 1) := by
+              sorry
+            exact go accum' (i + 1) hlt inv'
+          case inr neq =>
+            have inv' : inv accum (i + 1) := by
+              simp [lem i hlt, hset]
+              sorry
+            exact go accum (i + 1) hlt inv'
+        next hn =>
+          have inv' : inv accum (i + 1) := by
+            simp [lem i hlt, hset]
+            sorry
+          exact go accum (i + 1) hlt inv'
+      | false =>
+        simp
+        have inv' : inv accum (i + 1) := by
+          simp [lem i hlt, hset]
+          exact inv₀
+        exact go accum (i + 1) hlt inv'
+
+  have inv₀ : inv .empty 0 := by simp [inv, Nat.not_lt_zero]
+  apply go .empty 0 (Nat.zero_le _) inv₀
+termination_by go _ => nfa.nodes.size - i
+
 end NFA.VM
