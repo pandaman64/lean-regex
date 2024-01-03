@@ -64,6 +64,16 @@ theorem εClosure_subset_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) :
   intro j h
   exact εClosure_of_le le h
 
+theorem εClosure_snoc {nfa : NFA} (h : j < nfa.nodes.size)
+  (cls : j ∈ nfa.εClosure i) (step : k ∈ nfa[j].εStep) :
+  k ∈ nfa.εClosure i := by
+  induction cls with
+  | @base i =>
+    exact .step (by rw [getElem?_pos nfa i h]; simp [Option.εStep, step] ) .base
+  | step step' _ ih =>
+    have ih := ih h step
+    exact NFA.εClosure.step step' ih
+
 theorem εClosure_trans {nfa : NFA} (h₁ : i₂ ∈ nfa.εClosure i₁) (h₂ : i₃ ∈ nfa.εClosure i₂) :
   i₃ ∈ nfa.εClosure i₁ := by
   induction h₁ with

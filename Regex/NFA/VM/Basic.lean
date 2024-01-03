@@ -8,6 +8,15 @@ def Array.back' (a : Array α) (hemp : ¬ a.isEmpty) : α :=
   have : a.size - 1 < a.size := Nat.sub_lt_of_pos_le (by decide) this
   a[a.size - 1]
 
+theorem Array.lt_size_of_pop_of_not_empty (a : Array α) (hemp : ¬ a.isEmpty) :
+  (a.pop).size < a.size := by
+  have : 0 < a.size := by
+    simp [isEmpty] at hemp
+    exact Nat.zero_lt_of_ne_zero hemp
+  have : a.size - 1 < a.size := Nat.sub_lt_of_pos_le (by decide) this
+  simp [Array.pop]
+  exact this
+
 namespace NFA.VM
 
 -- TODO: use a bitvec?
@@ -18,6 +27,9 @@ def NodeSet.empty {n : Nat} : NodeSet n :=
 
 def NodeSet.get (ns : NodeSet n) (i : Fin n) : Bool :=
   ns.val.get (i.cast ns.property.symm)
+
+instance : GetElem (NodeSet n) Nat Bool (fun _ i => i < n) where
+  getElem ns i h := ns.get ⟨i, h⟩
 
 def NodeSet.set (ns : NodeSet n) (i : Fin n) : NodeSet n :=
   ⟨ns.val.set (i.cast ns.property.symm) true, by simp [ns.property]⟩
@@ -36,6 +48,27 @@ theorem NodeSet.get_set_ne (ns : NodeSet n) (i j : Fin n) (ne : i.val ≠ j.val)
   rw [Array.get_set]
   . simp [ne]
   . simp [ns.property, ne]
+
+theorem NodeSet.get_set_set {ns : NodeSet n} {i j : Fin n} (set : ns.get i) :
+  (ns.set j).get i := by
+  cases decEq j i with
+  | isTrue eq => exact eq ▸ NodeSet.get_set_eq _ _
+  | isFalse neq =>
+    have : j.val ≠ i.val := by
+      intro h
+      exact absurd (Fin.eq_of_val_eq h) neq
+    rw [NodeSet.get_set_ne _ _ _ this]
+    . exact set
+
+theorem NodeSet.get_set {ns : NodeSet n} {i j : Fin n} :
+  (ns.set j).get i = if j = i then true else ns.get i := by
+  cases decEq j i with
+  | isTrue eq => simp [eq]
+  | isFalse neq =>
+    simp [neq]
+    apply NodeSet.get_set_ne
+    intro h
+    exact absurd (Fin.eq_of_val_eq h) neq
 
 def NodeSet.unset (ns : NodeSet n) (i : Fin n) : NodeSet n :=
   ⟨ns.val.set (i.cast  ns.property.symm) false, by simp [ns.property]⟩
@@ -155,8 +188,9 @@ where
       go (ns.unset ⟨i, hlt⟩) (i + 1) hlt
 termination_by go _ => n - i
 
-theorem NodeSet.get_empty {n : Nat} (i : Nat) (h : i < n) :
-  (NodeSet.empty : NodeSet n).get ⟨i, h⟩ = false := by
+@[simp]
+theorem NodeSet.get_empty {n : Nat} (i : Fin n) :
+  (NodeSet.empty : NodeSet n).get i = false := by
   simp [empty, mkArray, NodeSet.get, Array.getElem_eq_data_get]
 
 theorem NodeSet.clear_eq_empty (ns : NodeSet n) : ns.clear = NodeSet.empty := by
@@ -168,7 +202,7 @@ theorem NodeSet.clear_eq_empty (ns : NodeSet n) : ns.clear = NodeSet.empty := by
     have h : j < n := ns.clear.property ▸ h₁
     have hc : ns.clear.get ⟨j, h⟩ = false := go ns 0 j (Nat.zero_le _) (Nat.zero_le _) h
     simp [NodeSet.get] at hc
-    have he : empty.get ⟨j, h⟩ = false := NodeSet.get_empty j h
+    have he : empty.get ⟨j, h⟩ = false := NodeSet.get_empty ⟨j, h⟩
     simp [NodeSet.get] at he
     rw [hc, he]
 where
@@ -221,137 +255,109 @@ where
         exact Nat.lt_of_not_ge nle
 termination_by go' _ => n - i
 
+-- NOTE: this should overwrite to ns₁ if it's unique
+def NodeSet.merge (ns₁ ns₂ : NodeSet n) : NodeSet n :=
+  go ns₁ ns₂ 0 (Nat.zero_le _)
+where
+  go (ns₁ ns₂ : NodeSet n) (i : Nat) (hle : i ≤ n) : NodeSet n :=
+    if h : i = n then
+      ns₁
+    else
+      have hlt : i < n := Nat.lt_of_le_of_ne hle h
+      let ns₁ := if ns₂.get ⟨i, hlt⟩ then ns₁.set ⟨i, hlt⟩ else ns₁
+      go ns₁ ns₂ (i + 1) hlt
+termination_by go _ => n - i
+
+theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {i : Fin n} :
+  (ns₁.merge ns₂).get i = ns₁.get i || ns₂.get i := by
+  sorry
+
 open NFA
 
-structure NodeSets (n : Nat) where
-  visited : NodeSet n
-  current : NodeSet n
-deriving Repr
-
-instance : ToString (NodeSets n) where
-  toString ns := reprStr ns
-
-def NodeSets.init (current : NodeSet n) : NodeSets n :=
-  ⟨NodeSet.empty, current⟩
-
--- TODO: how to avoid allocating a pair?
 -- TODO: check if the modifications don't cause copying
-def addεClosure (nfa : NFA) (i : Nat) (sets : NodeSets nfa.nodes.size) :
-  { sets' : NodeSets nfa.nodes.size // sets'.visited.count_unset ≤ sets.visited.count_unset } :=
-  if hlt : i < nfa.nodes.size then
-    let ⟨visited, ns⟩ := sets
-    if hvis : visited.get ⟨i, hlt⟩ then
-      ⟨⟨visited, ns⟩, by simp⟩
-    else
-      let visited' := visited.set ⟨i, hlt⟩
-      have h : visited'.count_unset < visited.count_unset := visited.lt_count_unset hlt hvis
-      let ns := ns.set ⟨i, hlt⟩
-      match nfa[i] with
-      | .epsilon next =>
-        let sets' := addεClosure nfa next ⟨visited', ns⟩
-        have h' : sets'.val.visited.count_unset ≤ visited.count_unset :=
-          Nat.le_trans sets'.property (Nat.le_of_lt h)
-        ⟨sets'.val, h'⟩
-      | .split next₁ next₂ =>
-        let sets' := addεClosure nfa next₁ ⟨visited', ns⟩
-        have h' : sets'.val.visited.count_unset < visited.count_unset :=
-          Nat.lt_of_le_of_lt sets'.property h
-        let sets'' := addεClosure nfa next₂ sets'
-        ⟨sets''.val, Nat.le_trans sets''.property (Nat.le_of_lt h')⟩
-      | _ => ⟨⟨visited', ns⟩, Nat.le_of_lt h⟩
-  else
-    ⟨sets, by simp⟩
-termination_by _ => sets.visited.count_unset
-
--- TODO: reuse allocation
--- TODO: check if the modifications don't cause copying
-def addεClosureTR (nfa : NFA)
-  (ns : NodeSet nfa.nodes.size) (visited : NodeSet nfa.nodes.size) (stack : Array Nat) :
+def εClosureTR (nfa : NFA) (inBounds : nfa.inBounds)
+  (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
   NodeSet nfa.nodes.size :=
   if hemp : stack.isEmpty then
-    ns
+    visited
   else
-    let n := stack.back' hemp
+    let i := stack.back' hemp
     let stack' := stack.pop
-    have : stack'.size < stack.size := by
-      have : 0 < stack.size := by
-        simp [Array.isEmpty] at hemp
-        exact Nat.zero_lt_of_ne_zero hemp
-      have : stack.size - 1 < stack.size := Nat.sub_lt_of_pos_le (by decide) this
-      simp [this]
-    if hlt : n < nfa.nodes.size then
-      if hvis : visited.get ⟨n, hlt⟩ then
-        addεClosureTR nfa ns visited stack'
-      else
-        let visited' := visited.set ⟨n, hlt⟩
-        have : visited'.count_unset < visited.count_unset := visited.lt_count_unset hlt hvis
-        let ns' := ns.set ⟨n, hlt⟩
-        let stack'' :=
-          match nfa[n] with
-          | .epsilon next => stack'.push next
-          | .split next₁ next₂ => (stack'.push next₁).push next₂
-          | _ => stack'
-        addεClosureTR nfa ns' visited' stack''
+    have : stack'.size < stack.size := Array.lt_size_of_pop_of_not_empty _ hemp
+    if hvis : visited.get i then
+      εClosureTR nfa inBounds visited stack'
     else
-      addεClosureTR nfa ns visited stack'
+      let visited' := visited.set i
+      have : visited'.count_unset < visited.count_unset := visited.lt_count_unset i.isLt hvis
+      have inBounds' := (inBounds i).right
+      let stack'' :=
+        match hn : nfa[i] with
+        | .epsilon next =>
+          have h : next < nfa.nodes.size := by
+            rw [hn] at inBounds'
+            simp [Node.εStep] at inBounds'
+            exact inBounds'
+
+          stack'.push ⟨next, h⟩
+        | .split next₁ next₂ =>
+          have h₁ : next₁ < nfa.nodes.size := by
+            rw [hn] at inBounds'
+            simp [Node.εStep] at inBounds'
+            apply Set.mem_of_mem_of_subset (by simp) inBounds'
+          have h₂ : next₂ < nfa.nodes.size := by
+            rw [hn] at inBounds'
+            simp [Node.εStep] at inBounds'
+            apply Set.mem_of_mem_of_subset (by simp) inBounds'
+
+          (stack'.push ⟨next₁, h₁⟩).push ⟨next₂, h₂⟩
+        | _ => stack'
+      εClosureTR nfa inBounds visited' stack''
 termination_by _ => (visited.count_unset, stack.size)
 
--- TODO: reuse allocation
-def charStep (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
-  NodeSet nfa.nodes.size := go nfa (NodeSets.init NodeSet.empty) init c 0 (Nat.zero_le _)
+def charStepTR (nfa : NFA) (inBounds : nfa.inBounds) (c : Char) (init : NodeSet nfa.nodes.size) :
+  NodeSet nfa.nodes.size := go nfa inBounds .empty init c 0 (Nat.zero_le _)
 where
-  go (nfa : NFA) (accum : NodeSets nfa.nodes.size) (init : NodeSet nfa.nodes.size) (c : Char)
-    (i : Nat) (hle : i ≤ nfa.nodes.size) : NodeSet nfa.nodes.size :=
-    if h : i = nfa.nodes.size then
-      accum.current
-    else
-      have hlt : i < nfa.nodes.size := Nat.lt_of_le_of_ne hle h
-      let accum := if init.get ⟨i, hlt⟩ then
-        match nfa[i] with
-        | .char c' next => if c = c' then addεClosure nfa next accum else accum
-        | _ => accum
-      else accum
-      go nfa accum init c (i + 1) hlt
-termination_by go _ => nfa.nodes.size - i
-
-def charStep' (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
-  NodeSet nfa.nodes.size := go nfa .empty init c 0 (Nat.zero_le _)
-where
-  go (nfa : NFA) (accum : NodeSet nfa.nodes.size) (init : NodeSet nfa.nodes.size) (c : Char)
-    (i : Nat) (hle : i ≤ nfa.nodes.size) : NodeSet nfa.nodes.size :=
+  go (nfa : NFA) (inBounds : nfa.inBounds)
+    (accum : NodeSet nfa.nodes.size) (init : NodeSet nfa.nodes.size)
+    (c : Char) (i : Nat) (hle : i ≤ nfa.nodes.size) : NodeSet nfa.nodes.size :=
     if h : i = nfa.nodes.size then
       accum
     else
       have hlt : i < nfa.nodes.size := Nat.lt_of_le_of_ne hle h
       let accum := if init.get ⟨i, hlt⟩ then
-        match nfa[i] with
+        match hn : nfa[i] with
         | .char c' next =>
           if c = c' then
-            addεClosureTR nfa accum .empty #[next]
+            have : next < nfa.nodes.size := by
+              have := (inBounds ⟨i, hlt⟩).left c'
+              apply Set.mem_of_mem_of_subset _ this
+              simp [hn, Node.charStep]
+            -- TODO: reuse visited and stack
+            accum.merge (εClosureTR nfa inBounds .empty #[⟨next, this⟩])
           else
             accum
         | _ => accum
       else accum
-      go nfa accum init c (i + 1) hlt
+      go nfa inBounds accum init c (i + 1) hlt
 termination_by go _ => nfa.nodes.size - i
 
 end NFA.VM
 
 open NFA.VM
 
-partial def NFA.NFA.match (nfa : NFA) (s : String) : Bool :=
+partial def NFA.NFA.match (nfa : NFA) (inBounds : nfa.inBounds) (s : String) : Bool :=
   if h : 0 < nfa.nodes.size then
-    let ns := addεClosure (dbgTraceVal nfa) nfa.start (NodeSets.init NodeSet.empty)
-    let ns := go nfa s 0 ns.val.current
+    let ns := εClosureTR (dbgTraceVal nfa) inBounds .empty #[nfa.start]
+    let ns := go nfa inBounds s 0 ns
     -- This assumes that the first node is the accepting node
     ns.get ⟨0, h⟩
   else
     false
 where
-  go (nfa : NFA) (s : String) (i : String.Pos) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
+  go (nfa : NFA) (inBounds : nfa.inBounds) (s : String) (i : String.Pos) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
     if s.atEnd i then
       ns
     else
       let c := s.get i
-      let ns' := charStep' nfa c ns
-      dbgTrace s!"{ns} ⟶{c} {ns'}" (fun () => go nfa s (s.next i) ns')
+      let ns' := charStepTR nfa inBounds c ns
+      dbgTrace s!"{ns} ⟶{c} {ns'}" (fun () => go nfa inBounds s (s.next i) ns')
