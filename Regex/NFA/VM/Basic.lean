@@ -268,9 +268,69 @@ where
       go ns₁ ns₂ (i + 1) hlt
 termination_by go _ => n - i
 
-theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {i : Fin n} :
-  (ns₁.merge ns₂).get i = ns₁.get i || ns₂.get i := by
-  sorry
+theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
+  (ns₁.merge ns₂).get x = (ns₁.get x || ns₂.get x) := by
+  let inv (ns₁ : NodeSet n) (i : Nat) : Prop :=
+    ∀ j : Fin n, j < i → ns₁.get j = (ns₁.get j || ns₂.get j)
+
+  let rec go (ns₁ : NodeSet n) (i : Nat) (hle : i ≤ n) (inv₀ : inv ns₁ i) :
+    ∀ j : Fin n, (merge.go ns₁ ns₂ i hle).get j = (ns₁.get j || ns₂.get j) := by
+    cases decEq i n with
+    | isTrue h =>
+      unfold merge.go
+      simp [h]
+      simp [h] at inv₀
+      exact inv₀
+    | isFalse h =>
+      have hlt : i < n := Nat.lt_of_le_of_ne hle h
+      unfold merge.go
+      simp [h]
+      set ns₁' := if ns₂.get ⟨i, hlt⟩ then ns₁.set ⟨i, hlt⟩ else ns₁
+      have inv' : inv ns₁' (i + 1) := by
+        intro j hj
+        have : j ≤ i := Nat.le_of_succ_le_succ hj
+        cases Nat.lt_or_eq_of_le this with
+        | inl lt =>
+          have := inv₀ j lt
+          simp
+          cases ns₂.get ⟨i, hlt⟩ with
+          | true =>
+            simp
+            rw [NodeSet.get_set_ne]
+            . exact this
+            . exact Nat.ne_of_gt lt
+          | false =>
+            simp
+            exact this
+        | inr eq =>
+          simp [eq.symm]
+          split
+          case inl _ => simp
+          case inr h => simp [h]
+      have ih := go ns₁' (i + 1) hlt inv'
+
+      intro j
+      rw [ih j]
+      cases decEq i j with
+      | isTrue eq =>
+        simp [eq]
+        split
+        case inl h => simp [h]
+        case inr _ => rfl
+      | isFalse neq =>
+        simp
+        split
+        case inl _ =>
+          rw [NodeSet.get_set_ne]
+          simp [neq]
+        case inr _ => rfl
+
+  have inv₀ : inv ns₁ 0 := by
+    intro j hlt
+    exact absurd hlt (Nat.not_lt_zero _)
+  have := go ns₁ 0 (Nat.zero_le _) inv₀
+  apply this
+termination_by go _ => n - i
 
 open NFA
 
