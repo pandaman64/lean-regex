@@ -89,7 +89,7 @@ theorem mem_εStep_iff_εClosure_sub {nfa : NFA} {S : Set Nat} :
       simp [getElem?_pos nfa i lt, Option.εStep, step]
     exact NFA.εClosure.step step' .base
 
-theorem εClosureTR_spec {i : Fin nfa.nodes.size} (inBounds : nfa.inBounds) :
+theorem εClosureTR_spec {i : Fin nfa.nodes.size} {inBounds : nfa.inBounds} :
   ∀ j, (εClosureTR nfa inBounds .empty #[i]).get j ↔ j.val ∈ nfa.εClosure i := by
   let inv (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) : Prop :=
     (visited.get i ∨ i ∈ stack) ∧
@@ -359,8 +359,8 @@ theorem εClosureTR_spec {i : Fin nfa.nodes.size} (inBounds : nfa.inBounds) :
     exact this ▸ h₄
 termination_by go _ => (visited.count_unset, stack.size)
 
-theorem charStepTR_spec {nfa : NFA} {init : NodeSet nfa.nodes.size} {k : Fin nfa.nodes.size}
-  (inBounds : nfa.inBounds) :
+theorem charStepTR_spec {nfa : NFA} {inBounds : nfa.inBounds}
+  {init : NodeSet nfa.nodes.size} {k : Fin nfa.nodes.size} :
   (charStepTR nfa inBounds c init).get k ↔
   k.val ∈ nfa.stepSet { j | ∃ j', init.get j' ∧ j = j'.val } c := by
   let inv (accum : NodeSet nfa.nodes.size) (i : Nat) : Prop :=
@@ -438,7 +438,7 @@ theorem charStepTR_spec {nfa : NFA} {init : NodeSet nfa.nodes.size} {k : Fin nfa
               intro k
               apply Iff.or
               . exact inv₀ k
-              . rw [εClosureTR_spec inBounds k]
+              . rw [εClosureTR_spec k]
                 simp [NFA.stepSet, getElem?_pos nfa i hlt, hn, Option.charStep, Node.charStep, eq]
                 simp [NFA.εClosureSet]
             exact go accum' (i + 1) hlt inv'
@@ -468,5 +468,53 @@ theorem charStepTR_spec {nfa : NFA} {init : NodeSet nfa.nodes.size} {k : Fin nfa
   have inv₀ : inv .empty 0 := by simp [inv, Nat.not_lt_zero]
   apply go .empty 0 (Nat.zero_le _) inv₀
 termination_by go _ => nfa.nodes.size - i
+
+def matchList (nfa : NFA) (inBounds : nfa.inBounds) (cs : List Char) : Bool :=
+  if h : 0 < nfa.nodes.size then
+    let ns := εClosureTR nfa inBounds .empty #[nfa.start]
+    let ns := go nfa inBounds cs ns
+    -- This assumes that the first node is the accepting node
+    ns.get ⟨0, h⟩
+  else
+    false
+where
+  go (nfa : NFA) (inBounds : nfa.inBounds) (cs : List Char) (ns : NodeSet nfa.nodes.size) :
+    NodeSet nfa.nodes.size :=
+    List.foldl (fun ns c => charStepTR nfa inBounds c ns) ns cs
+
+theorem matchList.go_eq_foldl_stepSet {nfa : NFA} {ns : NodeSet nfa.nodes.size}
+  {inBounds : nfa.inBounds} {cs : List Char} :
+  ∀ j, (go nfa inBounds cs ns).get j ↔
+    j.val ∈ List.foldl nfa.stepSet { i | ∃ i', ns.get i' ∧ i = i'.val } cs := by
+  induction cs generalizing ns with
+  | nil =>
+    simp [go]
+    intro j
+    apply Iff.intro
+    . intro h
+      exact ⟨j, h, rfl⟩
+    . intro h
+      let ⟨j', h₁, h₂⟩ := h
+      rw [Fin.eq_of_val_eq h₂, h₁]
+  | cons c cs ih =>
+    simp [go]
+    unfold go at ih
+    set ns' := charStepTR nfa inBounds c ns
+    have spec : ∀ k, ns'.get k ↔ k.val ∈ nfa.stepSet { i | ∃ i', ns.get i' ∧ i = i'.val } c := by
+      intro k
+      exact charStepTR_spec
+    intro j
+    rw [ih j]
+    congr!
+    apply Set.eq_of_subset_of_subset
+    . intro i
+      simp
+      intro i' mem eq
+      exact eq ▸ (spec i').mp mem
+    . intro i mem
+      simp
+      have lt : i < nfa.nodes.size := lt_of_inBounds_of_stepSet inBounds mem
+      have := (spec ⟨i, lt⟩).mpr mem
+      exact ⟨⟨i, lt⟩, this, rfl⟩
 
 end NFA.VM

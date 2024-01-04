@@ -80,6 +80,18 @@ theorem εClosure_trans {nfa : NFA} (h₁ : i₂ ∈ nfa.εClosure i₁) (h₂ :
   | base => exact h₂
   | step head _ ih => exact .step head (ih h₂)
 
+theorem lt_of_inBounds_of_εClosure {nfa : NFA} (inBounds : nfa.inBounds)
+  (h : i < nfa.nodes.size) (cls : j ∈ nfa.εClosure i) :
+  j < nfa.nodes.size := by
+  induction cls with
+  | @base i => exact h
+  | @step i j _ mem _ ih =>
+    simp [getElem?_pos nfa i h, Option.εStep] at mem
+    have : j < nfa.nodes.size :=
+      show j ∈ { j | j < nfa.nodes.size } from
+      mem_of_subset_of_mem (inBounds ⟨i, h⟩).right mem
+    exact ih this
+
 def NFA.εClosureSet (nfa : NFA) (S : Set Nat) : Set Nat :=
   ⋃ i ∈ S, nfa.εClosure i
 
@@ -196,6 +208,21 @@ theorem stepSet_insert_distrib {nfa : NFA} :
     stepSet_union_distrib
   simp at this
   exact this
+
+theorem lt_of_inBounds_of_stepSet {nfa : NFA} (inBounds : nfa.inBounds)
+  (mem : j ∈ nfa.stepSet S c) : j < nfa.nodes.size := by
+  simp [NFA.stepSet] at mem
+  let ⟨i, _, cls⟩ := mem
+  cases Nat.decLt i nfa.nodes.size with
+  | isTrue lt =>
+    simp [getElem?_pos nfa i lt, Option.charStep] at cls
+    simp [NFA.εClosureSet] at cls
+    let ⟨i', mem', cls'⟩ := cls
+    have : i' < nfa.nodes.size :=
+      show i' ∈ { i | i < nfa.nodes.size } from
+      mem_of_subset_of_mem ((inBounds ⟨i, lt⟩).left c) mem'
+    exact lt_of_inBounds_of_εClosure inBounds this cls'
+  | isFalse nlt => simp [getElem?_neg nfa i nlt, Option.charStep] at cls
 
 theorem stepSet_subset {nfa₁ nfa₂ : NFA} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
   nfa₁.stepSet S₁ c ⊆ nfa₂.stepSet S₂ c := by
