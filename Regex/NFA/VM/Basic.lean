@@ -405,19 +405,18 @@ end NFA.VM
 
 open NFA.VM
 
-partial def NFA.NFA.match (nfa : NFA) (inBounds : nfa.inBounds) (s : String) : Bool :=
+def NFA.NFA.match (nfa : NFA) (inBounds : nfa.inBounds) (s : String) : Bool :=
   if h : 0 < nfa.nodes.size then
-    let ns := εClosureTR (dbgTraceVal nfa) inBounds .empty #[nfa.start]
-    let ns := go nfa inBounds s 0 ns
+    let ns := εClosureTR nfa inBounds .empty #[nfa.start]
+    let ns := go nfa inBounds s.iter ns
     -- This assumes that the first node is the accepting node
     ns.get ⟨0, h⟩
   else
     false
 where
-  go (nfa : NFA) (inBounds : nfa.inBounds) (s : String) (i : String.Pos) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
-    if s.atEnd i then
+  go (nfa : NFA) (inBounds : nfa.inBounds) (iter : String.Iterator) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
+    if iter.atEnd then
       ns
     else
-      let c := s.get i
-      let ns' := charStepTR nfa inBounds c ns
-      dbgTrace s!"{ns} ⟶{c} {ns'}" (fun () => go nfa inBounds s (s.next i) ns')
+      let ns' := charStepTR nfa inBounds iter.curr ns
+      go nfa inBounds iter.next ns'
