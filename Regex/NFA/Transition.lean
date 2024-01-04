@@ -173,6 +173,30 @@ theorem εClosureSet_stepSet {nfa : NFA} :
       simp [NFA.stepSet, εClosureSet_iUnion_distrib]
   . exact subset_εClosureSet
 
+theorem stepSet_union_distrib {nfa : NFA} {S₁ S₂ : Set Nat} :
+  nfa.stepSet (S₁ ∪ S₂) c = nfa.stepSet S₁ c ∪ nfa.stepSet S₂ c := by
+  simp [NFA.stepSet, εClosureSet_union_distrib]
+  apply eq_of_subset_of_subset
+  . intro j
+    simp
+    intro i mem cls
+    cases mem with
+    | inl mem => exact .inl ⟨i, mem, cls⟩
+    | inr mem => exact .inr ⟨i, mem, cls⟩
+  . intro j
+    simp
+    intro h
+    match h with
+    | .inl ⟨i, mem, cls⟩ => exact ⟨i, .inl mem, cls⟩
+    | .inr ⟨i, mem, cls⟩ => exact ⟨i, .inr mem, cls⟩
+
+theorem stepSet_insert_distrib {nfa : NFA} :
+  nfa.stepSet (insert i S) c = nfa.stepSet S c ∪ nfa.stepSet {i} c := by
+  have : nfa.stepSet (S ∪ {i}) c =  nfa.stepSet S c ∪ nfa.stepSet {i} c :=
+    stepSet_union_distrib
+  simp at this
+  exact this
+
 theorem stepSet_subset {nfa₁ nfa₂ : NFA} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
   nfa₁.stepSet S₁ c ⊆ nfa₂.stepSet S₂ c := by
   simp [subset_def, NFA.stepSet]

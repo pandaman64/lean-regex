@@ -375,10 +375,37 @@ theorem charStepTR_spec {nfa : NFA} {init : NodeSet nfa.nodes.size} {k : Fin nfa
     split
     case inl h =>
       apply Set.eq_of_subset_of_subset
-      . sorry
-      . sorry
+      . intro j
+        simp
+        intro j' mem lt eq
+        have : j'.val ≤ i := Nat.le_of_lt_succ lt
+        cases Nat.lt_or_eq_of_le this with
+        | inl lt' => exact .inr ⟨j', mem, lt', eq⟩
+        | inr eq' => exact .inl (eq' ▸ eq)
+      . intro j
+        simp
+        intro h'
+        match h' with
+        | .inl eq =>
+          subst eq
+          exact ⟨⟨j, hlt⟩, h, Nat.lt_succ_self _, rfl⟩
+        | .inr ⟨j', mem, lt, eq⟩ => exact ⟨j', mem, Nat.lt_trans lt (Nat.lt_succ_self _), eq⟩
     case inr h =>
-      sorry
+      apply Set.eq_of_subset_of_subset
+      . intro j
+        simp
+        intro j' mem lt eq
+        have : j'.val ≤ i := Nat.le_of_lt_succ lt
+        cases Nat.lt_or_eq_of_le this with
+        | inl lt' => exact ⟨j', mem, lt', eq⟩
+        | inr eq' =>
+          have : j' = ⟨i, hlt⟩ := Fin.eq_of_val_eq eq'
+          rw [this] at mem
+          contradiction
+      . intro j
+        simp
+        intro j' mem lt eq
+        exact ⟨j', mem, Nat.lt_trans lt (Nat.lt_succ_self _), eq⟩
 
   let rec go (accum : NodeSet nfa.nodes.size) (i : Nat) (hle : i ≤ nfa.nodes.size)
     (inv₀ : inv accum i) :
@@ -406,17 +433,30 @@ theorem charStepTR_spec {nfa : NFA} {init : NodeSet nfa.nodes.size} {k : Fin nfa
             set εCls := εClosureTR nfa inBounds .empty #[⟨next, this⟩]
             set accum' := accum.merge εCls
             have inv' : inv accum' (i + 1) := by
-              sorry
+              simp [lem i hlt, hset]
+              simp [stepSet_insert_distrib, NodeSet.merge_get]
+              intro k
+              apply Iff.or
+              . exact inv₀ k
+              . rw [εClosureTR_spec inBounds k]
+                simp [NFA.stepSet, getElem?_pos nfa i hlt, hn, Option.charStep, Node.charStep, eq]
+                simp [NFA.εClosureSet]
             exact go accum' (i + 1) hlt inv'
           case inr neq =>
             have inv' : inv accum (i + 1) := by
               simp [lem i hlt, hset]
-              sorry
+              have : nfa.stepSet {i} c = ∅ := by
+                simp [NFA.stepSet, getElem?_pos nfa i hlt, hn, Option.charStep, Node.charStep, neq]
+              simp [stepSet_insert_distrib, this]
+              exact inv₀
             exact go accum (i + 1) hlt inv'
         next hn =>
           have inv' : inv accum (i + 1) := by
             simp [lem i hlt, hset]
-            sorry
+            have : nfa.stepSet {i} c = ∅ := by
+              simp [NFA.stepSet, getElem?_pos nfa i hlt, hn, Option.charStep, Node.charStep]
+            simp [stepSet_insert_distrib, this]
+            exact inv₀
           exact go accum (i + 1) hlt inv'
       | false =>
         simp
