@@ -137,10 +137,6 @@ where
 
     ⟨nfa''', property'⟩
 
-#eval compile (Regex.star (Regex.char 'a'))
-#eval compile (Regex.alternate (Regex.char 'x') (Regex.star (Regex.concat (Regex.char 'a') (Regex.char 'b'))))
-#eval compile (Regex.alternate Regex.empty (Regex.concat (Regex.char 'a') Regex.empty))
-
 -- Useful lemmas about the compilation
 theorem compile.loop.le : nfa ≤ (compile.loop r next nfa).val :=
   (compile.loop r next nfa).property
