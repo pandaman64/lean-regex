@@ -90,4 +90,9 @@ theorem NFA.eq_get {nfa : NFA} {i : Nat} {h : i < nfa.nodes.size} :
 def NFA.inBounds (nfa : NFA) :=
   ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size
 
+theorem NFA.zero_lt_size {nfa : NFA} : 0 < nfa.nodes.size := by
+  apply Nat.zero_lt_of_ne_zero
+  intro h
+  exact (h ▸ nfa.start).elim0
+
 end NFA

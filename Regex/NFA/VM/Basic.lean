@@ -406,13 +406,10 @@ end NFA.VM
 open NFA.VM
 
 def NFA.NFA.match (nfa : NFA) (inBounds : nfa.inBounds) (s : String) : Bool :=
-  if h : 0 < nfa.nodes.size then
-    let ns := εClosureTR nfa inBounds .empty #[nfa.start]
-    let ns := go nfa inBounds s.iter ns
-    -- This assumes that the first node is the accepting node
-    ns.get ⟨0, h⟩
-  else
-    false
+  let ns := εClosureTR nfa inBounds .empty #[nfa.start]
+  let ns := go nfa inBounds s.iter ns
+  -- This assumes that the first node is the accepting node
+  ns.get ⟨0, nfa.zero_lt_size⟩
 where
   go (nfa : NFA) (inBounds : nfa.inBounds) (iter : String.Iterator) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
     if iter.atEnd then

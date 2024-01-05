@@ -1,5 +1,6 @@
 import Regex.NFA.VM.Basic
 import Regex.NFA.Transition
+import Regex.NFA.Correctness
 
 theorem Array.isEmpty_iff {α} (a : Array α) : a.isEmpty ↔ a = #[] := by
   have : a.isEmpty ↔ a.data = [] := by
@@ -470,13 +471,10 @@ theorem charStepTR_spec {nfa : NFA} {inBounds : nfa.inBounds}
 termination_by go _ => nfa.nodes.size - i
 
 def matchList (nfa : NFA) (inBounds : nfa.inBounds) (cs : List Char) : Bool :=
-  if h : 0 < nfa.nodes.size then
-    let ns := εClosureTR nfa inBounds .empty #[nfa.start]
-    let ns := go nfa inBounds cs ns
-    -- This assumes that the first node is the accepting node
-    ns.get ⟨0, h⟩
-  else
-    false
+  let ns := εClosureTR nfa inBounds .empty #[nfa.start]
+  let ns := go nfa inBounds cs ns
+  -- This assumes that the first node is the accepting node
+  ns.get ⟨0, nfa.zero_lt_size⟩
 where
   go (nfa : NFA) (inBounds : nfa.inBounds) (cs : List Char) (ns : NodeSet nfa.nodes.size) :
     NodeSet nfa.nodes.size :=
@@ -517,4 +515,67 @@ theorem matchList.go_eq_foldl_stepSet {nfa : NFA} {ns : NodeSet nfa.nodes.size}
       have := (spec ⟨i, lt⟩).mpr mem
       exact ⟨⟨i, lt⟩, this, rfl⟩
 
+theorem match.go_eq_matchList.go {nfa : NFA} {inBounds : nfa.inBounds} {ns : NodeSet nfa.nodes.size}
+  {it : String.Iterator} {cs cs' : List Char} (v : it.ValidFor cs cs') :
+  NFA.match.go nfa inBounds it ns = matchList.go nfa inBounds cs' ns := by
+  induction cs' generalizing it cs ns with
+  | nil =>
+    unfold NFA.match.go matchList.go
+    have : it.atEnd := v.atEnd.mpr rfl
+    simp [this]
+  | cons c cs' ih =>
+    unfold NFA.match.go matchList.go
+    have : ¬ it.atEnd := by
+      intro h
+      have := v.atEnd.mp h
+      contradiction
+    simp [this]
+    have : it.curr = c := by
+      simp [v.curr]
+    simp [this]
+    exact ih v.next
+
+theorem evalFrom_iff_matchList {nfa : NFA} {inBounds : nfa.inBounds} {cs : List Char} :
+  0 ∈ nfa.evalFrom {nfa.start.val} cs ↔ matchList nfa inBounds cs := by
+  unfold NFA.evalFrom matchList
+  simp [matchList.go_eq_foldl_stepSet, εClosureTR_spec]
+  have :
+    {i | ∃ i' : Fin nfa.nodes.size, i'.val ∈ NFA.εClosure nfa nfa.start.val ∧ i = i'.val} =
+    nfa.εClosureSet {nfa.start.val} := by
+    simp [NFA.εClosureSet]
+    apply Set.eq_of_subset_of_subset
+    . intro i mem
+      simp at mem
+      let ⟨i', mem', eq⟩ := mem
+      exact eq ▸ mem'
+    . intro i mem
+      have lt : i < nfa.nodes.size := lt_of_inBounds_of_εClosure inBounds nfa.start.isLt mem
+      simp
+      exact ⟨⟨i, lt⟩, mem, rfl⟩
+  rw [this]
+
 end NFA.VM
+
+namespace NFA
+
+theorem match_eq_matchList {nfa : NFA} {inBounds : nfa.inBounds} {s : String} :
+  NFA.match nfa inBounds s = NFA.VM.matchList nfa inBounds s.data := by
+  unfold NFA.match NFA.VM.matchList
+  simp
+  rw [NFA.VM.match.go_eq_matchList.go s.validFor_mkIterator]
+
+-- Correctness of the VM interpreter
+theorem NFA.match_iff_regex_matches {s : String} (eq : compile r = nfa) :
+  nfa.match (compile.inBounds eq) s ↔ r.matches s := by
+  apply Iff.intro
+  . intro m
+    have : NFA.VM.matchList nfa (compile.inBounds eq) s.data :=
+      match_eq_matchList ▸ m
+    have := NFA.VM.evalFrom_iff_matchList.mpr this
+    exact matches_of_evalFrom' eq this
+  . intro m
+    have := evalFrom_of_matches' eq m
+    have := (NFA.VM.evalFrom_iff_matchList (inBounds := compile.inBounds eq)).mp this
+    exact match_eq_matchList ▸ this
+
+end NFA
