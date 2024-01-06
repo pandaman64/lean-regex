@@ -56,6 +56,7 @@ theorem NFA.start_addNode {nfa : NFA} {node : Node} {result : { nfa' : NFA // nf
   rw [←eq]
   simp [NFA.addNode]
 
+@[export lean_regex_nfa_compile_regex]
 def compile (r : Regex) : NFA :=
   let result := loop r 0 init
   result.val

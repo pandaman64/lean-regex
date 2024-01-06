@@ -20,7 +20,7 @@ theorem Array.lt_size_of_pop_of_not_empty (a : Array α) (hemp : ¬ a.isEmpty) :
 namespace NFA.VM
 
 -- TODO: use a bitvec?
-abbrev NodeSet (n : Nat) := { array : Array Bool // array.size = n }
+def NodeSet (n : Nat) := { array : Array Bool // array.size = n }
 
 def NodeSet.empty {n : Nat} : NodeSet n :=
   ⟨mkArray n false, by simp⟩
@@ -405,6 +405,7 @@ end NFA.VM
 
 open NFA.VM
 
+@[export lean_regex_nfa_match]
 def NFA.NFA.match (nfa : NFA) (inBounds : nfa.inBounds) (s : String) : Bool :=
   let ns := εClosureTR nfa inBounds .empty #[nfa.start]
   let ns := go nfa inBounds s.iter ns
