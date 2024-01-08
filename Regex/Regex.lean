@@ -5,7 +5,7 @@ inductive Regex : Type where
   | alternate : Regex → Regex → Regex
   | concat : Regex → Regex → Regex
   | star : Regex → Regex
-deriving Repr
+deriving Repr, Inhabited
 
 inductive Regex.matches : String → Regex → Prop where
   | char (c : Char) (eq : s = ⟨[c]⟩): Regex.matches s (.char c)
