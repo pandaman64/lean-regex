@@ -62,7 +62,7 @@ def NodeSet.empty {n : Nat} : NodeSet n :=
   ⟨⟨mkArray n 0⟩, by simp [ByteArray.size]⟩
 
 def NodeSet.get (ns : NodeSet n) (i : Fin n) : Bool :=
-  ns.val[i.cast ns.property.symm] ≠ 0
+  !(UInt8.decEq ns.val[i.cast ns.property.symm] 0).decide
 
 instance : GetElem (NodeSet n) Nat Bool (fun _ i => i < n) where
   getElem ns i h := ns.get ⟨i, h⟩
