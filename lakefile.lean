@@ -10,6 +10,9 @@ lean_lib Regex where
 lean_lib RegexCorrectness where
   -- add library configuration options here
 
+lean_exe RunRegex where
+  root := `RunRegex
+
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4" @ "v4.3.0"
 
