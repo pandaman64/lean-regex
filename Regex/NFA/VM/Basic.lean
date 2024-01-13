@@ -1,6 +1,8 @@
 import Regex.Lemmas
 import Regex.NFA.Basic
 
+import Std.Data.Array.Lemmas
+
 def Array.back' (a : Array α) (hemp : ¬ a.isEmpty) : α :=
   have : 0 < a.size := by
     simp [isEmpty] at hemp
@@ -195,7 +197,7 @@ theorem NodeSet.get_empty {n : Nat} (i : Fin n) :
 
 theorem NodeSet.clear_eq_empty (ns : NodeSet n) : ns.clear = NodeSet.empty := by
   have : ns.clear.val.size = n := ns.clear.property
-  apply Subtype.ext
+  apply Subtype.eq
   apply Array.ext
   . simp [this, empty]
   . intro j h₁ h₂
@@ -285,14 +287,14 @@ theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
       have hlt : i < n := Nat.lt_of_le_of_ne hle h
       unfold merge.go
       simp [h]
-      set ns₁' := if ns₂.get ⟨i, hlt⟩ then ns₁.set ⟨i, hlt⟩ else ns₁
+      generalize hns₁ : (if ns₂.get ⟨i, hlt⟩ then ns₁.set ⟨i, hlt⟩ else ns₁) = ns₁'
       have inv' : inv ns₁' (i + 1) := by
         intro j hj
         have : j ≤ i := Nat.le_of_succ_le_succ hj
         cases Nat.lt_or_eq_of_le this with
         | inl lt =>
           have := inv₀ j lt
-          simp
+          simp [hns₁.symm]
           cases ns₂.get ⟨i, hlt⟩ with
           | true =>
             simp
@@ -303,7 +305,7 @@ theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
             simp
             exact this
         | inr eq =>
-          simp [eq.symm]
+          simp [hns₁.symm, eq.symm]
           split
           case inl _ => simp
           case inr h => simp [h]
@@ -313,12 +315,12 @@ theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
       rw [ih j]
       cases decEq i j with
       | isTrue eq =>
-        simp [eq]
+        simp [hns₁.symm, eq]
         split
         case inl h => simp [h]
         case inr _ => rfl
       | isFalse neq =>
-        simp
+        simp [hns₁.symm]
         split
         case inl _ =>
           rw [NodeSet.get_set_ne]
@@ -349,25 +351,25 @@ def εClosureTR (nfa : NFA) (inBounds : nfa.inBounds)
     else
       let visited' := visited.set i
       have : visited'.count_unset < visited.count_unset := visited.lt_count_unset i.isLt hvis
-      have inBounds' := (inBounds i).right
+      have inBounds' := inBounds i
       let stack'' :=
         match hn : nfa[i] with
         | .epsilon next =>
           have h : next < nfa.nodes.size := by
             rw [hn] at inBounds'
-            simp [Node.εStep] at inBounds'
+            simp [Node.inBounds] at inBounds'
             exact inBounds'
 
           stack'.push ⟨next, h⟩
         | .split next₁ next₂ =>
           have h₁ : next₁ < nfa.nodes.size := by
             rw [hn] at inBounds'
-            simp [Node.εStep] at inBounds'
-            apply Set.mem_of_mem_of_subset (by simp) inBounds'
+            simp [Node.inBounds] at inBounds'
+            exact inBounds'.left
           have h₂ : next₂ < nfa.nodes.size := by
             rw [hn] at inBounds'
-            simp [Node.εStep] at inBounds'
-            apply Set.mem_of_mem_of_subset (by simp) inBounds'
+            simp [Node.inBounds] at inBounds'
+            exact inBounds'.right
 
           (stack'.push ⟨next₁, h₁⟩).push ⟨next₂, h₂⟩
         | _ => stack'
@@ -389,9 +391,9 @@ where
         | .char c' next =>
           if c = c' then
             have : next < nfa.nodes.size := by
-              have := (inBounds ⟨i, hlt⟩).left c'
-              apply Set.mem_of_mem_of_subset _ this
-              simp [hn, Node.charStep]
+              have := inBounds ⟨i, hlt⟩
+              simp [hn, Node.inBounds] at this
+              exact this
             -- TODO: reuse visited and stack
             accum.merge (εClosureTR nfa inBounds .empty #[⟨next, this⟩])
           else
