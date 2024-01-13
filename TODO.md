@@ -1,6 +1,8 @@
 # Proof cleanup
 
 * Merge `εStep` and `charStep`
+* `inBounds` should prove something like `j \in nfa.step i c \r j < nfa.nodes.size`
+  * NewNodesRange should follow a similar pattern
 * Embed inBounds to NFA definition
   * Simplifies the correcness proof of the graph traversals
 
