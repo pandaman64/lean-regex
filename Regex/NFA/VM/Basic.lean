@@ -19,37 +19,70 @@ theorem Array.lt_size_of_pop_of_not_empty (a : Array α) (hemp : ¬ a.isEmpty) :
   simp [Array.pop]
   exact this
 
+@[simp]
+theorem ByteArray.size_set {a : ByteArray} {i : Fin a.size} :
+  (a.set i b).size = a.size := by
+  simp [ByteArray.size, ByteArray.set]
+
+@[simp]
+theorem ByteArray.get_set_eq (a : ByteArray) (i : Fin a.size) :
+  (a.set i b)[i.val]'(by simp [i.isLt]) = b := by
+  simp [ByteArray.set, getElem]
+  simp [ByteArray.get]
+
+@[simp]
+theorem ByteArray.get_set_ne (a : ByteArray) (i : Fin a.size) {j : Nat} (b : UInt8) (hj : j < a.size) (h : i.val ≠ j) :
+  (a.set i b)[j]'(by simp [hj]) = a[j] := by
+  simp [getElem]
+  simp [ByteArray.get]
+  simp [ByteArray.set]
+  rw [Array.get_set_ne]
+  exact h
+
+theorem ByteArray.get_set (a : ByteArray) (i : Fin a.size) (j : Nat) (hj : j < a.size) (v : UInt8) :
+  (a.set i v)[j]'(by simp [*]) = if i = j then v else a[j] := by
+  if h : i = j then
+    subst j
+    simp
+  else
+    simp [*]
+
+theorem ByteArray.ext {a₁ a₂ : ByteArray} (h : a₁.data = a₂.data) : a₁ = a₂ :=
+  show ⟨a₁.data⟩ = (⟨a₂.data⟩ : ByteArray) from h ▸ rfl
+
+theorem ByteArray.getElem_eq_data_get {a : ByteArray} {i : Nat} {h : i < a.size} :
+  a[i]'h = a.data[i]'h := rfl
+
 namespace NFA.VM
 
 -- TODO: use a bitvec?
-def NodeSet (n : Nat) := { array : Array Bool // array.size = n }
+def NodeSet (n : Nat) := { array : ByteArray // array.size = n }
 
 def NodeSet.empty {n : Nat} : NodeSet n :=
-  ⟨mkArray n false, by simp⟩
+  ⟨⟨mkArray n 0⟩, by simp [ByteArray.size]⟩
 
 def NodeSet.get (ns : NodeSet n) (i : Fin n) : Bool :=
-  ns.val.get (i.cast ns.property.symm)
+  ns.val[i.cast ns.property.symm] ≠ 0
 
 instance : GetElem (NodeSet n) Nat Bool (fun _ i => i < n) where
   getElem ns i h := ns.get ⟨i, h⟩
 
 def NodeSet.set (ns : NodeSet n) (i : Fin n) : NodeSet n :=
-  ⟨ns.val.set (i.cast ns.property.symm) true, by simp [ns.property]⟩
+  ⟨ns.val.set (i.cast ns.property.symm) 1, by simp [ns.property]⟩
 
 @[simp]
 theorem NodeSet.get_set_eq (ns : NodeSet n) (i : Fin n) :
   (ns.set i).get i = true := by
   simp [NodeSet.get, NodeSet.set]
-  rw [Array.get_set]
+  rw [ByteArray.get_set]
   . simp
+    decide
   . simp [ns.property]
 
 theorem NodeSet.get_set_ne (ns : NodeSet n) (i j : Fin n) (ne : i.val ≠ j.val) :
   (ns.set i).get j = ns.get j := by
   simp [NodeSet.get, NodeSet.set]
-  rw [Array.get_set]
-  . simp [ne]
-  . simp [ns.property, ne]
+  simp [ByteArray.get_set_ne ns.val (i.cast ns.property.symm) 1 (ns.property.symm ▸ j.isLt) ne]
 
 theorem NodeSet.get_set_set {ns : NodeSet n} {i j : Fin n} (set : ns.get i) :
   (ns.set j).get i := by
@@ -73,22 +106,20 @@ theorem NodeSet.get_set {ns : NodeSet n} {i j : Fin n} :
     exact absurd (Fin.eq_of_val_eq h) neq
 
 def NodeSet.unset (ns : NodeSet n) (i : Fin n) : NodeSet n :=
-  ⟨ns.val.set (i.cast  ns.property.symm) false, by simp [ns.property]⟩
+  ⟨ns.val.set (i.cast ns.property.symm) 0, by simp [ns.property]⟩
 
 @[simp]
 theorem NodeSet.get_unset_eq (ns : NodeSet n) (i : Fin n) :
   (ns.unset i).get i = false := by
   simp [NodeSet.get, NodeSet.unset]
-  rw [Array.get_set]
+  rw [ByteArray.get_set]
   . simp
   . simp [ns.property]
 
 theorem NodeSet.get_unset_ne (ns : NodeSet n) (i j : Fin n) (ne : i.val ≠ j.val) :
   (ns.unset i).get j = ns.get j := by
   simp [NodeSet.get, NodeSet.unset]
-  rw [Array.get_set]
-  . simp [ne]
-  . simp [ns.property, ne]
+  simp [ByteArray.get_set_ne ns.val (i.cast ns.property.symm) 0 (ns.property.symm ▸ j.isLt) ne]
 
 def NodeSet.count_set (ns : NodeSet n) : Nat :=
   go ns 0 0 (Nat.zero_le _)
@@ -193,19 +224,20 @@ termination_by go _ => n - i
 @[simp]
 theorem NodeSet.get_empty {n : Nat} (i : Fin n) :
   (NodeSet.empty : NodeSet n).get i = false := by
-  simp [empty, mkArray, NodeSet.get, Array.getElem_eq_data_get]
+  simp [empty, mkArray, NodeSet.get, ByteArray.getElem_eq_data_get, Array.getElem_eq_data_get]
 
 theorem NodeSet.clear_eq_empty (ns : NodeSet n) : ns.clear = NodeSet.empty := by
-  have : ns.clear.val.size = n := ns.clear.property
+  have : ns.clear.val.data.size = n := ns.clear.property
   apply Subtype.eq
+  apply ByteArray.ext
   apply Array.ext
   . simp [this, empty]
   . intro j h₁ h₂
     have h : j < n := ns.clear.property ▸ h₁
     have hc : ns.clear.get ⟨j, h⟩ = false := go ns 0 j (Nat.zero_le _) (Nat.zero_le _) h
-    simp [NodeSet.get] at hc
+    simp [NodeSet.get, ByteArray.getElem_eq_data_get] at hc
     have he : empty.get ⟨j, h⟩ = false := NodeSet.get_empty ⟨j, h⟩
-    simp [NodeSet.get] at he
+    simp [NodeSet.get, ByteArray.getElem_eq_data_get] at he
     rw [hc, he]
 where
   go (ns : NodeSet n) (i j : Nat) (hle : i ≤ n) (h₁ : i ≤ j) (h₂ : j < n) :
