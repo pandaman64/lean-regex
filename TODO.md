@@ -21,7 +21,3 @@
 * Regex parser
 * Character classes
 * Capture groups
-
-# Misc
-
-* Remove Mathlib dependency (at least from the computational part)
