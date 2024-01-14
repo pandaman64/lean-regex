@@ -315,10 +315,12 @@ theorem evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     apply mem_evalFrom_le le
 
     apply compile.loop.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ _ _ eq₅ eq
+    intro nfa₁ start₁ nfa₂ start₂ final property eq₁ eq₂ eq₃ _ eq₅ eq
 
     have property : nfa₁.val ≤ final.val :=
-      sorry
+      calc nfa₁.val
+        _ ≤ nfa₂.val := eq₃ ▸ NFA.compile.loop.le
+        _ ≤ final.val := eq₅ ▸ NFA.le_addNode
 
     rw [eq]
     simp
@@ -339,7 +341,8 @@ theorem evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     rw [eq]
     simp
 
-    apply mem_evalFrom_subset (ih eq₃.symm final sorry)
+    have : nfa₂.val ≤ final.val := eq₅ ▸ NFA.le_addNode
+    apply mem_evalFrom_subset (ih eq₃.symm final this)
     simp
     apply εClosureSet_singleton_step
     rw [eq₅]
@@ -356,7 +359,7 @@ theorem evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
     simp
 
     let ih₁ := ih₁ eq₁.symm nfa₁ (le_refl _)
-    let ih₂ := ih₂ eq₂.symm nfa₁ sorry
+    let ih₂ := ih₂ eq₂.symm nfa₁ (eq₁ ▸ compile.loop.le)
 
     apply mem_of_mem_of_subset ih₂
     rw [evalFrom_append (String.eq_of_append_of_eq_of_append eqs)]
@@ -419,8 +422,8 @@ theorem evalFrom_of_matches (eq : compile.loop r next nfa = nfa')
         have lhs : nfa''.val[i] = .fail := by
           simp [eq₃, eq.symm]
           have : start.val < nfa'.val.nodes.size := by
-            rw [eq₂, eq₁]
-            simp
+            rw [eq₂]
+            exact nfa'.val.start.isLt
           simp [compile.loop.get_lt rfl this]
           have : start.val = (nfa.addNode .fail).val.start.val := by
             rw [eq₂, eq₁]
