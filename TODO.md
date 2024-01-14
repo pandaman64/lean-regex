@@ -9,6 +9,7 @@
 # Performance optimization
 
 * Add this to BurntSushi/rebar for benchmarking
+  * Depends on search
 * Check generated code
   * inline `NFA.get` and `NodeSet.get/set`
 * Reuse allocations
@@ -18,6 +19,7 @@
 
 # Functionalities
 
+* Implement search
 * Regex parser
 * Character classes
 * Capture groups
