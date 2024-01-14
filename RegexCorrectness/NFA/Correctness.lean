@@ -19,25 +19,29 @@ theorem ge_length_of_pathIn {nfa : NFA} (path : nfa.pathIn start i cs i' cs') :
   cs.length ≥ cs'.length := by
   induction path with
   | base _ _ eqs => rw [eqs]
-  | charStep _ _ _ _ ih =>
-    simp
-    exact Nat.le_trans ih (Nat.le_succ _)
-  | εStep _ _ _ _ ih => exact ih
+  | step step _ ih =>
+    cases step with
+    | charStep =>
+      simp
+      exact Nat.le_trans ih (Nat.le_succ _)
+    | εStep => exact ih
 
 theorem εClosure_of_pathIn {nfa : NFA} (eq : cs = cs') (path : nfa.pathIn 0 i cs i' cs') :
   i' ∈ nfa.εClosure i := by
   induction path with
   | base _ eqi => rw [eqi]; exact .base
-  | charStep _ _ _ path =>
-    have ge_length := ge_length_of_pathIn path
-    subst eq
-    simp at ge_length
-    have not_lt := Nat.not_lt_of_ge ge_length
-    exact absurd (Nat.lt_succ_self _) not_lt
-  | @εStep i j k _ _ _ h₂ step _ ih =>
-    have : j ∈ nfa[i]?.εStep := by
-      simp [Option.εStep, getElem?_pos nfa i h₂, step]
-    exact NFA.εClosure.step this (ih eq)
+  | @step i j k cs cs' cs'' step rest ih =>
+    cases step with
+    | charStep _ _ step =>
+      have ge_length := ge_length_of_pathIn rest
+      subst eq
+      simp at ge_length
+      have not_lt := Nat.not_lt_of_ge ge_length
+      exact absurd (Nat.lt_succ_self _) not_lt
+    | εStep _ h₂ step =>
+      have : j ∈ nfa[i]?.εStep := by
+        simp [Option.εStep, getElem?_pos nfa i h₂, step]
+      exact NFA.εClosure.step this (ih eq)
 
 theorem pathIn_iff_εClosure {nfa : NFA} :
   nfa.pathIn 0 i cs i' cs ↔ i' ∈ nfa.εClosure i := by
@@ -50,7 +54,7 @@ theorem pathIn_iff_εClosure {nfa : NFA} :
       cases Nat.decLt i nfa.nodes.size with
       | isTrue lt =>
         simp [Option.εStep, getElem?_pos nfa i lt] at step
-        exact .εStep (Nat.zero_le _) lt step ih
+        exact .step (.εStep (Nat.zero_le _) lt step) ih
       | isFalse nlt => simp [Option.εStep, getElem?_neg nfa i nlt] at step
 
 theorem stepSet_of_pathIn {nfa : NFA} (eq₁ : cs₁ = c :: cs) (eq₂ : cs₂ = cs)
@@ -60,21 +64,23 @@ theorem stepSet_of_pathIn {nfa : NFA} (eq₁ : cs₁ = c :: cs) (eq₂ : cs₂ =
   | base _ _ eqs =>
     subst eqs eq₁
     exact absurd eq₂ (List.cons_ne_self _ _)
-  | @charStep i j k c' cs₁ cs₂ _ h₂ step path =>
-    apply List.noConfusion eq₁
-    intro eq₃ eq₄
-    subst eq₂ eq₃ eq₄
-    simp [NFA.stepSet]
-    exists i
-    simp [Option.charStep, getElem?_pos nfa i h₂]
-    simp [NFA.εClosureSet]
-    exists j, step
-    exact εClosure_of_pathIn rfl path
-  | εStep _ h₂ step _ ih =>
-    have ih := ih eq₁ eq₂
-    apply Set.mem_of_mem_of_subset ih
-    apply stepSet_subset (le_refl _)
-    exact εClosureSet_of_εStep h₂ step
+  | @step i j k cs cs' cs'' step path ih =>
+    cases step with
+    | charStep _ h₂ step =>
+      apply List.noConfusion eq₁
+      intro eq₃ eq₄
+      subst eq₂ eq₃ eq₄
+      simp [NFA.stepSet]
+      exists i
+      simp [Option.charStep, getElem?_pos nfa i h₂]
+      simp [NFA.εClosureSet]
+      exists j, step
+      exact εClosure_of_pathIn rfl path
+    | εStep _ h₂ step =>
+      have ih := ih eq₁ eq₂
+      apply Set.mem_of_mem_of_subset ih
+      apply stepSet_subset (le_refl _)
+      exact εClosureSet_of_εStep h₂ step
 
 theorem pathIn_of_stepSet {nfa : NFA} (h : i' ∈ nfa.stepSet (nfa.εClosureSet {i}) c) :
   nfa.pathIn 0 i (c :: cs) i' cs := by
@@ -89,8 +95,7 @@ theorem pathIn_of_stepSet {nfa : NFA} (h : i' ∈ nfa.stepSet (nfa.εClosureSet 
   let ⟨lt, h₂'⟩ := h₂'
   have path₁ : nfa.pathIn 0 i (c :: cs) j (c :: cs) := pathIn_iff_εClosure.mpr h₁
   have path₂ : nfa.pathIn 0 k cs i' cs := pathIn_iff_εClosure.mpr h₃
-  have path₂' := NFA.pathIn.charStep (Nat.zero_le _) lt h₂' path₂
-  exact path₁.trans path₂'
+  exact path₁.trans (NFA.pathIn.step (.charStep (Nat.zero_le _) lt h₂') path₂)
 
 theorem pathIn_iff_stepSet {nfa : NFA} :
   nfa.pathIn 0 i (c :: cs) i' cs ↔ i' ∈ nfa.stepSet (nfa.εClosureSet {i}) c := by
@@ -106,21 +111,22 @@ theorem evalFrom_of_pathIn {nfa : NFA} (path : nfa.pathIn start i cs i' []) :
   | base _ eqi eqs =>
     subst h eqi eqs
     simp [NFA.evalFrom]
-  | @charStep i j k c _ _ _ h₂ step _ ih =>
+  | @step i j k cs cs' cs'' step _ ih =>
     have ih := ih h
     simp [NFA.evalFrom] at *
-    have : nfa.εClosureSet {j} ⊆ nfa.stepSet (nfa.εClosureSet {i}) c := by
+    apply Set.mem_of_mem_of_subset ih
+    cases step with
+    | charStep _ h₂ step =>
+      simp
+      apply foldl_stepSet_subset
       simp [NFA.εClosureSet, NFA.stepSet]
       simp [Set.subset_def]
       intro k h
       refine ⟨i, ?_, j, ?_, h⟩
       . exact .base
       . simp [getElem?_pos nfa i h₂, Option.charStep, step]
-    exact Set.mem_of_mem_of_subset ih (foldl_stepSet_subset this)
-  | @εStep i j k _ _ _ h₂ step _ ih =>
-    have ih := ih h
-    simp [NFA.evalFrom] at *
-    have : nfa.εClosureSet {j} ⊆ nfa.εClosureSet {i} := by
+    | εStep _ h₂ step =>
+      apply foldl_stepSet_subset
       have : {j} ⊆ nfa.εClosureSet {i} := by
         simp
         have : j ∈ nfa[i]?.εStep := by
@@ -131,7 +137,6 @@ theorem evalFrom_of_pathIn {nfa : NFA} (path : nfa.pathIn start i cs i' []) :
         εClosureSet_subset (le_refl _) this
       simp at this
       exact this
-    exact Set.mem_of_mem_of_subset ih (foldl_stepSet_subset this)
 
 theorem stepSet_iUnion_distrib {nfa : NFA} {f : α → Set Nat} {S : Set α} {c : Char} :
   nfa.stepSet (⋃ i ∈ S, f i) c = ⋃ i ∈ S, nfa.stepSet (f i) c := by
@@ -193,32 +198,18 @@ theorem pathToNext_of_compile_of_pathIn (eq : compile.loop r 0 compile.init = re
   | base _ eqi =>
     subst eqi assm₂
     contradiction
-  | @charStep i j k c _ _ _ h₂ step rest ih =>
+  | @step i j k cs cs' cs'' step rest ih =>
     cases rest with
     | base _ eqi eqs =>
       subst eqi eqs assm₂ assm₃
-      exact .charStep i h₂ c step (.base assm₁ rfl rfl)
-    | charStep _ h₂' step' =>
-      have : 0 < j := gt_zero_char eq (assm₄ ▸ h₂') (by simp [assm₄] at step'; exact step')
+      exact ⟨i, cs, .base assm₁ rfl rfl, step.castStart' assm₁⟩
+    | step step' rest =>
+      have : 0 < j := by
+        cases step' with
+        | charStep _ h₂ step' => exact gt_zero_char eq (assm₄ ▸ h₂) (by simp [assm₄] at step'; exact step')
+        | εStep _ h₂ step' => exact gt_zero_ε eq (assm₄ ▸ h₂) (by simp [assm₄] at step'; exact step')
       have ih := ih this assm₂ assm₃
-      exact ih.cons_char assm₁ h₂ step
-    | εStep _ h₂' step' =>
-      have : 0 < j := gt_zero_ε eq (assm₄ ▸ h₂') (by simp [assm₄] at step'; exact step')
-      have ih := ih this assm₂ assm₃
-      exact ih.cons_char assm₁ h₂ step
-  | @εStep i j k _ _ _ h₂ step rest ih =>
-    cases rest with
-    | base _ eqi eqs =>
-      subst eqi eqs assm₂ assm₃
-      exact .εStep i h₂ step (.base assm₁ rfl rfl)
-    | charStep _ h₂' step' =>
-      have : 0 < j := gt_zero_char eq (assm₄ ▸ h₂') (by simp [assm₄] at step'; exact step')
-      have ih := ih this assm₂ assm₃
-      exact ih.cons_ε assm₁ h₂ step
-    | εStep _ h₂' step' =>
-      have : 0 < j := gt_zero_ε eq (assm₄ ▸ h₂') (by simp [assm₄] at step'; exact step')
-      have ih := ih this assm₂ assm₃
-      exact ih.cons_ε assm₁ h₂ step
+      exact ih.cons (step.castStart' assm₁)
 where
   gt_zero_char {j j'} {c} (eq : compile.loop r 0 compile.init = result)
     (h : j < result.val.nodes.size) (step : j' ∈ result.val[j].charStep c) : 0 < j := by
