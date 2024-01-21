@@ -1,5 +1,6 @@
 import RegexCorrectness.NFA.Basic
 import RegexCorrectness.NFA.Compile
+import RegexCorrectness.NFA.Transition.AcceptOfMatch
 import RegexCorrectness.Lemmas
 
 import Mathlib.Data.Set.Basic

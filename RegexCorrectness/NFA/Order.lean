@@ -70,3 +70,41 @@ instance : Preorder NFA where
   le_trans := @NFA.le_trans
 
 end NFA
+
+namespace NFAa
+
+open NFA
+
+/--
+  Extend the ordering to εNFA.
+-/
+def le (nfa₁ nfa₂ : NFAa) : Prop :=
+  ∀ i : Fin nfa₁.nodes.size, ∃ h₂ : i < nfa₂.nodes.size, nfa₁[i.val] ≤ nfa₂[i.val]
+
+instance : LE NFAa where
+  le := le
+
+theorem le_size_of_le {nfa₁ nfa₂ : NFAa} (h : nfa₁ ≤ nfa₂) : nfa₁.nodes.size ≤ nfa₂.nodes.size :=
+  match Nat.lt_or_ge nfa₂.nodes.size nfa₁.nodes.size with
+  | .inr le => le
+  | .inl gt => nomatch Nat.lt_irrefl _ (h ⟨nfa₂.nodes.size, gt⟩).1
+
+theorem le_refl {nfa : NFAa} : nfa ≤ nfa
+  | i => ⟨i.isLt, Node.le_rfl⟩
+
+theorem le_trans {nfa₁ nfa₂ nfa₃ : NFAa} (h₁ : nfa₁ ≤ nfa₂) (h₂ : nfa₂ ≤ nfa₃) : nfa₁ ≤ nfa₃ := by
+  intro i
+  have lt₂ : i < nfa₂.nodes.size := Nat.lt_of_lt_of_le i.isLt (le_size_of_le h₁)
+  have lt₃ : i < nfa₃.nodes.size := Nat.lt_of_lt_of_le lt₂ (le_size_of_le h₂)
+  have le : nfa₁[i] ≤ nfa₃[i] := Node.le_trans (h₁ i).2 (h₂ ⟨i.val, lt₂⟩).2
+  exact ⟨lt₃, le⟩
+
+def _instLENFA : LE NFAa := inferInstance
+instance : Trans NFAa.le NFAa.le NFAa.le := ⟨NFAa.le_trans⟩
+instance : Trans _instLENFA.le _instLENFA.le _instLENFA.le := ⟨NFAa.le_trans⟩
+
+instance : Preorder NFAa where
+  le_refl := @NFAa.le_refl
+  le_trans := @NFAa.le_trans
+
+end NFAa

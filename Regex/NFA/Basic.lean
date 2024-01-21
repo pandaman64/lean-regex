@@ -39,6 +39,27 @@ theorem Node.inBounds.split {size next₁ next₂ : Nat} (h₁ : next₁ < size)
   (Node.split next₁ next₂).inBounds size := by
   simp [inBounds, h₁, h₂]
 
+theorem Node.lt_of_inBounds.epsilon {size next : Nat} (h : (Node.epsilon next).inBounds size) :
+  next < size := by
+  simp [inBounds] at h
+  exact h
+
+theorem Node.lt_of_inBounds.char {size next : Nat} {c : Char} (h : (Node.char c next).inBounds size) :
+  next < size := by
+  simp [inBounds] at h
+  exact h
+
+theorem Node.lt_of_inBounds.split {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
+  next₁ < size ∧ next₂ < size := by
+  simp [inBounds] at h
+  exact h
+
+theorem Node.lt_of_inBounds.split_left {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
+  next₁ < size := (Node.lt_of_inBounds.split h).left
+
+theorem Node.lt_of_inBounds.split_right {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
+  next₂ < size := (Node.lt_of_inBounds.split h).right
+
 theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : size ≤ size') :
   n.inBounds size' := by
   simp [inBounds] at *
