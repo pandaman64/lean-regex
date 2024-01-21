@@ -507,3 +507,55 @@ theorem compile.loop.star.charStep_loopStartNode {c} (eq : compile.loop (.star r
   simp [eq, Node.charStep]
 
 end NFA
+
+namespace NFAa
+
+theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i < nfa.nodes.size) :
+  result.val[i]'(Nat.lt_trans h result.property) = nfa[i] := by
+  induction r generalizing next nfa with
+  | empty | epsilon | char =>
+    try apply pushRegex.empty eq
+    try apply pushRegex.epsilon eq
+    try apply pushRegex.char eq
+    intro eq
+    subst eq
+    apply pushNode_get_lt i h
+  | alternate r₁ r₂ ih₁ ih₂ =>
+    apply pushRegex.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
+
+    have h₁ : i < nfa₁.val.nodes.size := Nat.lt_trans h nfa₁.property
+    have h₂ : i < nfa₂.val.nodes.size := Nat.lt_trans h₁ nfa₂.property
+
+    simp [eq, eq₅, pushNode_get_lt _ h₂]
+    simp [ih₂ eq₃.symm h₁]
+    simp [ih₁ eq₁.symm h]
+  | concat r₁ r₂ ih₁ ih₂ =>
+    apply pushRegex.concat eq
+    intro nfa₂ nfa₁ property eq₂ eq₁ eq
+
+    have h₂ : i < nfa₂.val.nodes.size := Nat.lt_trans h nfa₂.property
+
+    simp [eq, ih₁ eq₁.symm h₂, ih₂ eq₂.symm h]
+  | star r ih =>
+    apply pushRegex.star eq
+    intro placeholder compiled patched nfa' isLt inBounds property
+      eq₁ eq₂ eq₃ eq₄ eq
+
+    have ih := ih eq₂.symm (Nat.lt_trans h placeholder.property)
+
+    conv =>
+      lhs
+      simp [eq, eq₄, get_eq_nodes_get, eq₃]
+
+    have : i < compiled.val.nodes.size :=
+      calc
+        _ < _ := h
+        _ < _ := placeholder.property
+        _ < _ := compiled.property
+    rw [Array.get_set (hj := this)]
+
+    have : nfa.nodes.size ≠ i := Nat.ne_of_gt h
+    simp [this, ←get_eq_nodes_get, ih, eq₁, pushNode_get_lt _ h]
+
+end NFAa

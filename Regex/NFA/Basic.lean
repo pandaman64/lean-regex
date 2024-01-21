@@ -47,6 +47,52 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
   next => exact Nat.lt_of_lt_of_le h le
   next => exact ⟨Nat.lt_of_lt_of_le h.left le, Nat.lt_of_lt_of_le h.right le⟩
 
+end NFA
+
+/--
+  The NFA consists an array of nodes and a designated start node.
+
+  The transition relation and accept nodes are embedded in the nodes themselves.
+-/
+structure NFAa where
+  nodes : Array NFA.Node
+  start : Fin nodes.size
+  inBounds : ∀ i : Fin nodes.size, nodes[i.val].inBounds nodes.size
+deriving Repr
+
+instance : ToString NFAa where
+  toString nfa := reprStr nfa
+
+namespace NFAa
+
+def done : NFAa :=
+  let nodes := #[NFA.Node.done]
+  let start := ⟨0, by decide⟩
+  have inBounds := by
+    intro i
+    match i with
+    | ⟨0, isLt⟩ => rfl
+    | ⟨i + 1, isLt⟩ => contradiction
+  ⟨nodes, start, inBounds⟩
+
+def get (nfa : NFAa) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
+  nfa.nodes[i]
+
+instance : GetElem NFAa Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
+  getElem := get
+
+theorem get_eq_nodes_get (nfa : NFAa) (i : Nat) (h : i < nfa.nodes.size) :
+  nfa[i] = nfa.nodes[i] := rfl
+
+theorem zero_lt_size {nfa : NFAa} : 0 < nfa.nodes.size := by
+  apply Nat.zero_lt_of_ne_zero
+  intro h
+  exact (h ▸ nfa.start).elim0
+
+end NFAa
+
+namespace NFA
+
 /--
   The NFA consists an array of nodes and a designated start node.
 
