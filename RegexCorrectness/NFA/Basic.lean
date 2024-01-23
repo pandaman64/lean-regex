@@ -57,15 +57,43 @@ namespace NFAa
 
 open NFA
 
+def charStep (nfa : NFAa) (i : Nat) (c : Char) : Set Nat :=
+  if h : i < nfa.nodes.size then
+    nfa[i].charStep c
+  else ∅
+
 def εStep (nfa : NFAa) (i : Nat) : Set Nat :=
   if h : i < nfa.nodes.size then
     nfa[i].εStep
   else ∅
 
-def charStep (nfa : NFAa) (i : Nat) (c : Char) : Set Nat :=
-  if h : i < nfa.nodes.size then
-    nfa[i].charStep c
-  else ∅
+theorem lt_of_inBounds_of_charStep {node : Node} {j k : Nat} {c : Char}
+  (inBounds : node.inBounds k) (mem : j ∈ node.charStep c) :
+  j < k := by
+  unfold Node.charStep at mem
+  split at mem <;> try simp [Node.inBounds] at *
+  simp [*]
+
+theorem lt_of_inBounds_of_εStep {node : Node} {j k : Nat}
+  (inBounds : node.inBounds k) (mem : j ∈ node.εStep) :
+  j < k := by
+  unfold Node.εStep at mem
+  split at mem <;>
+    try simp [Node.inBounds] at * <;>
+    try cases mem <;>
+    simp [*]
+
+theorem lt_of_εStep {nfa : NFAa} {i j : Nat} {h : i < nfa.nodes.size}
+  (mem : j ∈ nfa[i].εStep) : j < nfa.nodes.size := by
+  have inBounds := nfa.inBounds ⟨i, h⟩
+  simp [get_eq_nodes_get] at mem
+  exact lt_of_inBounds_of_εStep inBounds mem
+
+theorem lt_of_charStep {nfa : NFAa} {i j : Nat} {h : i < nfa.nodes.size}
+  (mem : j ∈ nfa[i].charStep c) : j < nfa.nodes.size := by
+  have inBounds := nfa.inBounds ⟨i, h⟩
+  simp [get_eq_nodes_get] at mem
+  exact lt_of_inBounds_of_charStep inBounds mem
 
 -- def step (nfa : NFAa) (i : Fin nfa.nodes.size) (c : Option Char) : Set (Fin nfa.nodes.size) :=
 --   match c, nfa[i], nfa.inBounds i with

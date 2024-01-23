@@ -648,8 +648,8 @@ theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
     simp
     rw [eq₄]
 
-theorem eq_or_ge_of_step_pushRegex (eq : pushRegex nfa next r = result)
-  (i j : Nat) (h₁ : nfa.nodes.size ≤ i) (h₂ : i < result.val.nodes.size)
+theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = result)
+  (h₁ : nfa.nodes.size ≤ i) (h₂ : i < result.val.nodes.size)
   (step : (∃ c, j ∈ result.val[i].charStep c) ∨ j ∈ result.val[i].εStep) :
   j = next ∨ nfa.nodes.size ≤ j := by
   induction r generalizing nfa next with
