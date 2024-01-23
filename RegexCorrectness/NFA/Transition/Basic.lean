@@ -63,8 +63,6 @@ theorem stepIn.cast {nfa nfa' : NFAa} {start : Nat}
     exact .εStep h₁ h (eq ▸ step)
 
 -- Maybe we should recurse from the last as we reason about the last step often
--- In this way, we could merge pathIn and pathToNext by allowing i < start for base
--- (only the last step can step to smaller position)
 inductive pathIn (nfa : NFAa) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
   | base (h : start ≤ i) (eqi : i = j) (eqs : cs = cs') : nfa.pathIn start i cs j cs'
   | step {i j k : Nat} {cs cs' cs'' : List Char}
