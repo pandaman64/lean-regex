@@ -409,4 +409,14 @@ theorem matches_prefix_of_path (eq : pushRegex nfa next r = result)
   | concat r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.concat eq path ih₁ ih₂
   | star r ih => exact matches_prefix_of_path.star eq path ih
 
+theorem matches_prefix_of_compile_path (eq : NFAa.compile r = nfa)
+  (path : pathToNext nfa 0 1 nfa.start.val s s') :
+  ∃ p, s = p ++ s' ∧ r.matches ⟨p⟩ := by
+  set result := NFAa.done.pushRegex ⟨0, by decide⟩ r
+  have : nfa = result.val := by
+    rw [←eq]
+    rfl
+  rw [this] at path
+  exact matches_prefix_of_path rfl path
+
 end NFAa

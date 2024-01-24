@@ -160,6 +160,15 @@ theorem εClosureSet_union_distrib {nfa : NFAa} {S₁ S₂ : Set Nat} :
       let ⟨i, h, cls⟩ := h
       exact ⟨i, .inr h, cls⟩
 
+theorem εClosureSet_of_εStep {nfa : NFAa} {i j : Nat} (step : j ∈ nfa.εStep i) :
+  nfa.εClosureSet {j} ⊆ nfa.εClosureSet {i} := by
+  suffices nfa.εClosureSet {j} ⊆ nfa.εClosureSet (nfa.εClosureSet {i}) by
+    simp [εClosureSet_idempotent] at this
+    exact this
+  apply εClosureSet_subset le_refl
+  simp [εClosureSet]
+  exact .step step .base
+
 def stepSet (nfa : NFAa) (S : Set Nat) (c : Char) : Set Nat :=
   ⋃ i ∈ S, nfa.εClosureSet (nfa.charStep i c)
 
@@ -175,6 +184,10 @@ theorem εClosureSet_stepSet {nfa : NFAa} :
       lhs
       simp [stepSet, εClosureSet_iUnion_distrib]
   . exact subset_εClosureSet
+
+theorem stepSet_iUnion_distrib {nfa : NFAa} {f : α → Set Nat} {S : Set α} {c : Char} :
+  nfa.stepSet (⋃ i ∈ S, f i) c = ⋃ i ∈ S, nfa.stepSet (f i) c := by
+  simp [stepSet]
 
 theorem stepSet_union_distrib {nfa : NFAa} {S₁ S₂ : Set Nat} :
   nfa.stepSet (S₁ ∪ S₂) c = nfa.stepSet S₁ c ∪ nfa.stepSet S₂ c := by

@@ -67,6 +67,16 @@ def εStep (nfa : NFAa) (i : Nat) : Set Nat :=
     nfa[i].εStep
   else ∅
 
+theorem charStep_of_charStep {nfa : NFAa} {i : Nat} {c : Char} {h : i < nfa.nodes.size}
+  (mem : j ∈ nfa[i].charStep c) :
+  j ∈ nfa.charStep i c := by
+  simp [charStep, h, mem]
+
+theorem εStep_of_εStep {nfa : NFAa} {i : Nat} {h : i < nfa.nodes.size}
+  (mem : j ∈ nfa[i].εStep) :
+  j ∈ nfa.εStep i := by
+  simp [εStep, h, mem]
+
 theorem lt_of_inBounds_of_charStep {node : Node} {j k : Nat} {c : Char}
   (inBounds : node.inBounds k) (mem : j ∈ node.charStep c) :
   j < k := by

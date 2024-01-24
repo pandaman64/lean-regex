@@ -1,3 +1,4 @@
+-- Correctness of the NFA compilation
 import RegexCorrectness.NFA.Transition
 
 namespace NFA
@@ -259,3 +260,21 @@ theorem matches_of_evalFrom' (eq : compile r = nfa) (ev : 0 ∈ nfa.evalFrom {nf
   exact matches_of_path eq path
 
 end NFA
+
+namespace NFAa
+
+theorem evalFrom_of_compile_matches (eq : NFAa.compile r = nfa) (m : r.matches ⟨cs⟩) :
+  0 ∈ nfa.evalFrom {nfa.start.val} cs := by
+  unfold compile at eq
+  have ev := evalFrom_of_matches (rfl : NFAa.done.pushRegex ⟨0, by decide⟩ r = _) m _ le_refl
+  exact eq ▸ ev
+
+theorem matches_of_compile_evalFrom (eq : NFAa.compile r = nfa) (ev : 0 ∈ nfa.evalFrom {nfa.start.val} cs) :
+  r.matches ⟨cs⟩ := by
+  have path := pathIn_of_evalFrom ev
+  have path := pathToNext_of_compile_of_pathIn eq path
+  have ⟨p, eqs, m⟩ := matches_prefix_of_compile_path eq path
+  simp [eqs]
+  exact m
+
+end NFAa
