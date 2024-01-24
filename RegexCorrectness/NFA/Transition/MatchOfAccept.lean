@@ -344,7 +344,7 @@ where
         rw [Array.get_set_ne]
         simp
         exact Nat.ne_of_lt ge
-      have := eq_or_ge_of_step_pushRegex eq₂.symm (i := i) (j := next) (eqs ▸ ge) h₂ (eqn ▸ step.step)
+      have := eq_or_ge_of_step_pushRegex eq₂.symm (eqs ▸ ge) h₂ (eqn ▸ step.step)
       simp [eqs] at this
       cases this with
       | inl eq => exact Nat.lt_irrefl _ (eq ▸ next.isLt)
