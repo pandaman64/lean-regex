@@ -13,15 +13,6 @@ namespace NFAa
 
 open NFA Node
 
--- def lt_of_mem_of_εStep {nfa : NFAa} {i : Nat} {h : i < nfa.nodes.size} (mem : j ∈ nfa[i].εStep) :
---   j < nfa.nodes.size := by
---   have := nfa.inBounds ⟨i, h⟩
---   simp at this
---   simp [get_eq_nodes_get, εStep] at mem
---   split at mem <;> try simp [*] at * <;> simp [Node.inBounds] at this
---   . simp [mem, this]
---   . cases mem <;> simp [*]
-
 theorem sub_εStep_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) :
   nfa₁.εStep i ⊆ nfa₂.εStep i := by
   if h : i < nfa₁.nodes.size then
@@ -56,11 +47,16 @@ inductive εClosure (nfa : NFAa) : Nat → Set Nat where
 --   | base h => exact h
 --   | step h => exact h
 
--- theorem lt_of_εClosure_right {nfa : NFAa} {i j : Nat} (h : j ∈ nfa.εClosure i) :
---   j < nfa.nodes.size := by
---   induction h with
---   | base h => exact h
---   | step _ _ _ ih => exact ih
+theorem lt_of_εClosure_right {nfa : NFAa} {i j : Nat}
+  (lt : i < nfa.nodes.size) (h : j ∈ nfa.εClosure i) :
+  j < nfa.nodes.size := by
+  induction h with
+  | base => exact lt
+  | @step i j _ step _ ih =>
+    have : j < nfa.nodes.size := by
+      simp [εStep] at step
+      split at step <;> exact lt_of_εStep step
+    exact ih this
 
 theorem εClosure_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) (h : j ∈ nfa₁.εClosure i) :
   j ∈ nfa₂.εClosure i := by
@@ -223,6 +219,18 @@ theorem stepSet_subset {nfa₁ nfa₂ : NFAa} (hn : nfa₁ ≤ nfa₂) (hs : S�
     mem_of_subset_of_mem hs h₁,
     mem_of_subset_of_mem (εClosureSet_subset hn (sub_charStep_of_le hn)) h₂
   ⟩
+
+theorem lt_of_mem_stepSet {nfa : NFAa} (h : j ∈ nfa.stepSet S c) :
+  j < nfa.nodes.size := by
+  simp [stepSet] at h
+  let ⟨i, _, cls⟩ := h
+  simp [εClosureSet] at cls
+  obtain ⟨i', step, cls⟩ := cls
+  have : i' < nfa.nodes.size := by
+    simp [charStep] at step
+    split at step <;> try simp at step
+    exact lt_of_charStep step
+  exact lt_of_εClosure_right this cls
 
 theorem foldl_stepSet_subset_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) (h : S₁ ⊆ S₂) :
   List.foldl nfa₁.stepSet S₁ cs ⊆ List.foldl nfa₂.stepSet S₂ cs := by
