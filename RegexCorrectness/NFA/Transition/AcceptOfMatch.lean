@@ -9,11 +9,9 @@ import Mathlib.Data.Set.Lattice
 
 open Set
 
-namespace NFAa
+namespace NFA
 
-open NFA Node
-
-theorem sub_εStep_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) :
+theorem sub_εStep_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) :
   nfa₁.εStep i ⊆ nfa₂.εStep i := by
   if h : i < nfa₁.nodes.size then
     have : i < nfa₂.nodes.size := Nat.lt_of_lt_of_le h (le_size_of_le le)
@@ -23,7 +21,7 @@ theorem sub_εStep_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) :
   else
     simp [εStep, h]
 
-theorem sub_charStep_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) :
+theorem sub_charStep_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) :
   nfa₁.charStep i c ⊆ nfa₂.charStep i c := by
   if h : i < nfa₁.nodes.size then
     have : i < nfa₂.nodes.size := Nat.lt_of_lt_of_le h (le_size_of_le le)
@@ -36,18 +34,18 @@ theorem sub_charStep_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) :
 -- FIXME: I wanted to make this a claim about `Fin nfa.nodes.size`, but it's super cumbersome
 -- to cast between `Fin nfa₁.nodes.size` and `Fin nfa₂.nodes.size` given `nfa₁ ≤ nfa₂`.
 -- I should have avoided using NFA's ordering for proofs...
-inductive εClosure (nfa : NFAa) : Nat → Set Nat where
+inductive εClosure (nfa : NFA) : Nat → Set Nat where
   | base : nfa.εClosure i i
   | step {i j k : Nat} (step : j ∈ nfa.εStep i) (rest : nfa.εClosure j k) :
     nfa.εClosure i k
 
--- theorem lt_of_εClosure_left {nfa : NFAa} {i j : Nat} (h : j ∈ nfa.εClosure i) :
+-- theorem lt_of_εClosure_left {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i) :
 --   i < nfa.nodes.size := by
 --   cases h with
 --   | base h => exact h
 --   | step h => exact h
 
-theorem lt_of_εClosure_right {nfa : NFAa} {i j : Nat}
+theorem lt_of_εClosure_right {nfa : NFA} {i j : Nat}
   (lt : i < nfa.nodes.size) (h : j ∈ nfa.εClosure i) :
   j < nfa.nodes.size := by
   induction h with
@@ -58,71 +56,71 @@ theorem lt_of_εClosure_right {nfa : NFAa} {i j : Nat}
       split at step <;> exact lt_of_εStep step
     exact ih this
 
-theorem εClosure_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) (h : j ∈ nfa₁.εClosure i) :
+theorem εClosure_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) (h : j ∈ nfa₁.εClosure i) :
   j ∈ nfa₂.εClosure i := by
   induction h with
   | base => exact .base
   | step step _ ih => exact .step (mem_of_subset_of_mem (sub_εStep_of_le le) step) ih
 
-theorem εClosure_subset_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) :
+theorem εClosure_subset_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) :
   nfa₁.εClosure i ⊆ nfa₂.εClosure i := by
   intro j h
   exact εClosure_of_le le h
 
-theorem εClosure_snoc {nfa : NFAa} (cls : j ∈ nfa.εClosure i) (step : k ∈ nfa.εStep j) :
+theorem εClosure_snoc {nfa : NFA} (cls : j ∈ nfa.εClosure i) (step : k ∈ nfa.εStep j) :
   k ∈ nfa.εClosure i := by
   induction cls with
   | base => exact .step step .base
   | step step' _ ih => exact εClosure.step step' (ih step)
 
-theorem εClosure_trans {nfa : NFAa} (h₁ : j ∈ nfa.εClosure i) (h₂ : k ∈ nfa.εClosure j) :
+theorem εClosure_trans {nfa : NFA} (h₁ : j ∈ nfa.εClosure i) (h₂ : k ∈ nfa.εClosure j) :
   k ∈ nfa.εClosure i := by
   induction h₁ with
   | base => exact h₂
   | step head _ ih => exact .step head (ih h₂)
 
-def εClosureSet (nfa : NFAa) (S : Set Nat) : Set Nat := ⋃ i ∈ S, nfa.εClosure i
+def εClosureSet (nfa : NFA) (S : Set Nat) : Set Nat := ⋃ i ∈ S, nfa.εClosure i
 
 @[simp]
-theorem subset_εClosureSet {nfa : NFAa} : S ⊆ nfa.εClosureSet S := by
+theorem subset_εClosureSet {nfa : NFA} : S ⊆ nfa.εClosureSet S := by
   intro i mem
   simp [εClosureSet]
   refine ⟨i, mem, ?_⟩
   exact .base
 
 @[simp]
-theorem εClosureSet_singleton_base {nfa : NFAa} : i ∈ nfa.εClosureSet {i} := by
+theorem εClosureSet_singleton_base {nfa : NFA} : i ∈ nfa.εClosureSet {i} := by
   simp [εClosureSet]
   exact .base
 
 @[simp]
-theorem εClosureSet_singleton_step {nfa : NFAa} {i j : Nat}
+theorem εClosureSet_singleton_step {nfa : NFA} {i j : Nat}
   (h : i < nfa.nodes.size) (mem : j ∈ nfa[i].εStep) : j ∈ nfa.εClosureSet {i} := by
   simp [εClosureSet]
   exact .step (by simp [h, mem, εStep]) .base
 
 @[simp]
-theorem εClosureSet_singleton {nfa : NFAa} {i j : Nat} (h : j ∈ nfa.εClosure i):
+theorem εClosureSet_singleton {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i):
   j ∈ nfa.εClosureSet {i} := by
   apply mem_iUnion_of_mem i
   simp [h]
 
 @[simp]
-theorem εClosureSet_empty {nfa : NFAa} : nfa.εClosureSet ∅ = ∅ := by
+theorem εClosureSet_empty {nfa : NFA} : nfa.εClosureSet ∅ = ∅ := by
   simp [εClosureSet]
 
 @[simp]
-theorem εClosureSet_univ {nfa : NFAa} : nfa.εClosureSet univ = univ :=
+theorem εClosureSet_univ {nfa : NFA} : nfa.εClosureSet univ = univ :=
   univ_subset_iff.mp subset_εClosureSet
 
-theorem εClosureSet_subset {nfa₁ nfa₂ : NFAa} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
+theorem εClosureSet_subset {nfa₁ nfa₂ : NFA} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
   nfa₁.εClosureSet S₁ ⊆ nfa₂.εClosureSet S₂ := by
   apply biUnion_mono hs
   intro i _
   exact εClosure_subset_of_le hn
 
 @[simp]
-theorem εClosureSet_idempotent {nfa : NFAa} : nfa.εClosureSet (nfa.εClosureSet S) = nfa.εClosureSet S := by
+theorem εClosureSet_idempotent {nfa : NFA} : nfa.εClosureSet (nfa.εClosureSet S) = nfa.εClosureSet S := by
   apply eq_of_subset_of_subset
   . simp [subset_def]
     intro k h
@@ -131,11 +129,11 @@ theorem εClosureSet_idempotent {nfa : NFAa} : nfa.εClosureSet (nfa.εClosureSe
     exact mem_iUnion_of_mem i (mem_iUnion_of_mem h (εClosure_trans cls cls'))
   . apply subset_εClosureSet
 
-theorem εClosureSet_iUnion_distrib {nfa : NFAa} {S : Set α} {f : α → Set Nat} :
+theorem εClosureSet_iUnion_distrib {nfa : NFA} {S : Set α} {f : α → Set Nat} :
   nfa.εClosureSet (⋃ i ∈ S, f i) = ⋃ i ∈ S, nfa.εClosureSet (f i) := by
   simp [εClosureSet]
 
-theorem εClosureSet_union_distrib {nfa : NFAa} {S₁ S₂ : Set Nat} :
+theorem εClosureSet_union_distrib {nfa : NFA} {S₁ S₂ : Set Nat} :
   nfa.εClosureSet (S₁ ∪ S₂) = nfa.εClosureSet S₁ ∪ nfa.εClosureSet S₂ := by
   apply eq_of_subset_of_subset
   . simp [subset_def]
@@ -156,7 +154,7 @@ theorem εClosureSet_union_distrib {nfa : NFAa} {S₁ S₂ : Set Nat} :
       let ⟨i, h, cls⟩ := h
       exact ⟨i, .inr h, cls⟩
 
-theorem εClosureSet_of_εStep {nfa : NFAa} {i j : Nat} (step : j ∈ nfa.εStep i) :
+theorem εClosureSet_of_εStep {nfa : NFA} {i j : Nat} (step : j ∈ nfa.εStep i) :
   nfa.εClosureSet {j} ⊆ nfa.εClosureSet {i} := by
   suffices nfa.εClosureSet {j} ⊆ nfa.εClosureSet (nfa.εClosureSet {i}) by
     simp [εClosureSet_idempotent] at this
@@ -165,15 +163,15 @@ theorem εClosureSet_of_εStep {nfa : NFAa} {i j : Nat} (step : j ∈ nfa.εStep
   simp [εClosureSet]
   exact .step step .base
 
-def stepSet (nfa : NFAa) (S : Set Nat) (c : Char) : Set Nat :=
+def stepSet (nfa : NFA) (S : Set Nat) (c : Char) : Set Nat :=
   ⋃ i ∈ S, nfa.εClosureSet (nfa.charStep i c)
 
 @[simp]
-def stepSet_empty {nfa : NFAa} : nfa.stepSet ∅ c = ∅ := by
+def stepSet_empty {nfa : NFA} : nfa.stepSet ∅ c = ∅ := by
   simp [stepSet]
 
 @[simp]
-theorem εClosureSet_stepSet {nfa : NFAa} :
+theorem εClosureSet_stepSet {nfa : NFA} :
   nfa.εClosureSet (nfa.stepSet S c) = nfa.stepSet S c := by
   apply eq_of_subset_of_subset
   . conv =>
@@ -181,11 +179,11 @@ theorem εClosureSet_stepSet {nfa : NFAa} :
       simp [stepSet, εClosureSet_iUnion_distrib]
   . exact subset_εClosureSet
 
-theorem stepSet_iUnion_distrib {nfa : NFAa} {f : α → Set Nat} {S : Set α} {c : Char} :
+theorem stepSet_iUnion_distrib {nfa : NFA} {f : α → Set Nat} {S : Set α} {c : Char} :
   nfa.stepSet (⋃ i ∈ S, f i) c = ⋃ i ∈ S, nfa.stepSet (f i) c := by
   simp [stepSet]
 
-theorem stepSet_union_distrib {nfa : NFAa} {S₁ S₂ : Set Nat} :
+theorem stepSet_union_distrib {nfa : NFA} {S₁ S₂ : Set Nat} :
   nfa.stepSet (S₁ ∪ S₂) c = nfa.stepSet S₁ c ∪ nfa.stepSet S₂ c := by
   simp [stepSet, εClosureSet_union_distrib]
   apply eq_of_subset_of_subset
@@ -202,14 +200,14 @@ theorem stepSet_union_distrib {nfa : NFAa} {S₁ S₂ : Set Nat} :
     | .inl ⟨i, mem, cls⟩ => exact ⟨i, .inl mem, cls⟩
     | .inr ⟨i, mem, cls⟩ => exact ⟨i, .inr mem, cls⟩
 
-theorem stepSet_insert_distrib {nfa : NFAa} :
+theorem stepSet_insert_distrib {nfa : NFA} :
   nfa.stepSet (insert i S) c = nfa.stepSet S c ∪ nfa.stepSet {i} c := by
   have : nfa.stepSet (S ∪ {i}) c =  nfa.stepSet S c ∪ nfa.stepSet {i} c :=
     stepSet_union_distrib
   simp at this
   exact this
 
-theorem stepSet_subset {nfa₁ nfa₂ : NFAa} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
+theorem stepSet_subset {nfa₁ nfa₂ : NFA} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
   nfa₁.stepSet S₁ c ⊆ nfa₂.stepSet S₂ c := by
   simp [subset_def, stepSet]
   intro j i h₁ h₂
@@ -220,7 +218,7 @@ theorem stepSet_subset {nfa₁ nfa₂ : NFAa} (hn : nfa₁ ≤ nfa₂) (hs : S�
     mem_of_subset_of_mem (εClosureSet_subset hn (sub_charStep_of_le hn)) h₂
   ⟩
 
-theorem lt_of_mem_stepSet {nfa : NFAa} (h : j ∈ nfa.stepSet S c) :
+theorem lt_of_mem_stepSet {nfa : NFA} (h : j ∈ nfa.stepSet S c) :
   j < nfa.nodes.size := by
   simp [stepSet] at h
   let ⟨i, _, cls⟩ := h
@@ -232,7 +230,7 @@ theorem lt_of_mem_stepSet {nfa : NFAa} (h : j ∈ nfa.stepSet S c) :
     exact lt_of_charStep step
   exact lt_of_εClosure_right this cls
 
-theorem foldl_stepSet_subset_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) (h : S₁ ⊆ S₂) :
+theorem foldl_stepSet_subset_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) (h : S₁ ⊆ S₂) :
   List.foldl nfa₁.stepSet S₁ cs ⊆ List.foldl nfa₂.stepSet S₂ cs := by
   induction cs generalizing S₁ S₂ with
   | nil => simp [h]
@@ -241,17 +239,17 @@ theorem foldl_stepSet_subset_of_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa�
     apply ih
     exact stepSet_subset le h
 
-theorem foldl_stepSet_subset {nfa : NFAa} (h : S₁ ⊆ S₂) :
+theorem foldl_stepSet_subset {nfa : NFA} (h : S₁ ⊆ S₂) :
   List.foldl nfa.stepSet S₁ cs ⊆ List.foldl nfa.stepSet S₂ cs :=
   foldl_stepSet_subset_of_le le_refl h
 
-theorem foldl_stepSet_iUnion_distrib {nfa : NFAa} {S : Set α} {f : α → Set Nat} :
+theorem foldl_stepSet_iUnion_distrib {nfa : NFA} {S : Set α} {f : α → Set Nat} :
   List.foldl nfa.stepSet (⋃ i ∈ S, f i) cs = ⋃ i ∈ S, List.foldl nfa.stepSet (f i) cs := by
   induction cs generalizing S f with
   | nil => simp
   | cons c _ ih => simp [stepSet, ih]
 
-theorem εClosureSet_subset_foldl_stepSet {nfa : NFAa} (h : S' ⊆ List.foldl nfa.stepSet (nfa.εClosureSet S) cs) :
+theorem εClosureSet_subset_foldl_stepSet {nfa : NFA} (h : S' ⊆ List.foldl nfa.stepSet (nfa.εClosureSet S) cs) :
   nfa.εClosureSet S' ⊆ List.foldl nfa.stepSet (nfa.εClosureSet S) cs := by
   induction cs generalizing S S' with
   | nil =>
@@ -270,10 +268,10 @@ theorem εClosureSet_subset_foldl_stepSet {nfa : NFAa} (h : S' ⊆ List.foldl nf
     simp [εClosureSet_iUnion_distrib]
     exact ⟨i, hi, hj⟩
 
-def evalFrom (nfa : NFAa) (S : Set Nat) : List Char → Set Nat :=
+def evalFrom (nfa : NFA) (S : Set Nat) : List Char → Set Nat :=
   List.foldl (nfa.stepSet) (nfa.εClosureSet S)
 
-theorem mem_evalFrom_subset {nfa : NFAa} (hmem : next ∈ nfa.evalFrom S₁ s) (hs : S₁ ⊆ nfa.εClosureSet S₂) :
+theorem mem_evalFrom_subset {nfa : NFA} (hmem : next ∈ nfa.evalFrom S₁ s) (hs : S₁ ⊆ nfa.εClosureSet S₂) :
   next ∈ nfa.evalFrom S₂ s := by
   apply mem_of_subset_of_mem _ hmem
   apply le_foldl_of_le
@@ -284,21 +282,21 @@ theorem mem_evalFrom_subset {nfa : NFAa} (hmem : next ∈ nfa.evalFrom S₁ s) (
       exact this
     exact εClosureSet_subset le_refl hs
 
-theorem evalFrom_subset {nfa₁ nfa₂ : NFAa} {S₁ S₂ : Set Nat} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
+theorem evalFrom_subset {nfa₁ nfa₂ : NFA} {S₁ S₂ : Set Nat} (hn : nfa₁ ≤ nfa₂) (hs : S₁ ⊆ S₂) :
   nfa₁.evalFrom S₁ s ⊆ nfa₂.evalFrom S₂ s := by
   apply le_foldl_of_le
   . intro _ _ _ hs
     exact stepSet_subset hn hs
   . exact εClosureSet_subset hn hs
 
-theorem mem_evalFrom_le {nfa₁ nfa₂ : NFAa} (le : nfa₁ ≤ nfa₂) (h : next ∈ nfa₁.evalFrom S s) :
+theorem mem_evalFrom_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) (h : next ∈ nfa₁.evalFrom S s) :
   next ∈ nfa₂.evalFrom S s :=
   evalFrom_subset le Subset.rfl h
 
 -- Proof of the main result
 
 theorem evalFrom_of_matches.alternateLeft {s : String} (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
-  (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r₁ = nfa' → ∀ (nfa'' : NFAa), nfa' ≤ nfa'' →
+  (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r₁ = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s.data) :
   next.val ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data := by
   apply pushRegex.alternate eq
@@ -325,7 +323,7 @@ theorem evalFrom_of_matches.alternateLeft {s : String} (eq : pushRegex nfa next 
       exact εClosure_trans mem h
 
 theorem evalFrom_of_matches.alternateRight {s : String} (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
-  (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r₂ = nfa' → ∀ (nfa'' : NFAa), nfa' ≤ nfa'' →
+  (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r₂ = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s.data) :
   next.val ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data := by
   apply pushRegex.alternate eq
@@ -350,9 +348,9 @@ theorem evalFrom_of_matches.alternateRight {s : String} (eq : pushRegex nfa next
 
 theorem evalFrom_of_matches.concat {s s₁ s₂ : String} (eq : pushRegex nfa next (.concat r₁ r₂) = nfa')
   (eqs : s = s₁ ++ s₂)
-  (ih₁ : ∀ {nfa next} {nfa'}, pushRegex nfa next r₁ = nfa' → ∀ (nfa'' : NFAa), nfa' ≤ nfa'' →
+  (ih₁ : ∀ {nfa next} {nfa'}, pushRegex nfa next r₁ = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s₁.data)
-  (ih₂ : ∀ {nfa next} {nfa'}, pushRegex nfa next r₂ = nfa' → ∀ (nfa'' : NFAa), nfa' ≤ nfa'' →
+  (ih₂ : ∀ {nfa next} {nfa'}, pushRegex nfa next r₂ = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s₂.data) :
   next.val ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data := by
   apply pushRegex.concat eq
@@ -374,9 +372,9 @@ theorem evalFrom_of_matches.concat {s s₁ s₂ : String} (eq : pushRegex nfa ne
 
 theorem evalFrom_of_matches.starConcat {s s₁ s₂ : String} (eq : pushRegex nfa next (.star r) = nfa')
   (eqs : s = s₁ ++ s₂)
-  (ih₁ : ∀ {nfa next} {nfa'}, pushRegex nfa next r = nfa' → ∀ (nfa'' : NFAa), nfa' ≤ nfa'' →
+  (ih₁ : ∀ {nfa next} {nfa'}, pushRegex nfa next r = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s₁.data)
-  (ih₂ : ∀ {nfa next} {nfa'}, pushRegex nfa next (.star r) = nfa' → ∀ (nfa'' : NFAa), nfa' ≤ nfa'' →
+  (ih₂ : ∀ {nfa next} {nfa'}, pushRegex nfa next (.star r) = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s₂.data) :
   next.val ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data := by
   apply pushRegex.star eq
@@ -424,7 +422,7 @@ theorem evalFrom_of_matches.starConcat {s s₁ s₂ : String} (eq : pushRegex nf
 
 theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
   (m : r.matches s) :
-  ∀ nfa'' : NFAa, nfa' ≤ nfa'' → next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s.data := by
+  ∀ nfa'' : NFA, nfa' ≤ nfa'' → next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s.data := by
   induction m generalizing next nfa with
   | @char s c eqs =>
     intro nfa'' le
@@ -473,4 +471,4 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     apply mem_evalFrom_le le
     exact evalFrom_of_matches.starConcat eq eqs ih₁ ih₂
 
-end NFAa
+end NFA

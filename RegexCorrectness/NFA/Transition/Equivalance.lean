@@ -2,9 +2,9 @@
 import RegexCorrectness.NFA.Transition.Basic
 import RegexCorrectness.NFA.Transition.AcceptOfMatch
 
-namespace NFAa
+namespace NFA
 
-theorem ge_length_of_pathIn {start} {nfa : NFAa} (path : nfa.pathIn start i cs i' cs') :
+theorem ge_length_of_pathIn {start} {nfa : NFA} (path : nfa.pathIn start i cs i' cs') :
   cs.length ≥ cs'.length := by
   induction path with
   | base _ _ eqs => rw [eqs]
@@ -15,7 +15,7 @@ theorem ge_length_of_pathIn {start} {nfa : NFAa} (path : nfa.pathIn start i cs i
       exact Nat.le_trans ih (Nat.le_succ _)
     | εStep => exact ih
 
-theorem εClosure_of_pathIn {nfa : NFAa} (eq : cs = cs') (path : nfa.pathIn 0 i cs i' cs') :
+theorem εClosure_of_pathIn {nfa : NFA} (eq : cs = cs') (path : nfa.pathIn 0 i cs i' cs') :
   i' ∈ nfa.εClosure i := by
   induction path with
   | base _ eqi => rw [eqi]; exact .base
@@ -29,7 +29,7 @@ theorem εClosure_of_pathIn {nfa : NFAa} (eq : cs = cs') (path : nfa.pathIn 0 i 
     | εStep _ h₂ step =>
       exact εClosure.step (εStep_of_εStep step) (ih eq)
 
-theorem pathIn_iff_εClosure {nfa : NFAa} :
+theorem pathIn_iff_εClosure {nfa : NFA} :
   nfa.pathIn 0 i cs i' cs ↔ i' ∈ nfa.εClosure i := by
   apply Iff.intro
   . exact εClosure_of_pathIn rfl
@@ -43,7 +43,7 @@ theorem pathIn_iff_εClosure {nfa : NFAa} :
         exact .step (.εStep (Nat.zero_le _) lt step) ih
       | isFalse nlt => simp [εStep, nlt] at step
 
-theorem stepSet_of_pathIn {nfa : NFAa} (eq₁ : cs₁ = c :: cs) (eq₂ : cs₂ = cs)
+theorem stepSet_of_pathIn {nfa : NFA} (eq₁ : cs₁ = c :: cs) (eq₂ : cs₂ = cs)
   (path : nfa.pathIn 0 i cs₁ i' cs₂) :
   i' ∈ nfa.stepSet (nfa.εClosureSet {i}) c := by
   induction path with
@@ -67,7 +67,7 @@ theorem stepSet_of_pathIn {nfa : NFAa} (eq₁ : cs₁ = c :: cs) (eq₂ : cs₂ 
       apply stepSet_subset le_refl
       exact εClosureSet_of_εStep (εStep_of_εStep step)
 
-theorem pathIn_of_stepSet {nfa : NFAa} (h : i' ∈ nfa.stepSet (nfa.εClosureSet {i}) c) :
+theorem pathIn_of_stepSet {nfa : NFA} (h : i' ∈ nfa.stepSet (nfa.εClosureSet {i}) c) :
   nfa.pathIn 0 i (c :: cs) i' cs := by
   simp [stepSet, εClosureSet] at h
   let ⟨j, h₁, k, h₂, h₃⟩ := h
@@ -81,13 +81,13 @@ theorem pathIn_of_stepSet {nfa : NFAa} (h : i' ∈ nfa.stepSet (nfa.εClosureSet
   have path₂ : nfa.pathIn 0 k cs i' cs := pathIn_iff_εClosure.mpr h₃
   exact path₁.trans (pathIn.step (.charStep (Nat.zero_le _) lt h₂') path₂)
 
-theorem pathIn_iff_stepSet {nfa : NFAa} :
+theorem pathIn_iff_stepSet {nfa : NFA} :
   nfa.pathIn 0 i (c :: cs) i' cs ↔ i' ∈ nfa.stepSet (nfa.εClosureSet {i}) c := by
   apply Iff.intro
   . exact stepSet_of_pathIn rfl rfl
   . exact pathIn_of_stepSet
 
-theorem evalFrom_of_pathIn {nfa : NFAa} {start} (path : nfa.pathIn start i cs i' []) :
+theorem evalFrom_of_pathIn {nfa : NFA} {start} (path : nfa.pathIn start i cs i' []) :
   i' ∈ nfa.evalFrom {i} cs := by
   generalize h : [] = cs'
   rw [h] at path
@@ -117,7 +117,7 @@ theorem evalFrom_of_pathIn {nfa : NFAa} {start} (path : nfa.pathIn start i cs i'
       simp at this
       exact this
 
-theorem pathIn_of_foldl_stepSet {nfa : NFAa} (ev : i' ∈ List.foldl nfa.stepSet {i} cs) :
+theorem pathIn_of_foldl_stepSet {nfa : NFA} (ev : i' ∈ List.foldl nfa.stepSet {i} cs) :
   nfa.pathIn 0 i cs i' [] := by
   induction cs generalizing i i' with
   | nil =>
@@ -143,7 +143,7 @@ theorem pathIn_of_foldl_stepSet {nfa : NFAa} (ev : i' ∈ List.foldl nfa.stepSet
     apply stepSet_subset le_refl
     simp
 
-theorem pathIn_of_evalFrom {nfa : NFAa} (ev : i' ∈ nfa.evalFrom {i} cs) :
+theorem pathIn_of_evalFrom {nfa : NFA} (ev : i' ∈ nfa.evalFrom {i} cs) :
   nfa.pathIn 0 i cs i' [] := by
   unfold evalFrom at ev
   have : nfa.εClosureSet {i} = ⋃ j ∈ nfa.εClosureSet {i}, {j} := by
@@ -157,7 +157,7 @@ theorem pathIn_of_evalFrom {nfa : NFAa} (ev : i' ∈ nfa.evalFrom {i} cs) :
   have path₂ := pathIn_of_foldl_stepSet rest
   exact path₁.trans path₂
 
-theorem pathToNext_of_compile_of_pathIn' (eq : NFAa.compile r = nfa)
+theorem pathToNext_of_compile_of_pathIn' (eq : NFA.compile r = nfa)
   (assm₁ : 0 < i) (assm₂ : next = 0)
   (path : nfa.pathIn 0 i cs next cs') :
   nfa.pathToNext 0 1 i cs cs' := by
@@ -177,7 +177,7 @@ theorem pathToNext_of_compile_of_pathIn' (eq : NFAa.compile r = nfa)
           have : 0 < nfa.nodes.size :=
             calc
               0 < 1 := by decide
-              _ < _ := (NFAa.done.pushRegex ⟨0, by decide⟩ r).property
+              _ < _ := (NFA.done.pushRegex ⟨0, by decide⟩ r).property
               _ = _ := by simp [←eq, compile]
           have hn : nfa[0] = .done := by
             simp [←eq]
@@ -190,12 +190,12 @@ theorem pathToNext_of_compile_of_pathIn' (eq : NFAa.compile r = nfa)
       have ih := ih this assm₂
       apply ih.cons (step.castStart' assm₁)
 
-theorem pathToNext_of_compile_of_pathIn (eq : NFAa.compile r = nfa)
+theorem pathToNext_of_compile_of_pathIn (eq : NFA.compile r = nfa)
   (path : nfa.pathIn 0 nfa.start.val cs 0 []) :
   nfa.pathToNext 0 1 nfa.start.val cs [] := by
   have : 0 < nfa.start.val := by
     rw [←eq, compile]
-    exact ge_pushRegex_start (rfl : NFAa.done.pushRegex _ r = _)
+    exact ge_pushRegex_start (rfl : NFA.done.pushRegex _ r = _)
   exact pathToNext_of_compile_of_pathIn' eq this rfl path
 
-end NFAa
+end NFA

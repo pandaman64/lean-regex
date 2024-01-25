@@ -75,18 +75,18 @@ end NFA
 
   The transition relation and accept nodes are embedded in the nodes themselves.
 -/
-structure NFAa where
+structure NFA where
   nodes : Array NFA.Node
   start : Fin nodes.size
   inBounds : ∀ i : Fin nodes.size, nodes[i.val].inBounds nodes.size
 deriving Repr
 
-instance : ToString NFAa where
+instance : ToString NFA where
   toString nfa := reprStr nfa
 
-namespace NFAa
+namespace NFA
 
-def done : NFAa :=
+def done : NFA :=
   let nodes := #[NFA.Node.done]
   let start := ⟨0, by decide⟩
   have inBounds := by
@@ -96,50 +96,16 @@ def done : NFAa :=
     | ⟨i + 1, isLt⟩ => contradiction
   ⟨nodes, start, inBounds⟩
 
-def get (nfa : NFAa) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
+def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
   nfa.nodes[i]
 
-instance : GetElem NFAa Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
+instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
   getElem := get
 
-theorem get_eq_nodes_get (nfa : NFAa) (i : Nat) (h : i < nfa.nodes.size) :
+theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) :
   nfa[i] = nfa.nodes[i] := rfl
 
-theorem zero_lt_size {nfa : NFAa} : 0 < nfa.nodes.size := by
-  apply Nat.zero_lt_of_ne_zero
-  intro h
-  exact (h ▸ nfa.start).elim0
-
-end NFAa
-
-namespace NFA
-
-/--
-  The NFA consists an array of nodes and a designated start node.
-
-  The transition relation and accept nodes are embedded in the nodes themselves.
--/
-structure NFA where
-  nodes : Array Node
-  start : Fin nodes.size
-deriving Repr
-
-instance : ToString NFA where
-  toString nfa := reprStr nfa
-
-def NFA.get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : Node :=
-  nfa.nodes[i]
-
-instance : GetElem NFA Nat Node (fun nfa i => i < nfa.nodes.size) where
-  getElem := NFA.get
-
-theorem NFA.eq_get {nfa : NFA} {i : Nat} {h : i < nfa.nodes.size} :
-  nfa[i] = nfa.nodes[i] := rfl
-
-def NFA.inBounds (nfa : NFA) :=
-  ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size
-
-theorem NFA.zero_lt_size {nfa : NFA} : 0 < nfa.nodes.size := by
+theorem zero_lt_size {nfa : NFA} : 0 < nfa.nodes.size := by
   apply Nat.zero_lt_of_ne_zero
   intro h
   exact (h ▸ nfa.start).elim0

@@ -1,9 +1,9 @@
 import RegexCorrectness.NFA.Basic
 import RegexCorrectness.NFA.Compile
 
-namespace NFAa
+namespace NFA
 
-inductive stepIn (nfa : NFAa) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
+inductive stepIn (nfa : NFA) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
   | charStep {i j : Nat} {c : Char} {cs : List Char}
     (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) :
     nfa.stepIn start i (c :: cs) j cs
@@ -11,19 +11,19 @@ inductive stepIn (nfa : NFAa) (start : Nat) : Nat → List Char → Nat → List
     (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) :
     nfa.stepIn start i cs j cs
 
-theorem stepIn.h₁ {nfa : NFAa} {start : Nat} {i j : Nat} {cs cs' : List Char}
+theorem stepIn.h₁ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : start ≤ i := by
   cases step with
   | charStep h₁ _ _ => exact h₁
   | εStep h₁ _ _ => exact h₁
 
-theorem stepIn.h₂ {nfa : NFAa} {start : Nat} {i j : Nat} {cs cs' : List Char}
+theorem stepIn.h₂ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : i < nfa.nodes.size := by
   cases step with
   | charStep _ h₂ _ => exact h₂
   | εStep _ h₂ _ => exact h₂
 
-theorem stepIn.step {nfa : NFAa} {start : Nat} {i j : Nat} {cs cs' : List Char}
+theorem stepIn.step {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') :
   (∃ c, j ∈ (nfa[i]'step.h₂).charStep c) ∨ j ∈ (nfa[i]'step.h₂).εStep := by
   cases step with
@@ -40,18 +40,18 @@ theorem stepIn.lt_right {start} (step : stepIn nfa start i cs j cs') : j < nfa.n
   | .inl ⟨_, step⟩ => exact lt_of_charStep step
   | .inr step => exact lt_of_εStep step
 
-theorem stepIn.castStart' {nfa : NFAa} {start start' : Nat}
+theorem stepIn.castStart' {nfa : NFA} {start start' : Nat}
   (le : start' ≤ i) (step : stepIn nfa start i cs j cs') :
   nfa.stepIn start' i cs j cs' := by
   cases step with
   | charStep h₁ h₂ step => exact .charStep le h₂ step
   | εStep h₁ h₂ step => exact .εStep le h₂ step
 
-theorem stepIn.castStart {nfa : NFAa} {start start' : Nat}
+theorem stepIn.castStart {nfa : NFA} {start start' : Nat}
   (le : start' ≤ start) (step : stepIn nfa start i cs j cs') :
   nfa.stepIn start' i cs j cs' := step.castStart' (Nat.le_trans le step.h₁)
 
-theorem stepIn.cast {nfa nfa' : NFAa} {start : Nat}
+theorem stepIn.cast {nfa nfa' : NFA} {start : Nat}
   (step : nfa.stepIn start i cs j cs')
   (h : i < nfa'.nodes.size)
   (eq : nfa[i]'(step.h₂) = nfa'[i]) :
@@ -63,7 +63,7 @@ theorem stepIn.cast {nfa nfa' : NFAa} {start : Nat}
     exact .εStep h₁ h (eq ▸ step)
 
 -- Maybe we should recurse from the last as we reason about the last step often
-inductive pathIn (nfa : NFAa) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
+inductive pathIn (nfa : NFA) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
   | base (h : start ≤ i) (eqi : i = j) (eqs : cs = cs') : nfa.pathIn start i cs j cs'
   | step {i j k : Nat} {cs cs' cs'' : List Char}
     (step : nfa.stepIn start i cs j cs') (rest : nfa.pathIn start j cs' k cs'') :
@@ -79,7 +79,7 @@ theorem le_of_pathIn_right {start} (path : pathIn nfa start i cs j cs') : start 
   | base h eqi => exact eqi ▸ h
   | step _ _ ih => exact ih
 
-theorem pathIn.castStart {nfa : NFAa} {start start' : Nat}
+theorem pathIn.castStart {nfa : NFA} {start start' : Nat}
   (le : start' ≤ start)
   (path : nfa.pathIn start i cs j cs') :
   nfa.pathIn start' i cs j cs' := by
@@ -87,7 +87,7 @@ theorem pathIn.castStart {nfa : NFAa} {start start' : Nat}
   | base h eqi eqs => exact .base (Nat.le_trans le h) eqi eqs
   | step step _ ih => exact .step (step.castStart le) ih
 
-theorem pathIn.cast {nfa nfa' : NFAa} (start : Nat)
+theorem pathIn.cast {nfa nfa' : NFA} (start : Nat)
   (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
   (path : pathIn nfa start i cs j cs') :
   pathIn nfa' start i cs j cs' := by
@@ -97,7 +97,7 @@ theorem pathIn.cast {nfa nfa' : NFAa} (start : Nat)
     let ⟨h, eq⟩ := eq _ step.h₁ step.h₂
     exact .step (step.cast h eq) ih
 
-theorem pathIn.cast' {nfa nfa' : NFAa} {start : Nat}
+theorem pathIn.cast' {nfa nfa' : NFA} {start : Nat}
   (assm : i < nfa.nodes.size) (le : nfa.nodes.size ≤ nfa'.nodes.size)
   (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → nfa[i] = nfa'[i]'(Nat.lt_of_lt_of_le h₂ le))
   (path : pathIn nfa' start i cs j cs') :
@@ -112,7 +112,7 @@ theorem pathIn.cast' {nfa nfa' : NFAa} {start : Nat}
       | εStep _ _ step => exact lt_of_εStep (eq.symm ▸ step)
     exact .step (step.cast assm eq.symm) (ih this)
 
-theorem pathIn.castLE {nfa : NFAa} {start start' i i' : Nat}
+theorem pathIn.castLE {nfa : NFA} {start start' i i' : Nat}
   (assm : start' ≤ i)
   (inBounds : ∀ i j, (h₁ : start' ≤ i) →
     (h₂ : i < nfa.nodes.size) →
@@ -131,7 +131,7 @@ theorem pathIn.castLE {nfa : NFAa} {start start' i i' : Nat}
       | εStep _ _ step => exact inBounds i j assm h₂ (.inr step) (le_of_pathIn_left rest)
     exact .step (step.castStart' assm) (ih this)
 
-theorem pathIn.lt_right {nfa : NFAa} {start i i' : Nat}
+theorem pathIn.lt_right {nfa : NFA} {start i i' : Nat}
   (assm : i < nfa.nodes.size)
   (path : pathIn nfa start i cs i' cs') :
   i' < nfa.nodes.size := by
@@ -175,7 +175,7 @@ theorem pathIn.trans {start}
   | base _ eqi eqs => exact eqi ▸ eqs ▸ path₂
   | step step _ ih => exact .step step (ih path₂)
 
-def pathToNext (nfa : NFAa) (next start i : Nat) (cs cs' : List Char) : Prop :=
+def pathToNext (nfa : NFA) (next start i : Nat) (cs cs' : List Char) : Prop :=
   ∃ (i' : Nat) (cs'' : List Char),
     nfa.pathIn start i cs i' cs'' ∧
     nfa.stepIn start i' cs'' next cs'
@@ -190,7 +190,7 @@ theorem pathToNext.cons {start} {cs cs' cs'' : List Char}
   obtain ⟨i', cs''', path, step'⟩ := path
   exact ⟨i', cs''', .step step path, step'⟩
 
-theorem pathToNext.cast {nfa nfa' : NFAa} {next start i : Nat} {cs cs' : List Char}
+theorem pathToNext.cast {nfa nfa' : NFA} {next start i : Nat} {cs cs' : List Char}
   (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
   (path : pathToNext nfa next start i cs cs') :
   pathToNext nfa' next start i cs cs' := by
@@ -198,7 +198,7 @@ theorem pathToNext.cast {nfa nfa' : NFAa} {next start i : Nat} {cs cs' : List Ch
   obtain ⟨h', eq'⟩ := eq _ (le_of_pathIn_right path) step.h₂
   exact ⟨i', cs'', pathIn.cast start eq path, step.cast h' eq'⟩
 
-theorem pathToNext.cast' {nfa nfa' : NFAa} {start : Nat}
+theorem pathToNext.cast' {nfa nfa' : NFA} {start : Nat}
   (assm : i < nfa.nodes.size) (le : nfa.nodes.size ≤ nfa'.nodes.size)
   (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → nfa[i] = nfa'[i]'(Nat.lt_of_lt_of_le h₂ le))
   (path : pathToNext nfa' next start i cs cs') :
@@ -208,7 +208,7 @@ theorem pathToNext.cast' {nfa nfa' : NFAa} {start : Nat}
   have lt : i' < nfa.nodes.size := path'.lt_right assm
   exact ⟨i', cs'', path', step.cast lt (eq i' step.h₁ lt).symm⟩
 
-theorem pathToNext.castLE {nfa : NFAa} {next start start' i : Nat} {cs cs' : List Char}
+theorem pathToNext.castLE {nfa : NFA} {next start start' i : Nat} {cs cs' : List Char}
   (assm : start' ≤ i)
   (inBounds : ∀ i j, (h₁ : start' ≤ i) →
     (h₂ : i < nfa.nodes.size) →
@@ -221,4 +221,4 @@ theorem pathToNext.castLE {nfa : NFAa} {next start start' i : Nat} {cs cs' : Lis
   have path' := path.castLE assm inBounds
   exact ⟨i', cs'', path', step.castStart' (le_of_pathIn_right path')⟩
 
-end NFAa
+end NFA
