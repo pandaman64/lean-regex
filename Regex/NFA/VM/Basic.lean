@@ -334,11 +334,8 @@ theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
   apply this
 termination_by go _ => n - i
 
-open NFA
-
 -- TODO: check if the modifications don't cause copying
-def εClosureTR (nfa : NFA) (inBounds : nfa.inBounds)
-  (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
+def εClosureTRa (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
   NodeSet nfa.nodes.size :=
   if hemp : stack.isEmpty then
     visited
@@ -347,13 +344,13 @@ def εClosureTR (nfa : NFA) (inBounds : nfa.inBounds)
     let stack' := stack.pop
     have : stack'.size < stack.size := Array.lt_size_of_pop_of_not_empty _ hemp
     if hvis : visited.get i then
-      εClosureTR nfa inBounds visited stack'
+      εClosureTRa nfa visited stack'
     else
       let visited' := visited.set i
       have : visited'.count_unset < visited.count_unset := visited.lt_count_unset i.isLt hvis
-      have inBounds' := inBounds i
+      have inBounds' := nfa.inBounds i
       let stack'' :=
-        match hn : nfa[i] with
+        match hn : nfa.nodes[i.val] with
         | .epsilon next =>
           have h : next < nfa.nodes.size := by
             rw [hn] at inBounds'
@@ -373,13 +370,13 @@ def εClosureTR (nfa : NFA) (inBounds : nfa.inBounds)
 
           (stack'.push ⟨next₁, h₁⟩).push ⟨next₂, h₂⟩
         | _ => stack'
-      εClosureTR nfa inBounds visited' stack''
+      εClosureTRa nfa visited' stack''
 termination_by _ => (visited.count_unset, stack.size)
 
-def charStepTR (nfa : NFA) (inBounds : nfa.inBounds) (c : Char) (init : NodeSet nfa.nodes.size) :
-  NodeSet nfa.nodes.size := go nfa inBounds c init .empty 0 (Nat.zero_le _)
+def charStepTRa (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
+  NodeSet nfa.nodes.size := go nfa c init .empty 0 (Nat.zero_le _)
 where
-  go (nfa : NFA) (inBounds : nfa.inBounds) (c : Char) (init : NodeSet nfa.nodes.size)
+  go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size)
     (accum : NodeSet nfa.nodes.size) (i : Nat) (hle : i ≤ nfa.nodes.size) :
     NodeSet nfa.nodes.size :=
     if h : i = nfa.nodes.size then
@@ -387,20 +384,20 @@ where
     else
       have hlt : i < nfa.nodes.size := Nat.lt_of_le_of_ne hle h
       let accum := if init.get ⟨i, hlt⟩ then
-        match hn : nfa[i] with
+        match hn : nfa.nodes[i] with
         | .char c' next =>
           if c = c' then
             have : next < nfa.nodes.size := by
-              have := inBounds ⟨i, hlt⟩
+              have := nfa.inBounds ⟨i, hlt⟩
               simp [hn, Node.inBounds] at this
               exact this
             -- TODO: reuse visited and stack
-            accum.merge (εClosureTR nfa inBounds .empty #[⟨next, this⟩])
+            accum.merge (εClosureTRa nfa .empty #[⟨next, this⟩])
           else
             accum
         | _ => accum
       else accum
-      go nfa inBounds c init accum (i + 1) hlt
+      go nfa c init accum (i + 1) hlt
 termination_by go _ => nfa.nodes.size - i
 
 end NFA.VM
@@ -408,15 +405,15 @@ end NFA.VM
 open NFA.VM
 
 @[export lean_regex_nfa_match]
-def NFA.NFA.match (nfa : NFA) (inBounds : nfa.inBounds) (s : String) : Bool :=
-  let ns := εClosureTR nfa inBounds .empty #[nfa.start]
-  let ns := go nfa inBounds s.iter ns
+def NFA.match (nfa : NFA) (s : String) : Bool :=
+  let ns := εClosureTRa nfa .empty #[nfa.start]
+  let ns := go nfa s.iter ns
   -- This assumes that the first node is the accepting node
   ns.get ⟨0, nfa.zero_lt_size⟩
 where
-  go (nfa : NFA) (inBounds : nfa.inBounds) (iter : String.Iterator) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
+  go (nfa : NFA) (iter : String.Iterator) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
     if iter.atEnd then
       ns
     else
-      let ns' := charStepTR nfa inBounds iter.curr ns
-      go nfa inBounds iter.next ns'
+      let ns' := charStepTRa nfa iter.curr ns
+      go nfa iter.next ns'

@@ -38,35 +38,33 @@ theorem Node.minimal_fail {n : Node} : .fail ≤ n :=
 /--
   Extend the ordering to εNFA.
 -/
-def NFA.le (nfa₁ nfa₂ : NFA) : Prop :=
-  ∀ i : Nat, (h₁ : i < nfa₁.nodes.size) → ∃ h₂ : i < nfa₂.nodes.size, nfa₁[i] ≤ nfa₂[i]
+def le (nfa₁ nfa₂ : NFA) : Prop :=
+  ∀ i : Fin nfa₁.nodes.size, ∃ h₂ : i < nfa₂.nodes.size, nfa₁[i.val] ≤ nfa₂[i.val]
 
 instance : LE NFA where
-  le := NFA.le
+  le := le
 
-theorem NFA.le_size_of_le {nfa₁ nfa₂ : NFA} (h : nfa₁ ≤ nfa₂) : nfa₁.nodes.size ≤ nfa₂.nodes.size :=
+theorem le_size_of_le {nfa₁ nfa₂ : NFA} (h : nfa₁ ≤ nfa₂) : nfa₁.nodes.size ≤ nfa₂.nodes.size :=
   match Nat.lt_or_ge nfa₂.nodes.size nfa₁.nodes.size with
   | .inr le => le
-  | .inl gt => nomatch Nat.lt_irrefl _ (h nfa₂.nodes.size gt).1
+  | .inl gt => nomatch Nat.lt_irrefl _ (h ⟨nfa₂.nodes.size, gt⟩).1
 
-theorem NFA.le_rfl {nfa : NFA} : nfa ≤ nfa
-  | _, h => ⟨h, Node.le_rfl⟩
+theorem le_refl {nfa : NFA} : nfa ≤ nfa
+  | i => ⟨i.isLt, Node.le_rfl⟩
 
-theorem NFA.le_trans {nfa₁ nfa₂ nfa₃ : NFA} : nfa₁ ≤ nfa₂ → nfa₂ ≤ nfa₃ → nfa₁ ≤ nfa₃ := by
-  intro h₁ h₂ i h
-  have : nfa₁.nodes.size ≤ nfa₃.nodes.size := Nat.le_trans (NFA.le_size_of_le h₁) (NFA.le_size_of_le h₂)
-  have h' : i < nfa₃.nodes.size := Nat.lt_of_lt_of_le h this
-  have h'' : nfa₁[i] ≤ nfa₃[i] := Node.le_trans (h₁ i h).2 (h₂ i (h₁ i h).1).2
-  exact ⟨h', h''⟩
-
-theorem NFA.le_of_eq {nfa₁ nfa₂ : NFA} : nfa₁ = nfa₂ → nfa₁ ≤ nfa₂ := fun h => h ▸ NFA.le_rfl
+theorem le_trans {nfa₁ nfa₂ nfa₃ : NFA} (h₁ : nfa₁ ≤ nfa₂) (h₂ : nfa₂ ≤ nfa₃) : nfa₁ ≤ nfa₃ := by
+  intro i
+  have lt₂ : i < nfa₂.nodes.size := Nat.lt_of_lt_of_le i.isLt (le_size_of_le h₁)
+  have lt₃ : i < nfa₃.nodes.size := Nat.lt_of_lt_of_le lt₂ (le_size_of_le h₂)
+  have le : nfa₁[i] ≤ nfa₃[i] := Node.le_trans (h₁ i).2 (h₂ ⟨i.val, lt₂⟩).2
+  exact ⟨lt₃, le⟩
 
 def _instLENFA : LE NFA := inferInstance
 instance : Trans NFA.le NFA.le NFA.le := ⟨NFA.le_trans⟩
 instance : Trans _instLENFA.le _instLENFA.le _instLENFA.le := ⟨NFA.le_trans⟩
 
 instance : Preorder NFA where
-  le_refl := @NFA.le_rfl
+  le_refl := @NFA.le_refl
   le_trans := @NFA.le_trans
 
 end NFA
