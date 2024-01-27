@@ -30,6 +30,16 @@ def NodeSet.empty {n : Nat} : NodeSet n :=
 def NodeSet.get (ns : NodeSet n) (i : Fin n) : Bool :=
   ns.val.get (i.cast ns.property.symm)
 
+@[ext]
+theorem NodeSet.ext {ns₁ ns₂ : NodeSet n} (h : ∀ i, ns₁.get i = ns₂.get i) :
+  ns₁ = ns₂ := by
+  apply Subtype.eq
+  apply Array.ext <;> simp [ns₁.property, ns₂.property]
+  intro i lt _
+  have h := h ⟨i, lt⟩
+  simp [NodeSet.get] at h
+  exact h
+
 instance : GetElem (NodeSet n) Nat Bool (fun _ i => i < n) where
   getElem ns i h := ns.get ⟨i, h⟩
 
@@ -257,6 +267,50 @@ where
         exact Nat.lt_of_not_ge nle
 termination_by go' _ => n - i
 
+theorem NodeSet.count_set.le_go {ns : NodeSet n} :
+  accum ≤ go ns accum i hle := by
+  unfold go
+  split
+  case inl eq => simp
+  case inr ne =>
+    have : i < n := Nat.lt_of_le_of_ne hle ne
+    simp
+    calc
+      _ ≤ _ := by split <;> simp [Nat.le_succ]
+      _ ≤ _ := le_go
+termination_by _ => n - i
+
+theorem NodeSet.lt_count_set_of_get {ns : NodeSet n} {j : Fin n}
+  (h : ns.get j) :
+  0 < ns.count_set := go 0 0 (Nat.zero_le _)
+where
+  go (accum : Nat) (i : Nat) (hle : i ≤ j) :
+    0 < count_set.go ns accum i (Nat.le_of_lt (Nat.lt_of_le_of_lt hle j.isLt)) := by
+    unfold count_set.go
+    have : i ≠ n := Nat.ne_of_lt (Nat.lt_of_le_of_lt hle j.isLt)
+    simp [this]
+    cases Nat.lt_or_eq_of_le hle with
+    | inl lt => exact go _ (i + 1) lt
+    | inr eq =>
+      simp [h, eq]
+      calc
+        0 < accum + 1 := by simp
+        _ ≤ _ := NodeSet.count_set.le_go
+termination_by go _ => j - i
+
+theorem NodeSet.get_eq_false_of_count_set_zero {ns : NodeSet n} {i : Fin n}
+  (h : ns.count_set = 0) :
+  ns.get i = false := by
+  by_contra hget
+  simp at hget
+  have := h ▸ ns.lt_count_set_of_get hget
+  exact absurd (h ▸ ns.lt_count_set_of_get hget) (Nat.not_lt_zero _)
+
+theorem NodeSet.eq_empty_of_count_set_zero {ns : NodeSet n}
+  (h : ns.count_set = 0) : ns = NodeSet.empty := by
+  ext i
+  simp [NodeSet.get_eq_false_of_count_set_zero h]
+
 -- NOTE: this should overwrite to ns₁ if it's unique
 def NodeSet.merge (ns₁ ns₂ : NodeSet n) : NodeSet n :=
   go ns₁ ns₂ 0 (Nat.zero_le _)
@@ -335,7 +389,7 @@ theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
 termination_by go _ => n - i
 
 -- TODO: check if the modifications don't cause copying
-def εClosureTRa (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
+def εClosureTR (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
   NodeSet nfa.nodes.size :=
   if hemp : stack.isEmpty then
     visited
@@ -344,7 +398,7 @@ def εClosureTRa (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (
     let stack' := stack.pop
     have : stack'.size < stack.size := Array.lt_size_of_pop_of_not_empty _ hemp
     if hvis : visited.get i then
-      εClosureTRa nfa visited stack'
+      εClosureTR nfa visited stack'
     else
       let visited' := visited.set i
       have : visited'.count_unset < visited.count_unset := visited.lt_count_unset i.isLt hvis
@@ -370,10 +424,10 @@ def εClosureTRa (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (
 
           (stack'.push ⟨next₁, h₁⟩).push ⟨next₂, h₂⟩
         | _ => stack'
-      εClosureTRa nfa visited' stack''
+      εClosureTR nfa visited' stack''
 termination_by _ => (visited.count_unset, stack.size)
 
-def charStepTRa (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
+def charStepTR (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
   NodeSet nfa.nodes.size := go nfa c init .empty 0 (Nat.zero_le _)
 where
   go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size)
@@ -392,7 +446,7 @@ where
               simp [hn, Node.inBounds] at this
               exact this
             -- TODO: reuse visited and stack
-            accum.merge (εClosureTRa nfa .empty #[⟨next, this⟩])
+            accum.merge (εClosureTR nfa .empty #[⟨next, this⟩])
           else
             accum
         | _ => accum
@@ -406,7 +460,7 @@ open NFA.VM
 
 @[export lean_regex_nfa_match]
 def NFA.match (nfa : NFA) (s : String) : Bool :=
-  let ns := εClosureTRa nfa .empty #[nfa.start]
+  let ns := εClosureTR nfa .empty #[nfa.start]
   let ns := go nfa s.iter ns
   -- This assumes that the first node is the accepting node
   ns.get ⟨0, nfa.zero_lt_size⟩
@@ -415,5 +469,9 @@ where
     if iter.atEnd then
       ns
     else
-      let ns' := charStepTRa nfa iter.curr ns
-      go nfa iter.next ns'
+      -- Move if here to avoid confusing termination checker
+      if ns.count_set = 0 then
+        ns
+      else
+        let ns' := charStepTR nfa iter.curr ns
+        go nfa iter.next ns'
