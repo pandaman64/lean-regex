@@ -230,6 +230,12 @@ theorem lt_of_mem_stepSet {nfa : NFA} (h : j ∈ nfa.stepSet S c) :
     exact lt_of_charStep step
   exact lt_of_εClosure_right this cls
 
+theorem foldl_stepSet_empty {nfa : NFA} :
+  List.foldl nfa.stepSet ∅ cs = ∅ := by
+  induction cs with
+  | nil => simp
+  | cons c cs ih => simp [ih]
+
 theorem foldl_stepSet_subset_of_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) (h : S₁ ⊆ S₂) :
   List.foldl nfa₁.stepSet S₁ cs ⊆ List.foldl nfa₂.stepSet S₂ cs := by
   induction cs generalizing S₁ S₂ with

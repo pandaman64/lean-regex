@@ -92,13 +92,13 @@ theorem mem_εStep_iff_εClosure_sub {nfa : NFA} {S : Set Nat} :
     apply Set.mem_of_mem_of_subset _ (assm i mem)
     exact εClosure.step (εStep_of_εStep step) .base
 
-def εClosureTRa_spec.inv (nfa : NFA) (i : Fin nfa.nodes.size)
+def εClosureTR_spec.inv (nfa : NFA) (i : Fin nfa.nodes.size)
   (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) : Prop :=
   (visited.get i ∨ i ∈ stack) ∧
   (∀ i j, visited.get i → j.val ∈ nfa[i].εStep → visited.get j ∨ j ∈ stack) ∧
   (∀ j, (visited.get j ∨ j ∈ stack) → j.val ∈ nfa.εClosure i)
 
-theorem εClosureTRa_spec.case_visited (inv₀ : inv nfa i visited stack)
+theorem εClosureTR_spec.case_visited (inv₀ : inv nfa i visited stack)
   (hemp : ¬ stack.isEmpty) (hvis : NodeSet.get visited (Array.back' stack hemp)) :
   inv nfa i visited stack.pop := by
   simp [inv] at *
@@ -125,7 +125,7 @@ theorem εClosureTRa_spec.case_visited (inv₀ : inv nfa i visited stack)
     | inl vis => exact .inl vis
     | inr stk => exact .inr (Array.mem_of_mem_pop _ _ stk)
 
-theorem εClosureTRa_spec.case_epsilon (inv₀ : inv nfa i visited stack)
+theorem εClosureTR_spec.case_epsilon (inv₀ : inv nfa i visited stack)
   (hemp : ¬ stack.isEmpty) (hvis : ¬ NodeSet.get visited (Array.back' stack hemp))
   (hn : nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.epsilon next) :
   inv nfa i (visited.set (Array.back' stack hemp)) (stack.pop.push ⟨next, isLt⟩) := by
@@ -171,7 +171,7 @@ theorem εClosureTRa_spec.case_epsilon (inv₀ : inv nfa i visited stack)
           simp [εStep, NFA.Node.εStep, get_eq_nodes_get, hn]
         exact εClosure_snoc cls step
 
-theorem εClosureTRa_spec.case_split (inv₀ : inv nfa i visited stack)
+theorem εClosureTR_spec.case_split (inv₀ : inv nfa i visited stack)
   (hemp : ¬ stack.isEmpty) (hvis : ¬ NodeSet.get visited (Array.back' stack hemp))
   (hn : nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.split next₁ next₂) :
   inv nfa i (visited.set (Array.back' stack hemp)) ((stack.pop.push ⟨next₁, isLt₁⟩).push ⟨next₂, isLt₂⟩) := by
@@ -226,7 +226,7 @@ theorem εClosureTRa_spec.case_split (inv₀ : inv nfa i visited stack)
           simp [εStep, NFA.Node.εStep, get_eq_nodes_get, hn]
         exact εClosure_snoc ncls step
 
-theorem εClosureTRa_spec.case_else (inv₀ : inv nfa i visited stack)
+theorem εClosureTR_spec.case_else (inv₀ : inv nfa i visited stack)
   (hemp : ¬ stack.isEmpty) (hvis : ¬ NodeSet.get visited (Array.back' stack hemp))
   (hn₁ : ∀ (next : Nat), ¬ nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.epsilon next)
   (hn₂ : ∀ (next₁ next₂ : Nat), ¬ nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.split next₁ next₂) :
@@ -276,10 +276,10 @@ theorem εClosureTRa_spec.case_else (inv₀ : inv nfa i visited stack)
       exact h₃ j (.inr this)
 
 -- The case analysis takes a bit of time, so we split each branch as lemmas
-theorem εClosureTRa_spec.go (nfa : NFA) (i : Fin nfa.nodes.size) {visited stack}
+theorem εClosureTR_spec.go (nfa : NFA) (i : Fin nfa.nodes.size) {visited stack}
   (inv₀ : inv nfa i visited stack) :
-  inv nfa i (εClosureTRa nfa visited stack) #[] := by
-  unfold εClosureTRa
+  inv nfa i (εClosureTR nfa visited stack) #[] := by
+  unfold εClosureTR
   split
   case inl hemp => exact (Array.isEmpty_iff.mp hemp) ▸ inv₀
   case inr hemp =>
@@ -296,18 +296,18 @@ theorem εClosureTRa_spec.go (nfa : NFA) (i : Fin nfa.nodes.size) {visited stack
       next hn₁ hn₂ => exact go nfa i (case_else inv₀ hemp hvis hn₁ hn₂)
 termination_by _ => (visited.count_unset, stack.size)
 
-theorem εClosureTRa_spec {nfa : NFA} {i : Fin nfa.nodes.size} :
-  ∀ j, (εClosureTRa nfa .empty #[i]).get j ↔ j.val ∈ nfa.εClosure i := by
-  have inv₀ : εClosureTRa_spec.inv nfa i .empty #[i] := by
-    simp [εClosureTRa_spec.inv]
+theorem εClosureTR_spec {nfa : NFA} {i : Fin nfa.nodes.size} :
+  ∀ j, (εClosureTR nfa .empty #[i]).get j ↔ j.val ∈ nfa.εClosure i := by
+  have inv₀ : εClosureTR_spec.inv nfa i .empty #[i] := by
+    simp [εClosureTR_spec.inv]
     exact .base
-  have ⟨h₁, h₂, h₃⟩ := εClosureTRa_spec.go nfa i inv₀
+  have ⟨h₁, h₂, h₃⟩ := εClosureTR_spec.go nfa i inv₀
   simp at h₁ h₂ h₃
   intro j
   apply Iff.intro
   . exact h₃ j
   . intro h
-    let S := { j | ∃ lt : j < nfa.nodes.size, (εClosureTRa nfa .empty #[i]).get ⟨j, lt⟩ }
+    let S := { j | ∃ lt : j < nfa.nodes.size, (εClosureTR nfa .empty #[i]).get ⟨j, lt⟩ }
     have mem : i.val ∈ S := by
       simp [h₁]
     have : ∀ j ∈ S, (_ : j < nfa.nodes.size) → ∀ k ∈ nfa[j].εStep, k ∈ S := by
@@ -325,11 +325,11 @@ theorem εClosureTRa_spec {nfa : NFA} {i : Fin nfa.nodes.size} :
     simp at this
     exact this
 
-def charStepTRa_spec.inv (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size)
+def charStepTR_spec.inv (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size)
   (accum : NodeSet nfa.nodes.size) (i : Nat) : Prop :=
   ∀ k, accum.get k ↔ k.val ∈ nfa.stepSet { j | j < i ∧ ∃ h : j < nfa.nodes.size, init.get ⟨j, h⟩ } c
 
-theorem charStepTRa_spec.lem (nfa : NFA) (init : NodeSet nfa.nodes.size)
+theorem charStepTR_spec.lem (nfa : NFA) (init : NodeSet nfa.nodes.size)
   (i : Nat) (hlt : i < nfa.nodes.size) :
   { j | j < i + 1 ∧ ∃ h : j < nfa.nodes.size, init.get ⟨j, h⟩ } =
   if init.get ⟨i, hlt⟩ then
@@ -364,12 +364,12 @@ theorem charStepTRa_spec.lem (nfa : NFA) (init : NodeSet nfa.nodes.size)
       intro lt₁ lt₂ hset'
       exact ⟨Nat.lt_trans lt₁ (Nat.lt_succ_self _), lt₂, hset'⟩
 
-theorem charStepTRa_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size)
+theorem charStepTR_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size)
   (accum : NodeSet nfa.nodes.size) (i : Nat) (hle : i ≤ nfa.nodes.size)
   (inv₀ : inv nfa c init accum i) :
-  ∀ k, ((charStepTRa.go nfa c init accum i hle)).get k ↔
+  ∀ k, ((charStepTR.go nfa c init accum i hle)).get k ↔
   k.val ∈ nfa.stepSet { j | ∃ h : j < nfa.nodes.size, init.get ⟨j, h⟩ } c := by
-  unfold charStepTRa.go
+  unfold charStepTR.go
   split
   case inl eq =>
     have : { j | j < i ∧ ∃ h : j < nfa.nodes.size, init.get ⟨j, h⟩ }
@@ -403,7 +403,7 @@ theorem charStepTRa_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.siz
             | inl hset => exact .inl ((inv₀ k).mp hset)
             | inr hset =>
               apply Or.inr
-              simp [εClosureTRa_spec k] at hset
+              simp [εClosureTR_spec k] at hset
               simp [stepSet, εClosureSet]
               refine ⟨next, ?_, hset⟩
               simp [charStep, get_eq_nodes_get, NFA.Node.charStep, hn, eqc, hlt]
@@ -413,7 +413,7 @@ theorem charStepTRa_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.siz
             | inl hset => exact .inl ((inv₀ k).mpr hset)
             | inr hset =>
               apply Or.inr
-              simp [εClosureTRa_spec k]
+              simp [εClosureTR_spec k]
               simp [stepSet, εClosureSet, charStep, get_eq_nodes_get, NFA.Node.charStep, hn, eqc, hlt] at hset
               exact hset
         case inr nec =>
@@ -431,85 +431,62 @@ theorem charStepTRa_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.siz
       exact inv₀
 termination_by _ => nfa.nodes.size - i
 
-theorem charStepTRa_spec (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
-  ∀ k, (charStepTRa nfa c init).get k ↔
+theorem charStepTR_spec (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
+  ∀ k, (charStepTR nfa c init).get k ↔
   k.val ∈ nfa.stepSet { j | ∃ h : j < nfa.nodes.size, init.get ⟨j, h⟩ } c := by
-  have inv₀ : charStepTRa_spec.inv nfa c init .empty 0 := by
-    simp [charStepTRa_spec.inv, Nat.not_lt_zero]
-  exact charStepTRa_spec.go nfa c init .empty 0 (Nat.zero_le _) inv₀
+  have inv₀ : charStepTR_spec.inv nfa c init .empty 0 := by
+    simp [charStepTR_spec.inv, Nat.not_lt_zero]
+  exact charStepTR_spec.go nfa c init .empty 0 (Nat.zero_le _) inv₀
 
-def matchList (nfa : NFA) (cs : List Char) : Bool :=
-  let ns := εClosureTRa nfa .empty #[nfa.start]
-  let ns := go nfa cs ns
-  -- This assumes that the first node is the accepting node
-  ns.get ⟨0, nfa.zero_lt_size⟩
-where
-  go (nfa : NFA) (cs : List Char) (ns : NodeSet nfa.nodes.size) : NodeSet nfa.nodes.size :=
-    List.foldl (fun ns c => charStepTRa nfa c ns) ns cs
+theorem charStepTR_empty {nfa : NFA} {c : Char} :
+  charStepTR nfa c .empty = .empty := by
+  ext i
+  simp
+  by_contra h
+  simp [charStepTR_spec] at h
 
-theorem matchList.go_eq_foldl_stepSet {nfa : NFA} {ns : NodeSet nfa.nodes.size} {cs : List Char} :
-  ∀ j, (go nfa cs ns).get j ↔
-    j.val ∈ List.foldl nfa.stepSet { i | ∃ h : i < nfa.nodes.size, ns.get ⟨i, h⟩ } cs := by
-  induction cs generalizing ns with
-  | nil => simp [go]
-  | cons c cs ih =>
-    simp [go]
-    unfold go at ih
-    have spec := charStepTRa_spec nfa c ns
-    intro j
-    rw [ih j]
-    congr!
-    simp [spec]
-    apply Set.eq_of_subset_of_subset
-    . intro i
-      simp
-    . intro i mem
-      simp [mem]
-      exact lt_of_mem_stepSet mem
-
-theorem evalFrom_iff_matchList {nfa : NFA} {cs : List Char} :
-  0 ∈ nfa.evalFrom {nfa.start.val} cs ↔ matchList nfa cs := by
-  unfold NFA.evalFrom matchList
-  simp [matchList.go_eq_foldl_stepSet, εClosureTRa_spec]
-  congr! 2
-  simp [εClosureSet]
-  apply Set.eq_of_subset_of_subset
-  . intro i mem
-    simp
-    exact ⟨lt_of_εClosure_right nfa.start.isLt mem, mem⟩
-  . intro i mem
-    simp at mem
-    exact mem.right
-
-theorem match.go_eq_matchList.go {nfa : NFA} {ns : NodeSet nfa.nodes.size}
+theorem match.go_iff_mem_foldl_stepSet {nfa : NFA} {ns : NodeSet nfa.nodes.size}
   {it : String.Iterator} {cs cs' : List Char} (v : it.ValidFor cs cs') :
-  NFA.match.go nfa it ns = matchList.go nfa cs' ns := by
+  ∀ j, (match.go nfa it ns).get j ↔
+  j.val ∈ List.foldl nfa.stepSet { i | ∃ h : i < nfa.nodes.size, ns.get ⟨i, h⟩ } cs' := by
   induction cs' generalizing it cs ns with
   | nil =>
-    unfold NFA.match.go matchList.go
+    unfold match.go
     have : it.atEnd := v.atEnd.mpr rfl
     simp [this]
   | cons c cs' ih =>
-    unfold NFA.match.go matchList.go
-    have : ¬ it.atEnd := by
-      intro h
-      have := v.atEnd.mp h
-      contradiction
+    unfold match.go
+    have : ¬ it.atEnd := v.atEnd.not.mpr (by simp)
     simp [this]
-    have : it.curr = c := by
-      simp [v.curr]
-    simp [this]
-    exact ih v.next
-
-theorem match_eq_matchList {nfa : NFA} {s : String} :
-  nfa.match s ↔ matchList nfa s.data := by
-  unfold NFA.match matchList
-  simp
-  rw [match.go_eq_matchList.go s.validFor_mkIterator]
+    if h : ns.count_set = 0 then
+      simp [h]
+      have : ns = .empty := NodeSet.eq_empty_of_count_set_zero h
+      simp [this, foldl_stepSet_empty]
+    else
+      simp [h, v.curr]
+      intro j
+      rw [ih v.next j]
+      congr!
+      simp [charStepTR_spec]
+      apply Set.eq_of_subset_of_subset
+      . intro i
+        simp
+      . intro i mem
+        simp
+        exact ⟨lt_of_mem_stepSet mem, mem⟩
 
 theorem evalFrom_iff_match {nfa : NFA} {s : String} :
   nfa.match s ↔ 0 ∈ nfa.evalFrom {nfa.start.val} s.data := by
-  rw [match_eq_matchList, evalFrom_iff_matchList]
+  unfold NFA.match NFA.evalFrom
+  simp [match.go_iff_mem_foldl_stepSet s.validFor_mkIterator]
+  simp [εClosureTR_spec, εClosureSet]
+  congr!
+  apply Set.eq_of_subset_of_subset
+  . intro i
+    simp
+  . intro i mem
+    simp
+    exact ⟨lt_of_εClosure_right nfa.start.isLt mem, mem⟩
 
 theorem match_iff_regex_matches (eq : NFA.compile r = nfa) :
   nfa.match s ↔ r.matches s := by
