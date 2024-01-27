@@ -106,3 +106,23 @@ where
       else
         let ns' := charStepTR nfa iter.curr ns
         go nfa iter.next ns'
+
+def NFA.search_prefix (nfa : NFA) (s : String) : Option String.Iterator :=
+  let ns := εClosureTR nfa .empty #[nfa.start]
+  go s.iter ns .none
+where
+  go (it : String.Iterator) (ns : NodeSet nfa.nodes.size) (lastMatch : Option String.Iterator) :
+    Option String.Iterator :=
+    -- Prioritize the later match
+    let lastMatch := if ns.get ⟨0, nfa.zero_lt_size⟩ then
+      some it
+    else
+      lastMatch
+    if it.atEnd then
+      lastMatch
+    else
+      if ns.count_set = 0 then
+        lastMatch
+      else
+        let ns' := charStepTR nfa it.curr ns
+        go it.next ns' lastMatch
