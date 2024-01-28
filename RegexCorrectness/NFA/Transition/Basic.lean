@@ -208,6 +208,12 @@ theorem pathToNext.cast' {nfa nfa' : NFA} {start : Nat}
   have lt : i' < nfa.nodes.size := path'.lt_right assm
   exact ⟨i', cs'', path', step.cast lt (eq i' step.h₁ lt).symm⟩
 
+theorem pathToNext.castStart {nfa : NFA} {start start' : Nat} {i : Nat} {cs cs' : List Char}
+  (le : start' ≤ start) (path : pathToNext nfa next start i cs cs') :
+  pathToNext nfa next start' i cs cs' := by
+  obtain ⟨i', cs'', path, step⟩ := path
+  exact ⟨i', cs'', path.castStart le, step.castStart le⟩
+
 theorem pathToNext.castLE {nfa : NFA} {next start start' i : Nat} {cs cs' : List Char}
   (assm : start' ≤ i)
   (inBounds : ∀ i j, (h₁ : start' ≤ i) →
@@ -220,5 +226,12 @@ theorem pathToNext.castLE {nfa : NFA} {next start start' i : Nat} {cs cs' : List
   obtain ⟨i', cs'', path, step⟩ := path
   have path' := path.castLE assm inBounds
   exact ⟨i', cs'', path', step.castStart' (le_of_pathIn_right path')⟩
+
+theorem pathToNext.trans {nfa : NFA} {start : Nat} {cs cs' cs'' : List Char}
+  (path₁ : pathToNext nfa j start i cs cs') (path₂ : pathToNext nfa k start j cs' cs'') :
+  pathToNext nfa k start i cs cs'' := by
+  obtain ⟨i', cs''', path₁, step₁⟩ := path₁
+  obtain ⟨j', cs'''', path₂, step₂⟩ := path₂
+  exact ⟨j', cs'''', path₁.trans (.step step₁ path₂), step₂⟩
 
 end NFA

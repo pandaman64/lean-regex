@@ -1,6 +1,7 @@
 -- Equivalance between evalFrom and pathIn/pathToNext
 import RegexCorrectness.NFA.Transition.Basic
 import RegexCorrectness.NFA.Transition.AcceptOfMatch
+import RegexCorrectness.NFA.Transition.MatchOfAccept
 
 namespace NFA
 
@@ -197,5 +198,16 @@ theorem pathToNext_of_compile_of_pathIn (eq : NFA.compile r = nfa)
     rw [←eq, compile]
     exact ge_pushRegex_start (rfl : NFA.done.pushRegex _ r = _)
   exact pathToNext_of_compile_of_pathIn' eq this rfl path
+
+theorem matches_prefix_iff_pathToNext {s s' : String} (eq : NFA.compile r = nfa) :
+  (∃ p, s = p ++ s' ∧ r.matches p) ↔ nfa.pathToNext 0 1 nfa.start.val s.data s'.data := by
+  apply Iff.intro
+  . intro ⟨p, ⟨eqs, m⟩⟩
+    exact pathToNext_of_compile_matches_prefix eq eqs m
+  . intro path
+    have ⟨p, eqs, m⟩ := matches_prefix_of_compile_path eq path
+    refine ⟨⟨p⟩, ?_, m⟩
+    apply String.ext
+    simp [eqs]
 
 end NFA
