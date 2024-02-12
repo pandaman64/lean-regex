@@ -16,6 +16,10 @@ variable {n : Nat} {s : SparseSet n} {i j : Fin n}
 
 open Bijection
 
+def init (n : Nat) : SparseSet n :=
+  let a := Array.ofFn (fun x : Fin n => ⟨0, x.size_pos⟩)
+  ⟨0, Vec.mk' a (by simp), Vec.mk' a (by simp), fun _ _ => by contradiction, Nat.zero_le _⟩
+
 theorem sparse_dense_fin (h : i < s.count) : s.sparse[s.dense[i]] = i :=
   s.sparse_dense i h
 
@@ -119,7 +123,20 @@ theorem not_mem_of_isEmpty (h : s.isEmpty) : ¬ i ∈ s := by
   have := m.left
   contradiction
 
--- TODO: loop over the dense array
+@[inline]
+def foldl {α : Type} (f : α → Fin n → α) (init : α) (s : SparseSet n) : α :=
+  go init 0 (Nat.zero_le _)
+where
+  @[specialize]
+  go (accum : α) (i : Nat) (hle : i ≤ s.count) : α :=
+    if h : i = s.count then
+      accum
+    else
+      have hlt : i < s.count := Nat.lt_of_le_of_ne hle h
+      have hlt' : i < n := Nat.lt_of_lt_of_le hlt s.le_count
+      let v := s.dense[i]
+      go (f accum v) (i + 1) hlt
+termination_by go _ => s.count - i
 
 end SparseSet
 

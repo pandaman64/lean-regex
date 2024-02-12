@@ -4,7 +4,9 @@ namespace NFA.VM
 
 def Vec (α : Type) (n : Nat) := { a : Array α // a.size = n }
 
-def Vec.fromArray {α : Type} (a : Array α) : Vec α a.size := ⟨a, rfl⟩
+def Vec.mk {α : Type} (a : Array α) : Vec α a.size := ⟨a, rfl⟩
+
+def Vec.mk' {α : Type} {n : Nat} (a : Array α) (h : a.size = n) : Vec α n := ⟨a, h⟩
 
 def Vec.get (v : Vec α n) (i : Nat) (h : i < n) : α :=
   v.val[i]'(by simp [v.property, h])
