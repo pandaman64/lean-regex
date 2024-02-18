@@ -4,9 +4,15 @@ namespace NFA.VM
 
 def Vec (α : Type) (n : Nat) := { a : Array α // a.size = n }
 
+instance [Repr α] : Repr (Vec α n) := inferInstanceAs (Repr { a : Array α // a.size = n })
+instance [ToString α] : ToString (Vec α n) := inferInstanceAs (ToString { a : Array α // a.size = n })
+
 def Vec.mk {α : Type} (a : Array α) : Vec α a.size := ⟨a, rfl⟩
 
 def Vec.mk' {α : Type} {n : Nat} (a : Array α) (h : a.size = n) : Vec α n := ⟨a, h⟩
+
+def Vec.ofFn {α : Type} {n : Nat} (f : Fin n → α) : Vec α n :=
+  ⟨Array.ofFn f, by simp⟩
 
 def Vec.get (v : Vec α n) (i : Nat) (h : i < n) : α :=
   v.val[i]'(by simp [v.property, h])

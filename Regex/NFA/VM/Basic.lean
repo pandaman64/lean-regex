@@ -136,13 +136,23 @@ namespace NFA.VM
 
 open String (Pos)
 
+-- TODO: embed .none into Pos to remove allocations
+inductive StackEntry (n : Nat) : Type where
+  | explore (target : Fin n)
+  | restore (save : Array (Option Pos))
+deriving Repr
+
+-- TODO: (eq : nfa[id] = e) → InboundsType nfa id eでInboundsTypeがeに依存して各種ごとに良い感じになってる奴作れるのでは
+
 mutual
 
-def exploreεClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size)
-  (target : Fin nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
-  SparseSet nfa.nodes.size :=
+def exploreεClosure (nfa : NFA) (pos : Pos)
+  (next : SparseSet nfa.nodes.size)
+  (currentSave : Array (Option Pos)) (matched : Option (Array (Option Pos))) (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
+  (target : Fin nfa.nodes.size) (stack : Array (StackEntry nfa.nodes.size)) :
+  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
   if target ∈ next then
-    εClosure nfa pos next stack
+    εClosure nfa pos next currentSave matched saveSlots stack
   else
     let next' := next.insert target
     match hn : nfa[target] with
@@ -152,7 +162,7 @@ def exploreεClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size)
         simp [NFA.get_eq_nodes_get] at hn
         simp [Node.inBounds, hn] at this
         exact this
-      exploreεClosure nfa pos next' ⟨target', isLt⟩ stack
+      exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
     | .split target₁ target₂ =>
       have isLt₁ : target₁ < nfa.nodes.size := by
         have := nfa.inBounds target
@@ -164,23 +174,52 @@ def exploreεClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size)
         simp [NFA.get_eq_nodes_get] at hn
         simp [Node.inBounds, hn] at this
         exact this.right
-      exploreεClosure nfa pos next' ⟨target₁, isLt₁⟩ (stack.push ⟨target₂, isLt₂⟩)
-    | _ => εClosure nfa pos next' stack
+      exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target₁, isLt₁⟩ (stack.push (.explore ⟨target₂, isLt₂⟩))
+    | .save offset target' =>
+      have isLt : target' < nfa.nodes.size := by
+        have := nfa.inBounds target
+        simp [NFA.get_eq_nodes_get] at hn
+        simp [Node.inBounds, hn] at this
+        exact this
+      if h : offset < currentSave.size then
+        let nextSave := currentSave.set ⟨offset, h⟩ pos
+        let stack' := stack.push (.restore currentSave)
+        exploreεClosure nfa pos next' nextSave matched saveSlots ⟨target', isLt⟩ stack'
+      else
+        exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
+    | .done =>
+      let matched' := matched <|> currentSave
+      let saveSlots' := saveSlots.set target target.isLt currentSave
+      εClosure nfa pos next' currentSave matched' saveSlots' stack
+    | .char _ _ =>
+      let saveSlots' := saveSlots.set target target.isLt currentSave
+      εClosure nfa pos next' currentSave matched saveSlots' stack
+    | .fail => εClosure nfa pos next' currentSave matched saveSlots stack
 termination_by (next.measure, stack.size, 1)
 
-def εClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
-  SparseSet nfa.nodes.size :=
+def εClosure (nfa : NFA) (pos : Pos)
+  (next : SparseSet nfa.nodes.size)
+  (currentSave : Array (Option Pos)) (matched : Option (Array (Option Pos))) (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
+  (stack : Array (StackEntry nfa.nodes.size)) :
+  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
   if hemp : stack.isEmpty then
-    next
+    (matched, next, saveSlots)
   else
-    let target := stack.back' hemp
+    let entry := stack.back' hemp
     let stack' := stack.pop
     have : stack'.size < stack.size := Array.lt_size_of_pop_of_not_empty _ hemp
-    exploreεClosure nfa pos next target stack'
+    match entry with
+    | .explore target => exploreεClosure nfa pos next currentSave matched saveSlots target stack'
+    | .restore save => εClosure nfa pos next save matched saveSlots stack'
 termination_by (next.measure, stack.size, 0)
 
-def stepChar (nfa : NFA) (c : Char) (pos : Pos) (next : SparseSet nfa.nodes.size) (target : Fin nfa.nodes.size) :
-  SparseSet nfa.nodes.size :=
+end
+
+def stepChar (nfa : NFA) (c : Char) (pos : Pos)
+  (next : SparseSet nfa.nodes.size)
+  (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
+  (target : Fin nfa.nodes.size) :
+  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
   match hn : nfa[target] with
   | .char c' target' =>
     if c = c' then
@@ -189,43 +228,61 @@ def stepChar (nfa : NFA) (c : Char) (pos : Pos) (next : SparseSet nfa.nodes.size
         simp [NFA.get_eq_nodes_get] at hn
         simp [Node.inBounds, hn] at this
         exact this
-      exploreεClosure nfa pos next ⟨target', isLt⟩ .empty
+      let currentSave := saveSlots.get target target.isLt
+      exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
     else
-      next
-  | .done =>
-    -- TODO: early termination
-    next
-  | _ => next
+      (.none, next, saveSlots)
+  -- We don't need this as εClosure figures it out if there is a match
+  -- | .done =>
+  --   -- Return saved positions at the match
+  --   (.some saveSlots[target], next, saveSlots)
+  | _ => (.none, next, saveSlots)
 
-def eachStepChar (nfa : NFA) (c : Char) (pos : Pos) (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size) :
-  SparseSet nfa.nodes.size :=
-  go 0 (Nat.zero_le _) next
+def eachStepChar (nfa : NFA) (c : Char) (pos : Pos)
+  (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
+  (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size) :
+  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
+  go 0 (Nat.zero_le _) next saveSlots
 where
-  go (i : Nat) (hle : i ≤ current.count) (next : SparseSet nfa.nodes.size) : SparseSet nfa.nodes.size :=
+  go (i : Nat) (hle : i ≤ current.count) (next : SparseSet nfa.nodes.size) (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size) :
+    (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
     if h : i = current.count then
-      next
+      (.none, next, saveSlots)
     else
       have hlt : i < current.count := Nat.lt_of_le_of_ne hle h
-      let next' := stepChar nfa c pos next current[i]
-      go (i + 1) hlt next'
+      let result := stepChar nfa c pos next saveSlots current[i]
+      match result.1 with
+      | .none => go (i + 1) hlt result.2.1 result.2.2
+      | .some _ => result
   termination_by current.count - i
-
-end
 
 end NFA.VM
 
-def NFA.match' (nfa : NFA) (s : String) : Bool :=
-  let init := NFA.VM.exploreεClosure nfa 0 .empty nfa.start #[]
-  go s.iter init .empty
+def NFA.search' (nfa : NFA) (s : String) (saveSize : Nat) : Option (Array (Option String.Pos) × String.Pos) :=
+  let saveSlots := Vec.ofFn (fun _ => initSave)
+  let (matched, init, saveSlots) :=
+    NFA.VM.exploreεClosure nfa 0 .empty initSave .none saveSlots nfa.start #[]
+  go s.iter init .empty saveSlots (matched.map (fun s => (s, 0)))
 where
-  go (it : String.Iterator) (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size) : Bool :=
+  initSave : Array (Option String.Pos) := Array.ofFn (fun _ : Fin saveSize => none)
+  go (it : String.Iterator)
+    (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
+    (saveSlots : Vec (Array (Option String.Pos)) nfa.nodes.size)
+    (lastMatch : Option (Array (Option String.Pos) × String.Pos))
+    : Id (Option (Array (Option String.Pos) × String.Pos)) := do
+    dbgTrace s!"lastMatch = {lastMatch}" fun () =>
     if it.atEnd then
-      ⟨0, nfa.zero_lt_size⟩ ∈ current
+      lastMatch
     else
-      if current.isEmpty then
-        false
+      if current.isEmpty && lastMatch.isSome then
+        lastMatch
       else
         let c := it.curr
         let pos := it.pos
-        let next' := NFA.VM.eachStepChar nfa c pos current next
-        go it.next next' current.clear
+        -- I think ignoring the match here is fine because the match must have happened at the initial exploration
+        -- and `lastMatch` must have already captured that.
+        let (_, current', saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
+        dbgTrace s!"by εClosure: {current} → {current'}" fun () =>
+        let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c pos current' next saveSlots
+        dbgTrace s!"matched = {matched}" fun () =>
+        go it.next next current.clear saveSlots (matched.map (fun s => (s, it.next.pos)) <|> lastMatch)

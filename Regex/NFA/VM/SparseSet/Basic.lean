@@ -11,6 +11,13 @@ structure SparseSet (n : Nat) where
   sparse_dense : ∀ i : Fin n, i < count → sparse[dense[i.val].val] = i
   le_count : count ≤ n
 
+-- Prints only the members
+instance : Repr (SparseSet n) where
+  reprPrec s i := reprPrec s.dense.val[0:s.count] i
+
+instance : ToString (SparseSet n) where
+  toString s := toString s.dense.val[0:s.count]
+
 namespace SparseSet
 
 variable {n : Nat} {s : SparseSet n} {i j : Fin n}
