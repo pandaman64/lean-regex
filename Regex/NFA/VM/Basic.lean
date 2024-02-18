@@ -1,5 +1,6 @@
 import Regex.NFA.Basic
 import Regex.NFA.VM.NodeSet
+import Regex.NFA.VM.SparseSet
 
 def Array.back' (a : Array α) (hemp : ¬ a.isEmpty) : α :=
   have : 0 < a.size := by
@@ -126,3 +127,58 @@ where
       else
         let ns' := charStepTR nfa it.curr ns
         go it.next ns' lastMatch
+
+/-
+  The following implementation is heavily inspired by burntsushi's regex-lite crate.
+  https://github.com/rust-lang/regex/tree/master/regex-lite
+-/
+namespace NFA.VM
+
+open String (Pos)
+
+mutual
+
+def exploreεClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size)
+  (target : Fin nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
+  SparseSet nfa.nodes.size :=
+  if target ∈ next then
+    εClosure nfa pos next stack
+  else
+    let next' := next.insert target
+    match hn : nfa[target] with
+    | .epsilon target' =>
+      have isLt : target' < nfa.nodes.size := by
+        have := nfa.inBounds target
+        simp [NFA.get_eq_nodes_get] at hn
+        simp [Node.inBounds, hn] at this
+        exact this
+      exploreεClosure nfa pos next' ⟨target', isLt⟩ stack
+    | .split target₁ target₂ =>
+      have isLt₁ : target₁ < nfa.nodes.size := by
+        have := nfa.inBounds target
+        simp [NFA.get_eq_nodes_get] at hn
+        simp [Node.inBounds, hn] at this
+        exact this.left
+      have isLt₂ : target₂ < nfa.nodes.size := by
+        have := nfa.inBounds target
+        simp [NFA.get_eq_nodes_get] at hn
+        simp [Node.inBounds, hn] at this
+        exact this.right
+      exploreεClosure nfa pos next' ⟨target₁, isLt₁⟩ (stack.push ⟨target₂, isLt₂⟩)
+    | _ => εClosure nfa pos next' stack
+termination_by (next.measure, stack.size, 1)
+
+def εClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
+  SparseSet nfa.nodes.size :=
+  if hemp : stack.isEmpty then
+    next
+  else
+    let target := stack.back' hemp
+    let stack' := stack.pop
+    have : stack'.size < stack.size := Array.lt_size_of_pop_of_not_empty _ hemp
+    exploreεClosure nfa pos next target stack'
+termination_by (next.measure, stack.size, 0)
+
+end
+
+end NFA.VM

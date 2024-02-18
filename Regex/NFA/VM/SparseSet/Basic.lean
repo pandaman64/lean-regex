@@ -62,7 +62,7 @@ theorem dense_sparse_of_full (h : n ≤ s.count) : s.dense[s.sparse[j]] = j := b
   have ⟨i, eq⟩ := surj j
   simp [←eq, s.sparse_dense i (Nat.lt_of_lt_of_le i.isLt h)]
 
-theorem lt_of_mem (h : ¬i ∈ s) : s.count < n := by
+theorem lt_of_mem (i : Fin n) (h : ¬i ∈ s) : s.count < n := by
   simp [SparseSet.mem] at h
   by_contra nlt
   have ge := Nat.le_of_not_lt nlt
@@ -74,7 +74,7 @@ def insert (s : SparseSet n) (i : Fin n) : SparseSet n :=
     s
   else
     let ⟨count, dense, sparse, sparse_dense, _⟩ := s
-    have isLt : count < n := lt_of_mem mem
+    have isLt : count < n := lt_of_mem i mem
     let dense' := dense.set count isLt i
     let sparse' := sparse.set i i.isLt ⟨count, isLt⟩
     have sparse_dense' (j : Fin n) (h : j < count + 1) : sparse'[dense'[j]] = j := by
@@ -138,6 +138,32 @@ where
       let v := s.dense[i]
       go (f accum v) (i + 1) hlt
   termination_by s.count - i
+
+@[inline]
+def get (s : SparseSet n) (i : Nat) (h : i < s.count) : Fin n :=
+  s.dense[i]'(Nat.lt_of_lt_of_le h s.le_count)
+
+@[inline]
+instance : GetElem (SparseSet n) Nat (Fin n) (fun s i => i < s.count) where
+  getElem := get
+
+-- Termination measure for `SparseSet`
+def measure (s : SparseSet n) : Nat := n - s.count
+
+theorem measure_insert (h : ¬i ∈ s) : (s.insert i).measure = s.measure - 1 := by
+  simp at h
+  simp [measure, insert, h, Nat.sub_add_eq]
+
+theorem lt_measure_insert (h : ¬s.mem i) : (s.insert i).measure < s.measure := by
+  simp [measure, insert, h, Nat.sub_add_eq]
+  apply Nat.sub_lt ?_ (by decide)
+  apply Nat.zero_lt_sub_of_lt (lt_of_mem i (by simp [h]))
+
+theorem lt_measure_insert' (h : ¬i ∈ s) : (s.insert i).measure < s.measure :=
+  lt_measure_insert h
+
+macro_rules | `(tactic| decreasing_trivial) => `(tactic| apply SparseSet.lt_measure_insert; assumption)
+macro_rules | `(tactic| decreasing_trivial) => `(tactic| apply SparseSet.lt_measure_insert'; assumption)
 
 end SparseSet
 
