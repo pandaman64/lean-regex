@@ -142,8 +142,6 @@ inductive StackEntry (n : Nat) : Type where
   | restore (save : Array (Option Pos))
 deriving Repr
 
--- TODO: (eq : nfa[id] = e) → InboundsType nfa id eでInboundsTypeがeに依存して各種ごとに良い感じになってる奴作れるのでは
-
 mutual
 
 def exploreεClosure (nfa : NFA) (pos : Pos)
@@ -157,30 +155,13 @@ def exploreεClosure (nfa : NFA) (pos : Pos)
     let next' := next.insert target
     match hn : nfa[target] with
     | .epsilon target' =>
-      have isLt : target' < nfa.nodes.size := by
-        have := nfa.inBounds target
-        simp [NFA.get_eq_nodes_get] at hn
-        simp [Node.inBounds, hn] at this
-        exact this
+      have isLt := nfa.inBoundsType' target hn
       exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
     | .split target₁ target₂ =>
-      have isLt₁ : target₁ < nfa.nodes.size := by
-        have := nfa.inBounds target
-        simp [NFA.get_eq_nodes_get] at hn
-        simp [Node.inBounds, hn] at this
-        exact this.left
-      have isLt₂ : target₂ < nfa.nodes.size := by
-        have := nfa.inBounds target
-        simp [NFA.get_eq_nodes_get] at hn
-        simp [Node.inBounds, hn] at this
-        exact this.right
+      have ⟨isLt₁, isLt₂⟩ := nfa.inBoundsType' target hn
       exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target₁, isLt₁⟩ (stack.push (.explore ⟨target₂, isLt₂⟩))
     | .save offset target' =>
-      have isLt : target' < nfa.nodes.size := by
-        have := nfa.inBounds target
-        simp [NFA.get_eq_nodes_get] at hn
-        simp [Node.inBounds, hn] at this
-        exact this
+      have isLt := nfa.inBoundsType' target hn
       if h : offset < currentSave.size then
         let nextSave := currentSave.set ⟨offset, h⟩ pos
         let stack' := stack.push (.restore currentSave)
@@ -223,11 +204,7 @@ def stepChar (nfa : NFA) (c : Char) (pos : Pos)
   match hn : nfa[target] with
   | .char c' target' =>
     if c = c' then
-      have isLt : target' < nfa.nodes.size := by
-        have := nfa.inBounds target
-        simp [NFA.get_eq_nodes_get] at hn
-        simp [Node.inBounds, hn] at this
-        exact this
+      have isLt := nfa.inBoundsType' target hn
       let currentSave := saveSlots.get target target.isLt
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
     else

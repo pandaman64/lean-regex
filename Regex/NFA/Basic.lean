@@ -19,6 +19,19 @@ def Node.inBounds (node : Node) (size : Nat) : Bool :=
   | Node.split next₁ next₂ => next₁ < size && next₂ < size
   | Node.save _ next => next < size
 
+def Node.InboundsType (n : Node) (size : Nat) : Prop :=
+  match n with
+  | .done => True
+  | .fail => True
+  | .epsilon next => next < size
+  | .char _ next => next < size
+  | .split next₁ next₂ => next₁ < size ∧ next₂ < size
+  | .save _ next => next < size
+
+theorem Node.inBounds_iff (node : Node) (size : Nat) :
+  node.inBounds size ↔ Node.InboundsType node size := by
+  cases node <;> simp [Node.InboundsType, Node.inBounds]
+
 @[simp]
 theorem Node.inBounds.done {size : Nat} : Node.done.inBounds size := by
   simp [inBounds]
@@ -123,5 +136,12 @@ theorem zero_lt_size {nfa : NFA} : 0 < nfa.nodes.size := by
   apply Nat.zero_lt_of_ne_zero
   intro h
   exact (h ▸ nfa.start).elim0
+
+theorem inBoundsType (nfa : NFA) (i : Fin nfa.nodes.size) : nfa[i].InboundsType nfa.nodes.size := by
+  rw [←Node.inBounds_iff]
+  exact nfa.inBounds i
+
+theorem inBoundsType' (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = n) : n.InboundsType nfa.nodes.size :=
+  eq ▸ nfa.inBoundsType i
 
 end NFA
