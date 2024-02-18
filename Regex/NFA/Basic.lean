@@ -6,6 +6,8 @@ inductive Node where
   | epsilon (next : Nat)
   | char (c : Char) (next : Nat)
   | split (next₁ next₂ : Nat)
+  -- TODO: add save to εStep and update proofs
+  | save (offset : Nat) (next : Nat)
 deriving Repr
 
 def Node.inBounds (node : Node) (size : Nat) : Bool :=
@@ -15,6 +17,7 @@ def Node.inBounds (node : Node) (size : Nat) : Bool :=
   | Node.epsilon next => next < size
   | Node.char _ next => next < size
   | Node.split next₁ next₂ => next₁ < size && next₂ < size
+  | Node.save _ next => next < size
 
 @[simp]
 theorem Node.inBounds.done {size : Nat} : Node.done.inBounds size := by
@@ -39,6 +42,11 @@ theorem Node.inBounds.split {size next₁ next₂ : Nat} (h₁ : next₁ < size)
   (Node.split next₁ next₂).inBounds size := by
   simp [inBounds, h₁, h₂]
 
+@[simp]
+theorem Node.inBounds.save {size offset next : Nat} (h : next < size) :
+  (Node.save offset next).inBounds size := by
+  simp [inBounds, h]
+
 theorem Node.lt_of_inBounds.epsilon {size next : Nat} (h : (Node.epsilon next).inBounds size) :
   next < size := by
   simp [inBounds] at h
@@ -60,6 +68,11 @@ theorem Node.lt_of_inBounds.split_left {size next₁ next₂ : Nat} (h : (Node.s
 theorem Node.lt_of_inBounds.split_right {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
   next₂ < size := (Node.lt_of_inBounds.split h).right
 
+theorem Node.lt_of_inBounds.save {size offset next : Nat} (h : (Node.save offset next).inBounds size) :
+  next < size := by
+  simp [inBounds] at h
+  exact h
+
 theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : size ≤ size') :
   n.inBounds size' := by
   simp [inBounds] at *
@@ -67,6 +80,7 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
   next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
   next => exact ⟨Nat.lt_of_lt_of_le h.left le, Nat.lt_of_lt_of_le h.right le⟩
+  next => exact Nat.lt_of_lt_of_le h le
 
 end NFA
 
