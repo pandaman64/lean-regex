@@ -179,6 +179,53 @@ def εClosure (nfa : NFA) (pos : Pos) (next : SparseSet nfa.nodes.size) (stack :
     exploreεClosure nfa pos next target stack'
 termination_by (next.measure, stack.size, 0)
 
+def stepChar (nfa : NFA) (c : Char) (pos : Pos) (next : SparseSet nfa.nodes.size) (target : Fin nfa.nodes.size) :
+  SparseSet nfa.nodes.size :=
+  match hn : nfa[target] with
+  | .char c' target' =>
+    if c = c' then
+      have isLt : target' < nfa.nodes.size := by
+        have := nfa.inBounds target
+        simp [NFA.get_eq_nodes_get] at hn
+        simp [Node.inBounds, hn] at this
+        exact this
+      exploreεClosure nfa pos next ⟨target', isLt⟩ .empty
+    else
+      next
+  | .done =>
+    -- TODO: early termination
+    next
+  | _ => next
+
+def eachStepChar (nfa : NFA) (c : Char) (pos : Pos) (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size) :
+  SparseSet nfa.nodes.size :=
+  go 0 (Nat.zero_le _) next
+where
+  go (i : Nat) (hle : i ≤ current.count) (next : SparseSet nfa.nodes.size) : SparseSet nfa.nodes.size :=
+    if h : i = current.count then
+      next
+    else
+      have hlt : i < current.count := Nat.lt_of_le_of_ne hle h
+      let next' := stepChar nfa c pos next current[i]
+      go (i + 1) hlt next'
+  termination_by current.count - i
+
 end
 
 end NFA.VM
+
+def NFA.match' (nfa : NFA) (s : String) : Bool :=
+  let init := NFA.VM.exploreεClosure nfa 0 .empty nfa.start #[]
+  go s.iter init .empty
+where
+  go (it : String.Iterator) (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size) : Bool :=
+    if it.atEnd then
+      ⟨0, nfa.zero_lt_size⟩ ∈ current
+    else
+      if current.isEmpty then
+        false
+      else
+        let c := it.curr
+        let pos := it.pos
+        let next' := NFA.VM.eachStepChar nfa c pos current next
+        go it.next next' current.clear

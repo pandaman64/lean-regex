@@ -17,7 +17,7 @@ variable {n : Nat} {s : SparseSet n} {i j : Fin n}
 
 open Bijection
 
-def init (n : Nat) : SparseSet n :=
+def empty {n : Nat} : SparseSet n :=
   let a := Array.ofFn (fun x : Fin n => ⟨0, x.size_pos⟩)
   ⟨0, Vec.mk' a (by simp), Vec.mk' a (by simp), fun _ _ => by contradiction, Nat.zero_le _⟩
 
