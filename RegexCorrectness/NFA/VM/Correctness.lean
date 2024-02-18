@@ -3,16 +3,9 @@ import RegexCorrectness.NFA.Transition
 import RegexCorrectness.NFA.Correctness
 
 theorem Array.isEmpty_iff {α} {a : Array α} : a.isEmpty ↔ a = #[] := by
-  have : a.isEmpty ↔ a.data = [] := by
-    simp [Array.isEmpty, Array.size]
-    match a.data with
-    | [] => simp
-    | _ :: _ => simp
-  rw [this]
+  simp [Array.isEmpty]
   apply Iff.intro
-  . intro h
-    apply Array.ext'
-    simp [h]
+  . exact eq_empty_of_size_eq_zero
   . intro h
     simp [h]
 
@@ -294,7 +287,7 @@ theorem εClosureTR_spec.go (nfa : NFA) (i : Fin nfa.nodes.size) {visited stack}
       next hn => exact go nfa i (case_epsilon inv₀ hemp hvis hn)
       next hn => exact go nfa i (case_split inv₀ hemp hvis hn)
       next hn₁ hn₂ => exact go nfa i (case_else inv₀ hemp hvis hn₁ hn₂)
-termination_by _ => (visited.count_unset, stack.size)
+termination_by (visited.count_unset, stack.size)
 
 theorem εClosureTR_spec {nfa : NFA} {i : Fin nfa.nodes.size} :
   ∀ j, (εClosureTR nfa .empty #[i]).get j ↔ j.val ∈ nfa.εClosure i := by
@@ -429,7 +422,7 @@ theorem charStepTR_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size
     case inr hset =>
       simp [inv, lem nfa init i hlt, hset]
       exact inv₀
-termination_by _ => nfa.nodes.size - i
+termination_by nfa.nodes.size - i
 
 theorem charStepTR_spec (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
   ∀ k, (charStepTR nfa c init).get k ↔

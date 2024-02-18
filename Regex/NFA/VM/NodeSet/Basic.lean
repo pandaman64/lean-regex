@@ -1,4 +1,5 @@
 import Regex.Lemmas
+import Std.Data.Fin.Lemmas
 import Std.Data.Array.Lemmas
 
 namespace NFA.VM
@@ -46,7 +47,7 @@ where
       have hlt : i < n := Nat.lt_of_le_of_ne hle h
       let accum := if ns.get ⟨i, hlt⟩ then accum + 1 else accum
       go ns accum (i + 1) hlt
-termination_by go _ => n - i
+  termination_by n - i
 
 def NodeSet.count_unset (ns : NodeSet n) : Nat :=
   go ns 0 0 (Nat.zero_le _)
@@ -58,7 +59,7 @@ where
       have hlt : i < n := Nat.lt_of_le_of_ne hle h
       let accum := if ns.get ⟨i, hlt⟩ then accum else accum + 1
       go ns accum (i + 1) hlt
-termination_by go _ => n - i
+  termination_by n - i
 
 def NodeSet.clear (ns : NodeSet n) : NodeSet n :=
   go ns 0 (Nat.zero_le _)
@@ -69,7 +70,7 @@ where
     else
       have hlt : i < n := Nat.lt_of_le_of_ne hle h
       go (ns.unset ⟨i, hlt⟩) (i + 1) hlt
-termination_by go _ => n - i
+  termination_by n - i
 
 -- NOTE: this should overwrite to ns₁ if it's unique
 def NodeSet.merge (ns₁ ns₂ : NodeSet n) : NodeSet n :=
@@ -82,6 +83,6 @@ where
       have hlt : i < n := Nat.lt_of_le_of_ne hle h
       let ns₁ := if ns₂.get ⟨i, hlt⟩ then ns₁.set ⟨i, hlt⟩ else ns₁
       go ns₁ ns₂ (i + 1) hlt
-termination_by go _ => n - i
+  termination_by n - i
 
 end NFA.VM

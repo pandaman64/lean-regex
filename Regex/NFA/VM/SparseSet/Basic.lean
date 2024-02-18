@@ -1,5 +1,6 @@
 import Regex.NFA.VM.Vec.Basic
 import Regex.NFA.VM.SparseSet.Bijection
+import Std.Data.Fin.Lemmas
 
 namespace NFA.VM
 
@@ -136,7 +137,7 @@ where
       have hlt' : i < n := Nat.lt_of_lt_of_le hlt s.le_count
       let v := s.dense[i]
       go (f accum v) (i + 1) hlt
-termination_by go _ => s.count - i
+  termination_by s.count - i
 
 end SparseSet
 

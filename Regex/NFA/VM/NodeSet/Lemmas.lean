@@ -107,11 +107,11 @@ theorem NodeSet.lt_count_unset (ns : NodeSet n) (lt : x < n) (unset : ¬ ns.get 
         have inv : inv (i + 1) accum₁ (accum₂ + 1) := by
           simp [inv, eq, inv₀]
         exact eq ▸ (go inv (eq ▸ lt))
+  termination_by n - i
 
   have inv₀ : inv 0 0 0 := by simp [inv, Nat.not_lt_zero x]
   have := go inv₀ (Nat.zero_le _)
   exact Nat.le_of_eq this
-termination_by go _ => n - i
 
 @[simp]
 theorem NodeSet.get_empty {n : Nat} (i : Fin n) :
@@ -178,7 +178,7 @@ where
         simp
         apply Nat.ne_of_gt
         exact Nat.lt_of_not_ge nle
-termination_by go' _ => n - i
+  termination_by n - i
 
 theorem NodeSet.count_set.le_go {ns : NodeSet n} :
   accum ≤ go ns accum i hle := by
@@ -191,7 +191,7 @@ theorem NodeSet.count_set.le_go {ns : NodeSet n} :
     calc
       _ ≤ _ := by split <;> simp [Nat.le_succ]
       _ ≤ _ := le_go
-termination_by _ => n - i
+termination_by n - i
 
 theorem NodeSet.lt_count_set_of_get {ns : NodeSet n} {j : Fin n}
   (h : ns.get j) :
@@ -209,7 +209,7 @@ where
       calc
         0 < accum + 1 := by simp
         _ ≤ _ := NodeSet.count_set.le_go
-termination_by go _ => j - i
+  termination_by j - i
 
 theorem NodeSet.get_eq_false_of_count_set_zero {ns : NodeSet n} {i : Fin n}
   (h : ns.count_set = 0) :
@@ -223,7 +223,6 @@ theorem NodeSet.eq_empty_of_count_set_zero {ns : NodeSet n}
   (h : ns.count_set = 0) : ns = NodeSet.empty := by
   ext i
   simp [NodeSet.get_eq_false_of_count_set_zero h]
-
 
 theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
   (ns₁.merge ns₂).get x = (ns₁.get x || ns₂.get x) := by
@@ -281,12 +280,12 @@ theorem NodeSet.merge_get {ns₁ ns₂ : NodeSet n} {x : Fin n} :
           rw [NodeSet.get_set_ne]
           simp [neq]
         case inr _ => rfl
+  termination_by n - i
 
   have inv₀ : inv ns₁ 0 := by
     intro j hlt
     exact absurd hlt (Nat.not_lt_zero _)
   have := go ns₁ 0 (Nat.zero_le _) inv₀
   apply this
-termination_by go _ => n - i
 
 end NFA.VM

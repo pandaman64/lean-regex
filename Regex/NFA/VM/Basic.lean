@@ -56,7 +56,7 @@ def εClosureTR (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (F
           (stack'.push ⟨next₁, h₁⟩).push ⟨next₂, h₂⟩
         | _ => stack'
       εClosureTR nfa visited' stack''
-termination_by _ => (visited.count_unset, stack.size)
+termination_by (visited.count_unset, stack.size)
 
 def charStepTR (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
   NodeSet nfa.nodes.size := go nfa c init .empty 0 (Nat.zero_le _)
@@ -83,7 +83,7 @@ where
         | _ => accum
       else accum
       go nfa c init accum (i + 1) hlt
-termination_by go _ => nfa.nodes.size - i
+  termination_by nfa.nodes.size - i
 
 end NFA.VM
 
