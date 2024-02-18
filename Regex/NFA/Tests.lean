@@ -61,3 +61,17 @@ def NFA₄' := pushSaveStart NFA₄
 #eval NFA₄'.search' "a" 1
 #eval NFA₄'.search' "" 1
 #eval NFA₄'.search' "xacybc" 1
+
+def re₅ := Regex.Parser.parse! "abc(fo*|bar)*"
+def NFA₅ := pushSaveStart (NFA.compile re₅)
+def heystack₅ := "abababxxyyabcfoooooobarfobyyyyfoobaryy"
+def result₅ := NFA₅.search' heystack₅ 1
+def substr₅ := Substring.mk heystack₅ result₅.get!.1[0]!.get! result₅.get!.2
+#eval substr₅ == "abcfoooooobarfo" -- !!!true!!!
+
+def re₆ := Regex.Parser.parse! "abc(fo|foo)"
+def NFA₆ := pushSaveStart (NFA.compile re₆)
+def heystack₆ := "abababcfoooo"
+def result₆ := NFA₆.search' heystack₆ 1
+def substr₆ := Substring.mk heystack₆ result₆.get!.1[0]!.get! result₆.get!.2
+#eval substr₆ == "abcfo" -- The left-most match stops at the first 'o' in "foooo"

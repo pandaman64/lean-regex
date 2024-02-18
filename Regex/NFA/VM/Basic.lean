@@ -269,8 +269,7 @@ where
     (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
     (saveSlots : Vec (Array (Option String.Pos)) nfa.nodes.size)
     (lastMatch : Option (Array (Option String.Pos) × String.Pos))
-    : Id (Option (Array (Option String.Pos) × String.Pos)) := do
-    dbgTrace s!"lastMatch = {lastMatch}" fun () =>
+    : Option (Array (Option String.Pos) × String.Pos) := do
     if it.atEnd then
       lastMatch
     else
@@ -281,8 +280,6 @@ where
         let pos := it.pos
         -- I think ignoring the match here is fine because the match must have happened at the initial exploration
         -- and `lastMatch` must have already captured that.
-        let (_, current', saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
-        dbgTrace s!"by εClosure: {current} → {current'}" fun () =>
-        let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c pos current' next saveSlots
-        dbgTrace s!"matched = {matched}" fun () =>
+        let (_, current, saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
+        let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c pos current next saveSlots
         go it.next next current.clear saveSlots (matched.map (fun s => (s, it.next.pos)) <|> lastMatch)

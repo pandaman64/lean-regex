@@ -10,25 +10,41 @@ def specialCharacters := "[](){}*+?|^$.\\"
 
 abbrev Parser := SimpleParser Substring Char
 
-def char : Parser Regex :=
+-- NOTE: I don't have any idea if the precedence or any other stuff are correct here
+mutual
+
+partial def paren : Parser Regex :=
+  -- TODO: construct save node
+  withErrorMessage "expected a paren" (token '(' *> regex <* token ')')
+
+partial def char : Parser Regex :=
   withErrorMessage "expected a character" do
     let c ← tokenFilter (!specialCharacters.contains ·)
     pure (Regex.char c)
 
-def concat : Parser Regex :=
-  withErrorMessage "expected a concatenation" do
-    foldl1 Regex.concat char
+partial def primitive : Parser Regex := withBacktracking paren <|> char
 
-def alternate : Parser Regex :=
+partial def star : Parser Regex :=
+  withErrorMessage "expected a star" do
+    let r ← primitive
+    optionD r (token '*' *> pure (Regex.star r))
+
+partial def concat : Parser Regex :=
+  withErrorMessage "expected a concatenation" do
+    foldl1 Regex.concat star
+
+partial def alternate : Parser Regex :=
   withErrorMessage "expected an alternation" do
     let init ← branch
     foldl Regex.alternate init (Char.char '|' *> branch)
 where
   branch : Parser Regex := optionD Regex.epsilon concat
 
-def regex : Parser Regex :=
+partial def regex : Parser Regex :=
   withErrorMessage "expected a regular expression" do
     alternate
+
+end
 
 def parse (input : String) : Except String Regex :=
   match (regex <* endOfInput).run input.toSubstring with
