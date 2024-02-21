@@ -59,6 +59,8 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
   | .empty => nfa.pushNode .fail rfl
   | .epsilon => nfa.pushNode (.epsilon next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .char c => nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
+  -- TODO: emit save nodes
+  | .group _ r => nfa.pushRegex next r
   | .alternate r₁ r₂ =>
     -- TODO: it feels better to compile r₂ first to align with concat
     let nfa₁ := nfa.pushRegex next r₁

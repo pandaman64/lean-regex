@@ -405,6 +405,8 @@ theorem matches_prefix_of_path (eq : pushRegex nfa next r = result)
         have := le_of_pathIn_left rest
         exact absurd next.isLt (Nat.not_lt_of_ge (step.right ▸ this))
       | εStep _ _ step => simp [NFA.Node.εStep] at step
+  -- TODO: prove
+  | group => sorry
   | alternate r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.alternate eq path ih₁ ih₂
   | concat r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.concat eq path ih₁ ih₂
   | star r ih => exact matches_prefix_of_path.star eq path ih

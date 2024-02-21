@@ -1,5 +1,6 @@
 import Parser
 import Regex.Regex
+import Regex.Parser.Hir
 import Regex.Parser.ParserAux
 
 open Parser
@@ -13,35 +14,34 @@ abbrev Parser := SimpleParser Substring Char
 -- NOTE: I don't have any idea if the precedence or any other stuff are correct here
 mutual
 
-partial def paren : Parser Regex :=
-  -- TODO: construct save node
-  withErrorMessage "expected a paren" (token '(' *> regex <* token ')')
+partial def group : Parser Hir :=
+  withErrorMessage "expected a group" (token '(' *> Hir.group <$> regex <* token ')')
 
-partial def char : Parser Regex :=
+partial def char : Parser Hir :=
   withErrorMessage "expected a character" do
     let c ← tokenFilter (!specialCharacters.contains ·)
-    pure (Regex.char c)
+    pure (Hir.char c)
 
-partial def primitive : Parser Regex := withBacktracking paren <|> char
+partial def primitive : Parser Hir := withBacktracking group <|> char
 
-partial def star : Parser Regex :=
+partial def star : Parser Hir :=
   withErrorMessage "expected a star" do
     let r ← primitive
     -- Eat stars as many as possible
-    foldl (fun r _ => Regex.star r) r (token '*')
+    foldl (fun r _ => Hir.star r) r (token '*')
 
-partial def concat : Parser Regex :=
+partial def concat : Parser Hir :=
   withErrorMessage "expected a concatenation" do
-    foldl1 Regex.concat star
+    foldl1 Hir.concat star
 
-partial def alternate : Parser Regex :=
+partial def alternate : Parser Hir :=
   withErrorMessage "expected an alternation" do
     let init ← branch
-    foldl Regex.alternate init (Char.char '|' *> branch)
+    foldl Hir.alternate init (Char.char '|' *> branch)
 where
-  branch : Parser Regex := optionD Regex.epsilon concat
+  branch : Parser Hir := optionD Hir.epsilon concat
 
-partial def regex : Parser Regex :=
+partial def regex : Parser Hir :=
   withErrorMessage "expected a regular expression" do
     alternate
 
@@ -49,7 +49,7 @@ end
 
 def parse (input : String) : Except String Regex :=
   match (regex <* endOfInput).run input.toSubstring with
-  | .ok _ r => .ok r
+  | .ok _ r => .ok r.toRegex
   | .error e => .error (toString e)
 
 @[export lean_regex_parse_or_panic]

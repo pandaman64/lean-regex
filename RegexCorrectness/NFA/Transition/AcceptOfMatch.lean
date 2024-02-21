@@ -447,6 +447,8 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     refine .step ?_ .base
     rw [←eq]
     simp [εStep, pushRegex, Node.εStep]
+  -- TODO: prove
+  | group => sorry
   | alternateLeft _ ih =>
     intro nfa'' le
     apply mem_evalFrom_le le
@@ -639,6 +641,8 @@ theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next 
     refine ⟨nfa'.val.start, s'.data, .base this rfl rfl, .εStep this nfa'.val.start.isLt ?_⟩
     rw [←eq]
     simp [pushRegex, Node.εStep]
+  -- TODO: prove
+  | group => sorry
   | alternateLeft _ ih => exact pathToNext_of_matches_prefix.alternateLeft eq h ih
   | alternateRight _ ih => exact pathToNext_of_matches_prefix.alternateRight eq h ih
   | concat p s₁ s₂ r₁ r₂ eqs _ _ ih₁ ih₂ =>
