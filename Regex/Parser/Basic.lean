@@ -27,7 +27,8 @@ partial def primitive : Parser Regex := withBacktracking paren <|> char
 partial def star : Parser Regex :=
   withErrorMessage "expected a star" do
     let r ← primitive
-    optionD r (token '*' *> pure (Regex.star r))
+    -- Eat stars as many as possible
+    foldl (fun r _ => Regex.star r) r (token '*')
 
 partial def concat : Parser Regex :=
   withErrorMessage "expected a concatenation" do
