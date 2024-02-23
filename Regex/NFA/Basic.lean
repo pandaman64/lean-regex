@@ -6,7 +6,6 @@ inductive Node where
   | epsilon (next : Nat)
   | char (c : Char) (next : Nat)
   | split (next₁ next₂ : Nat)
-  -- TODO: add save to εStep and update proofs
   | save (offset : Nat) (next : Nat)
 deriving Repr
 

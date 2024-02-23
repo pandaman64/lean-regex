@@ -130,6 +130,106 @@ theorem matches_prefix_of_starLoop (eq : pushRegex nfa next (.star r) = result)
     let ⟨p₂, eqs₂, m₂⟩ := ih
     exact ⟨p₁ ++ p₂, by simp [eqs₁, eqs₂], .starConcat _ _ _ _ rfl m₁ m₂⟩
 
+theorem matches_prefix_of_path.group (eq : pushRegex nfa next (.group i r) = result)
+  (path : pathToNext result next nfa.nodes.size result.val.start.val s s')
+  (ih : ∀ {nfa next result s s'},
+    pushRegex nfa next r = result →
+    pathToNext result next nfa.nodes.size result.val.start.val s s' →
+    ∃ p, s = p ++ s' ∧ r.matches ⟨p⟩) :
+  ∃ p, s = p ++ s' ∧ (Regex.group i r).matches ⟨p⟩ := by
+  apply pushRegex.group eq
+  intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+
+  suffices pathToNext nfa'' nfa'.val.start nfa'.val.nodes.size nfa''.val.start s s' by
+    have ⟨p, eqs, m⟩ := ih eq₂.symm this
+    exact ⟨p, eqs, .group m⟩
+
+  rw [eq] at path
+  simp at path
+
+  obtain ⟨i', s'', path, step⟩ := path
+  have : i' = nfa.nodes.size ∧ s' = s'' := by
+    cases Nat.eq_or_lt_of_le (le_of_pathIn_right path) with
+    | inl eq =>
+      have eqStart : nfa'''.val[nfa.nodes.size] = .save (2 * i + 1) next := by
+        simp [eq₃]
+        rw [pushNode_get_lt _ (Nat.lt_trans nfa'.property nfa''.property)]
+        rw [pushRegex_get_lt eq₂.symm _ nfa'.property]
+        simp [eq₁]
+      rw [←eq] at step
+      cases step with
+      | charStep _ _ step =>
+        rw [eqStart] at step
+        simp [Node.charStep] at step
+      | εStep _ _ eqs => exact ⟨eq.symm, rfl⟩
+    | inr gt =>
+      apply False.elim
+      cases Nat.lt_or_ge i' nfa''.val.nodes.size with
+      | inl lt =>
+        have h₁ : nfa'.val.nodes.size ≤ i' := by
+          simp [eq₁]
+          exact gt
+        have : i' < nfa'''.val.nodes.size := Nat.lt_trans lt nfa'''.property
+        have : nfa'''.val[i'] = nfa''.val[i'] := by
+          simp [eq₃]
+          rw [pushNode_get_lt _ lt]
+        have := eq_or_ge_of_step_pushRegex eq₂.symm h₁ lt (step.cast lt this).step
+        cases this with
+        | inl eq =>
+          rw [eq₁] at eq
+          simp at eq
+          exact Nat.lt_irrefl _ (eq ▸ next.isLt)
+        | inr ge => exact Nat.lt_irrefl _ (Nat.lt_of_lt_of_le (Nat.lt_trans next.isLt nfa'.property) ge)
+      | inr ge =>
+        have eqStart : nfa'''.val[nfa''.val.nodes.size]'nfa'''.property = .save (2 * i) nfa''.val.start := by
+          simp [eq₃]
+        have h₂ := step.h₂
+        simp [eq₃] at h₂
+        have : i' = nfa''.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
+        have step := step.step
+        simp [this, eqStart, Node.charStep, Node.εStep] at step
+        have : nfa.nodes.size < nfa''.val.start := Nat.lt_of_lt_of_le nfa'.property (ge_pushRegex_start eq₂.symm)
+        exact Nat.lt_irrefl _ (Nat.lt_trans (step ▸ this) next.isLt)
+  have : i' = nfa.nodes.size := this.left
+  subst this
+  have : s' = s'' := this.right
+  subst this
+
+  cases path with
+  | base _ eqi =>
+    rw [eq₃] at eqi
+    simp at eqi
+    have : nfa.nodes.size < nfa''.val.nodes.size := Nat.lt_trans nfa'.property nfa''.property
+    apply False.elim (Nat.lt_irrefl _ (eqi ▸ this))
+  | step step rest =>
+    have eqStart : nfa'''.val[nfa'''.val.start.val] = .save (2 * i) nfa''.val.start := by
+      rw [eq₃]
+      simp
+    cases step with
+    | charStep _ _ step => simp [eqStart, Node.charStep] at step
+    | εStep _ _ step =>
+      simp [eqStart, Node.εStep] at step
+      subst step
+      have : pathIn nfa'' nfa.nodes.size nfa''.val.start s nfa.nodes.size s' := by
+        apply rest.cast' nfa''.val.start.isLt (Nat.le_of_lt nfa'''.property)
+        intro i _ h₂
+        rw [eq₃, pushNode_get_lt _ h₂]
+      have ⟨s'', path', path''⟩ := pathIn_split eq₂.symm nfa'.property nfa'.property (ge_pushRegex_start eq₂.symm) this
+      cases path'' with
+      | base _ _ eqs => exact eqs ▸ path'
+      | step step rest =>
+        have : nfa'.val.start.val < nfa''.val.nodes.size :=
+          Nat.lt_trans nfa'.val.start.isLt nfa''.property
+        have eqStart : nfa''.val[nfa'.val.start.val] = .save (2 * i + 1) next := by
+          rw [pushRegex_get_lt eq₂.symm _ nfa'.val.start.isLt]
+          rw [eq₁]
+          simp
+        have step := step.step
+        simp [eqStart, Node.charStep, Node.εStep] at step
+        subst step
+        have := le_of_pathIn_left rest
+        exact False.elim (Nat.lt_irrefl _ (Nat.lt_of_le_of_lt this next.isLt))
+
 theorem matches_prefix_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂) = result)
   (path : pathToNext result next nfa.nodes.size result.val.start.val s s')
   (ih₁ : ∀ {nfa next result s s'},
@@ -405,8 +505,7 @@ theorem matches_prefix_of_path (eq : pushRegex nfa next r = result)
         have := le_of_pathIn_left rest
         exact absurd next.isLt (Nat.not_lt_of_ge (step.right ▸ this))
       | εStep _ _ step => simp [NFA.Node.εStep] at step
-  -- TODO: prove
-  | group => sorry
+  | group i r ih => exact matches_prefix_of_path.group eq path ih
   | alternate r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.alternate eq path ih₁ ih₂
   | concat r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.concat eq path ih₁ ih₂
   | star r ih => exact matches_prefix_of_path.star eq path ih
