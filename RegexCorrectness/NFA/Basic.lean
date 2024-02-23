@@ -13,6 +13,7 @@ def Node.εStep (n : Node) : Set Nat :=
   match n with
   | Node.epsilon next => {next}
   | Node.split next₁ next₂ => {next₁, next₂}
+  | Node.save _ next => {next}
   | _ => ∅
 
 def charStep (nfa : NFA) (i : Nat) (c : Char) : Set Nat :=

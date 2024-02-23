@@ -80,6 +80,11 @@ theorem εClosure_trans {nfa : NFA} (h₁ : j ∈ nfa.εClosure i) (h₂ : k ∈
   | base => exact h₂
   | step head _ ih => exact .step head (ih h₂)
 
+theorem subset_εClosure_of_mem {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i) :
+  nfa.εClosure j ⊆ nfa.εClosure i := by
+  intro k h'
+  exact εClosure_trans h h'
+
 def εClosureSet (nfa : NFA) (S : Set Nat) : Set Nat := ⋃ i ∈ S, nfa.εClosure i
 
 @[simp]
@@ -302,6 +307,49 @@ theorem mem_evalFrom_le {nfa₁ nfa₂ : NFA} (le : nfa₁ ≤ nfa₂) (h : next
 
 -- Proof of the main result
 
+theorem evalFrom_of_matches.group {s : String} (eq : pushRegex nfa next (.group i r) = nfa')
+  (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
+    next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s.data) :
+  next.val ∈ nfa'.val.evalFrom {nfa'.val.start.val} s.data := by
+  apply pushRegex.group eq
+  intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+  rw [eq]
+  simp
+  have := ih eq₂.symm nfa'' le_refl
+  have : nfa'.val.start.val ∈ nfa'''.val.evalFrom {nfa''.val.start.val} s.data := by
+    apply mem_evalFrom_le ?_ this
+    rw [eq₃]
+    apply le_pushNode
+  have : nfa'.val.start.val ∈ nfa'''.val.evalFrom {nfa'''.val.start.val} s.data := by
+    apply mem_of_mem_of_subset this
+    unfold evalFrom
+    apply foldl_stepSet_subset_of_le le_refl
+    simp [εClosureSet]
+    apply subset_εClosure_of_mem
+    apply εClosure.step ?_ .base
+    rw [eq₃]
+    simp [εStep, Node.εStep]
+  suffices h : next.val ∈ nfa'''.val.εClosureSet {nfa'.val.start.val} by
+    apply mem_of_mem_of_subset h
+    apply εClosureSet_subset_foldl_stepSet
+    simp
+    exact this
+  have isLt'' : nfa'.val.start.val < nfa''.val.nodes.size :=
+    calc
+      _ < nfa'.val.nodes.size := nfa'.val.start.isLt
+      _ < nfa''.val.nodes.size := nfa''.property
+  have isLt''' : nfa'.val.start.val < nfa'''.val.nodes.size :=
+    Nat.lt_trans isLt'' nfa'''.property
+  have : nfa'''.val[nfa'.val.start.val] = .save (2 * i + 1) next.val := by
+    simp [eq₃]
+    rw [pushNode_get_lt _ isLt'']
+    rw [pushRegex_get_lt eq₂.symm _ nfa'.val.start.isLt]
+    rw [eq₁]
+    simp
+  simp [εClosureSet]
+  apply εClosure.step ?_ .base
+  simp [εStep, Node.εStep, this, isLt''']
+
 theorem evalFrom_of_matches.alternateLeft {s : String} (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
   (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r₁ = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
     next.val ∈ nfa''.evalFrom {nfa'.val.start.val} s.data) :
@@ -322,12 +370,11 @@ theorem evalFrom_of_matches.alternateLeft {s : String} (eq : pushRegex nfa next 
     _ ⊆ nfa'.val.εClosureSet {nfa₁.val.start.val} := εClosureSet_subset le Subset.rfl
     _ ⊆ nfa'.val.εClosureSet {nfa'.val.start.val} := by
       simp [εClosureSet]
-      intro i h
       have mem : nfa₁.val.start.val ∈ nfa'.val.εClosure nfa'.val.start := by
         rw [eq₅]
         refine εClosure.step ?_ .base
         simp [εStep, Node.εStep, eq₂]
-      exact εClosure_trans mem h
+      apply subset_εClosure_of_mem mem
 
 theorem evalFrom_of_matches.alternateRight {s : String} (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
   (ih : ∀ {nfa next} {nfa'}, pushRegex nfa next r₂ = nfa' → ∀ (nfa'' : NFA), nfa' ≤ nfa'' →
@@ -447,8 +494,10 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     refine .step ?_ .base
     rw [←eq]
     simp [εStep, pushRegex, Node.εStep]
-  -- TODO: prove
-  | group => sorry
+  | group _ ih =>
+    intro nfa'' le
+    apply mem_evalFrom_le le
+    exact evalFrom_of_matches.group eq ih
   | alternateLeft _ ih =>
     intro nfa'' le
     apply mem_evalFrom_le le
@@ -479,6 +528,55 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     intro nfa'' le
     apply mem_evalFrom_le le
     exact evalFrom_of_matches.starConcat eq eqs ih₁ ih₂
+
+theorem pathToNext_of_matches_prefix.group {s p s' : String}
+  (eq : pushRegex nfa next (.group i r) = nfa')
+  (h : s = p ++ s')
+  (ih : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r = nfa' →
+    s = p ++ s' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
+  simp [h]
+  apply pushRegex.group eq
+  intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+  rw [eq]
+  simp
+  have path₃ : pathToNext nfa' next nfa.nodes.size nfa'.val.start s'.data s'.data := by
+    have h₁ : nfa.nodes.size ≤ nfa'.val.start.val := by
+      rw [eq₁]
+      simp
+    refine ⟨nfa'.val.start.val, s'.data, .base h₁ rfl rfl, ?_⟩
+    refine .εStep h₁ nfa'.val.start.isLt ?_
+    rw [eq₁]
+    simp [Node.εStep]
+  have path₃ : pathToNext nfa'' next nfa.nodes.size nfa'.val.start s'.data s'.data := by
+    apply path₃.cast
+    intro i _ h₂
+    exists Nat.lt_trans h₂ nfa''.property
+    rw [pushRegex_get_lt eq₂.symm _ h₂]
+  have path₂ : pathToNext nfa'' nfa'.val.start nfa'.val.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data :=
+    ih eq₂.symm rfl
+  have path₂ : pathToNext nfa'' nfa'.val.start nfa.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data :=
+    path₂.castStart (Nat.le_of_lt nfa'.property)
+  have path₂₃ : pathToNext nfa'' next nfa.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data :=
+    pathToNext.trans path₂ path₃
+  have path₂₃ : pathToNext nfa''' next nfa.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data := by
+    apply path₂₃.cast
+    intro i _ h₂
+    exists Nat.lt_trans h₂ nfa'''.property
+    rw [eq₃, pushNode_get_lt _ h₂]
+  have path₁ : pathToNext nfa''' nfa''.val.start nfa''.val.nodes.size nfa'''.val.start (p.data ++ s'.data) (p.data ++ s'.data) := by
+    have h₁ : nfa''.val.nodes.size ≤ nfa'''.val.start.val := by
+      rw [eq₃]
+      simp
+    refine ⟨nfa'''.val.start, p.data ++ s'.data, .base h₁ rfl rfl, ?_⟩
+    refine .εStep h₁ nfa'''.val.start.isLt ?_
+    rw [eq₃]
+    simp [Node.εStep]
+  have path₁ : pathToNext nfa''' nfa''.val.start nfa.nodes.size nfa'''.val.start (p.data ++ s'.data) (p.data ++ s'.data) := by
+    apply path₁.castStart (Nat.le_of_lt ?_)
+    exact Nat.lt_trans nfa'.property nfa''.property
+  exact pathToNext.trans path₁ path₂₃
 
 theorem pathToNext_of_matches_prefix.alternateLeft {s p s' : String}
   (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
@@ -641,8 +739,7 @@ theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next 
     refine ⟨nfa'.val.start, s'.data, .base this rfl rfl, .εStep this nfa'.val.start.isLt ?_⟩
     rw [←eq]
     simp [pushRegex, Node.εStep]
-  -- TODO: prove
-  | group => sorry
+  | group _ ih => exact pathToNext_of_matches_prefix.group eq h ih
   | alternateLeft _ ih => exact pathToNext_of_matches_prefix.alternateLeft eq h ih
   | alternateRight _ ih => exact pathToNext_of_matches_prefix.alternateRight eq h ih
   | concat p s₁ s₂ r₁ r₂ eqs _ _ ih₁ ih₂ =>

@@ -59,8 +59,19 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
   | .empty => nfa.pushNode .fail rfl
   | .epsilon => nfa.pushNode (.epsilon next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .char c => nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
-  -- TODO: emit save nodes
-  | .group _ r => nfa.pushRegex next r
+  | .group index r =>
+    -- push the closing save node first
+    let nfa' := nfa.pushNode (.save (2 * index + 1) next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
+    let nfa'' := nfa'.val.pushRegex nfa'.val.start r
+    let nfa''' := nfa''.val.pushNode (.save (2 * index) nfa''.val.start) (by simp [Node.inBounds]; exact Nat.lt_trans nfa''.val.start.isLt (Nat.lt_succ_self _))
+
+    have property : nfa.nodes.size < nfa'''.val.nodes.size :=
+      calc
+        _ < _ := nfa'.property
+        _ < _ := nfa''.property
+        _ < _ := nfa'''.property
+
+    ⟨nfa''', property⟩
   | .alternate r₁ r₂ =>
     -- TODO: it feels better to compile r₂ first to align with concat
     let nfa₁ := nfa.pushRegex next r₁
@@ -165,6 +176,32 @@ theorem pushRegex.char (eq : pushRegex nfa next (.char c) = result)
   {motive : result = nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
+
+theorem pushRegex.group (eq : pushRegex nfa next (Regex.group index r) = result)
+  {motive : ∀ nfa' nfa'' nfa''' property inBounds' inBounds''',
+    nfa' = nfa.pushNode (.save (2 * index + 1) next) inBounds' →
+    nfa'' = nfa'.val.pushRegex nfa'.val.start r →
+    nfa''' = nfa''.val.pushNode (.save (2 * index) nfa''.val.start) inBounds''' →
+    result = ⟨nfa''', property⟩ →
+    P
+  } : P := by
+  have inBounds' : (Node.save (2 * index + 1) next).inBounds (Array.size nfa.nodes + 1) := by
+    simp [Node.inBounds]
+    exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)
+  let nfa' := nfa.pushNode (.save (2 * index + 1) next) inBounds'
+  let nfa'' := nfa'.val.pushRegex nfa'.val.start r
+  have inBounds''' : (Node.save (2 * index) nfa''.val.start).inBounds (Array.size nfa''.val.nodes + 1) := by
+    simp [Node.inBounds]
+    exact Nat.lt_trans nfa''.val.start.isLt (Nat.lt_succ_self _)
+  let nfa''' := nfa''.val.pushNode (.save (2 * index) nfa''.val.start) inBounds'''
+
+  have property : nfa.nodes.size < nfa'''.val.nodes.size :=
+    calc
+      _ < _ := nfa'.property
+      _ < _ := nfa''.property
+      _ < _ := nfa'''.property
+
+  exact motive nfa' nfa'' nfa''' property inBounds' inBounds''' rfl rfl rfl eq.symm
 
 theorem pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂) = result)
   {motive : ∀ nfa₁ start₁ nfa₂ start₂ inBounds nfa' property,
