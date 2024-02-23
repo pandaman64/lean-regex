@@ -13,8 +13,16 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
     intro eq
     subst eq
     apply pushNode_get_lt i h
-  -- TODO: prove
-  | group => sorry
+  | group _ r ih =>
+    apply pushRegex.group eq
+    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+
+    have h₁ : i < nfa'.val.nodes.size := Nat.lt_trans h nfa'.property
+    have h₂ : i < nfa''.val.nodes.size := Nat.lt_trans h₁ nfa''.property
+
+    simp [eq, eq₃, pushNode_get_lt _ h₂]
+    simp [ih eq₂.symm h₁]
+    simp [eq₁, pushNode_get_lt _ h]
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply pushRegex.alternate eq
     intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
@@ -64,8 +72,15 @@ theorem le_pushNode : nfa ≤ (pushNode nfa node h).val := by
 theorem le_pushRegex : nfa ≤ (pushRegex nfa next r).val := by
   induction r generalizing nfa next with
   | empty | epsilon | char _ => unfold pushRegex; exact le_pushNode
-  -- TODO: prove
-  | group => sorry
+  | group i r ih =>
+    apply pushRegex.group (rfl : pushRegex nfa next (.group i r) = _)
+    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+    rw [eq]
+
+    calc
+      _ ≤ nfa'.val := eq₁ ▸ le_pushNode
+      _ ≤ nfa''.val := eq₂ ▸ ih
+      _ ≤ nfa'''.val := eq₃ ▸ le_pushNode
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply pushRegex.alternate (rfl : pushRegex nfa next (.alternate r₁ r₂) = _)
     intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
@@ -119,13 +134,19 @@ theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
     intro eq
     subst eq
     simp
-  -- TODO: prove
-  | group => sorry
   | char c =>
     apply pushRegex.char eq
     intro eq
     subst eq
     simp
+  | group =>
+    apply pushRegex.group eq
+    intro nfa' nfa'' nfa''' property _ _ _ _ eq₃ eq
+    rw [eq]
+    simp
+    rw [eq₃]
+    simp
+    apply Nat.le_of_lt (Nat.lt_trans nfa'.property nfa''.property)
   | alternate r₁ r₂ =>
     apply pushRegex.alternate eq
     intro nfa₁ _ nfa₂ _ _ _ _ _ _ _ _ eq₅ eq
@@ -168,8 +189,42 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
     have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
     simp [this, NFA.Node.charStep, NFA.Node.εStep] at step
     exact .inl step
-  -- TODO: prove
-  | group => sorry
+  | group _ r ih =>
+    apply pushRegex.group eq
+    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+
+    have get₂ (h : i < nfa''.val.nodes.size) : result.val[i] = nfa''.val[i] := by
+      simp [eq, eq₃]
+      rw [pushNode_get_lt _ h]
+
+    have get₁ (h : i < nfa'.val.nodes.size) : result.val[i] = nfa'.val[i] := by
+      rw [get₂ (Nat.lt_trans h nfa''.property)]
+      rw [pushRegex_get_lt eq₂.symm _ h]
+
+    cases Nat.eq_or_lt_of_le h₁ with
+    | inl eq =>
+      have : i < nfa'.val.nodes.size := eq ▸ nfa'.property
+      rw [get₁ this] at step
+      simp [eq₁, ←eq, Node.charStep, Node.εStep] at step
+      exact .inl step
+    | inr gt =>
+      cases Nat.lt_or_ge i nfa''.val.nodes.size with
+      | inl lt =>
+        have : nfa'.val.nodes.size ≤ i := by
+          simp [eq₁]
+          exact gt
+        have ih := ih eq₂.symm this lt (get₂ lt ▸ step)
+        apply Or.inr
+        cases ih with
+        | inl eq =>
+          rw [eq, eq₁]
+          simp
+        | inr ge => exact Nat.le_trans (Nat.le_of_lt nfa'.property) ge
+      | inr ge =>
+        simp [eq, eq₃] at h₂
+        have : i = nfa''.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
+        simp [this, eq, eq₃, Node.charStep, Node.εStep] at step
+        exact .inr (Nat.le_trans (Nat.le_of_lt nfa'.property) (step ▸ ge_pushRegex_start eq₂.symm))
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply pushRegex.alternate eq
     intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ eq₂ eq₃ eq₄ eq₅ eq
