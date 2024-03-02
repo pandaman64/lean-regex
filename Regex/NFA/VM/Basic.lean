@@ -238,7 +238,7 @@ end NFA.VM
 def NFA.captureNext (nfa : NFA) (it : String.Iterator) (saveSize : Nat) : Option (Array (Option Pos)) :=
   let saveSlots := Vec.ofFn (fun _ => initSave)
   let (matched, init, saveSlots) :=
-    NFA.VM.exploreεClosure nfa 0 .empty initSave .none saveSlots nfa.start #[]
+    NFA.VM.exploreεClosure nfa it.pos .empty initSave .none saveSlots nfa.start #[]
   go it init .empty saveSlots matched
 where
   initSave : Array (Option Pos) := Array.ofFn (fun _ : Fin saveSize => none)
@@ -255,9 +255,14 @@ where
       else
         let c := it.curr
         let pos := it.pos
-        -- I think ignoring the match here is fine because the match must have happened at the initial exploration
-        -- and `lastMatch` must have already captured that.
-        let (_, current, saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
+        -- Start a new search from the current position only when there is no match
+        let (current, saveSlots) := if lastMatch.isNone then
+          -- I think ignoring the match here is fine because the match must have happened at the initial exploration
+          -- and `lastMatch` must have already captured that.
+          let (_, current, saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
+          (current, saveSlots)
+        else
+          (current, saveSlots)
         let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c it.next.pos current next saveSlots
         go it.next next current.clear saveSlots (matched <|> lastMatch)
 

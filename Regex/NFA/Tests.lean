@@ -89,3 +89,4 @@ def heystack₇ := "xyzxyzqabcwabcxyzxyzeabcxyzqabca"
 def matches₇ := collect (NFA₇.matches heystack₇)
 #eval matches₇
 #eval matches₇.map (fun (x, y) => Substring.mk heystack₇ x y)
+-- "qabc", "wabc", "eabc", "qabc"
