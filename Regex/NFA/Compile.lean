@@ -158,7 +158,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
 
     ⟨nfa', property⟩
 
--- TODO: push .*? for search or simulate it with a loop
+@[export lean_regex_compile]
 def compile (r : Regex) : NFA := done.pushRegex ⟨0, by decide⟩ r
 
 -- Useful lemmas about the compilation

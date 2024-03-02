@@ -128,13 +128,13 @@ where
         let ns' := charStepTR nfa it.curr ns
         go it.next ns' lastMatch
 
+open String (Pos)
+
 /-
   The following implementation is heavily inspired by burntsushi's regex-lite crate.
   https://github.com/rust-lang/regex/tree/master/regex-lite
 -/
 namespace NFA.VM
-
-open String (Pos)
 
 -- TODO: embed .none into Pos to remove allocations
 inductive StackEntry (n : Nat) : Type where
@@ -235,18 +235,18 @@ where
 
 end NFA.VM
 
-def NFA.search' (nfa : NFA) (s : String) (saveSize : Nat) : Option (Array (Option String.Pos) × String.Pos) :=
+def NFA.captureNext (nfa : NFA) (it : String.Iterator) (saveSize : Nat) : Option (Array (Option Pos)) :=
   let saveSlots := Vec.ofFn (fun _ => initSave)
   let (matched, init, saveSlots) :=
     NFA.VM.exploreεClosure nfa 0 .empty initSave .none saveSlots nfa.start #[]
-  go s.iter init .empty saveSlots (matched.map (fun s => (s, 0)))
+  go it init .empty saveSlots matched
 where
-  initSave : Array (Option String.Pos) := Array.ofFn (fun _ : Fin saveSize => none)
+  initSave : Array (Option Pos) := Array.ofFn (fun _ : Fin saveSize => none)
   go (it : String.Iterator)
     (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
-    (saveSlots : Vec (Array (Option String.Pos)) nfa.nodes.size)
-    (lastMatch : Option (Array (Option String.Pos) × String.Pos))
-    : Option (Array (Option String.Pos) × String.Pos) := do
+    (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
+    (lastMatch : Option (Array (Option Pos)))
+    : Option (Array (Option Pos)) := do
     if it.atEnd then
       lastMatch
     else
@@ -258,5 +258,33 @@ where
         -- I think ignoring the match here is fine because the match must have happened at the initial exploration
         -- and `lastMatch` must have already captured that.
         let (_, current, saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
-        let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c pos current next saveSlots
-        go it.next next current.clear saveSlots (matched.map (fun s => (s, it.next.pos)) <|> lastMatch)
+        let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c it.next.pos current next saveSlots
+        go it.next next current.clear saveSlots (matched <|> lastMatch)
+
+def NFA.searchNext (nfa : NFA) (it : String.Iterator) : Option (Pos × Pos) := do
+  let slots ← nfa.captureNext it 2
+  let first ← (←slots.get? 0)
+  let second ← (←slots.get? 1)
+  pure (first, second)
+
+structure NFA.Matches where
+  nfa : NFA
+  heystack : String
+  currentPos : Pos
+deriving Repr
+
+@[export lean_regex_nfa_matches]
+def NFA.matches (nfa : NFA) (s : String) : NFA.Matches :=
+  { nfa := nfa, heystack := s, currentPos := 0 }
+
+@[export lean_regex_nfa_matches_next]
+def NFA.Matches.next? (self : NFA.Matches) : Option ((Pos × Pos) × NFA.Matches) := do
+  let pos ← self.nfa.searchNext ⟨self.heystack, self.currentPos⟩
+  if self.currentPos < pos.2 then
+    let next := { self with currentPos := pos.2 }
+    pure (pos, next)
+  else
+    let next := { self with currentPos := self.heystack.next self.currentPos }
+    pure (pos, next)
+
+instance : Stream NFA.Matches (Pos × Pos) := ⟨NFA.Matches.next?⟩

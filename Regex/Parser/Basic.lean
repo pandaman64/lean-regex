@@ -43,7 +43,8 @@ where
 
 partial def regex : Parser Hir :=
   withErrorMessage "expected a regular expression" do
-    alternate
+    let r ← alternate
+    pure (.group r)
 
 end
 
