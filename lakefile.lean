@@ -14,7 +14,7 @@ lean_exe RunRegex where
   root := `RunRegex
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "v4.6.0-rc1"
+  "https://github.com/leanprover-community/mathlib4" @ "v4.6.0"
 
 require Parser from git
   "https://github.com/fgdorais/lean4-parser" @ "main"
