@@ -4,6 +4,7 @@ import Regex.Parser.Hir
 import Regex.Parser.ParserAux
 
 open Parser
+open Parser.Char
 
 namespace Regex.Parser
 
@@ -15,7 +16,12 @@ abbrev Parser := SimpleParser Substring Char
 mutual
 
 partial def group : Parser Hir :=
-  withErrorMessage "expected a group" (token '(' *> Hir.group <$> regex <* token ')')
+  withErrorMessage "expected a group" do
+    let _ ← token '('
+    let nonCapturing ← test (chars "?:")
+    let r ← regex
+    let _ ← token ')'
+    pure (if dbgTraceVal nonCapturing then r else .group r)
 
 partial def char : Parser Hir :=
   withErrorMessage "expected a character" do
@@ -43,14 +49,13 @@ where
 
 partial def regex : Parser Hir :=
   withErrorMessage "expected a regular expression" do
-    let r ← alternate
-    pure (.group r)
+    alternate
 
 end
 
 def parse (input : String) : Except String Regex :=
   match (regex <* endOfInput).run input.toSubstring with
-  | .ok _ r => .ok r.toRegex
+  | .ok _ r => .ok (Hir.group r).toRegex
   | .error e => .error (toString e)
 
 @[export lean_regex_parse_or_panic]
