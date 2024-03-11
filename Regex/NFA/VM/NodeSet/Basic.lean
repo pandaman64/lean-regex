@@ -4,7 +4,7 @@ import Std.Data.Array.Lemmas
 
 namespace NFA.VM
 
--- TODO: use a bitvec?
+-- Deprecated.
 def NodeSet (n : Nat) := { array : Array Bool // array.size = n }
 
 def NodeSet.empty {n : Nat} : NodeSet n :=

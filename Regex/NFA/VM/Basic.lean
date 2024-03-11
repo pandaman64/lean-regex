@@ -20,7 +20,7 @@ theorem Array.lt_size_of_pop_of_not_empty (a : Array α) (hemp : ¬ a.isEmpty) :
 
 namespace NFA.VM
 
--- TODO: check if the modifications don't cause copying
+-- Deprecated.
 def εClosureTR (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) :
   NodeSet nfa.nodes.size :=
   if hemp : stack.isEmpty then
@@ -59,6 +59,7 @@ def εClosureTR (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (F
       εClosureTR nfa visited' stack''
 termination_by (visited.count_unset, stack.size)
 
+-- Deprecated.
 def charStepTR (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size) :
   NodeSet nfa.nodes.size := go nfa c init .empty 0 (Nat.zero_le _)
 where
@@ -90,6 +91,7 @@ end NFA.VM
 
 open NFA.VM
 
+-- Deprecated. Use captureNext.
 @[export lean_regex_nfa_match]
 def NFA.match (nfa : NFA) (s : String) : Bool :=
   let ns := εClosureTR nfa .empty #[nfa.start]
@@ -108,6 +110,7 @@ where
         let ns' := charStepTR nfa iter.curr ns
         go nfa iter.next ns'
 
+-- Deprecated. Use captureNext.
 def NFA.search_prefix (nfa : NFA) (s : String) : Option String.Iterator :=
   let ns := εClosureTR nfa .empty #[nfa.start]
   go s.iter ns .none
