@@ -1,6 +1,6 @@
 import Regex.Regex
 
-namespace Regex.Parser
+namespace Regex.Syntax.Parser
 
 inductive Hir : Type where
   | empty : Hir
@@ -34,4 +34,4 @@ def Hir.toRegexAux (index : Nat) (hir : Hir) : Nat × Regex :=
 
 def Hir.toRegex (h : Hir) : Regex := (h.toRegexAux 0).2
 
-end Regex.Parser
+end Regex.Syntax.Parser

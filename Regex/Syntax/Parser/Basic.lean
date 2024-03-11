@@ -1,12 +1,12 @@
 import Parser
 import Regex.Regex
-import Regex.Parser.Hir
-import Regex.Parser.ParserAux
+import Regex.Syntax.Hir
+import Regex.Syntax.Parser.ParserAux
 
 open Parser
 open Parser.Char
 
-namespace Regex.Parser
+namespace Regex.Syntax.Parser
 
 def specialCharacters := "[](){}*+?|^$.\\"
 
@@ -64,4 +64,4 @@ def parse! (input : String) : Regex :=
   | Except.ok r => r
   | Except.error e => panic! s!"Failed to parse a regex: {e}"
 
-end Regex.Parser
+end Regex.Syntax.Parser
