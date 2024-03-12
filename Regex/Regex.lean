@@ -6,6 +6,7 @@ inductive Regex : Type where
   | alternate : Regex → Regex → Regex
   | concat : Regex → Regex → Regex
   | star : Regex → Regex
+  | classes : Array (Char × Char) → Regex
 deriving Repr, Inhabited
 
 inductive Regex.matches : String → Regex → Prop where

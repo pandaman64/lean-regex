@@ -157,6 +157,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
         _ = nfa'.nodes.size := by simp
 
     ⟨nfa', property⟩
+  | .classes c => nfa.pushNode (.sparse c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
 
 @[export lean_regex_compile]
 def compile (r : Regex) : NFA := done.pushRegex ⟨0, by decide⟩ r
