@@ -59,6 +59,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
   | .empty => nfa.pushNode .fail rfl
   | .epsilon => nfa.pushNode (.epsilon next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .char c => nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
+  | .classes c => nfa.pushNode (.sparse c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .group index r =>
     -- push the closing save node first
     let nfa' := nfa.pushNode (.save (2 * index + 1) next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
@@ -157,7 +158,6 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
         _ = nfa'.nodes.size := by simp
 
     ⟨nfa', property⟩
-  | .classes c => nfa.pushNode (.sparse c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
 
 @[export lean_regex_compile]
 def compile (r : Regex) : NFA := done.pushRegex ⟨0, by decide⟩ r
@@ -175,6 +175,11 @@ theorem pushRegex.epsilon (eq : pushRegex nfa next .epsilon = result)
 
 theorem pushRegex.char (eq : pushRegex nfa next (.char c) = result)
   {motive : result = nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)) → P} : P := by
+  simp [pushRegex] at eq
+  exact motive eq.symm
+
+theorem pushRegex.sparse (eq : pushRegex nfa next (.classes c) = result)
+  {motive : result = nfa.pushNode (.sparse c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 
