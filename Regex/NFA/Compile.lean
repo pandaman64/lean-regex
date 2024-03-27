@@ -178,8 +178,10 @@ theorem pushRegex.char (eq : pushRegex nfa next (.char c) = result)
   simp [pushRegex] at eq
   exact motive eq.symm
 
-theorem pushRegex.sparse (eq : pushRegex nfa next (.classes c) = result)
-  {motive : result = nfa.pushNode (.sparse c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)) → P} : P := by
+theorem pushRegex.sparse
+  (eq : pushRegex nfa next (.classes c) = result)
+  {motive : result = nfa.pushNode (.sparse c next)
+  ((by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 

@@ -1,3 +1,5 @@
+import Regex.Intervals
+
 inductive Regex : Type where
   | empty : Regex
   | epsilon : Regex
@@ -6,11 +8,12 @@ inductive Regex : Type where
   | alternate : Regex → Regex → Regex
   | concat : Regex → Regex → Regex
   | star : Regex → Regex
-  | classes : Array (Char × Char) → Regex
-deriving Repr, Inhabited
+  | classes : Intervals → Regex
+deriving Inhabited
 
 inductive Regex.matches : String → Regex → Prop where
   | char (c : Char) (eq : s = ⟨[c]⟩): Regex.matches s (.char c)
+  | sparse (i : Intervals) (c: Char) (h : c ∈ i) (eq : s = ⟨[c]⟩) : Regex.matches s (.classes i)
   | epsilon (eq : s = "") : Regex.matches s .epsilon
   | group (m : Regex.matches s r) : Regex.matches s (.group i r)
   | alternateLeft {s : String} {r₁ r₂ : Regex} : Regex.matches s r₁ → Regex.matches s (.alternate r₁ r₂)
@@ -20,7 +23,6 @@ inductive Regex.matches : String → Regex → Prop where
   | starEpsilon (eq : s = "") : Regex.matches s (.star r)
   | starConcat (s s₁ s₂ : String) (r : Regex) (eq : s = s₁ ++ s₂) :
     Regex.matches s₁ r → Regex.matches s₂ (.star r) → Regex.matches s (.star r)
-
 theorem Regex.empty_not_matches {s : String} (m : Regex.empty.matches s) : False := nomatch m
 
 theorem Regex.epsilon_matches_empty : Regex.matches "" .epsilon := .epsilon rfl

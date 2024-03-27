@@ -1,3 +1,5 @@
+import Regex.Intervals
+
 namespace NFA
 
 inductive Node where
@@ -7,7 +9,7 @@ inductive Node where
   | char (c : Char) (next : Nat)
   | split (next₁ next₂ : Nat)
   | save (offset : Nat) (next : Nat)
-  | sparse (intervals: Array (Char × Char)) (next : Nat)
+  | sparse (intervals: Intervals) (next : Nat)
 deriving Repr
 
 def Node.inBounds (node : Node) (size : Nat) : Bool :=

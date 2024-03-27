@@ -100,9 +100,9 @@ partial def interval : Parser Interval := do
     let second ← charWithPerlClasses
     let f ← expectsChar first
     let s ← expectsChar second
-    if f > s
-      then throwUnexpectedWithMessage none "invalid range"
-      else pure (Interval.range f s)
+    if h : f ≤ s
+      then pure (Interval.range f s h)
+      else throwUnexpectedWithMessage none "invalid range"
   else
     match first with
     | Hir.perl p => pure (Interval.perl p)

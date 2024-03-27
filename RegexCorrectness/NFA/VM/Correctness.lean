@@ -415,6 +415,45 @@ theorem charStepTR_spec.go (nfa : NFA) (c : Char) (init : NodeSet nfa.nodes.size
           simp [this]
           exact inv₀
       next hn =>
+        split
+        case inr x =>
+          simp [inv] at inv₀
+          intro k
+          refine ⟨fun x => Or.inl ((inv₀ k).mp x), ?y⟩
+          intro r
+          let f := (inv₀ k).mpr
+          cases r with
+          | inl hset => exact f hset
+          | inr hset =>
+            simp [stepSet, εClosureSet, NFA.εClosure, charStep, hlt, hn,  GetElem.getElem] at hset
+            simp [NFA.get, hn, Node.charStep, x, hn] at hset
+        case inl x =>
+          simp [inv] at inv₀
+          intro k
+          apply Iff.intro
+          simp [NodeSet.merge_get]
+          intro j
+          cases j with
+          | inl hset => exact .inl ((inv₀ k).mp hset)
+          | inr hset =>
+            apply Or.inr
+            simp [εClosureTR_spec k] at hset
+            simp [stepSet, εClosureSet, charStep, GetElem.getElem]
+            simp [NFA.get, Node.charStep, x, hn, hlt]
+            exact hset
+          intro j
+          cases j with
+          | inl hset =>
+            simp [NodeSet.merge_get]
+            exact .inl ((inv₀ k).mpr hset)
+          | inr hset =>
+            simp [NodeSet.merge_get]
+            apply Or.inr
+            simp [εClosureTR_spec k]
+            simp [stepSet, εClosureSet, charStep, GetElem.getElem, hlt, charStep] at hset
+            simp [NFA.get, Node.charStep, x, hn, hlt] at hset
+            exact hset
+      next hn =>
         have : nfa.stepSet {i} c = ∅ := by
           simp [stepSet, charStep, NFA.Node.charStep, get_eq_nodes_get, hn]
         simp [this]

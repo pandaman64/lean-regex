@@ -83,7 +83,7 @@ where
           else
             accum
         | .sparse ranges next =>
-          if ranges.any (fun (fst, snd) => c >= fst && c <= snd) then
+          if ranges.in c then
             have : next < nfa.nodes.size := by
               have := nfa.inBounds ⟨i, hlt⟩
               simp [hn, Node.inBounds] at this
@@ -225,7 +225,7 @@ def stepChar (nfa : NFA) (c : Char) (pos : Pos)
     else
       (.none, next, saveSlots)
   | .sparse ranges target' =>
-    if ranges.any (fun (fst, snd) => c >= fst && c <= snd) then
+    if ranges.in c then
       have isLt := nfa.inBoundsType' target hn
       let currentSave := saveSlots.get target target.isLt
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
