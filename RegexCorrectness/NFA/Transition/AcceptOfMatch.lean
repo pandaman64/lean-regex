@@ -735,8 +735,19 @@ theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next 
   (h : s = p ++ s') (m : r.matches p) :
   pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
   induction m generalizing s s' nfa next with
-  | @sparse int s r f =>
-    sorry
+  | @sparse int s c f eqs =>
+    simp [h, eqs]
+    have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
+    refine ⟨
+      nfa'.val.start,
+      c :: s'.data,
+      .base this rfl rfl,
+      .charStep this nfa'.val.start.isLt ?_
+    ⟩
+    rw [←eq]
+    simp [Membership.mem, flip] at f
+    simp [pushRegex, Node.charStep, Intervals.in_iff]
+    exact f
   | @char p c eqs =>
     simp [h, eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
