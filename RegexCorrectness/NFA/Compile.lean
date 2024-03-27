@@ -6,10 +6,11 @@ namespace NFA
 theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i < nfa.nodes.size) :
   result.val[i]'(Nat.lt_trans h result.property) = nfa[i] := by
   induction r generalizing nfa next with
-  | empty | epsilon | char =>
+  | empty | epsilon | char | classes =>
     try apply pushRegex.empty eq
     try apply pushRegex.epsilon eq
     try apply pushRegex.char eq
+    try apply pushRegex.sparse eq
     intro eq
     subst eq
     apply pushNode_get_lt i h
@@ -71,7 +72,7 @@ theorem le_pushNode : nfa ≤ (pushNode nfa node h).val := by
 
 theorem le_pushRegex : nfa ≤ (pushRegex nfa next r).val := by
   induction r generalizing nfa next with
-  | empty | epsilon | char _ => unfold pushRegex; exact le_pushNode
+  | empty | epsilon | char _ | classes _ => unfold pushRegex; exact le_pushNode
   | group i r ih =>
     apply pushRegex.group (rfl : pushRegex nfa next (.group i r) = _)
     intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
@@ -139,6 +140,11 @@ theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
     intro eq
     subst eq
     simp
+  | classes c =>
+    apply pushRegex.sparse eq
+    intro eq
+    subst eq
+    simp
   | group =>
     apply pushRegex.group eq
     intro nfa' nfa'' nfa''' property _ _ _ _ eq₃ eq
@@ -180,15 +186,17 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
     simp at h₂
     have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
     simp [this, NFA.Node.charStep, NFA.Node.εStep] at step
-  | epsilon | char c =>
+  | epsilon | char c | classes r =>
     try apply pushRegex.epsilon eq
     try apply pushRegex.char eq
+    try apply pushRegex.sparse eq
     intro eq
     subst eq
     simp at h₂
     have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
     simp [this, NFA.Node.charStep, NFA.Node.εStep] at step
-    exact .inl step
+    try exact .inl step
+    try exact .inl (And.right step)
   | group _ r ih =>
     apply pushRegex.group eq
     intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq

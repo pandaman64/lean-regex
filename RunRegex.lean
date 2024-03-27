@@ -2,7 +2,7 @@ import Regex
 
 def main (args : List String) : IO Unit := do
   let regex := args.get! 0
-  let regex := Regex.Parser.parse! regex
+  let regex := Regex.Syntax.Parser.parse! regex
   let nfa := NFA.compile regex
 
   let file := args.get! 1
