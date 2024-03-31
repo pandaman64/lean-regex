@@ -56,7 +56,7 @@ theorem pushNode_start_eq {nfa : NFA} {node : Node} {inBounds : node.inBounds (n
 -/
 def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
   Regex → { nfa' : NFA // nfa.nodes.size < nfa'.nodes.size }
-  | .empty => nfa.pushNode .fail rfl
+  | .empty => nfa.pushNode .fail (by simp)
   | .epsilon => nfa.pushNode (.epsilon next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .char c => nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .group index r =>
@@ -107,7 +107,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
     -- 1. We'll use the fact that `fail` is a minimal element when strengthening induction hypotheis;
     -- 2. We want to make sure `done` does not appear except at the first node.
     -- 3. variants without data are represented as a boxed integer so there is one less allocation.
-    let placeholder := nfa.pushNode .fail rfl
+    let placeholder := nfa.pushNode .fail (by simp)
     let loopStart := placeholder.val.start
     -- FIXME: generated code keeps `placeholder` alive, copying the array. Why?
     let compiled := placeholder.val.pushRegex loopStart r
@@ -163,7 +163,7 @@ def compile (r : Regex) : NFA := done.pushRegex ⟨0, by decide⟩ r
 
 -- Useful lemmas about the compilation
 theorem pushRegex.empty (eq : pushRegex nfa next .empty = result)
-  {motive : result = nfa.pushNode .fail rfl → P} : P := by
+  {motive : result = nfa.pushNode .fail (by simp) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 
@@ -256,7 +256,7 @@ theorem pushRegex.concat (eq : pushRegex nfa next (Regex.concat r₁ r₂) = res
 
 theorem pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
   {motive : ∀ placeholder compiled patched nfa' isLt inBounds property,
-    placeholder = nfa.pushNode .fail rfl →
+    placeholder = nfa.pushNode .fail (by simp) →
     compiled = placeholder.val.pushRegex ⟨nfa.nodes.size, placeholder.property⟩ r →
     patched = compiled.val.nodes.set
       ⟨nfa.nodes.size, Nat.lt_trans placeholder.property compiled.property⟩
@@ -265,7 +265,7 @@ theorem pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
     result = ⟨nfa', property⟩ →
     P
   } : P := by
-  let placeholder := nfa.pushNode .fail rfl
+  let placeholder := nfa.pushNode .fail (by simp)
   let compiled := placeholder.val.pushRegex ⟨nfa.nodes.size, placeholder.property⟩ r
 
   -- Patch the placeholder node

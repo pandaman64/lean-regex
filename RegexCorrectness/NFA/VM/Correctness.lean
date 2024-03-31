@@ -219,10 +219,58 @@ theorem εClosureTR_spec.case_split (inv₀ : inv nfa i visited stack)
           simp [εStep, NFA.Node.εStep, get_eq_nodes_get, hn]
         exact εClosure_snoc ncls step
 
+theorem εClosureTR_spec.case_save (inv₀ : inv nfa i visited stack)
+  (hemp : ¬ stack.isEmpty) (hvis : ¬ NodeSet.get visited (Array.back' stack hemp))
+  (hn : nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.save offset next) :
+  inv nfa i (visited.set (Array.back' stack hemp)) (stack.pop.push ⟨next, isLt⟩) := by
+  -- pasted from case_epsilon
+  simp [inv] at *
+  set n := Array.back' stack hemp
+  obtain ⟨h₁, h₂, h₃⟩ := inv₀
+  refine ⟨?_, ?_, ?_⟩
+  . cases h₁ with
+    | inl vis => simp [NodeSet.get_set, vis]
+    | inr stk =>
+      cases Array.mem_pop_or_eq_of_mem _ _ hemp stk with
+      | inl stk => exact Or.inr ((Array.mem_push _ _ _).mpr (.inl stk))
+      | inr eq => simp [eq]
+  . intro i j mem step
+    rw [NodeSet.get_set] at mem
+    split at mem
+    case inl eq =>
+      simp [←eq, NFA.Node.εStep, get_eq_nodes_get, hn] at step
+      simp [←step]
+    case inr ne =>
+      cases h₂ i j mem step with
+      | inl vis => simp [NodeSet.get_set, vis]
+      | inr stk =>
+          cases Array.mem_pop_or_eq_of_mem _ _ hemp stk with
+          | inl stk => exact Or.inr ((Array.mem_push _ _ _).mpr (.inl stk))
+          | inr eq => simp [eq]
+  . intro j mem
+    cases mem with
+    | inl vis =>
+      rw [NodeSet.get_set] at vis
+      split at vis
+      case inl eq =>
+        rw [←eq]
+        exact h₃ n (.inr (Array.mem_back' hemp))
+      case inr ne => exact h₃ j (.inl vis)
+    | inr stk =>
+      cases (Array.mem_push _ _ _).mp stk with
+      | inl stk => exact h₃ j (.inr (Array.mem_of_mem_pop _ _ stk))
+      | inr eq =>
+        simp [eq]
+        have cls : n.val ∈ nfa.εClosure i := h₃ n (.inr (Array.mem_back' hemp))
+        have step : next ∈ nfa.εStep n := by
+          simp [εStep, NFA.Node.εStep, get_eq_nodes_get, hn]
+        exact εClosure_snoc cls step
+
 theorem εClosureTR_spec.case_else (inv₀ : inv nfa i visited stack)
   (hemp : ¬ stack.isEmpty) (hvis : ¬ NodeSet.get visited (Array.back' stack hemp))
   (hn₁ : ∀ (next : Nat), ¬ nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.epsilon next)
-  (hn₂ : ∀ (next₁ next₂ : Nat), ¬ nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.split next₁ next₂) :
+  (hn₂ : ∀ (next₁ next₂ : Nat), ¬ nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.split next₁ next₂)
+  (hn₃ : ∀ (offset next : Nat), ¬ nfa.nodes[(Array.back' stack hemp).val] = NFA.Node.save offset next) :
   inv nfa i (visited.set (Array.back' stack hemp)) stack.pop := by
   simp [inv] at *
   set n := Array.back' stack hemp
@@ -243,6 +291,7 @@ theorem εClosureTR_spec.case_else (inv₀ : inv nfa i visited stack)
       split at step
       next next hn => exact absurd hn (hn₁ next)
       next next₁ next₂ hn => exact absurd hn (hn₂ next₁ next₂)
+      next offset next hn => exact absurd hn (hn₃ offset next)
       next hn => contradiction
     case inr ne =>
       cases h₂ i j mem step with
@@ -286,7 +335,8 @@ theorem εClosureTR_spec.go (nfa : NFA) (i : Fin nfa.nodes.size) {visited stack}
       split
       next hn => exact go nfa i (case_epsilon inv₀ hemp hvis hn)
       next hn => exact go nfa i (case_split inv₀ hemp hvis hn)
-      next hn₁ hn₂ => exact go nfa i (case_else inv₀ hemp hvis hn₁ hn₂)
+      next hn => exact go nfa i (case_save inv₀ hemp hvis hn)
+      next hn₁ hn₂ hn₃ => exact go nfa i (case_else inv₀ hemp hvis hn₁ hn₂ hn₃)
 termination_by (visited.count_unset, stack.size)
 
 theorem εClosureTR_spec {nfa : NFA} {i : Fin nfa.nodes.size} :
