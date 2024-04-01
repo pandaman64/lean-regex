@@ -4,14 +4,12 @@ import Mathlib.Data.Set.Basic
 
 namespace NFA
 
-/- Returns the set of nodes that can be reached from the given node by consuming the given character. -/
 def Node.charStep (n : Node) (c : Char) : Set Nat :=
   match n with
   | Node.char c' next => if c == c' then {next} else ∅
   | Node.sparse ranges next => if ranges.in c then {next} else ∅
   | _ => ∅
 
-/- Returns the set of nodes that can be reached from the given node by consuming ε. -/
 def Node.εStep (n : Node) : Set Nat :=
   match n with
   | Node.epsilon next => {next}
@@ -19,13 +17,11 @@ def Node.εStep (n : Node) : Set Nat :=
   | Node.save _ next => {next}
   | _ => ∅
 
-/- Returns the set of nodes that can be reached from the given node by consuming the given character. -/
 def charStep (nfa : NFA) (i : Nat) (c : Char) : Set Nat :=
   if h : i < nfa.nodes.size
     then nfa[i].charStep c
     else ∅
 
-/- Returns the set of nodes that can be reached from the given node by consuming ε. -/
 def εStep (nfa : NFA) (i : Nat) : Set Nat :=
   if h : i < nfa.nodes.size
     then nfa[i].εStep

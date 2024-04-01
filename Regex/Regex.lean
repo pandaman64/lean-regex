@@ -23,6 +23,7 @@ inductive Regex.matches : String → Regex → Prop where
   | starEpsilon (eq : s = "") : Regex.matches s (.star r)
   | starConcat (s s₁ s₂ : String) (r : Regex) (eq : s = s₁ ++ s₂) :
     Regex.matches s₁ r → Regex.matches s₂ (.star r) → Regex.matches s (.star r)
+
 theorem Regex.empty_not_matches {s : String} (m : Regex.empty.matches s) : False := nomatch m
 
 theorem Regex.epsilon_matches_empty : Regex.matches "" .epsilon := .epsilon rfl

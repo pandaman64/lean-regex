@@ -55,6 +55,9 @@ def εClosureTR (nfa : NFA) (visited : NodeSet nfa.nodes.size) (stack : Array (F
             exact inBounds'.right
 
           (stack'.push ⟨next₁, h₁⟩).push ⟨next₂, h₂⟩
+        | .save _ next =>
+          have h := nfa.inBounds' i hn
+          stack'.push ⟨next, h⟩
         | _ => stack'
       εClosureTR nfa visited' stack''
 termination_by (visited.count_unset, stack.size)
@@ -167,13 +170,13 @@ def exploreεClosure (nfa : NFA) (pos : Pos)
     let next' := next.insert target
     match hn : nfa[target] with
     | .epsilon target' =>
-      have isLt := nfa.inBoundsType' target hn
+      have isLt := nfa.inBounds' target hn
       exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
     | .split target₁ target₂ =>
-      have ⟨isLt₁, isLt₂⟩ := nfa.inBoundsType' target hn
+      have ⟨isLt₁, isLt₂⟩ := nfa.inBounds' target hn
       exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target₁, isLt₁⟩ (stack.push (.explore ⟨target₂, isLt₂⟩))
     | .save offset target' =>
-      have isLt := nfa.inBoundsType' target hn
+      have isLt := nfa.inBounds' target hn
       if h : offset < currentSave.size then
         let nextSave := currentSave.set ⟨offset, h⟩ pos
         let stack' := stack.push (.restore currentSave)
@@ -219,14 +222,14 @@ def stepChar (nfa : NFA) (c : Char) (pos : Pos)
   match hn : nfa[target] with
   | .char c' target' =>
     if c = c' then
-      have isLt := nfa.inBoundsType' target hn
+      have isLt := nfa.inBounds' target hn
       let currentSave := saveSlots.get target target.isLt
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
     else
       (.none, next, saveSlots)
   | .sparse ranges target' =>
     if ranges.in c then
-      have isLt := nfa.inBoundsType' target hn
+      have isLt := nfa.inBounds' target hn
       let currentSave := saveSlots.get target target.isLt
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
     else

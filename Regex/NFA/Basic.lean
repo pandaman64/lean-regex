@@ -12,17 +12,7 @@ inductive Node where
   | sparse (intervals: Intervals) (next : Nat)
 deriving Repr
 
-def Node.inBounds (node : Node) (size : Nat) : Bool :=
-  match node with
-  | Node.done => true
-  | Node.fail => true
-  | Node.epsilon next => next < size
-  | Node.char _ next => next < size
-  | Node.split next₁ next₂ => next₁ < size && next₂ < size
-  | Node.save _ next => next < size
-  | Node.sparse _ next => next < size
-
-def Node.InboundsType (n : Node) (size : Nat) : Prop :=
+def Node.inBounds (n : Node) (size : Nat) : Prop :=
   match n with
   | .done => True
   | .fail => True
@@ -31,10 +21,6 @@ def Node.InboundsType (n : Node) (size : Nat) : Prop :=
   | .split next₁ next₂ => next₁ < size ∧ next₂ < size
   | .save _ next => next < size
   | .sparse _ next => next < size
-
-theorem Node.inBounds_iff (node : Node) (size : Nat) :
-  node.inBounds size ↔ Node.InboundsType node size := by
-  cases node <;> simp [Node.InboundsType, Node.inBounds]
 
 @[simp]
 theorem Node.inBounds.done {size : Nat} : Node.done.inBounds size := by
@@ -124,7 +110,10 @@ def done : NFA :=
   have inBounds := by
     intro i
     match i with
-    | ⟨0, isLt⟩ => rfl
+    | ⟨0, isLt⟩ =>
+      simp [Node.inBounds]
+      split <;> try contradiction
+      trivial
     | ⟨i + 1, isLt⟩ => contradiction
   ⟨nodes, start, inBounds⟩
 
@@ -142,11 +131,10 @@ theorem zero_lt_size {nfa : NFA} : 0 < nfa.nodes.size := by
   intro h
   exact (h ▸ nfa.start).elim0
 
-theorem inBoundsType (nfa : NFA) (i : Fin nfa.nodes.size) : nfa[i].InboundsType nfa.nodes.size := by
-  rw [←Node.inBounds_iff]
-  exact nfa.inBounds i
-
-theorem inBoundsType' (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = n) : n.InboundsType nfa.nodes.size :=
-  eq ▸ nfa.inBoundsType i
+theorem inBounds' (nfa : NFA) (i : Fin nfa.nodes.size) (hn : nfa[i] = n) : n.inBounds nfa.nodes.size := by
+  rw [←hn]
+  have inBounds := nfa.inBounds i
+  have : nfa[i] = nfa.nodes[i.val] := rfl
+  exact this ▸ inBounds
 
 end NFA

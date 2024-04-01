@@ -4,17 +4,8 @@ import RegexCorrectness.NFA.Compile
 namespace NFA
 
 inductive stepIn (nfa : NFA) (start : Nat) : (current: Nat) → (input: List Char) → (next: Nat) → (output: List Char) → Prop where
-  | charStep {i j : Nat} {c : Char} {cs : List Char}
-             (h₁ : start ≤ i)
-             (h₂ : i < nfa.nodes.size)
-             (step : j ∈ nfa[i].charStep c) :
-             nfa.stepIn start i (c :: cs) j cs
-  | εStep {i j : Nat}
-          {cs : List Char}
-          (h₁ : start ≤ i)
-          (h₂ : i < nfa.nodes.size)
-          (step : j ∈ nfa[i].εStep) :
-          nfa.stepIn start i cs j cs
+  | charStep {i j : Nat} {c : Char} {cs : List Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) : nfa.stepIn start i (c :: cs) j cs
+  | εStep {i j : Nat} {cs : List Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) : nfa.stepIn start i cs j cs
 
 theorem Array.is_empty (x : Array α) (h : x.isEmpty) : x = #[] :=
   match x with
@@ -37,7 +28,7 @@ theorem stepIn.h₁ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : start ≤ i := by
   cases step with
   | charStep h₁ _ _ => exact h₁
-  | εStep h₁ _ _    => exact h₁
+  | εStep h₁ _ _  => exact h₁
 
 theorem stepIn.h₂ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : i < nfa.nodes.size := by
@@ -85,18 +76,9 @@ theorem stepIn.cast {nfa nfa' : NFA} {start : Nat}
     exact .εStep h₁ h (eq ▸ step)
 
 -- Maybe we should recurse from the last as we reason about the last step often
-
-/- This type represents a path from the start node to the end node of an NFA. -/
 inductive pathIn (nfa : NFA) (start : Nat) : (index: Nat) → (prefx: List Char) → (next: Nat) → List Char → Prop where
-  | base (h : start ≤ i)
-         (eqi : i = j)
-         (eqs : cs = cs') :
-         nfa.pathIn start i cs j cs'
-  | step {i j k : Nat}
-         {cs cs' cs'' : List Char}
-         (step : nfa.stepIn start i cs j cs')
-         (rest : nfa.pathIn start j cs' k cs'') :
-         nfa.pathIn start i cs k cs''
+  | base (h : start ≤ i) (eqi : i = j) (eqs : cs = cs') : nfa.pathIn start i cs j cs'
+  | step {i j k : Nat} {cs cs' cs'' : List Char} (step : nfa.stepIn start i cs j cs') (rest : nfa.pathIn start j cs' k cs'') : nfa.pathIn start i cs k cs''
 
 theorem le_of_pathIn_left {start} (path : pathIn nfa start i cs j cs') : start ≤ i := by
   cases path with
@@ -205,7 +187,7 @@ theorem pathIn.trans {start}
   | step step _ ih => exact .step step (ih path₂)
 
 def pathToNext (nfa : NFA) (next start i : Nat) (cs cs' : List Char) : Prop :=
-    ∃ (i' : Nat) (cs'' : List Char),
+   ∃ (i' : Nat) (cs'' : List Char),
     nfa.pathIn start i cs i' cs'' ∧
     nfa.stepIn start i' cs'' next cs'
 
