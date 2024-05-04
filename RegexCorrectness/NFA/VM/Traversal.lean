@@ -120,12 +120,12 @@ end
 
 def LowerInvExploreεClosure (nfa : NFA) (next : SparseSet nfa.nodes.size)
   (target : Fin nfa.nodes.size) (stack : Array (StackEntry nfa.nodes.size)) : Prop :=
-  ∀ (i j : Fin nfa.nodes.size), i ∈ next → j.val ∈ nfa.εStep i →
+  ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i →
     j ∈ next ∨ j = target ∨ .explore j ∈ stack
 
 def LowerInvεClosure (nfa : NFA) (next : SparseSet nfa.nodes.size)
   (stack : Array (StackEntry nfa.nodes.size)) : Prop :=
-  ∀ (i j : Fin nfa.nodes.size), i ∈ next → j.val ∈ nfa.εStep i →
+  ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i →
     j ∈ next ∨ .explore j ∈ stack
 
 mutual
@@ -425,5 +425,91 @@ theorem upper_bound_εClosure {i}
       exact upper_bound_εClosure h inv'
 termination_by (next.measure, stack.size, 0)
 end
+
+theorem exploreεClosure_spec.mem_next_iff
+  (h : exploreεClosure nfa pos next currentSave matched saveSlots target #[] = (matched', next', saveSlots'))
+  (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
+  ∀ i, i ∈ next' ↔ i ∈ next ∨ i.val ∈ nfa.εClosure target := by
+  have lower_inv : LowerInvExploreεClosure nfa next target #[] := by
+    intro i j hi hj
+    exact .inl (inv i j hi hj)
+  have upper_inv : UpperInvExploreεClosure nfa target target #[] := by
+    refine ⟨.base, by intros; simp_all⟩
+  have lower_bound := lower_bound_exploreεClosure h lower_inv
+  have upper_bound := upper_bound_exploreεClosure h upper_inv
+  intro i
+  exact ⟨upper_bound i, lower_bound i⟩
+
+theorem exploreεClosure_spec.preserve_cls
+  (h : exploreεClosure nfa pos next currentSave matched saveSlots target #[] = (matched', next', saveSlots'))
+  (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
+  ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
+  have lower_inv : LowerInvExploreεClosure nfa next target #[] := by
+    intro i j hi hj
+    exact .inl (inv i j hi hj)
+  have lower_inv' : LowerInvεClosure nfa next' #[] := lower_inv_exploreεClosure h lower_inv
+  simp [LowerInvεClosure] at lower_inv'
+  exact lower_inv'
+
+theorem stepChar_spec.mem_next_iff
+  (h : stepChar nfa c pos next saveSlots target = (matched', next', saveSlots'))
+  (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
+  ∀ j, j ∈ next' ↔ j ∈ next ∨ ∃ i ∈ nfa.charStep target c, j.val ∈ nfa.εClosure i := by
+  unfold stepChar at h
+  split at h
+  next c' target' hn =>
+    simp at hn
+    split at h
+    next hc =>
+      simp at h
+      have mem_next_iff := exploreεClosure_spec.mem_next_iff h inv
+
+      intro j
+      apply Iff.intro
+      . intro hj
+        cases (mem_next_iff j).mp hj with
+        | inl hj => exact .inl hj
+        | inr hj =>
+          refine .inr ⟨target', ?_, hj⟩
+          simp [charStep, Node.charStep, hn, hc]
+      . intro hj
+        cases hj with
+        | inl hj => exact (mem_next_iff j).mpr (.inl hj)
+        | inr hj =>
+          simp [charStep, Node.charStep, hn, hc] at hj
+          exact (mem_next_iff j).mpr (.inr hj)
+    next hc =>
+      have : ∀ i, ¬i ∈ nfa.charStep target c := by
+        intro i
+        simp [charStep, Node.charStep, hn, hc]
+      simp at h
+      simp [h, this]
+  next hn =>
+    have : ∀ i, ¬i ∈ nfa.charStep target c := by
+      intro i
+      simp at hn
+      simp [charStep, Node.charStep, hn]
+    simp at h
+    simp [h, this]
+
+theorem stepChar_spec.preserve_cls
+  (h : stepChar nfa c pos next saveSlots target = (matched', next', saveSlots'))
+  (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
+  ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
+  unfold stepChar at h
+  split at h
+  next =>
+    split at h
+    next =>
+      simp at h
+      exact exploreεClosure_spec.preserve_cls h inv
+    next =>
+      simp at h
+      simp only [←h]
+      exact inv
+  next =>
+    simp at h
+    simp only [←h]
+    exact inv
 
 end NFA.VM
