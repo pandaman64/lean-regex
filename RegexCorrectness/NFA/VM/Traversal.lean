@@ -512,4 +512,70 @@ theorem stepChar_spec.preserve_cls
     simp only [←h]
     exact inv
 
+theorem eachStepChar_spec.mem_next_iff.go
+  (h : eachStepChar.go nfa c pos current i hle next saveSlots = (matched', next', saveSlots'))
+  (inv₁ : ∀ j, j ∈ next ↔ ∃ i', ∃ _ : i' < current.count, i' < i ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'')
+  (inv₂ : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
+  -- TODO: do we want to add istop < current.count?
+  ∃ istop,
+    ∀ j, j ∈ next' ↔
+    ∃ i', ∃ _ : i' < current.count, i' < istop ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'' := by
+  unfold eachStepChar.go at h
+  split at h
+  next hi =>
+    subst hi
+    simp at h
+    simp only [←h]
+    exact ⟨current.count, inv₁⟩
+  next hi =>
+    have hlt : i < current.count := Nat.lt_of_le_of_ne hle hi
+    simp at h
+    generalize hres : stepChar nfa c pos next saveSlots current[i] = result at h
+    let (matched'', next'', saveSlots'') := result
+
+    have inv₁' : ∀ j, j ∈ next'' ↔ ∃ i', ∃ _ : i' < current.count, i' < i + 1 ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'' := by
+      intro j
+      have := stepChar_spec.mem_next_iff hres inv₂
+      rw [this j, inv₁ j]
+      apply Iff.intro
+      . intro h
+        cases h with
+        | inl h =>
+          have ⟨i', hlt', hlt'', hmem⟩ := h
+          exact ⟨i', hlt', Nat.le.step hlt'', hmem⟩
+        | inr hmem => exact ⟨i, hlt, Nat.lt_succ_self _, hmem⟩
+      . intro h
+        have ⟨i', hlt', hlt'', hmem⟩ := h
+        cases Nat.lt_succ_iff_lt_or_eq.mp hlt'' with
+        | inl hlt'' => exact .inl ⟨i', hlt', hlt'', hmem⟩
+        | inr heq =>
+          simp [heq] at hmem
+          exact .inr hmem
+    have inv₂' : ∀ i j : Fin nfa.nodes.size, i ∈ next'' → j.val ∈ nfa.εStep i → j ∈ next'' :=
+      stepChar_spec.preserve_cls hres inv₂
+
+    split at h
+    next =>
+      exact go h inv₁' inv₂'
+    next =>
+      simp at h
+      simp only [←h]
+      exact ⟨i + 1, inv₁'⟩
+termination_by current.count - i
+
+theorem eachStepChar_spec.mem_next_iff
+  (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
+  (hemp : next.isEmpty) :
+  ∃ istop,
+      ∀ j, j ∈ next' ↔
+      ∃ i', ∃ _ : i' < current.count, i' < istop ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'' := by
+  unfold eachStepChar at h
+  apply eachStepChar_spec.mem_next_iff.go h
+  . intro j
+    have : j ∉ next := SparseSet.not_mem_of_isEmpty hemp
+    simp at this
+    simp [this]
+  . intro i j hi
+    exact absurd hi (SparseSet.not_mem_of_isEmpty hemp)
+
 end NFA.VM
