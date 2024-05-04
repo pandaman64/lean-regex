@@ -300,6 +300,40 @@ theorem lower_inv_εClosure
 termination_by (next.measure, stack.size, 0)
 end
 
+theorem εClosure_subset_lower_inv (inv : LowerInvεClosure nfa next #[]) :
+  ∀ i ∈ next, ∀ j ∈ nfa.εClosure i, ∃ isLt : j < nfa.nodes.size, ⟨j, isLt⟩ ∈ next := by
+  let S := { j | ∃ isLt : j < nfa.nodes.size, ⟨j, isLt⟩ ∈ next }
+  have : ∀ i ∈ S, (_ : i < nfa.nodes.size) → ∀ j ∈ nfa[i].εStep, j ∈ S := by
+    intro i hi iLt j hj
+    have ⟨_, hi⟩ := hi
+    have jLt : j < nfa.nodes.size := lt_of_εStep hj
+    have hj : j ∈ nfa.εStep i := by
+      simp [εStep, iLt, hj]
+    have := inv ⟨i, iLt⟩ ⟨j, jLt⟩ hi hj
+    simp at this
+    refine ⟨jLt, this⟩
+  have := mem_εStep_iff_εClosure_sub.mp this
+
+  intro i hi j hj
+  have : nfa.εClosure i ⊆ S := this i ⟨i.isLt, hi⟩
+  have : j ∈ S := this hj
+  exact this
+
+def LowerBoundεClosure (nfa : NFA) (i : Fin nfa.nodes.size) (next next' : SparseSet nfa.nodes.size) : Prop :=
+  ∀ j, j ∈ next ∨ j.val ∈ nfa.εClosure i → j ∈ next'
+
+theorem lower_bound_exploreεClosure
+  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (inv : LowerInvExploreεClosure nfa next target stack) :
+  LowerBoundεClosure nfa target next next' := by
+  intro j hj
+  cases hj with
+  | inl hnext => exact exploreεClosure_subset h j hnext
+  | inr hcls =>
+    have inv' := lower_inv_exploreεClosure h inv
+    have ⟨_, hmem⟩ := εClosure_subset_lower_inv inv' target (target_mem_exploreεClosure h) j hcls
+    exact hmem
+
 def UpperInvExploreεClosure (nfa : NFA) (i : Fin nfa.nodes.size)
   (target : Fin nfa.nodes.size) (stack : Array (StackEntry nfa.nodes.size)) : Prop :=
   target.val ∈ nfa.εClosure i ∧ ∀ j, .explore j ∈ stack → j.val ∈ nfa.εClosure i

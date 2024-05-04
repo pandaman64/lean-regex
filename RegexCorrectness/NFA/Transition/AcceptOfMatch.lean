@@ -85,6 +85,25 @@ theorem subset_εClosure_of_mem {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure
   intro k h'
   exact εClosure_trans h h'
 
+-- Useful theorem when proving that reachability algorithm gives the εClosure
+theorem mem_εStep_iff_εClosure_sub {nfa : NFA} {S : Set Nat} :
+  (∀ i ∈ S, (_ : i < nfa.nodes.size) → ∀ j ∈ nfa[i].εStep, j ∈ S) ↔
+  ∀ i ∈ S, nfa.εClosure i ⊆ S := by
+  apply Iff.intro
+  . intro assm i mem
+    intro k cls
+    induction cls with
+    | base => exact mem
+    | @step i j k step _ ih =>
+      cases Nat.decLt i nfa.nodes.size with
+      | isTrue lt =>
+        simp [εStep, lt] at step
+        exact ih (assm i mem lt j step)
+      | isFalse nlt => simp [εStep, nlt] at step
+  . intro assm i mem _ j step
+    apply Set.mem_of_mem_of_subset _ (assm i mem)
+    exact εClosure.step (εStep_of_εStep step) .base
+
 def εClosureSet (nfa : NFA) (S : Set Nat) : Set Nat := ⋃ i ∈ S, nfa.εClosure i
 
 @[simp]

@@ -5,24 +5,6 @@ import RegexCorrectness.NFA.VM.Array
 
 namespace NFA.VM
 
-theorem mem_εStep_iff_εClosure_sub {nfa : NFA} {S : Set Nat} :
-  (∀ i ∈ S, (_ : i < nfa.nodes.size) → ∀ j ∈ nfa[i].εStep, j ∈ S) ↔
-  ∀ i ∈ S, nfa.εClosure i ⊆ S := by
-  apply Iff.intro
-  . intro assm i mem
-    intro k cls
-    induction cls with
-    | base => exact mem
-    | @step i j k step _ ih =>
-      cases Nat.decLt i nfa.nodes.size with
-      | isTrue lt =>
-        simp [εStep, lt] at step
-        exact ih (assm i mem lt j step)
-      | isFalse nlt => simp [εStep, nlt] at step
-  . intro assm i mem _ j step
-    apply Set.mem_of_mem_of_subset _ (assm i mem)
-    exact εClosure.step (εStep_of_εStep step) .base
-
 def εClosureTR_spec.inv (nfa : NFA) (i : Fin nfa.nodes.size)
   (visited : NodeSet nfa.nodes.size) (stack : Array (Fin nfa.nodes.size)) : Prop :=
   (visited.get i ∨ i ∈ stack) ∧
