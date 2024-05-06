@@ -620,8 +620,8 @@ theorem eachStepChar_spec.mem_next_iff
   (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
   (hemp : next.isEmpty) :
   ∃ istop,
-      ∀ j, j ∈ next' ↔
-      ∃ i', ∃ _ : i' < current.count, i' < istop ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'' := by
+    ∀ j, j ∈ next' ↔
+    ∃ i', ∃ _ : i' < current.count, i' < istop ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'' := by
   unfold eachStepChar at h
   apply eachStepChar_spec.mem_next_iff.go h
   . intro j
