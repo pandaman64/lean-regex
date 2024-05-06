@@ -457,7 +457,7 @@ theorem matches_prefix_of_path
   (path : pathToNext result next nfa.nodes.size result.val.start.val s s') :
   ∃ p, s = p ++ s' ∧ r.matches ⟨p⟩ := by
   induction r generalizing nfa next s s' with
-  | classes r =>
+  | classes cs =>
     apply pushRegex.sparse eq
     intro eq
     rw [eq] at path
@@ -470,20 +470,15 @@ theorem matches_prefix_of_path
     match step with
     | stepIn.charStep (c := c) _ _ step =>
       simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
-      match r with
-      | ⟨[]⟩     => contradiction
-      | ⟨fst :: tail⟩ =>
-        cases path with
-        | base _ _ eqs =>
-          let iff := Intervals.in_iff ⟨fst :: tail⟩ c
-          exact ⟨[c], eqs, .sparse ⟨fst :: tail⟩ c (by simp [Membership.mem, flip]; exact (iff.mp step)) rfl⟩
-        | step step rest =>
-          cases step with
-          | charStep _ _ step =>
-            simp [NFA.Node.charStep] at step
-            have := le_of_pathIn_left rest
-            exact absurd next.isLt (Nat.not_lt_of_ge (step.right ▸ this))
-          | εStep _ _ step => simp [NFA.Node.εStep] at step
+      cases path with
+      | base _ _ eqs => exact ⟨[c], by simp [eqs], .sparse cs c step rfl⟩
+      | step step rest =>
+        cases step with
+        | charStep _ _ step =>
+          simp [NFA.Node.charStep] at step
+          have := le_of_pathIn_left rest
+          exact absurd next.isLt (Nat.not_lt_of_ge (step.right ▸ this))
+        | εStep _ _ step => simp [NFA.Node.εStep] at step
     | stepIn.εStep _ _ step =>
         simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
   | empty =>

@@ -84,7 +84,7 @@ partial def char : Parser Hir :=
   withErrorMessage "expected a character" do
     Hir.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
 
-partial def interval : Parser Interval := do
+partial def class_ : Parser Class := do
   let cannotUsePerlClassInInterval :=
     throwUnexpectedWithMessage none "cannot use perl classes in intervals"
 
@@ -102,21 +102,21 @@ partial def interval : Parser Interval := do
     let f ← expectsChar first
     let s ← expectsChar second
     if h : f ≤ s
-      then pure (Interval.range f s h)
+      then pure (Class.range f s h)
       else throwUnexpectedWithMessage none "invalid range"
   else
     match first with
-    | Hir.perl p => pure (Interval.perl p)
-    | Hir.char c => pure (Interval.single c)
+    | Hir.perl p => pure (Class.perl p)
+    | Hir.char c => pure (Class.single c)
     | _          => throwUnexpected
 
 partial def classes : Parser Hir :=
   withErrorMessage "expected a character class" do
     let _         ← token '['
     let negated   ← test (token '^')
-    let intervals ← takeMany1 interval
+    let classes ← takeMany1 class_
     let _         ← token ']'
-    pure $ Hir.classes { negated := negated, intervals := intervals }
+    pure $ Hir.classes { negated := negated, classes := classes }
 
 partial def primitive : Parser Hir := withBacktracking group <|> classes <|> charWithPerlClasses
 

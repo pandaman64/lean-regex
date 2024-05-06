@@ -1,6 +1,8 @@
-import Regex.Parser
+import Regex.Syntax.Parser
 import Regex.NFA.Compile
 import Regex.NFA.VM
+
+open Regex.Syntax.Parser
 
 def pushSaveStart (nfa : NFA) : NFA :=
   have inBounds : NFA.Node.inBounds (NFA.Node.save 0 nfa.start) (Array.size nfa.nodes + 1) := by
@@ -18,8 +20,8 @@ def NFA₁ := NFA.compile r₁
 #eval NFA₁.search_prefix "aabbac"
 #eval NFA₁.search_prefix "c"
 #eval NFA₁.search_prefix ""
-#eval Regex.Parser.parse! "a*b*"
-def NFA₁' := NFA.compile (Regex.Parser.parse! "a*b*")
+#eval parse "a*b*"
+def NFA₁' := NFA.compile (parse! "a*b*")
 #eval NFA₁'
 #eval NFA₁'.searchNext "aaaabbbb".mkIterator
 #eval NFA₁'.searchNext "aabbay".mkIterator
@@ -36,7 +38,7 @@ def NFA₂ := NFA.compile r₂
 #eval NFA₂.search_prefix "aaaabbbb"
 #eval NFA₂.search_prefix "aabbac"
 #eval NFA₂.search_prefix ""
-def NFA₂' := NFA.compile (Regex.Parser.parse! "(a*|b)*")
+def NFA₂' := NFA.compile (parse! "(a*|b)*")
 #eval NFA₂'.searchNext "aaaabbbb".mkIterator
 #eval NFA₂'.searchNext "aabbac".mkIterator
 #eval NFA₂'.searchNext "".mkIterator
@@ -56,21 +58,21 @@ def NFA₄ := NFA.compile (Regex.concat (Regex.alternate (Regex.char 'a') (Regex
 #eval NFA₄.search_prefix "bcd"
 #eval NFA₄.search_prefix "ad"
 #eval NFA₄.search_prefix ""
-def NFA₄' := NFA.compile (Regex.Parser.parse! "(a|b)c")
+def NFA₄' := NFA.compile (parse! "(a|b)c")
 #eval NFA₄'.searchNext "ac".mkIterator
 #eval NFA₄'.searchNext "bc".mkIterator
 #eval NFA₄'.searchNext "a".mkIterator
 #eval NFA₄'.searchNext "".mkIterator
 #eval NFA₄'.searchNext "xacybc".mkIterator
 
-def re₅ := Regex.Parser.parse! "abc(fo*|bar)*"
+def re₅ := parse! "abc(fo*|bar)*"
 def NFA₅ := NFA.compile re₅
 def heystack₅ := "abababxxyyabcfoooooobarfobyyyyfoobaryy"
 def result₅ := NFA₅.searchNext heystack₅.mkIterator
 def substr₅ := Substring.mk heystack₅ result₅.get!.1 result₅.get!.2
 #eval substr₅ == "abcfoooooobarfo" -- !!!true!!!
 
-def re₆ := Regex.Parser.parse! "abc(fo|foo)"
+def re₆ := parse! "abc(fo|foo)"
 def NFA₆ := NFA.compile re₆
 def heystack₆ := "abababcfoooo"
 def result₆ := NFA₆.searchNext heystack₆.mkIterator
@@ -83,10 +85,17 @@ def collect [ForIn Id ρ α] (x : ρ) : Id (Array α) := do
     a := a.push v
   pure a
 
-def re₇ := Regex.Parser.parse! "(q|w|e)abc"
+def re₇ := parse! "(q|w|e)abc"
 def NFA₇ := NFA.compile re₇
 def heystack₇ := "xyzxyzqabcwabcxyzxyzeabcxyzqabca"
 def matches₇ := collect (NFA₇.matches heystack₇)
 #eval matches₇
 #eval matches₇.map (fun (x, y) => Substring.mk heystack₇ x y)
 -- "qabc", "wabc", "eabc", "qabc"
+
+def re₈ := parse! "[^a-pr-z]"
+#eval re₈
+def NFA₈ := NFA.compile re₈
+#eval NFA₈
+def heystack₈ := "f"
+#eval NFA₈.match heystack₈

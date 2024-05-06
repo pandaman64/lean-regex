@@ -1,4 +1,4 @@
-import Regex.Intervals
+import Regex.Classes
 
 namespace NFA
 
@@ -9,7 +9,8 @@ inductive Node where
   | char (c : Char) (next : Nat)
   | split (next₁ next₂ : Nat)
   | save (offset : Nat) (next : Nat)
-  | sparse (intervals: Intervals) (next : Nat)
+  -- TODO: use an efficient representation
+  | sparse (cs : Regex.Classes) (next : Nat)
 deriving Repr
 
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
