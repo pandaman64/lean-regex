@@ -173,8 +173,9 @@ def exploreεClosure (nfa : NFA) (pos : Pos)
       have isLt := nfa.inBounds' target hn
       exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
     | .split target₁ target₂ =>
-      have ⟨isLt₁, isLt₂⟩ := nfa.inBounds' target hn
-      exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target₁, isLt₁⟩ (stack.push (.explore ⟨target₂, isLt₂⟩))
+      -- NOTE: unpacking the pair here confuses the simplifier
+      have isLt := nfa.inBounds' target hn
+      exploreεClosure nfa pos next' currentSave matched saveSlots ⟨target₁, isLt.1⟩ (stack.push (.explore ⟨target₂, isLt.2⟩))
     | .save offset target' =>
       have isLt := nfa.inBounds' target hn
       if h : offset < currentSave.size then
