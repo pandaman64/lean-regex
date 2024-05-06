@@ -1,3 +1,5 @@
+import Regex.Intervals
+
 inductive Regex : Type where
   | empty : Regex
   | epsilon : Regex
@@ -6,10 +8,12 @@ inductive Regex : Type where
   | alternate : Regex → Regex → Regex
   | concat : Regex → Regex → Regex
   | star : Regex → Regex
+  | classes : Intervals → Regex
 deriving Repr, Inhabited
 
 inductive Regex.matches : String → Regex → Prop where
   | char (c : Char) (eq : s = ⟨[c]⟩): Regex.matches s (.char c)
+  | sparse (i : Intervals) (c: Char) (h : c ∈ i) (eq : s = ⟨[c]⟩) : Regex.matches s (.classes i)
   | epsilon (eq : s = "") : Regex.matches s .epsilon
   | group (m : Regex.matches s r) : Regex.matches s (.group i r)
   | alternateLeft {s : String} {r₁ r₂ : Regex} : Regex.matches s r₁ → Regex.matches s (.alternate r₁ r₂)

@@ -3,13 +3,26 @@ import RegexCorrectness.NFA.Compile
 
 namespace NFA
 
-inductive stepIn (nfa : NFA) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
-  | charStep {i j : Nat} {c : Char} {cs : List Char}
-    (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) :
-    nfa.stepIn start i (c :: cs) j cs
-  | εStep {i j : Nat} {cs : List Char}
-    (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) :
-    nfa.stepIn start i cs j cs
+inductive stepIn (nfa : NFA) (start : Nat) : (current: Nat) → (input: List Char) → (next: Nat) → (output: List Char) → Prop where
+  | charStep {i j : Nat} {c : Char} {cs : List Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) : nfa.stepIn start i (c :: cs) j cs
+  | εStep {i j : Nat} {cs : List Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) : nfa.stepIn start i cs j cs
+
+theorem Array.is_empty (x : Array α) (h : x.isEmpty) : x = #[] :=
+  match x with
+  | ⟨[]⟩      => rfl
+  | ⟨_ :: _⟩  => nomatch h
+
+theorem stepIn.empty_sparse {i j start : Nat} (nfa : NFA) (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (h₃ : e.isEmpty) (x : nfa[i] = Node.sparse e z) : ¬stepIn nfa start i c j c' := by
+  intro h
+  match h with
+  | charStep _ _ step =>
+      rw [x] at step
+      let res := Array.is_empty e h₃
+      rw [res] at step
+      contradiction
+  | εStep _ _ step =>
+      rw [x] at step
+      contradiction
 
 theorem stepIn.h₁ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : start ≤ i := by
@@ -63,11 +76,9 @@ theorem stepIn.cast {nfa nfa' : NFA} {start : Nat}
     exact .εStep h₁ h (eq ▸ step)
 
 -- Maybe we should recurse from the last as we reason about the last step often
-inductive pathIn (nfa : NFA) (start : Nat) : Nat → List Char → Nat → List Char → Prop where
+inductive pathIn (nfa : NFA) (start : Nat) : (index: Nat) → (prefx: List Char) → (next: Nat) → List Char → Prop where
   | base (h : start ≤ i) (eqi : i = j) (eqs : cs = cs') : nfa.pathIn start i cs j cs'
-  | step {i j k : Nat} {cs cs' cs'' : List Char}
-    (step : nfa.stepIn start i cs j cs') (rest : nfa.pathIn start j cs' k cs'') :
-    nfa.pathIn start i cs k cs''
+  | step {i j k : Nat} {cs cs' cs'' : List Char} (step : nfa.stepIn start i cs j cs') (rest : nfa.pathIn start j cs' k cs'') : nfa.pathIn start i cs k cs''
 
 theorem le_of_pathIn_left {start} (path : pathIn nfa start i cs j cs') : start ≤ i := by
   cases path with

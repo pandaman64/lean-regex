@@ -85,6 +85,15 @@ where
             accum.merge (εClosureTR nfa .empty #[⟨next, this⟩])
           else
             accum
+        | .sparse ranges next =>
+          if ranges.in c then
+            have : next < nfa.nodes.size := by
+              have := nfa.inBounds ⟨i, hlt⟩
+              simp [hn, Node.inBounds] at this
+              exact this
+            accum.merge (εClosureTR nfa .empty #[⟨next, this⟩])
+          else
+            accum
         | _ => accum
       else accum
       go nfa c init accum (i + 1) hlt
@@ -181,6 +190,9 @@ def exploreεClosure (nfa : NFA) (pos : Pos)
     | .char _ _ =>
       let saveSlots' := saveSlots.set target target.isLt currentSave
       εClosure nfa pos next' currentSave matched saveSlots' stack
+    | .sparse _ _ =>
+      let saveSlots' := saveSlots.set target target.isLt currentSave
+      εClosure nfa pos next' currentSave matched saveSlots' stack
     | .fail => εClosure nfa pos next' currentSave matched saveSlots stack
 termination_by (next.measure, stack.size, 1)
 
@@ -210,6 +222,13 @@ def stepChar (nfa : NFA) (c : Char) (pos : Pos)
   match hn : nfa[target] with
   | .char c' target' =>
     if c = c' then
+      have isLt := nfa.inBounds' target hn
+      let currentSave := saveSlots.get target target.isLt
+      exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
+    else
+      (.none, next, saveSlots)
+  | .sparse ranges target' =>
+    if ranges.in c then
       have isLt := nfa.inBounds' target hn
       let currentSave := saveSlots.get target target.isLt
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty

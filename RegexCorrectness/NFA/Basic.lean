@@ -7,6 +7,7 @@ namespace NFA
 def Node.charStep (n : Node) (c : Char) : Set Nat :=
   match n with
   | Node.char c' next => if c == c' then {next} else ∅
+  | Node.sparse ranges next => if ranges.in c then {next} else ∅
   | _ => ∅
 
 def Node.εStep (n : Node) : Set Nat :=
@@ -17,14 +18,14 @@ def Node.εStep (n : Node) : Set Nat :=
   | _ => ∅
 
 def charStep (nfa : NFA) (i : Nat) (c : Char) : Set Nat :=
-  if h : i < nfa.nodes.size then
-    nfa[i].charStep c
-  else ∅
+  if h : i < nfa.nodes.size
+    then nfa[i].charStep c
+    else ∅
 
 def εStep (nfa : NFA) (i : Nat) : Set Nat :=
-  if h : i < nfa.nodes.size then
-    nfa[i].εStep
-  else ∅
+  if h : i < nfa.nodes.size
+    then nfa[i].εStep
+    else ∅
 
 theorem charStep_of_charStep {nfa : NFA} {i : Nat} {c : Char} {h : i < nfa.nodes.size}
   (mem : j ∈ nfa[i].charStep c) :
@@ -42,6 +43,7 @@ theorem lt_of_inBounds_of_charStep {node : Node} {j k : Nat} {c : Char}
   unfold Node.charStep at mem
   split at mem <;> try simp [Node.inBounds] at *
   simp [*]
+  cases mem ; simp [*]
 
 theorem lt_of_inBounds_of_εStep {node : Node} {j k : Nat}
   (inBounds : node.inBounds k) (mem : j ∈ node.εStep) :

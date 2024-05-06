@@ -1,3 +1,5 @@
+import Regex.Intervals
+
 namespace NFA
 
 inductive Node where
@@ -7,6 +9,7 @@ inductive Node where
   | char (c : Char) (next : Nat)
   | split (next₁ next₂ : Nat)
   | save (offset : Nat) (next : Nat)
+  | sparse (intervals: Intervals) (next : Nat)
 deriving Repr
 
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
@@ -17,6 +20,7 @@ def Node.inBounds (n : Node) (size : Nat) : Prop :=
   | .char _ next => next < size
   | .split next₁ next₂ => next₁ < size ∧ next₂ < size
   | .save _ next => next < size
+  | .sparse _ next => next < size
 
 @[simp]
 theorem Node.inBounds.done {size : Nat} : Node.done.inBounds size := by
@@ -79,6 +83,7 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
   next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
   next => exact ⟨Nat.lt_of_lt_of_le h.left le, Nat.lt_of_lt_of_le h.right le⟩
+  next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
 
 end NFA
