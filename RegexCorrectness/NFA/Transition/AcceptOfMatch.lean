@@ -487,9 +487,7 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     refine ⟨next.val, ?_, .base⟩
     rw [←eq]
     simp [charStep]
-    simp [pushRegex, Node.charStep]
-    let f := Intervals.in_iff int char
-    exact f.mpr p_in
+    simp [pushRegex, Node.charStep, p_in]
   | @char s c eqs =>
     intro nfa'' le
     apply mem_evalFrom_le le
@@ -735,7 +733,7 @@ theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next 
   (h : s = p ++ s') (m : r.matches p) :
   pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
   induction m generalizing s s' nfa next with
-  | @sparse int s c f eqs =>
+  | @sparse int s c mem eqs =>
     simp [h, eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
     refine ⟨
@@ -745,9 +743,7 @@ theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next 
       .charStep this nfa'.val.start.isLt ?_
     ⟩
     rw [←eq]
-    simp [Membership.mem, flip] at f
-    simp [pushRegex, Node.charStep, Intervals.in_iff]
-    exact f
+    simp [pushRegex, Node.charStep, mem]
   | @char p c eqs =>
     simp [h, eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq

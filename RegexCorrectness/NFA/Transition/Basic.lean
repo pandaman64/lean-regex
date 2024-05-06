@@ -7,23 +7,6 @@ inductive stepIn (nfa : NFA) (start : Nat) : (current: Nat) → (input: List Cha
   | charStep {i j : Nat} {c : Char} {cs : List Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) : nfa.stepIn start i (c :: cs) j cs
   | εStep {i j : Nat} {cs : List Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) : nfa.stepIn start i cs j cs
 
-theorem Array.is_empty (x : Array α) (h : x.isEmpty) : x = #[] :=
-  match x with
-  | ⟨[]⟩      => rfl
-  | ⟨_ :: _⟩  => nomatch h
-
-theorem stepIn.empty_sparse {i j start : Nat} (nfa : NFA) (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (h₃ : e.isEmpty) (x : nfa[i] = Node.sparse e z) : ¬stepIn nfa start i c j c' := by
-  intro h
-  match h with
-  | charStep _ _ step =>
-      rw [x] at step
-      let res := Array.is_empty e h₃
-      rw [res] at step
-      contradiction
-  | εStep _ _ step =>
-      rw [x] at step
-      contradiction
-
 theorem stepIn.h₁ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : start ≤ i := by
   cases step with

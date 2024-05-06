@@ -7,7 +7,7 @@ namespace NFA
 def Node.charStep (n : Node) (c : Char) : Set Nat :=
   match n with
   | Node.char c' next => if c == c' then {next} else ∅
-  | Node.sparse ranges next => if ranges.in c then {next} else ∅
+  | Node.sparse cs next => if c ∈ cs then {next} else ∅
   | _ => ∅
 
 def Node.εStep (n : Node) : Set Nat :=

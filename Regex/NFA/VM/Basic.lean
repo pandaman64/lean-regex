@@ -85,8 +85,8 @@ where
             accum.merge (εClosureTR nfa .empty #[⟨next, this⟩])
           else
             accum
-        | .sparse ranges next =>
-          if ranges.in c then
+        | .sparse cs next =>
+          if c ∈ cs then
             have : next < nfa.nodes.size := by
               have := nfa.inBounds ⟨i, hlt⟩
               simp [hn, Node.inBounds] at this
@@ -227,8 +227,8 @@ def stepChar (nfa : NFA) (c : Char) (pos : Pos)
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
     else
       (.none, next, saveSlots)
-  | .sparse ranges target' =>
-    if ranges.in c then
+  | .sparse cs target' =>
+    if c ∈ cs then
       have isLt := nfa.inBounds' target hn
       let currentSave := saveSlots.get target target.isLt
       exploreεClosure nfa pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
