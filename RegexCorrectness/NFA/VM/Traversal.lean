@@ -25,6 +25,7 @@ theorem exploreεClosure_subset
     next => exact SparseSet.subset_trans sub (εClosure_subset h)
     next => exact SparseSet.subset_trans sub (εClosure_subset h)
     next => exact SparseSet.subset_trans sub (εClosure_subset h)
+    next => exact SparseSet.subset_trans sub (εClosure_subset h)
 termination_by (next.measure, stack.size, 1)
 
 theorem εClosure_subset
@@ -62,6 +63,7 @@ theorem target_mem_exploreεClosure
     next => exact εClosure_subset h target hmem
     next => exact εClosure_subset h target hmem
     next => exact εClosure_subset h target hmem
+    next => exact εClosure_subset h target hmem
 
 mutual
 theorem mem_stack_mem_exploreεClosure
@@ -80,6 +82,7 @@ theorem mem_stack_mem_exploreεClosure
       split at h
       next => exact mem_stack_mem_exploreεClosure h ((Array.mem_push ..).mpr (.inl hmem))
       next => exact mem_stack_mem_exploreεClosure h hmem
+    next => exact mem_stack_mem_εClosure h hmem
     next => exact mem_stack_mem_εClosure h hmem
     next => exact mem_stack_mem_εClosure h hmem
     next => exact mem_stack_mem_εClosure h hmem
@@ -212,6 +215,19 @@ theorem lower_inv_exploreεClosure
             | .inr (.inr hstack) => exact .inr (.inr hstack)
         exact lower_inv_exploreεClosure h inv'
     next hn =>
+      have inv' : LowerInvεClosure nfa (next.insert target) stack := by
+        intro i j hi hj
+        cases SparseSet.eq_or_mem_of_mem_insert hi with
+        | inl htarget =>
+          subst htarget
+          simp [εStep, Node.εStep, hn] at hj
+        | inr hnext =>
+          match inv i j hnext hj with
+          | .inl hnext => exact .inl (SparseSet.mem_insert_of_mem hnext)
+          | .inr (.inl htarget) => exact .inl (htarget ▸ SparseSet.mem_insert)
+          | .inr (.inr hstack) => exact .inr hstack
+      exact lower_inv_εClosure h inv'
+    next _ _ hn =>
       have inv' : LowerInvεClosure nfa (next.insert target) stack := by
         intro i j hi hj
         cases SparseSet.eq_or_mem_of_mem_insert hi with
@@ -399,6 +415,7 @@ theorem upper_bound_exploreεClosure {i}
     next hn => exact upper_bound_εClosure h inv.2
     next hn => exact upper_bound_εClosure h inv.2
     next hn => exact upper_bound_εClosure h inv.2
+    next hn => exact upper_bound_εClosure h inv.2
 termination_by (next.measure, stack.size, 1)
 
 theorem upper_bound_εClosure {i}
@@ -484,11 +501,38 @@ theorem stepChar_spec.mem_next_iff
         simp [charStep, Node.charStep, hn, hc]
       simp at h
       simp [h, this]
-  next hn =>
+  next cs target' hn =>
+    simp at hn
+    split at h
+    next hc =>
+      simp at h
+      have mem_next_iff := exploreεClosure_spec.mem_next_iff h inv
+
+      intro j
+      apply Iff.intro
+      . intro hj
+        cases (mem_next_iff j).mp hj with
+        | inl hj => exact .inl hj
+        | inr hj =>
+          refine .inr ⟨target', ?_, hj⟩
+          simp [charStep, Node.charStep, hn, hc]
+      . intro hj
+        cases hj with
+        | inl hj => exact (mem_next_iff j).mpr (.inl hj)
+        | inr hj =>
+          simp [charStep, Node.charStep, hn, hc] at hj
+          exact (mem_next_iff j).mpr (.inr hj)
+    next hc =>
+      have : ∀ i, ¬i ∈ nfa.charStep target c := by
+        intro i
+        simp [charStep, Node.charStep, hn, hc]
+      simp at h
+      simp [h, this]
+  next hn₁ hn₂ =>
     have : ∀ i, ¬i ∈ nfa.charStep target c := by
       intro i
-      simp at hn
-      simp [charStep, Node.charStep, hn]
+      simp at hn₁ hn₂
+      simp [charStep, Node.charStep]
     simp at h
     simp [h, this]
 
@@ -498,6 +542,15 @@ theorem stepChar_spec.preserve_cls
   ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
   unfold stepChar at h
   split at h
+  next =>
+    split at h
+    next =>
+      simp at h
+      exact exploreεClosure_spec.preserve_cls h inv
+    next =>
+      simp at h
+      simp only [←h]
+      exact inv
   next =>
     split at h
     next =>
