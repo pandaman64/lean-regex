@@ -9,7 +9,7 @@ inductive Regex : Type where
   | concat : Regex → Regex → Regex
   | star : Regex → Regex
   | classes : Intervals → Regex
-deriving Inhabited
+deriving Repr, Inhabited
 
 inductive Regex.matches : String → Regex → Prop where
   | char (c : Char) (eq : s = ⟨[c]⟩): Regex.matches s (.char c)

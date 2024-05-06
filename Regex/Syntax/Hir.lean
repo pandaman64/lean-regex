@@ -7,23 +7,25 @@ inductive PerlClassKind where
   | digit
   | space
   | word
-  deriving Repr
+deriving Repr
 
+-- NOTE: we may want to interpret these as Unicode character properties in the future
 def PerlClassKind.toRange : PerlClassKind → Intervals
   | .digit => #[⟨('0', '9'), by decide⟩]
   | .space => #[⟨(' ', ' '), by decide⟩, ⟨('\t', '\t'), by decide⟩, ⟨('\n', '\n'), by decide⟩, ⟨('\r', '\r'), by decide⟩, ⟨('\x0B', '\x0B'), by decide⟩, ⟨('\x0C', '\x0C'), by decide⟩]
   | .word => #[⟨('a', 'z'), by decide⟩, ⟨('A', 'Z'), by decide⟩, ⟨('0', '9'), by decide⟩, ⟨('_', '_'), by decide⟩]
 
 structure PerlClass where
-  negated: Bool
-  kind: PerlClassKind
-  deriving Repr
+  negated : Bool
+  kind : PerlClassKind
+deriving Repr
 
 def PerlClass.toRange (perl: PerlClass) : Intervals :=
   if perl.negated
     then Intervals.invert perl.kind.toRange
     else perl.kind.toRange
 
+-- NOTE: s ≤ e prevents this from deriving Repr :(
 inductive Interval where
   | single : Char → Interval
   | range : (s : Char) → (e : Char) → s ≤ e → Interval
@@ -35,8 +37,8 @@ def Interval.toRange : Interval → Intervals
   | .perl p        => p.toRange
 
 structure Classes where
-  negated: Bool
-  intervals: Array Interval
+  negated : Bool
+  intervals : Array Interval
 
 def Classes.toRange (classes: Classes) : Intervals :=
   let intervals := Array.concatMap (·.toRange) classes.intervals

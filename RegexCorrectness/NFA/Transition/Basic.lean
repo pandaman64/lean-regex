@@ -28,7 +28,7 @@ theorem stepIn.h₁ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : start ≤ i := by
   cases step with
   | charStep h₁ _ _ => exact h₁
-  | εStep h₁ _ _  => exact h₁
+  | εStep h₁ _ _ => exact h₁
 
 theorem stepIn.h₂ {nfa : NFA} {start : Nat} {i j : Nat} {cs cs' : List Char}
   (step : nfa.stepIn start i cs j cs') : i < nfa.nodes.size := by
@@ -187,7 +187,7 @@ theorem pathIn.trans {start}
   | step step _ ih => exact .step step (ih path₂)
 
 def pathToNext (nfa : NFA) (next start i : Nat) (cs cs' : List Char) : Prop :=
-   ∃ (i' : Nat) (cs'' : List Char),
+  ∃ (i' : Nat) (cs'' : List Char),
     nfa.pathIn start i cs i' cs'' ∧
     nfa.stepIn start i' cs'' next cs'
 

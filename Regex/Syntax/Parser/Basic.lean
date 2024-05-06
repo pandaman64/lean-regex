@@ -33,6 +33,7 @@ partial def escaped (withPerlClasses: Bool) : Parser (if withPerlClasses then Hi
       | 'n' => pure '\n'
       | 't' => pure '\t'
       | 'r' => pure '\r'
+      | 'a' => pure '\x07'
       | 'f' => pure '\x0c'
       | 'v' => pure '\x0b'
       | '0' => pure '\x00'
@@ -73,7 +74,7 @@ partial def group : Parser Hir :=
     let nonCapturing ← test (chars "?:")
     let r ← regex
     let _ ← token ')'
-    pure (if dbgTraceVal nonCapturing then r else .group r)
+    pure (if nonCapturing then r else .group r)
 
 partial def charWithPerlClasses : Parser Hir :=
   withErrorMessage "expected a character" do
