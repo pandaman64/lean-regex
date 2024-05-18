@@ -7,6 +7,11 @@ import Mathlib.Tactic
 
 namespace NFA.VM
 
+/-
+  This section proves that the sparse set returned by `eachStepChar` corresponds to a transition by
+  the given character followed by ε transistions.
+-/
+section
 -- TODO: try function induciton with v4.8.0
 mutual
 theorem exploreεClosure_subset
@@ -630,5 +635,138 @@ theorem eachStepChar_spec.mem_next_iff
     simp [this]
   . intro i j hi
     exact absurd hi (SparseSet.not_mem_of_isEmpty hemp)
+end
+
+/-
+  This section proves that `eachStepChar` returns `.some` iff the traversal reaches the `.done` node.
+-/
+section
+mutual
+theorem exploreεClosure_mem_done_iff
+  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (inv : (∃ i, i ∈ next ∧ nfa[i] = .done) ↔ matched.isSome) :
+  (∃ i, i ∈ next' ∧ nfa[i] = .done) ↔ matched'.isSome := by
+  unfold exploreεClosure at h
+  split at h
+  next => exact εClosure_mem_done_iff h inv
+  next hmem =>
+    simp at h
+    have inv' (hn : nfa[target] ≠ .done) : (∃ i, i ∈ next.insert target ∧ nfa[i] = .done) ↔ matched.isSome := by
+      apply Iff.intro
+      . intro h
+        have ⟨i, hmem', hn'⟩ := h
+        cases SparseSet.eq_or_mem_of_mem_insert hmem' with
+        | inl heq =>
+          simp [heq] at hn'
+          simp [hn'] at hn
+        | inr hmem' => exact inv.mp ⟨i, hmem', hn'⟩
+      . intro h
+        have ⟨i, hmem', hn'⟩ := inv.mpr h
+        exact ⟨i, SparseSet.mem_insert_of_mem hmem', hn'⟩
+    split at h
+    next hn => exact exploreεClosure_mem_done_iff h (inv' (by simp [hn]))
+    next hn => exact exploreεClosure_mem_done_iff h (inv' (by simp [hn]))
+    next hn =>
+      split at h
+      next => exact exploreεClosure_mem_done_iff h (inv' (by simp [hn]))
+      next => exact exploreεClosure_mem_done_iff h (inv' (by simp [hn]))
+    next hn =>
+      have lhs : ∃ i, i ∈ next.insert target ∧ nfa[i] = .done := ⟨target, SparseSet.mem_insert, hn⟩
+      -- .done sets `matched` to `.some` unconditionally
+      have rhs : (matched <|> currentSave).isSome := by
+        cases matched <;> simp
+      have inv'' : (∃ i, i ∈ next.insert target ∧ nfa[i] = .done) ↔ (matched <|> currentSave).isSome := by
+        simp only [lhs, rhs]
+      exact εClosure_mem_done_iff h inv''
+    next hn => exact εClosure_mem_done_iff h (inv' (by simp [hn]))
+    next hn => exact εClosure_mem_done_iff h (inv' (by simp [hn]))
+    next hn => exact εClosure_mem_done_iff h (inv' (by simp [hn]))
+termination_by (next.measure, stack.size, 1)
+
+theorem εClosure_mem_done_iff
+  (h : εClosure nfa pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
+  (inv : (∃ i, i ∈ next ∧ nfa[i] = .done) ↔ matched.isSome) :
+  (∃ i, i ∈ next' ∧ nfa[i] = .done) ↔ matched'.isSome := by
+  unfold εClosure at h
+  split at h
+  next =>
+    simp at h
+    simp only [h] at inv
+    exact inv
+  next =>
+    simp at h
+    have : stack.pop.size < stack.size := Array.lt_size_of_pop_of_not_empty _ (by assumption)
+    split at h
+    next => exact exploreεClosure_mem_done_iff h inv
+    next => exact εClosure_mem_done_iff h inv
+termination_by (next.measure, stack.size, 0)
+end
+
+theorem stepChar_mem_done_iff
+  (h : stepChar nfa c pos next saveSlots target = (matched', next', saveSlots'))
+  (hnotDone : ∀ i, i ∈ next → nfa[i] ≠ .done) :
+  (∃ i, i ∈ next' ∧ nfa[i] = .done) ↔ matched'.isSome := by
+  unfold stepChar at h
+  split at h
+  next =>
+    split at h
+    next =>
+      simp at h
+      exact exploreεClosure_mem_done_iff h (by simp; exact hnotDone)
+    next =>
+      simp at h
+      simp [←h]
+      exact hnotDone
+  next =>
+    split at h
+    next =>
+      simp at h
+      exact exploreεClosure_mem_done_iff h (by simp; exact hnotDone)
+    next =>
+      simp at h
+      simp [←h]
+      exact hnotDone
+  next =>
+    simp at h
+    simp [←h]
+    exact hnotDone
+
+theorem eachStepChar_spec.mem_done_iff.go
+  (h : eachStepChar.go nfa c pos current i hle next saveSlots = (matched', next', saveSlots'))
+  (hnotDone : ∀ j, j ∈ next → nfa[j] ≠ .done) :
+  (∃ j, j ∈ next' ∧ nfa[j] = .done) ↔ matched'.isSome := by
+  unfold eachStepChar.go at h
+  split at h
+  next =>
+    simp at h
+    simp [←h]
+    exact hnotDone
+  next hi =>
+    have hlt : i < current.count := Nat.lt_of_le_of_ne hle hi
+    simp at h
+    generalize heq : stepChar nfa c pos next saveSlots current[i] = result at h
+    let (matched'', next'', saveSlots'') := result
+    have := stepChar_mem_done_iff heq hnotDone
+
+    simp at h
+    split at h
+    next =>
+      simp at this
+      exact eachStepChar_spec.mem_done_iff.go h this
+    next =>
+      simp at h
+      simp only [←h, this]
+termination_by current.count - i
+
+theorem eachStepChar_spec.mem_done_iff
+  (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
+  (hemp : next.isEmpty) :
+  (∃ j, j ∈ next' ∧ nfa[j] = .done) ↔ matched'.isSome := by
+  unfold eachStepChar at h
+  apply eachStepChar_spec.mem_done_iff.go h
+  intro j hmem
+  have : j ∉ next := SparseSet.not_mem_of_isEmpty hemp
+  contradiction
+end
 
 end NFA.VM
