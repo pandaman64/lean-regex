@@ -1,6 +1,6 @@
 -- Correctness of the graph traversal implementation
 import Regex.NFA.VM.Basic
-import RegexCorrectness.NFA.VM.Traversal.Aux
+import RegexCorrectness.NFA.VM.Traversal.Auxiliary
 
 open NFA.VM
 
