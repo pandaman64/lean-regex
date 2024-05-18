@@ -636,6 +636,40 @@ theorem eachStepChar_spec.mem_next_iff
     simp [this]
   . intro i j hi
     exact absurd hi (SparseSet.not_mem_of_isEmpty hemp)
+
+theorem eachStepChar_spec.preserve_cls.go
+  (h : eachStepChar.go nfa c pos current i hle next saveSlots = (matched', next', saveSlots'))
+  (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
+  ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
+  unfold eachStepChar.go at h
+  split at h
+  next =>
+    simp at h
+    simp only [←h]
+    exact inv
+  next hi =>
+    have hlt : i < current.count := Nat.lt_of_le_of_ne hle hi
+    simp at h
+    generalize hres : stepChar nfa c pos next saveSlots current[i] = result at h
+    let (matched'', next'', saveSlots'') := result
+    split at h
+    next =>
+      simp at h
+      exact eachStepChar_spec.preserve_cls.go h (stepChar_spec.preserve_cls hres inv)
+    next =>
+      simp at h
+      simp only [←h]
+      exact stepChar_spec.preserve_cls hres inv
+termination_by current.count - i
+
+theorem eachStepChar_spec.preserve_cls
+  (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
+  (hemp : next.isEmpty) :
+  ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
+  unfold eachStepChar at h
+  apply eachStepChar_spec.preserve_cls.go h
+  simp only [SparseSet.not_mem_of_isEmpty hemp]
+  simp
 end
 
 /-

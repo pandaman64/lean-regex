@@ -127,6 +127,9 @@ def clear (s : SparseSet n) : SparseSet n :=
 def isEmpty (s : SparseSet n) : Bool := s.count = 0
 
 @[simp]
+theorem isEmpty_empty : (@empty n).isEmpty := rfl
+
+@[simp]
 theorem isEmpty_clear : s.clear.isEmpty := rfl
 
 @[simp]
