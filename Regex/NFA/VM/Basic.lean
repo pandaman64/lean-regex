@@ -279,18 +279,16 @@ where
       if current.isEmpty && lastMatch.isSome then
         lastMatch
       else
-        let c := it.curr
-        let pos := it.pos
         -- Start a new search from the current position only when there is no match
-        let (current, saveSlots) := if lastMatch.isNone then
+        let currentAndSaveSlots := if lastMatch.isNone then
           -- I think ignoring the match here is fine because the match must have happened at the initial exploration
           -- and `lastMatch` must have already captured that.
-          let (_, current, saveSlots) := NFA.VM.exploreεClosure nfa pos current initSave .none saveSlots nfa.start #[]
-          (current, saveSlots)
+          let explored := NFA.VM.exploreεClosure nfa it.pos current initSave .none saveSlots nfa.start #[]
+          explored.2
         else
           (current, saveSlots)
-        let (matched, next, saveSlots) := NFA.VM.eachStepChar nfa c it.next.pos current next saveSlots
-        go it.next next current.clear saveSlots (matched <|> lastMatch)
+        let stepped := NFA.VM.eachStepChar nfa it.curr it.next.pos currentAndSaveSlots.1 next currentAndSaveSlots.2
+        go it.next stepped.2.1 current.clear stepped.2.2 (stepped.1 <|> lastMatch)
 
 def NFA.searchNext (nfa : NFA) (it : String.Iterator) : Option (Pos × Pos) := do
   let slots ← nfa.captureNext it 2

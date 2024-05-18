@@ -53,4 +53,12 @@ theorem subset_trans {s₁ s₂ s₃ : SparseSet n} (h₁ : s₁ ⊆ s₂) (h₂
 instance : Trans (· ⊆ · : SparseSet n → SparseSet n → Prop) (· ⊆ · : SparseSet n → SparseSet n → Prop) (· ⊆ · : SparseSet n → SparseSet n → Prop) where
   trans := subset_trans
 
+theorem mem_get {s : SparseSet n} {i : Nat} (h : i < s.count) : s[i] ∈ s := by
+  have isLt : i < n := Nat.lt_of_lt_of_le h s.le_count
+  have : s[i] = s.dense[i] := rfl
+  simp [mem, this]
+  have := s.sparse_dense ⟨i, isLt⟩ h
+  simp at this
+  simp [this, h]
+
 end NFA.VM.SparseSet
