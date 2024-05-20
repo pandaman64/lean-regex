@@ -67,7 +67,7 @@ inductive reaches (nfa : NFA) : Fin nfa.nodes.size → List Char → Prop where
     (prev : reaches nfa i cs) (step : j ∈ nfa.charStep i c) (cls : k.val ∈ nfa.εClosure j) :
     nfa.reaches k (cs ++ [c])
 
-structure captureNext.go.Inv (nfa : NFA) (it : String.Iterator)
+structure captureNext.go.Inv (nfa : NFA) (it : String.Iterator) (haystack : String)
   (current : SparseSet nfa.nodes.size) (lastMatch : Option (Array (Option String.Pos))) where
   currentClosure : ∀ i j : Fin nfa.nodes.size, i ∈ current → j.val ∈ nfa.εStep i → j ∈ current
   -- For all states in `current`, there is a path from `nfa.start` to it, the match starting at `l`.
@@ -75,26 +75,26 @@ structure captureNext.go.Inv (nfa : NFA) (it : String.Iterator)
   currentPath : ∀ i, i ∈ current → ∃ (s : Substring) (l m r : List Char),
     s.ValidFor l m r ∧ it.ValidFor (m.reverse ++ l.reverse) r ∧ nfa.reaches i m
   acceptOfLastMatch : lastMatch.isSome → ∃ (s : Substring) (l m r : List Char),
-    s.ValidFor l m r ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done
+    s.ValidFor l m r ∧ haystack = ⟨l ++ m ++ r⟩ ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done
 
--- TODO: to be precise, we should associate the substring `s` with the underlying string of `it`
 theorem captureNext_spec.go
   (h : captureNext.go nfa saveSize it current next saveSlots lastMatch = matched)
-  (inv : captureNext.go.Inv nfa it current lastMatch)
+  (inv : captureNext.go.Inv nfa it haystack current lastMatch)
   (v : it.Valid)
+  (eqs : haystack = it.toString)
   (hemp : next.isEmpty) :
   matched.isSome → ∃ (s : Substring) (l m r : List Char),
-    s.ValidFor l m r ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
+    s.ValidFor l m r ∧ haystack = ⟨l ++ m ++ r⟩ ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
   unfold captureNext.go at h
   split at h
   next =>
     subst h
-    exact inv.acceptOfLastMatch
+    exact eqs ▸ inv.acceptOfLastMatch
   next atEnd =>
     split at h
     next h' =>
       subst h
-      exact inv.acceptOfLastMatch
+      exact eqs ▸ inv.acceptOfLastMatch
     next =>
       if hm : lastMatch.isNone then
         generalize he : exploreεClosure nfa it.pos current (captureNext.initSave saveSize) none saveSlots nfa.start #[] = explored at h
@@ -130,19 +130,21 @@ theorem captureNext_spec.go
               exact prev.snoc step cls
 
         have acceptOfLastMatch' (h : (matched' <|> lastMatch).isSome) :
-          ∃ (s : Substring) (l m r : List Char), s.ValidFor l m r ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
+          ∃ (s : Substring) (l m r : List Char), s.ValidFor l m r ∧ haystack = ⟨l ++ m ++ r⟩ ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
           cases matched' with
           | none =>
             simp at h
-            exact inv.acceptOfLastMatch h
+            exact eqs ▸ inv.acceptOfLastMatch h
           | some =>
             have ⟨i, hi, hdone⟩ := (eachStepChar_spec.mem_done_iff hs hemp).mpr rfl
-            have ⟨s, l, m, r, sv, _, reaches⟩ := currentPath' i hi
-            exact ⟨s, l, m, r, sv, ⟨i, reaches, hdone⟩⟩
+            have ⟨s, l, m, r, sv, iv, reaches⟩ := currentPath' i hi
+            have eqs' := iv.toString
+            simp [String.Iterator.next, List.reverseAux_eq] at eqs'
+            exact ⟨s, l, m, r, sv, by simp [eqs, eqs'], ⟨i, reaches, hdone⟩⟩
 
-        have inv' : captureNext.go.Inv nfa it.next next' (matched' <|> lastMatch) :=
+        have inv' : captureNext.go.Inv nfa it.next haystack next' (matched' <|> lastMatch) :=
           ⟨eachStepChar_spec.preserve_cls hs hemp, currentPath', acceptOfLastMatch'⟩
-        exact captureNext_spec.go h inv' (v.next' atEnd) (by simp)
+        exact captureNext_spec.go h inv' (v.next' atEnd) (by simp [eqs, String.Iterator.next]) (by simp)
       else
         simp [hm] at h
 
@@ -160,26 +162,28 @@ theorem captureNext_spec.go
           exact ⟨s.expand, l, m ++ [it.curr], r', sv.expand, by simp [iv.next], prev.snoc step cls⟩
 
         have acceptOfLastMatch' (h : (matched' <|> lastMatch).isSome) :
-          ∃ (s : Substring) (l m r : List Char), s.ValidFor l m r ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
+          ∃ (s : Substring) (l m r : List Char), s.ValidFor l m r ∧ haystack = ⟨l ++ m ++ r⟩ ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
           cases matched' with
           | none =>
             simp at h
-            exact inv.acceptOfLastMatch h
+            exact eqs ▸ inv.acceptOfLastMatch h
           | some =>
             have ⟨i, hi, hdone⟩ := (eachStepChar_spec.mem_done_iff hs hemp).mpr rfl
-            have ⟨s, l, m, r, sv, _, reaches⟩ := currentPath' i hi
-            exact ⟨s, l, m, r, sv, ⟨i, reaches, hdone⟩⟩
+            have ⟨s, l, m, r, sv, iv, reaches⟩ := currentPath' i hi
+            have eqs' := iv.toString
+            simp [String.Iterator.next, List.reverseAux_eq] at eqs'
+            exact ⟨s, l, m, r, sv, by simp [eqs, eqs'], ⟨i, reaches, hdone⟩⟩
 
-        have inv' : captureNext.go.Inv nfa it.next next' (matched' <|> lastMatch) :=
+        have inv' : captureNext.go.Inv nfa it.next haystack next' (matched' <|> lastMatch) :=
           ⟨eachStepChar_spec.preserve_cls hs hemp, currentPath', acceptOfLastMatch'⟩
-        exact captureNext_spec.go h inv' (v.next' atEnd) (by simp)
+        exact captureNext_spec.go h inv' (v.next' atEnd) (by simp [eqs, String.Iterator.next]) (by simp)
 
 theorem captureNext_spec
   (h : captureNext nfa it saveSize = matched)
   (v : it.Valid)
   (hsome : matched.isSome) :
   ∃ (s : Substring) (l m r : List Char),
-    s.ValidFor l m r ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
+    s.ValidFor l m r ∧ it.toString = ⟨l ++ m ++ r⟩ ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done := by
   unfold captureNext at h
   generalize _hs : Vec.ofFn (fun _ => captureNext.initSave saveSize) = saveSlots at h
   simp at h
@@ -191,7 +195,7 @@ theorem captureNext_spec
     simp only [SparseSet.not_mem_of_isEmpty SparseSet.isEmpty_empty]
     simp
 
-  have inv : captureNext.go.Inv nfa it init' matched' := by
+  have inv : captureNext.go.Inv nfa it it.toString init' matched' := by
     refine ⟨exploreεClosure_spec.preserve_cls he (by simp only [hnotMem]; simp), ?_, ?_⟩
     . intro i hi
       have ⟨l, r, v'⟩ := v.validFor
@@ -209,8 +213,8 @@ theorem captureNext_spec
       simp at cls
       have ⟨l, r, v'⟩ := v.validFor
       let pos : String.Pos := ⟨String.utf8Len l⟩
-      refine ⟨⟨it.toString, pos, pos⟩, l.reverse, [], r, ?_, ⟨i, .nil cls, hdone⟩⟩
+      refine ⟨⟨it.toString, pos, pos⟩, l.reverse, [], r, ?_, by simp [v'.toString, List.reverseAux_eq], ⟨i, .nil cls, hdone⟩⟩
       apply Substring.ValidFor.of_eq <;> simp [v'.toString, List.reverseAux_eq]
-  exact captureNext_spec.go h inv v (by simp) hsome
+  exact captureNext_spec.go h inv v rfl (by simp) hsome
 
 end NFA
