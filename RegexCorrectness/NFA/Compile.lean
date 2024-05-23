@@ -328,4 +328,160 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
         exact .inr (Nat.le_trans (Nat.le_succ _) (eq ▸ this))
       | inr eq => exact .inl eq
 
+theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
+  (h₁ : 0 < nfa.nodes.size)
+  (h₂ : ∀ (i : Nat) (isLt : i < nfa.nodes.size), nfa[i] = .done ↔ i = 0) :
+  ∀ (i : Nat) (isLt : i < result.val.nodes.size), result.val[i] = .done ↔ i = 0 := by
+  induction r generalizing nfa next with
+  | empty | epsilon | char c | classes c =>
+    try apply pushRegex.empty eq
+    try apply pushRegex.epsilon eq
+    try apply pushRegex.char eq
+    try apply pushRegex.sparse eq
+    intro eq
+    subst eq
+    simp
+    intro i isLt
+    cases Nat.eq_or_lt_of_le isLt with
+    | inl eq =>
+      simp at eq
+      simp [eq]
+      exact Nat.ne_zero_iff_zero_lt.mpr h₁
+    | inr lt =>
+      have lt : i < nfa.nodes.size := Nat.lt_of_succ_lt_succ lt
+      simp [pushNode_get_lt _ lt]
+      exact h₂ i lt
+  | group _ r ih =>
+    apply pushRegex.group eq
+    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+    subst eq
+    simp
+    intro i isLt
+
+    simp [eq₃] at isLt
+    cases Nat.eq_or_lt_of_le isLt with
+    | inl eq =>
+      simp at eq
+      simp [eq₃, eq]
+      exact Nat.ne_of_gt (Nat.zero_lt_of_lt nfa''.property)
+    | inr lt =>
+      have lt := Nat.lt_of_succ_lt_succ lt
+      simp [eq₃, pushNode_get_lt _ lt]
+      apply ih eq₂.symm (Nat.zero_lt_of_lt nfa'.property) ?_ i lt
+      intro i isLt
+      simp [eq₁] at isLt
+      cases Nat.eq_or_lt_of_le isLt with
+      | inl eq =>
+        simp at eq
+        simp [eq₁, eq]
+        exact Nat.ne_zero_iff_zero_lt.mpr h₁
+      | inr lt =>
+        have lt := Nat.lt_of_succ_lt_succ lt
+        simp [eq₁, pushNode_get_lt _ lt]
+        exact h₂ i lt
+  | alternate r₁ r₂ ih₁ ih₂ =>
+    apply pushRegex.alternate eq
+    intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
+    subst eq
+    simp
+    intro i isLt
+
+    simp [eq₅] at isLt
+    cases Nat.eq_or_lt_of_le isLt with
+    | inl eq =>
+      simp at eq
+      simp [eq₅, eq]
+      exact Nat.ne_of_gt (Nat.zero_lt_of_lt nfa₂.property)
+    | inr lt =>
+      have lt := Nat.lt_of_succ_lt_succ lt
+      simp [eq₅, pushNode_get_lt _ lt]
+      apply ih₂ eq₃.symm (Nat.zero_lt_of_lt nfa₁.property) ?_ i lt
+      intro i isLt
+      apply ih₁ eq₁.symm (Nat.zero_lt_of_lt h₁) h₂ i isLt
+  | concat r₁ r₂ ih₁ ih₂ =>
+    apply pushRegex.concat eq
+    intro nfa₂ nfa₁ property eq₂ eq₁ eq
+    subst eq
+    simp
+    apply ih₁ eq₁.symm (Nat.zero_lt_of_lt nfa₂.property)
+    apply ih₂ eq₂.symm h₁ h₂
+  | star r ih =>
+    apply pushRegex.star eq
+    intro placeholder compiled patched nfa' isLt inBounds property
+      eq₁ eq₂ eq₃ eq₄ eq
+    subst eq
+    simp
+    intro i isLt
+
+    match Nat.lt_trichotomy i nfa.nodes.size with
+    | .inl lt =>
+      have : nfa'[i] = nfa[i] := by
+        have : i < placeholder.val.nodes.size :=
+          Nat.lt_trans lt placeholder.property
+        have : i < compiled.val.nodes.size :=
+          Nat.lt_trans this compiled.property
+
+        calc nfa'[i]
+          _ = compiled.val[i] := by
+            simp [eq₄, NFA.get_eq_nodes_get, eq₃]
+            rw [Array.get_set_ne]
+            simp
+            exact Nat.ne_of_gt lt
+          _ = placeholder.val[i] := by apply pushRegex_get_lt eq₂.symm
+          _ = nfa[i] := by
+            simp [eq₁]
+            apply pushNode_get_lt
+      rw [this]
+      exact h₂ i lt
+    | .inr (.inl eq) =>
+      have : nfa'[i] = .split compiled.val.start next := by
+        simp [eq₄, NFA.get_eq_nodes_get, eq₃]
+        rw [Array.get_set]
+        . simp [eq]
+        . calc
+            i = nfa.nodes.size := eq
+            _ < placeholder.val.nodes.size := placeholder.property
+            _ < compiled.val.nodes.size := compiled.property
+      simp [this]
+      exact Nat.ne_of_gt (eq ▸ h₁)
+    | .inr (.inr gt) =>
+      have : i < compiled.val.nodes.size := by
+        simp [eq₄, eq₃] at isLt
+        exact isLt
+      have : nfa'[i] = compiled.val[i] := by
+        simp [eq₄, NFA.get_eq_nodes_get, eq₃]
+        rw [Array.get_set_ne]
+        simp
+        exact Nat.ne_of_lt gt
+      rw [this]
+      apply ih eq₂.symm (Nat.zero_lt_of_lt placeholder.property) ?_ i (by assumption)
+      intro i isLt
+      simp [eq₁] at isLt
+      cases Nat.eq_or_lt_of_le isLt with
+      | inl eq =>
+        simp at eq
+        simp [eq₁, eq]
+        exact Nat.ne_zero_iff_zero_lt.mpr h₁
+      | inr lt =>
+        have lt := Nat.lt_of_succ_lt_succ lt
+        simp [eq₁, pushNode_get_lt _ lt]
+        exact h₂ i lt
+
+theorem done_iff_zero_compile (eq : compile r = nfa) (i : Fin nfa.nodes.size) :
+  nfa[i] = .done ↔ i.val = 0 := by
+  have h (i : Nat) (isLt : i < NFA.done.nodes.size) : done[i] = Node.done ↔ i = 0 := by
+    simp [NFA.done] at *
+    suffices i = 0 by
+      subst this
+      simp
+      rfl
+    simp [NFA.done] at isLt
+    match i with
+    | 0 => rfl
+    | i + 1 => contradiction
+  unfold compile at eq
+  set result := NFA.done.pushRegex ⟨0, by decide⟩ r with eq'
+  have := done_iff_zero_pushRegex eq'.symm (by decide) h i (eq ▸ i.isLt)
+  exact eq ▸ this
+
 end NFA

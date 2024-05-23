@@ -63,7 +63,7 @@ namespace NFA
 -/
 inductive reaches (nfa : NFA) : Fin nfa.nodes.size → List Char → Prop where
   | nil (cls : i.val ∈ nfa.εClosure nfa.start) : nfa.reaches i []
-  | snoc {i : Fin nfa.nodes.size} {j : Nat} {c : Char} {cs : List Char}
+  | snoc {i : Fin nfa.nodes.size} {j : Nat} {k : Fin nfa.nodes.size} {c : Char} {cs : List Char}
     (prev : reaches nfa i cs) (step : j ∈ nfa.charStep i c) (cls : k.val ∈ nfa.εClosure j) :
     nfa.reaches k (cs ++ [c])
 
