@@ -559,7 +559,7 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     apply mem_evalFrom_le le
     exact evalFrom_of_matches.starConcat eq eqs ih₁ ih₂
 
-theorem pathToNext_of_matches_prefix.group {s : String}
+theorem pathToNext_of_matches.group {s : String}
   (eq : pushRegex nfa next (.group i r) = nfa')
   (ih : ∀ {nfa next nfa'}, pushRegex nfa next r = nfa' →
     pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data) :
@@ -606,7 +606,7 @@ theorem pathToNext_of_matches_prefix.group {s : String}
     exact Nat.lt_trans nfa'.property nfa''.property
   exact pathToNext.trans path₁ path₂₃
 
-theorem pathToNext_of_matches_prefix.alternateLeft {s : String}
+theorem pathToNext_of_matches.alternateLeft {s : String}
   (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
   (ih : ∀ {nfa next nfa'}, pushRegex nfa next r₁ = nfa' →
     pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data) :
@@ -632,7 +632,7 @@ theorem pathToNext_of_matches_prefix.alternateLeft {s : String}
   . rw [eq₅]
     simp [Node.εStep, eq₂]
 
-theorem pathToNext_of_matches_prefix.alternateRight {s : String}
+theorem pathToNext_of_matches.alternateRight {s : String}
   (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
   (ih : ∀ {nfa next nfa'}, pushRegex nfa next r₂ = nfa' →
     pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data) :
@@ -657,7 +657,7 @@ theorem pathToNext_of_matches_prefix.alternateRight {s : String}
   . rw [eq₅]
     simp [Node.εStep, eq₄]
 
-theorem pathToNext_of_matches_prefix.concat {s s₁ s₂ : String}
+theorem pathToNext_of_matches.concat {s s₁ s₂ : String}
   (eq : pushRegex nfa next (.concat r₁ r₂) = nfa')
   (eqs : s = s₁ ++ s₂)
   (ih₁ : ∀ {nfa next nfa'}, pushRegex nfa next r₁ = nfa' →
@@ -680,7 +680,7 @@ theorem pathToNext_of_matches_prefix.concat {s s₁ s₂ : String}
     rw [pushRegex_get_lt eq₁.symm _ h₂]
   exact ih₁.trans ih₂
 
-theorem pathToNext_of_matches_prefix.starConcat {s s₁ s₂ : String}
+theorem pathToNext_of_matches.starConcat {s s₁ s₂ : String}
   (eq : pushRegex nfa next (.star r) = nfa')
   (eqs : s = s₁ ++ s₂)
   (ih₁ : ∀ {nfa next nfa'}, pushRegex nfa next r = nfa' →
@@ -723,7 +723,7 @@ theorem pathToNext_of_matches_prefix.starConcat {s s₁ s₂ : String}
   rw [Array.get_set_eq]
   simp [Node.εStep]
 
-theorem pathToNext_of_matches_prefix (eq : pushRegex nfa next r = nfa')
+theorem pathToNext_of_matches (eq : pushRegex nfa next r = nfa')
   (m : r.matches s) :
   pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
   induction m generalizing nfa next with
@@ -759,11 +759,11 @@ theorem pathToNext_of_matches_prefix (eq : pushRegex nfa next r = nfa')
     refine ⟨nfa'.val.start, [], [], rfl, .base this, .εStep this nfa'.val.start.isLt ?_⟩
     rw [←eq]
     simp [pushRegex, Node.εStep]
-  | group _ ih => exact pathToNext_of_matches_prefix.group eq ih
-  | alternateLeft _ ih => exact pathToNext_of_matches_prefix.alternateLeft eq ih
-  | alternateRight _ ih => exact pathToNext_of_matches_prefix.alternateRight eq ih
+  | group _ ih => exact pathToNext_of_matches.group eq ih
+  | alternateLeft _ ih => exact pathToNext_of_matches.alternateLeft eq ih
+  | alternateRight _ ih => exact pathToNext_of_matches.alternateRight eq ih
   | concat s s₁ s₂ r₁ r₂ eqs _ _ ih₁ ih₂ =>
-    exact pathToNext_of_matches_prefix.concat eq eqs ih₁ ih₂
+    exact pathToNext_of_matches.concat eq eqs ih₁ ih₂
   | starEpsilon eqs =>
     simp [eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
@@ -780,14 +780,14 @@ theorem pathToNext_of_matches_prefix (eq : pushRegex nfa next r = nfa')
     rw [Array.get_set_eq]
     simp [Node.εStep]
   | starConcat p s₁ s₂ r eqs _ _ ih₁ ih₂ =>
-    exact pathToNext_of_matches_prefix.starConcat eq eqs ih₁ ih₂
+    exact pathToNext_of_matches.starConcat eq eqs ih₁ ih₂
 
 theorem pathToNext_of_compile_matches (eq : NFA.compile r = nfa)
   (m : r.matches s) :
   pathToNext nfa 0 1 nfa.start s.data := by
   unfold NFA.compile at eq
   set result := NFA.done.pushRegex ⟨0, by decide⟩ r with h
-  have := pathToNext_of_matches_prefix h.symm m
+  have := pathToNext_of_matches h.symm m
   rw [eq] at this
   exact this
 

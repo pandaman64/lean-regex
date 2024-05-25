@@ -1,4 +1,4 @@
--- When the compiled NFA accepts a prefix, the regex matches it.
+-- When the compiled NFA accepts a string, the regex matches it.
 import RegexCorrectness.NFA.Transition.Basic
 
 namespace NFA
@@ -128,7 +128,7 @@ theorem starLoop.intro (eq : pushRegex nfa next (.star r) = result)
   | .inr ⟨rStart, cs₁, cs₂, eqs, step, path, loop⟩ =>
     exact eqs ▸ .loop step path loop
 
-theorem matches_prefix_of_starLoop (eq : pushRegex nfa next (.star r) = result)
+theorem matches_of_starLoop (eq : pushRegex nfa next (.star r) = result)
   (mr : ∀ {cs} rStart,
     rStart ∈ (result.val[nfa.nodes.size]'result.property).εStep →
     pathToNext result (Array.size nfa.nodes) (Array.size nfa.nodes + 1) rStart cs →
@@ -141,7 +141,7 @@ theorem matches_prefix_of_starLoop (eq : pushRegex nfa next (.star r) = result)
     let m₁ := mr _ mem path
     exact .starConcat _ _ _ _ rfl m₁ m₂
 
-theorem matches_prefix_of_path.group (eq : pushRegex nfa next (.group i r) = result)
+theorem matches_of_path.group (eq : pushRegex nfa next (.group i r) = result)
   (path : pathToNext result next nfa.nodes.size result.val.start.val s)
   (ih : ∀ {nfa next result s},
     pushRegex nfa next r = result →
@@ -241,7 +241,7 @@ theorem matches_prefix_of_path.group (eq : pushRegex nfa next (.group i r) = res
         have := le_of_pathIn_left rest
         exact (Nat.lt_irrefl _ (Nat.lt_of_le_of_lt this next.isLt)).elim
 
-theorem matches_prefix_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂) = result)
+theorem matches_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂) = result)
   (path : pathToNext result next nfa.nodes.size result.val.start.val s)
   (ih₁ : ∀ {nfa next result s},
     pushRegex nfa next r₁ = result →
@@ -324,7 +324,7 @@ theorem matches_prefix_of_path.alternate (eq : pushRegex nfa next (.alternate r�
           | inr ge => exact ge
         exact .alternateRight (ih₂ eq₃.symm this)
 
-theorem matches_prefix_of_path.concat (eq : pushRegex nfa next (.concat r₁ r₂) = result)
+theorem matches_of_path.concat (eq : pushRegex nfa next (.concat r₁ r₂) = result)
   (path : pathToNext result next nfa.nodes.size result.val.start.val s)
   (ih₁ : ∀ {nfa next result s},
     pushRegex nfa next r₁ = result →
@@ -375,7 +375,7 @@ theorem matches_prefix_of_path.concat (eq : pushRegex nfa next (.concat r₁ r�
 
   exact .concat _ _ _ _ _ (by simp [eqs, eqs', String.ext_iff]) m₁ m₂
 
-theorem matches_prefix_of_path.star (eq : pushRegex nfa next (.star r) = result)
+theorem matches_of_path.star (eq : pushRegex nfa next (.star r) = result)
   (path : pathToNext result next nfa.nodes.size result.val.start.val s)
   (ih : ∀ {nfa next result s},
     pushRegex nfa next r = result →
@@ -399,7 +399,7 @@ theorem matches_prefix_of_path.star (eq : pushRegex nfa next (.star r) = result)
     rw [eq']
     simp
     rw [eq₄]
-  apply matches_prefix_of_starLoop eq ?_ loop
+  apply matches_of_starLoop eq ?_ loop
 
   intro cs rStart mem path'
   apply ih eq₂.symm
@@ -463,7 +463,7 @@ where
 
 theorem List.concat_eq_append {α} {c : α} (l₂ : List α) : [c] ++ l₂ = c :: l₂ := rfl
 
-theorem matches_prefix_of_path
+theorem matches_of_pathToNext_pushRegex
   (eq : pushRegex nfa next r = result)
   (path : pathToNext result next nfa.nodes.size result.val.start.val s) :
   r.matches ⟨s⟩ := by
@@ -543,12 +543,12 @@ theorem matches_prefix_of_path
         have := le_of_pathIn_left rest
         exact absurd next.isLt (Nat.not_lt_of_ge (step.right ▸ this))
       | εStep _ _ step => simp [NFA.Node.εStep] at step
-  | group i r ih => exact matches_prefix_of_path.group eq path ih
-  | alternate r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.alternate eq path ih₁ ih₂
-  | concat r₁ r₂ ih₁ ih₂ => exact matches_prefix_of_path.concat eq path ih₁ ih₂
-  | star r ih => exact matches_prefix_of_path.star eq path ih
+  | group i r ih => exact matches_of_path.group eq path ih
+  | alternate r₁ r₂ ih₁ ih₂ => exact matches_of_path.alternate eq path ih₁ ih₂
+  | concat r₁ r₂ ih₁ ih₂ => exact matches_of_path.concat eq path ih₁ ih₂
+  | star r ih => exact matches_of_path.star eq path ih
 
-theorem matches_prefix_of_compile (eq : NFA.compile r = nfa)
+theorem matches_of_pathToNext_compile (eq : NFA.compile r = nfa)
   (path : pathToNext nfa 0 1 nfa.start.val s) :
   r.matches ⟨s⟩ := by
   set result := NFA.done.pushRegex ⟨0, by decide⟩ r
@@ -556,6 +556,6 @@ theorem matches_prefix_of_compile (eq : NFA.compile r = nfa)
     rw [←eq]
     rfl
   rw [this] at path
-  exact matches_prefix_of_path rfl path
+  exact matches_of_pathToNext_pushRegex rfl path
 
 end NFA

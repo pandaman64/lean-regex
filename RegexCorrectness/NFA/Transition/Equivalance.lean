@@ -82,7 +82,6 @@ theorem evalFrom_of_pathIn {nfa : NFA} {start} (path : nfa.pathIn start i i' cs)
     apply foldl_stepSet_subset
     cases step with
     | charStep _ h₂ step =>
-      -- simp
       simp [εClosureSet, stepSet]
       simp [Set.subset_def]
       intro k h
@@ -180,6 +179,6 @@ theorem pathToNext_of_compile_of_pathIn (eq : NFA.compile r = nfa)
 
 theorem matches_iff_pathToNext {s : String} (eq : NFA.compile r = nfa) :
   r.matches s ↔ nfa.pathToNext 0 1 nfa.start.val s.data :=
-  ⟨pathToNext_of_compile_matches eq, matches_prefix_of_compile eq⟩
+  ⟨pathToNext_of_compile_matches eq, matches_of_pathToNext_compile eq⟩
 
 end NFA
