@@ -559,71 +559,64 @@ theorem evalFrom_of_matches (eq : pushRegex nfa next r = nfa')
     apply mem_evalFrom_le le
     exact evalFrom_of_matches.starConcat eq eqs ih₁ ih₂
 
-theorem pathToNext_of_matches_prefix.group {s p s' : String}
+theorem pathToNext_of_matches.group {s : String}
   (eq : pushRegex nfa next (.group i r) = nfa')
-  (h : s = p ++ s')
-  (ih : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r = nfa' →
-    s = p ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data) :
-  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
-  simp [h]
+  (ih : ∀ {nfa next nfa'}, pushRegex nfa next r = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
   apply pushRegex.group eq
   intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
   rw [eq]
   simp
-  have path₃ : pathToNext nfa' next nfa.nodes.size nfa'.val.start s'.data s'.data := by
+  have path₃ : pathToNext nfa' next nfa.nodes.size nfa'.val.start [] := by
     have h₁ : nfa.nodes.size ≤ nfa'.val.start.val := by
       rw [eq₁]
       simp
-    refine ⟨nfa'.val.start.val, s'.data, .base h₁ rfl rfl, ?_⟩
+    refine ⟨nfa'.val.start.val, [], [], rfl, .base h₁, ?_⟩
     refine .εStep h₁ nfa'.val.start.isLt ?_
     rw [eq₁]
     simp [Node.εStep]
-  have path₃ : pathToNext nfa'' next nfa.nodes.size nfa'.val.start s'.data s'.data := by
+  have path₃ : pathToNext nfa'' next nfa.nodes.size nfa'.val.start [] := by
     apply path₃.cast
     intro i _ h₂
     exists Nat.lt_trans h₂ nfa''.property
     rw [pushRegex_get_lt eq₂.symm _ h₂]
-  have path₂ : pathToNext nfa'' nfa'.val.start nfa'.val.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data :=
-    ih eq₂.symm rfl
-  have path₂ : pathToNext nfa'' nfa'.val.start nfa.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data :=
+  have path₂ : pathToNext nfa'' nfa'.val.start nfa'.val.nodes.size nfa''.val.start s.data :=
+    ih eq₂.symm
+  have path₂ : pathToNext nfa'' nfa'.val.start nfa.nodes.size nfa''.val.start s.data :=
     path₂.castStart (Nat.le_of_lt nfa'.property)
-  have path₂₃ : pathToNext nfa'' next nfa.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data :=
+  have path₂₃ : pathToNext nfa'' next nfa.nodes.size nfa''.val.start (s.data ++ []) :=
     pathToNext.trans path₂ path₃
-  have path₂₃ : pathToNext nfa''' next nfa.nodes.size nfa''.val.start (p.data ++ s'.data) s'.data := by
+  simp at path₂₃
+  have path₂₃ : pathToNext nfa''' next nfa.nodes.size nfa''.val.start s.data := by
     apply path₂₃.cast
     intro i _ h₂
     exists Nat.lt_trans h₂ nfa'''.property
     rw [eq₃, pushNode_get_lt _ h₂]
-  have path₁ : pathToNext nfa''' nfa''.val.start nfa''.val.nodes.size nfa'''.val.start (p.data ++ s'.data) (p.data ++ s'.data) := by
+  have path₁ : pathToNext nfa''' nfa''.val.start nfa''.val.nodes.size nfa'''.val.start [] := by
     have h₁ : nfa''.val.nodes.size ≤ nfa'''.val.start.val := by
       rw [eq₃]
       simp
-    refine ⟨nfa'''.val.start, p.data ++ s'.data, .base h₁ rfl rfl, ?_⟩
+    refine ⟨nfa'''.val.start, [], [], rfl, .base h₁, ?_⟩
     refine .εStep h₁ nfa'''.val.start.isLt ?_
     rw [eq₃]
     simp [Node.εStep]
-  have path₁ : pathToNext nfa''' nfa''.val.start nfa.nodes.size nfa'''.val.start (p.data ++ s'.data) (p.data ++ s'.data) := by
+  have path₁ : pathToNext nfa''' nfa''.val.start nfa.nodes.size nfa'''.val.start [] := by
     apply path₁.castStart (Nat.le_of_lt ?_)
     exact Nat.lt_trans nfa'.property nfa''.property
   exact pathToNext.trans path₁ path₂₃
 
-theorem pathToNext_of_matches_prefix.alternateLeft {s p s' : String}
+theorem pathToNext_of_matches.alternateLeft {s : String}
   (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
-  (h : s = p ++ s')
-  (ih : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r₁ = nfa' →
-    s = p ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data) :
-  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
-  simp [h]
+  (ih : ∀ {nfa next nfa'}, pushRegex nfa next r₁ = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
   apply pushRegex.alternate eq
   intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ eq₂ eq₃ _ eq₅ eq
   rw [eq]
   simp
-  have : pathToNext nfa₁ next nfa.nodes.size nfa₁.val.start (p.data ++ s'.data) s'.data
-    := ih eq₁.symm rfl
-  have : pathToNext nfa' next nfa.nodes.size nfa₁.val.start (p.data ++ s'.data) s'.data
-    := by
+  have : pathToNext nfa₁ next nfa.nodes.size nfa₁.val.start s.data := ih eq₁.symm
+  have : pathToNext nfa' next nfa.nodes.size nfa₁.val.start s.data := by
     apply this.cast
     intro i _ h₂
     have lt₂ : i < nfa₂.val.nodes.size := Nat.lt_trans h₂ nfa₂.property
@@ -639,22 +632,18 @@ theorem pathToNext_of_matches_prefix.alternateLeft {s p s' : String}
   . rw [eq₅]
     simp [Node.εStep, eq₂]
 
-theorem pathToNext_of_matches_prefix.alternateRight {s p s' : String}
+theorem pathToNext_of_matches.alternateRight {s : String}
   (eq : pushRegex nfa next (.alternate r₁ r₂) = nfa')
-  (h : s = p ++ s')
-  (ih : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r₂ = nfa' →
-    s = p ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data) :
-  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
-  simp [h]
+  (ih : ∀ {nfa next nfa'}, pushRegex nfa next r₂ = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
   apply pushRegex.alternate eq
   intro nfa₁ start₁ nfa₂ start₂ _ nfa' property _ _ eq₃ eq₄ eq₅ eq
   rw [eq]
   simp
-  have : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start (p.data ++ s'.data) s'.data
-    := (ih eq₃.symm rfl).castStart (Nat.le_of_lt nfa₁.property)
-  have : pathToNext nfa' next nfa.nodes.size nfa₂.val.start (p.data ++ s'.data) s'.data
-    := by
+  have : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start s.data :=
+    (ih eq₃.symm).castStart (Nat.le_of_lt nfa₁.property)
+  have : pathToNext nfa' next nfa.nodes.size nfa₂.val.start s.data := by
     apply this.cast
     intro i _ h₂
     have : i < nfa'.val.nodes.size := Nat.lt_trans h₂ nfa'.property
@@ -668,49 +657,39 @@ theorem pathToNext_of_matches_prefix.alternateRight {s p s' : String}
   . rw [eq₅]
     simp [Node.εStep, eq₄]
 
-theorem pathToNext_of_matches_prefix.concat {s p s' p₁ p₂ : String}
+theorem pathToNext_of_matches.concat {s s₁ s₂ : String}
   (eq : pushRegex nfa next (.concat r₁ r₂) = nfa')
-  (h : s = p ++ s') (eqs : p = p₁ ++ p₂)
-  (ih₁ : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r₁ = nfa' →
-    s = p₁ ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data)
-  (ih₂ : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r₂ = nfa' →
-    s = p₂ ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data) :
-  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
-  simp [h, eqs]
+  (eqs : s = s₁ ++ s₂)
+  (ih₁ : ∀ {nfa next nfa'}, pushRegex nfa next r₁ = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s₁.data)
+  (ih₂ : ∀ {nfa next nfa'}, pushRegex nfa next r₂ = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s₂.data) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
+  simp [eqs]
   apply pushRegex.concat eq
   intro nfa₂ nfa₁ property eq₂ eq₁ eq
   rw [eq]
   simp
-  have ih₁ : pathToNext nfa₁ nfa₂.val.start nfa.nodes.size nfa₁.val.start
-    (p₁.data ++ (p₂.data ++ s'.data)) (p₂.data ++ s'.data)
-    := (ih₁ eq₁.symm rfl).castStart (Nat.le_of_lt nfa₂.property)
-  have ih₂ : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start
-    (p₂.data ++ s'.data) s'.data
-    := ih₂ eq₂.symm rfl
-  have ih₂ : pathToNext nfa₁ next nfa.nodes.size nfa₂.val.start
-    (p₂.data ++ s'.data) s'.data
-    := by
+  have ih₁ : pathToNext nfa₁ nfa₂.val.start nfa.nodes.size nfa₁.val.start s₁.data :=
+    (ih₁ eq₁.symm).castStart (Nat.le_of_lt nfa₂.property)
+  have ih₂ : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start s₂.data := ih₂ eq₂.symm
+  have ih₂ : pathToNext nfa₁ next nfa.nodes.size nfa₂.val.start s₂.data := by
     apply ih₂.cast
     intro i _ h₂
     exists Nat.lt_trans h₂ nfa₁.property
     rw [pushRegex_get_lt eq₁.symm _ h₂]
   exact ih₁.trans ih₂
 
-theorem pathToNext_of_matches_prefix.starConcat {s p s' p₁ p₂ : String}
+theorem pathToNext_of_matches.starConcat {s s₁ s₂ : String}
   (eq : pushRegex nfa next (.star r) = nfa')
-  (h : s = p ++ s') (eqs : p = p₁ ++ p₂)
-  (ih₁ : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next r = nfa' →
-    s = p₁ ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data)
-  (ih₂ : ∀ {nfa next nfa'} {s s' : String}, pushRegex nfa next (.star r) = nfa' →
-    s = p₂ ++ s' →
-    pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data) :
-  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
-  have ih₂ : pathToNext nfa' next nfa.nodes.size nfa'.val.start (p₂.data ++ s'.data) s'.data
-    := ih₂ eq rfl
-  simp [h, eqs]
+  (eqs : s = s₁ ++ s₂)
+  (ih₁ : ∀ {nfa next nfa'}, pushRegex nfa next r = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s₁.data)
+  (ih₂ : ∀ {nfa next nfa'}, pushRegex nfa next (.star r) = nfa' →
+    pathToNext nfa' next nfa.nodes.size nfa'.val.start s₂.data) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
+  have ih₂ : pathToNext nfa' next nfa.nodes.size nfa'.val.start s₂.data := ih₂ eq
+  simp [eqs]
   apply pushRegex.star eq
   intro placeholder compiled patched nfa' isLt inBounds property
     eq₁ eq₂ eq₃ eq₄ eq
@@ -720,11 +699,9 @@ theorem pathToNext_of_matches_prefix.starConcat {s p s' p₁ p₂ : String}
   simp at ih₂
   have eqStart : nfa'.start = nfa.nodes.size := by
     rw [eq₄]
-  have ih₁ : pathToNext compiled nfa.nodes.size placeholder.val.nodes.size compiled.val.start
-    (p₁.data ++ (p₂.data ++ s'.data)) (p₂.data ++ s'.data) :=
-    ih₁ eq₂.symm rfl (s := p₁ ++ (p₂ ++ s'))
-  have ih₁ : pathToNext nfa' nfa.nodes.size placeholder.val.nodes.size compiled.val.start
-    (p₁.data ++ (p₂.data ++ s'.data)) (p₂.data ++ s'.data) := by
+  have ih₁ : pathToNext compiled nfa.nodes.size placeholder.val.nodes.size compiled.val.start s₁.data :=
+    ih₁ eq₂.symm
+  have ih₁ : pathToNext nfa' nfa.nodes.size placeholder.val.nodes.size compiled.val.start s₁.data := by
     apply ih₁.cast
     intro i h₁ h₂
     rw [eq₄]
@@ -734,11 +711,9 @@ theorem pathToNext_of_matches_prefix.starConcat {s p s' p₁ p₂ : String}
     rw [Array.get_set_ne (hj := h₂)]
     simp
     apply Nat.ne_of_lt (Nat.lt_of_lt_of_le placeholder.property h₁)
-  have ih₁ : pathToNext nfa' nfa.nodes.size nfa.nodes.size compiled.val.start
-    (p₁.data ++ (p₂.data ++ s'.data)) (p₂.data ++ s'.data) :=
+  have ih₁ : pathToNext nfa' nfa.nodes.size nfa.nodes.size compiled.val.start s₁.data :=
     ih₁.castStart (Nat.le_of_lt placeholder.property)
-  have ih₂ : pathToNext nfa' next nfa.nodes.size nfa.nodes.size
-    (p₂.data ++ s'.data) s'.data := by
+  have ih₂ : pathToNext nfa' next nfa.nodes.size nfa.nodes.size s₂.data := by
     rw [eqStart] at ih₂
     exact ih₂
   have := ih₁.trans ih₂
@@ -748,47 +723,51 @@ theorem pathToNext_of_matches_prefix.starConcat {s p s' p₁ p₂ : String}
   rw [Array.get_set_eq]
   simp [Node.εStep]
 
-theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next r = nfa')
-  (h : s = p ++ s') (m : r.matches p) :
-  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data s'.data := by
-  induction m generalizing s s' nfa next with
+theorem pathToNext_of_matches (eq : pushRegex nfa next r = nfa')
+  (m : r.matches s) :
+  pathToNext nfa' next nfa.nodes.size nfa'.val.start s.data := by
+  induction m generalizing nfa next with
   | @sparse int s c mem eqs =>
-    simp [h, eqs]
+    simp [eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
     refine ⟨
       nfa'.val.start,
-      c :: s'.data,
-      .base this rfl rfl,
+      [],
+      [c],
+      rfl,
+      .base this,
       .charStep this nfa'.val.start.isLt ?_
     ⟩
     rw [←eq]
     simp [pushRegex, Node.charStep, mem]
   | @char p c eqs =>
-    simp [h, eqs]
+    simp [eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
     refine ⟨
       nfa'.val.start,
-      c :: s'.data,
-      .base this rfl rfl,
+      [],
+      [c],
+      rfl,
+      .base this,
       .charStep this nfa'.val.start.isLt ?_
     ⟩
     rw [←eq]
     simp [pushRegex, Node.charStep]
   | @epsilon s eqs =>
-    simp [h, eqs]
+    simp [eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
-    refine ⟨nfa'.val.start, s'.data, .base this rfl rfl, .εStep this nfa'.val.start.isLt ?_⟩
+    refine ⟨nfa'.val.start, [], [], rfl, .base this, .εStep this nfa'.val.start.isLt ?_⟩
     rw [←eq]
     simp [pushRegex, Node.εStep]
-  | group _ ih => exact pathToNext_of_matches_prefix.group eq h ih
-  | alternateLeft _ ih => exact pathToNext_of_matches_prefix.alternateLeft eq h ih
-  | alternateRight _ ih => exact pathToNext_of_matches_prefix.alternateRight eq h ih
-  | concat p s₁ s₂ r₁ r₂ eqs _ _ ih₁ ih₂ =>
-    exact pathToNext_of_matches_prefix.concat eq h eqs ih₁ ih₂
+  | group _ ih => exact pathToNext_of_matches.group eq ih
+  | alternateLeft _ ih => exact pathToNext_of_matches.alternateLeft eq ih
+  | alternateRight _ ih => exact pathToNext_of_matches.alternateRight eq ih
+  | concat s s₁ s₂ r₁ r₂ eqs _ _ ih₁ ih₂ =>
+    exact pathToNext_of_matches.concat eq eqs ih₁ ih₂
   | starEpsilon eqs =>
-    simp [h, eqs]
+    simp [eqs]
     have : nfa.nodes.size ≤ nfa'.val.start.val := ge_pushRegex_start eq
-    refine ⟨nfa'.val.start, s'.data, .base this rfl rfl, .εStep this nfa'.val.start.isLt ?_⟩
+    refine ⟨nfa'.val.start, [], [], rfl, .base this, .εStep this nfa'.val.start.isLt ?_⟩
 
     apply pushRegex.star eq
     intro placeholder compiled patched nfa' isLt inBounds property
@@ -801,14 +780,14 @@ theorem pathToNext_of_matches_prefix {s p s' : String} (eq : pushRegex nfa next 
     rw [Array.get_set_eq]
     simp [Node.εStep]
   | starConcat p s₁ s₂ r eqs _ _ ih₁ ih₂ =>
-    exact pathToNext_of_matches_prefix.starConcat eq h eqs ih₁ ih₂
+    exact pathToNext_of_matches.starConcat eq eqs ih₁ ih₂
 
-theorem pathToNext_of_compile_matches_prefix (eq : NFA.compile r = nfa)
-  (h : s = p ++ s') (m : r.matches p) :
-  pathToNext nfa 0 1 nfa.start s.data s'.data := by
+theorem pathToNext_of_compile_matches (eq : NFA.compile r = nfa)
+  (m : r.matches s) :
+  pathToNext nfa 0 1 nfa.start s.data := by
   unfold NFA.compile at eq
-  set result := NFA.done.pushRegex ⟨0, by decide⟩ r
-  have := pathToNext_of_matches_prefix (rfl : result = result) h m
+  set result := NFA.done.pushRegex ⟨0, by decide⟩ r with h
+  have := pathToNext_of_matches h.symm m
   rw [eq] at this
   exact this
 
