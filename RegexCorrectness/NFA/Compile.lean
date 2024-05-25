@@ -484,4 +484,11 @@ theorem done_iff_zero_compile (eq : compile r = nfa) (i : Fin nfa.nodes.size) :
   have := done_iff_zero_pushRegex eq'.symm (by decide) h i (eq ▸ i.isLt)
   exact eq ▸ this
 
+theorem lt_zero_size_compile (eq : compile r = nfa) :
+  0 < nfa.nodes.size := by
+  unfold compile at eq
+  set result := NFA.done.pushRegex ⟨0, by decide⟩ r
+  have : 0 < result.val.nodes.size := Nat.zero_lt_of_lt result.property
+  exact eq ▸ this
+
 end NFA

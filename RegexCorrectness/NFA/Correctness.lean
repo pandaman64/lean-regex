@@ -13,8 +13,6 @@ theorem matches_of_compile_evalFrom (eq : NFA.compile r = nfa) (ev : 0 ∈ nfa.e
   r.matches ⟨cs⟩ := by
   have path := pathIn_of_evalFrom ev
   have path := pathToNext_of_compile_of_pathIn eq path
-  have ⟨p, eqs, m⟩ := matches_prefix_of_compile_path eq path
-  simp [eqs]
-  exact m
+  exact matches_prefix_of_compile eq path
 
 end NFA
