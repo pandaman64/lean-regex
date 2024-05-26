@@ -11,35 +11,35 @@ inductive Regex : Type where
   | classes : Regex.Classes → Regex
 deriving Repr, Inhabited
 
-inductive Regex.matches : String → Regex → Prop where
-  | char (c : Char) (eq : s = ⟨[c]⟩): Regex.matches s (.char c)
-  | sparse (cs : Classes) (c : Char) (h : c ∈ cs) (eq : s = ⟨[c]⟩) : Regex.matches s (.classes cs)
-  | epsilon (eq : s = "") : Regex.matches s .epsilon
+inductive Regex.matches : List Char → Regex → Prop where
+  | char (c : Char) : Regex.matches [c] (.char c)
+  | sparse (cs : Classes) (c : Char) (h : c ∈ cs) : Regex.matches [c] (.classes cs)
+  | epsilon : Regex.matches [] .epsilon
   | group (m : Regex.matches s r) : Regex.matches s (.group i r)
-  | alternateLeft {s : String} {r₁ r₂ : Regex} : Regex.matches s r₁ → Regex.matches s (.alternate r₁ r₂)
-  | alternateRight {s : String} {r₁ r₂ : Regex} : Regex.matches s r₂ → Regex.matches s (.alternate r₁ r₂)
-  | concat (s s₁ s₂ : String) (r₁ r₂ : Regex) (eq : s = s₁ ++ s₂) :
-    Regex.matches s₁ r₁ → Regex.matches s₂ r₂ → Regex.matches s (.concat r₁ r₂)
-  | starEpsilon (eq : s = "") : Regex.matches s (.star r)
-  | starConcat (s s₁ s₂ : String) (r : Regex) (eq : s = s₁ ++ s₂) :
-    Regex.matches s₁ r → Regex.matches s₂ (.star r) → Regex.matches s (.star r)
+  | alternateLeft {cs : List Char} {r₁ r₂ : Regex} : Regex.matches cs r₁ → Regex.matches cs (.alternate r₁ r₂)
+  | alternateRight {cs : List Char} {r₁ r₂ : Regex} : Regex.matches cs r₂ → Regex.matches cs (.alternate r₁ r₂)
+  | concat (cs₁ cs₂ : List Char) (r₁ r₂ : Regex) :
+    Regex.matches cs₁ r₁ → Regex.matches cs₂ r₂ → Regex.matches (cs₁ ++ cs₂) (.concat r₁ r₂)
+  | starEpsilon : Regex.matches [] (.star r)
+  | starConcat (cs₁ cs₂ : List Char) (r : Regex) :
+    Regex.matches cs₁ r → Regex.matches cs₂ (.star r) → Regex.matches (cs₁ ++ cs₂) (.star r)
 
-theorem Regex.empty_not_matches {s : String} (m : Regex.empty.matches s) : False := nomatch m
+theorem Regex.empty_not_matches (m : Regex.empty.matches cs) : False := nomatch m
 
-theorem Regex.epsilon_matches_empty : Regex.matches "" .epsilon := .epsilon rfl
+theorem Regex.epsilon_matches_empty : Regex.matches [] .epsilon := .epsilon
 
-theorem Regex.epsilon_matches_only_empty (s : String) (m : Regex.matches s .epsilon) : s = "" :=
-  match s, m with
-  | _, .epsilon eq => eq
+theorem Regex.epsilon_matches_only_empty (cs : List Char) (m : Regex.matches cs .epsilon) : cs = [] :=
+  match m with
+  | .epsilon => rfl
 
-theorem Regex.char_matches (m : Regex.matches s (.char c)) : s = ⟨[c]⟩ :=
-  match s, m with
-  | _, .char _ eq => eq
+theorem Regex.char_matches (m : Regex.matches cs (.char c)) : cs = [c] :=
+  match m with
+  | .char _ => rfl
 
-theorem Regex.group_matches : Regex.matches s (.group i r) ↔ Regex.matches s r :=
+theorem Regex.group_matches : Regex.matches cs (.group i r) ↔ Regex.matches cs r :=
   ⟨fun | .group m => m, .group⟩
 
-theorem Regex.alternate_matches_or : Regex.matches s (.alternate r₁ r₂) ↔ Regex.matches s r₁ ∨ Regex.matches s r₂ :=
+theorem Regex.alternate_matches_or : Regex.matches cs (.alternate r₁ r₂) ↔ Regex.matches cs r₁ ∨ Regex.matches cs r₂ :=
   ⟨fun
     | .alternateLeft m => Or.inl m
     | .alternateRight m => Or.inr m,
@@ -47,6 +47,6 @@ theorem Regex.alternate_matches_or : Regex.matches s (.alternate r₁ r₂) ↔ 
     | Or.inl m => .alternateLeft m
     | Or.inr m => .alternateRight m⟩
 
-theorem Regex.concat_matches : Regex.matches s (.concat r₁ r₂) ↔ ∃s₁ s₂, s = s₁ ++ s₂ ∧ Regex.matches s₁ r₁ ∧ Regex.matches s₂ r₂ :=
-  ⟨fun | .concat _ _ _ _ _ eq m₁ m₂ => ⟨_, _, eq, m₁, m₂⟩,
-   fun ⟨s₁, s₂, eq, m₁, m₂⟩ => .concat s s₁ s₂ r₁ r₂ eq m₁ m₂⟩
+theorem Regex.concat_matches : Regex.matches cs (.concat r₁ r₂) ↔ ∃ cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ Regex.matches cs₁ r₁ ∧ Regex.matches cs₂ r₂ :=
+  ⟨fun | .concat _ _ _ _ m₁ m₂ => ⟨_, _, rfl, m₁, m₂⟩,
+   fun ⟨cs₁, cs₂, eq, m₁, m₂⟩ => eq ▸ .concat cs₁ cs₂ r₁ r₂ m₁ m₂⟩
