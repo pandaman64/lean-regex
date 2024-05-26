@@ -491,7 +491,7 @@ theorem evalFrom_iff_match {nfa : NFA} {s : String} :
     exact ⟨lt_of_εClosure_right nfa.start.isLt mem, mem⟩
 
 theorem match_iff_regex_matches (eq : NFA.compile r = nfa) :
-  nfa.match s ↔ r.matches s := by
+  nfa.match s ↔ r.matches s.data := by
   rw [evalFrom_iff_match]
   exact ⟨matches_of_compile_evalFrom eq, evalFrom_of_compile_matches eq⟩
 

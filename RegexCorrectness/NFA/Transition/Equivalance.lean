@@ -177,8 +177,8 @@ theorem pathToNext_of_compile_of_pathIn (eq : NFA.compile r = nfa)
     exact ge_pushRegex_start (rfl : NFA.done.pushRegex _ r = _)
   exact pathToNext_of_compile_of_pathIn' eq this rfl path
 
-theorem matches_iff_pathToNext {s : String} (eq : NFA.compile r = nfa) :
-  r.matches s ↔ nfa.pathToNext 0 1 nfa.start.val s.data :=
+theorem matches_iff_pathToNext {cs : List Char} (eq : NFA.compile r = nfa) :
+  r.matches cs ↔ nfa.pathToNext 0 1 nfa.start.val cs :=
   ⟨pathToNext_of_compile_matches eq, matches_of_pathToNext_compile eq⟩
 
 end NFA

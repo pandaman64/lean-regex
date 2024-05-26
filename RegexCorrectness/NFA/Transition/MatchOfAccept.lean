@@ -132,26 +132,26 @@ theorem matches_of_starLoop (eq : pushRegex nfa next (.star r) = result)
   (mr : ∀ {cs} rStart,
     rStart ∈ (result.val[nfa.nodes.size]'result.property).εStep →
     pathToNext result (Array.size nfa.nodes) (Array.size nfa.nodes + 1) rStart cs →
-    r.matches ⟨cs⟩)
+    r.matches cs)
   (loop : starLoop eq cs) :
-  (Regex.star r).matches ⟨cs⟩ := by
+  (Regex.star r).matches cs := by
   induction loop with
-  | complete => exact .starEpsilon rfl
+  | complete => exact .starEpsilon
   | loop mem path _ m₂ =>
     let m₁ := mr _ mem path
-    exact .starConcat _ _ _ _ rfl m₁ m₂
+    exact .starConcat _ _ _ m₁ m₂
 
 theorem matches_of_path.group (eq : pushRegex nfa next (.group i r) = result)
-  (path : pathToNext result next nfa.nodes.size result.val.start.val s)
-  (ih : ∀ {nfa next result s},
+  (path : pathToNext result next nfa.nodes.size result.val.start.val cs)
+  (ih : ∀ {nfa next result cs},
     pushRegex nfa next r = result →
-    pathToNext result next nfa.nodes.size result.val.start.val s →
-    r.matches ⟨s⟩) :
-  (Regex.group i r).matches ⟨s⟩ := by
+    pathToNext result next nfa.nodes.size result.val.start.val cs →
+    r.matches cs) :
+  (Regex.group i r).matches cs := by
   apply pushRegex.group eq
   intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
 
-  suffices pathToNext nfa'' nfa'.val.start nfa'.val.nodes.size nfa''.val.start s from
+  suffices pathToNext nfa'' nfa'.val.start nfa'.val.nodes.size nfa''.val.start cs from
     .group (ih eq₂.symm this)
 
   rw [eq] at path
@@ -242,16 +242,16 @@ theorem matches_of_path.group (eq : pushRegex nfa next (.group i r) = result)
         exact (Nat.lt_irrefl _ (Nat.lt_of_le_of_lt this next.isLt)).elim
 
 theorem matches_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂) = result)
-  (path : pathToNext result next nfa.nodes.size result.val.start.val s)
-  (ih₁ : ∀ {nfa next result s},
+  (path : pathToNext result next nfa.nodes.size result.val.start.val cs)
+  (ih₁ : ∀ {nfa next result cs},
     pushRegex nfa next r₁ = result →
-    pathToNext result next nfa.nodes.size result.val.start.val s →
-    r₁.matches ⟨s⟩)
-  (ih₂ : ∀ {nfa next result s},
+    pathToNext result next nfa.nodes.size result.val.start.val cs →
+    r₁.matches cs)
+  (ih₂ : ∀ {nfa next result cs},
     pushRegex nfa next r₂ = result →
-    pathToNext result next nfa.nodes.size result.val.start.val s →
-    r₂.matches ⟨s⟩) :
-  (Regex.alternate r₁ r₂).matches ⟨s⟩ := by
+    pathToNext result next nfa.nodes.size result.val.start.val cs →
+    r₂.matches cs) :
+  (Regex.alternate r₁ r₂).matches cs := by
   apply pushRegex.alternate eq
   intro nfa₁ start₁ nfa₂ start₂ inBounds final property eq₁ eq₂ eq₃ eq₄ eq₅ eq'
 
@@ -297,20 +297,20 @@ theorem matches_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂
       cases step with
       | inl eqs₁ =>
         rw [eqs₁] at rest
-        have : pathToNext final next nfa.nodes.size nfa₁.val.start.val s :=
+        have : pathToNext final next nfa.nodes.size nfa₁.val.start.val cs :=
           ⟨i, cs₄, cs₂, eqs, eq₂ ▸ rest, step⟩
-        have : pathToNext nfa₁ next nfa.nodes.size nfa₁.val.start.val s := by
+        have : pathToNext nfa₁ next nfa.nodes.size nfa₁.val.start.val cs := by
           apply this.cast' nfa₁.val.start.isLt
             (Nat.le_of_lt (Nat.lt_trans nfa₂.property final.property))
             get₁
         exact .alternateLeft (ih₁ eq₁.symm this)
       | inr eqs₂ =>
         rw [eqs₂] at rest
-        have : pathToNext final next nfa.nodes.size nfa₂.val.start.val s :=
+        have : pathToNext final next nfa.nodes.size nfa₂.val.start.val cs :=
           ⟨i, cs₄, cs₂, eqs, eq₄ ▸ rest, step⟩
-        have : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start.val s := by
+        have : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start.val cs := by
           apply this.cast' nfa₂.val.start.isLt (Nat.le_of_lt final.property) get₂
-        have : pathToNext nfa₂ next nfa₁.val.nodes.size nfa₂.val.start.val s := by
+        have : pathToNext nfa₂ next nfa₁.val.nodes.size nfa₂.val.start.val cs := by
           apply this.castLE (ge_pushRegex_start eq₃.symm)
 
           intro i j h₁ h₂ step hj
@@ -325,16 +325,16 @@ theorem matches_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂
         exact .alternateRight (ih₂ eq₃.symm this)
 
 theorem matches_of_path.concat (eq : pushRegex nfa next (.concat r₁ r₂) = result)
-  (path : pathToNext result next nfa.nodes.size result.val.start.val s)
-  (ih₁ : ∀ {nfa next result s},
+  (path : pathToNext result next nfa.nodes.size result.val.start.val cs)
+  (ih₁ : ∀ {nfa next result cs},
     pushRegex nfa next r₁ = result →
-    pathToNext result next nfa.nodes.size result.val.start.val s →
-    r₁.matches ⟨s⟩)
-  (ih₂ : ∀ {nfa next result s},
+    pathToNext result next nfa.nodes.size result.val.start.val cs →
+    r₁.matches cs)
+  (ih₂ : ∀ {nfa next result cs},
     pushRegex nfa next r₂ = result →
-    pathToNext result next nfa.nodes.size result.val.start.val s →
-    r₂.matches ⟨s⟩) :
-  (Regex.concat r₁ r₂).matches ⟨s⟩ := by
+    pathToNext result next nfa.nodes.size result.val.start.val cs →
+    r₂.matches cs) :
+  (Regex.concat r₁ r₂).matches cs := by
   apply pushRegex.concat eq
   intro nfa₂ nfa₁ property eq₂ eq₁ eq'
 
@@ -373,15 +373,16 @@ theorem matches_of_path.concat (eq : pushRegex nfa next (.concat r₁ r₂) = re
     apply path₂.cast' nfa₂.val.start.isLt (Nat.le_of_lt nfa₁.property) get
   have m₂ := ih₂ eq₂.symm path₂
 
-  exact .concat _ _ _ _ _ (by simp [eqs, eqs', String.ext_iff]) m₁ m₂
+  simp [eqs, eqs']
+  exact .concat _ _ _ _ m₁ m₂
 
 theorem matches_of_path.star (eq : pushRegex nfa next (.star r) = result)
-  (path : pathToNext result next nfa.nodes.size result.val.start.val s)
-  (ih : ∀ {nfa next result s},
+  (path : pathToNext result next nfa.nodes.size result.val.start.val cs)
+  (ih : ∀ {nfa next result cs},
     pushRegex nfa next r = result →
-    pathToNext result next nfa.nodes.size result.val.start.val s →
-    Regex.matches ⟨s⟩ r) :
-  (Regex.star r).matches ⟨s⟩ := by
+    pathToNext result next nfa.nodes.size result.val.start.val cs →
+    Regex.matches cs r) :
+  (Regex.star r).matches cs := by
   apply pushRegex.star eq
   intro placeholder compiled patched nfa' isLt inBounds property
     eq₁ eq₂ eq₃ eq₄ eq'
@@ -465,10 +466,10 @@ theorem List.concat_eq_append {α} {c : α} (l₂ : List α) : [c] ++ l₂ = c :
 
 theorem matches_of_pathToNext_pushRegex
   (eq : pushRegex nfa next r = result)
-  (path : pathToNext result next nfa.nodes.size result.val.start.val s) :
-  r.matches ⟨s⟩ := by
-  induction r generalizing nfa next s with
-  | classes cs =>
+  (path : pathToNext result next nfa.nodes.size result.val.start.val cs) :
+  r.matches cs := by
+  induction r generalizing nfa next cs with
+  | classes cls =>
     apply pushRegex.sparse eq
     intro eq
     rw [eq] at path
@@ -482,7 +483,9 @@ theorem matches_of_pathToNext_pushRegex
     | stepIn.charStep (c := c) _ _ step =>
       simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
       cases path with
-      | base _ => exact .sparse cs c step (by simp [eqs])
+      | base _ =>
+        simp [eqs]
+        exact .sparse cls c step
       | step step rest =>
         cases step with
         | charStep _ _ step =>
@@ -515,7 +518,7 @@ theorem matches_of_pathToNext_pushRegex
     have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt (le_of_pathIn_right path) this
     cases step <;> simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
     cases path with
-    | base _ => exact .epsilon (by simp [eqs])
+    | base _ => exact eqs ▸ .epsilon
     | step step rest =>
       cases step with
       | charStep _ _ step => simp [NFA.Node.charStep] at step
@@ -535,7 +538,9 @@ theorem matches_of_pathToNext_pushRegex
     have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt (le_of_pathIn_right path) this
     cases step <;> simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
     cases path with
-    | base _ => exact .char c (by simp [*])
+    | base _ =>
+      simp [*]
+      exact .char c
     | step step rest =>
       cases step with
       | charStep _ _ step =>
@@ -549,8 +554,8 @@ theorem matches_of_pathToNext_pushRegex
   | star r ih => exact matches_of_path.star eq path ih
 
 theorem matches_of_pathToNext_compile (eq : NFA.compile r = nfa)
-  (path : pathToNext nfa 0 1 nfa.start.val s) :
-  r.matches ⟨s⟩ := by
+  (path : pathToNext nfa 0 1 nfa.start.val cs) :
+  r.matches cs := by
   set result := NFA.done.pushRegex ⟨0, by decide⟩ r
   have : nfa = result.val := by
     rw [←eq]

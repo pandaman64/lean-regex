@@ -84,17 +84,17 @@ theorem reaches_iff_pathIn {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char} 
   nfa.reaches i m ↔ nfa.pathIn 0 nfa.start i m := ⟨pathIn_of_reaches, reaches_of_pathIn⟩
 
 theorem matches_of_reaches (eq : compile r = nfa)
-  (h₁ : nfa.reaches i cs.data) (h₂ : nfa[i] = .done) :
+  (h₁ : nfa.reaches i cs) (h₂ : nfa[i] = .done) :
   r.matches cs := by
   have hi : i.val = 0 := (done_iff_zero_compile eq i).mp h₂
-  have : nfa.pathIn 0 nfa.start i cs.data := pathIn_of_reaches h₁
+  have : nfa.pathIn 0 nfa.start i cs := pathIn_of_reaches h₁
   simp at this
   have := pathToNext_of_compile_of_pathIn eq (hi ▸ this)
   exact (matches_iff_pathToNext eq).mpr this
 
 theorem reaches_of_matches (eq : compile r = nfa)
   (m : r.matches cs) :
-  ∃ i, nfa.reaches i cs.data ∧ nfa[i] = .done := by
+  ∃ i, nfa.reaches i cs ∧ nfa[i] = .done := by
   have := (matches_iff_pathToNext eq).mp m
   have := pathIn_of_pathToNext this
   simp at this
@@ -104,7 +104,7 @@ theorem reaches_of_matches (eq : compile r = nfa)
   exact ⟨i', this, hdone⟩
 
 theorem matches_iff_reaches (eq : compile r = nfa) :
-  r.matches cs ↔ ∃ i, nfa.reaches i cs.data ∧ nfa[i] = .done :=
+  r.matches cs ↔ ∃ i, nfa.reaches i cs ∧ nfa[i] = .done :=
   ⟨reaches_of_matches eq, fun ⟨_, h₁, h₂⟩ => matches_of_reaches eq h₁ h₂⟩
 
 theorem matches_of_captureNext
@@ -113,7 +113,7 @@ theorem matches_of_captureNext
   (v : it.Valid)
   (hsome : matched.isSome) :
   ∃ (s : Substring) (l m r : List Char),
-    s.ValidFor l m r ∧ it.toString = ⟨l ++ m ++ r⟩ ∧ re.matches ⟨m⟩ := by
+    s.ValidFor l m r ∧ it.toString = ⟨l ++ m ++ r⟩ ∧ re.matches m := by
   have ⟨s, l, m, r, sv, eqs, i, hr, hdone⟩ := captureNext_spec h v hsome
   have ma := matches_of_reaches eq hr hdone
   exact ⟨s, l, m, r, sv, eqs, ma⟩
