@@ -7,10 +7,8 @@ import Mathlib.Tactic.Common
 
 namespace NFA
 
--- FIXME: I wanted to make this a claim about `Fin nfa.nodes.size`, but it's super cumbersome
--- to cast between `Fin nfa₁.nodes.size` and `Fin nfa₂.nodes.size` given `nfa₁ ≤ nfa₂`.
--- I should have avoided using NFA's ordering for proofs...
--- TODO: now that we get rid of NFA ordering, can we make it `Fin nfa.nodes.size`?
+-- NOTE: I wanted to make this a claim about `Fin nfa.nodes.size`, but it's super cumbersome
+-- to cast between `Fin nfa₁.nodes.size` and `Fin nfa₂.nodes.size`.
 inductive εClosure (nfa : NFA) : Nat → Set Nat where
   | base : nfa.εClosure i i
   | step {i j k : Nat} (step : j ∈ nfa.εStep i) (rest : nfa.εClosure j k) :
