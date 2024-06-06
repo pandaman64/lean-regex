@@ -1,5 +1,7 @@
 import Regex.NFA.Compile
-import RegexCorrectness.NFA.Order
+import RegexCorrectness.NFA.Basic
+
+import Mathlib.Tactic.Common
 
 namespace NFA
 
@@ -61,66 +63,6 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
 
     have : nfa.nodes.size ≠ i := Nat.ne_of_gt h
     simp [this, ←get_eq_nodes_get, ih, eq₁, pushNode_get_lt _ h]
-
-theorem le_pushNode : nfa ≤ (pushNode nfa node h).val := by
-  intro i
-  have : i < (pushNode nfa node h).val.nodes.size := by
-    simp
-    exact Nat.lt_trans i.isLt (Nat.lt_succ_self _)
-  exists this
-  rw [pushNode_get_lt i i.isLt]
-
-theorem le_pushRegex : nfa ≤ (pushRegex nfa next r).val := by
-  induction r generalizing nfa next with
-  | empty | epsilon | char _ | classes _ => unfold pushRegex; exact le_pushNode
-  | group i r ih =>
-    apply pushRegex.group (rfl : pushRegex nfa next (.group i r) = _)
-    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
-    rw [eq]
-
-    calc
-      _ ≤ nfa'.val := eq₁ ▸ le_pushNode
-      _ ≤ nfa''.val := eq₂ ▸ ih
-      _ ≤ nfa'''.val := eq₃ ▸ le_pushNode
-  | alternate r₁ r₂ ih₁ ih₂ =>
-    apply pushRegex.alternate (rfl : pushRegex nfa next (.alternate r₁ r₂) = _)
-    intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
-    rw [eq]
-
-    calc
-      _ ≤ nfa₁.val := eq₁ ▸ ih₁
-      _ ≤ nfa₂.val := eq₃ ▸ ih₂
-      _ ≤ nfa'.val := eq₅ ▸ le_pushNode
-  | concat r₁ r₂ ih₁ ih₂ =>
-    apply pushRegex.concat (rfl : pushRegex nfa next (.concat r₁ r₂) = _)
-    intro nfa₂ nfa₁ property eq₂ eq₁ eq
-    rw [eq]
-
-    calc
-      _ ≤ nfa₂.val := eq₂ ▸ ih₂
-      _ ≤ nfa₁.val := eq₁ ▸ ih₁
-  | star r ih =>
-    apply pushRegex.star (rfl : pushRegex nfa next (.star r) = _)
-    intro placeholder compiled patched nfa' isLt inBounds property
-      eq₁ eq₂ eq₃ eq₄ eq
-    rw [eq]
-
-    calc
-      _ ≤ placeholder.val := eq₁ ▸ le_pushNode
-      _ ≤ compiled.val := eq₂ ▸ ih
-      _ ≤ nfa' := by
-        intro i
-        have : i < nfa'.nodes.size := by
-          simp [eq₄, eq₃]
-        exists this
-        simp [eq₄, get_eq_nodes_get, eq₃]
-        rw [Array.get_set]
-        . split <;> try simp
-          next eqi =>
-            simp [←eqi, eq₂]
-            rw [←get_eq_nodes_get, pushRegex_get_lt rfl _ placeholder.property]
-            simp [eq₁]
-        . exact i.isLt
 
 theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
   nfa.nodes.size ≤ result.val.start.val := by

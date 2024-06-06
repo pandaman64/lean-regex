@@ -2,6 +2,7 @@ import Std.Data.Array.Lemmas
 
 namespace NFA.VM
 
+-- TODO: migrate to Batteries Vector
 def Vec (α : Type) (n : Nat) := { a : Array α // a.size = n }
 
 instance [Repr α] : Repr (Vec α n) := inferInstanceAs (Repr { a : Array α // a.size = n })
