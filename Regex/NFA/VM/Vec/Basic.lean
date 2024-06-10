@@ -1,4 +1,4 @@
-import Std.Data.Array.Lemmas
+import Batteries.Data.Array.Lemmas
 
 namespace NFA.VM
 
@@ -30,7 +30,6 @@ theorem Vec.get_set_eq (v : Vec α n) (h : i < n) :
   simp [Vec.set, getElem]
   unfold Vec.get
   simp
-  rw [Array.get_set_eq]
 
 @[simp]
 theorem Vec.get_set_ne (v : Vec α n) (h₁ : i < n) (h₂ : j < n) (ne : i ≠ j) :

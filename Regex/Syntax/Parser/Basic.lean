@@ -146,7 +146,7 @@ end
 def parse (input : String) : Except String Regex :=
   match (regex <* endOfInput).run input.toSubstring with
   | .ok _ r => .ok (Hir.group r).toRegex
-  | .error e => .error (toString e)
+  | .error _ e => .error (toString e)
 
 @[export lean_regex_parse_or_panic]
 def parse! (input : String) : Regex :=
