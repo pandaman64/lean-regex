@@ -102,7 +102,7 @@ theorem captureNext_spec.go
         simp [hm] at h
         have mem_current'_iff := exploreεClosure_spec.mem_next_iff he inv.currentClosure
 
-        generalize hs : eachStepChar nfa it.curr it.next.pos current' next saveSlots' = stepped at h
+        generalize hs : eachStepChar nfa it.curr it.next.i current' next saveSlots' = stepped at h
         let (matched', next', saveSlots'') := stepped
         simp at h
 
@@ -148,7 +148,7 @@ theorem captureNext_spec.go
       else
         simp [hm] at h
 
-        generalize hs : eachStepChar nfa it.curr it.next.pos current next saveSlots = stepped at h
+        generalize hs : eachStepChar nfa it.curr it.next.i current next saveSlots = stepped at h
         let (matched', next', saveSlots'') := stepped
         simp at h
 
@@ -187,7 +187,7 @@ theorem captureNext_spec
   unfold captureNext at h
   generalize _hs : Vec.ofFn (fun _ => captureNext.initSave saveSize) = saveSlots at h
   simp at h
-  generalize he : exploreεClosure nfa it.pos .empty (captureNext.initSave saveSize) .none saveSlots nfa.start #[] = init at h
+  generalize he : exploreεClosure nfa it.i .empty (captureNext.initSave saveSize) .none saveSlots nfa.start #[] = init at h
   let (matched', init', saveSlots) := init
   simp at h
 

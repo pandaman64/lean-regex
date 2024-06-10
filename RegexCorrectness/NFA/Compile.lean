@@ -259,10 +259,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
       | inr ge => exact .inr (Nat.le_trans (Nat.le_succ _) ge)
     | inr le =>
       have : i = nfa.nodes.size := Nat.le_antisymm le h₁
-      simp [this, eq, eq₄, get_eq_nodes_get] at step
-      simp [eq₃] at step
-      rw [Array.get_set_eq] at step
-      simp [NFA.Node.charStep, NFA.Node.εStep] at step
+      simp [this, eq, eq₄, get_eq_nodes_get, eq₃, NFA.Node.charStep, NFA.Node.εStep] at step
       cases step with
       | inl eq =>
         have := ge_pushRegex_start eq₂.symm
@@ -287,7 +284,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
     cases Nat.eq_or_lt_of_le isLt with
     | inl eq =>
       simp at eq
-      simp [eq]
+      simp [eq, -List.length_eq_zero]
       exact Nat.ne_zero_iff_zero_lt.mpr h₁
     | inr lt =>
       have lt : i < nfa.nodes.size := Nat.lt_of_succ_lt_succ lt
@@ -304,7 +301,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
     cases Nat.eq_or_lt_of_le isLt with
     | inl eq =>
       simp at eq
-      simp [eq₃, eq]
+      simp [eq₃, eq, -List.length_eq_zero]
       exact Nat.ne_of_gt (Nat.zero_lt_of_lt nfa''.property)
     | inr lt =>
       have lt := Nat.lt_of_succ_lt_succ lt
@@ -315,7 +312,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
       cases Nat.eq_or_lt_of_le isLt with
       | inl eq =>
         simp at eq
-        simp [eq₁, eq]
+        simp [eq₁, eq, -List.length_eq_zero]
         exact Nat.ne_zero_iff_zero_lt.mpr h₁
       | inr lt =>
         have lt := Nat.lt_of_succ_lt_succ lt
@@ -332,7 +329,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
     cases Nat.eq_or_lt_of_le isLt with
     | inl eq =>
       simp at eq
-      simp [eq₅, eq]
+      simp [eq₅, eq, -List.length_eq_zero]
       exact Nat.ne_of_gt (Nat.zero_lt_of_lt nfa₂.property)
     | inr lt =>
       have lt := Nat.lt_of_succ_lt_succ lt
@@ -402,7 +399,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
       cases Nat.eq_or_lt_of_le isLt with
       | inl eq =>
         simp at eq
-        simp [eq₁, eq]
+        simp [eq₁, eq, -List.length_eq_zero]
         exact Nat.ne_zero_iff_zero_lt.mpr h₁
       | inr lt =>
         have lt := Nat.lt_of_succ_lt_succ lt

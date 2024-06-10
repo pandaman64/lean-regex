@@ -14,25 +14,25 @@ theorem eq_next_of_pathToNext (eq : pushRegex nfa next r = result)
   | inr ge => exfalso; exact Nat.not_le_of_lt assm ge
 
 theorem pathIn_split {start : Nat} (eq : pushRegex nfa next r = result)
-  (assm₁ : start < nfa.nodes.size) (assm₂ : i' < nfa.nodes.size) (assm₃ : nfa.nodes.size ≤ i)
+  (assm₁ : i' < nfa.nodes.size) (assm₂ : nfa.nodes.size ≤ i)
   (path : pathIn result start i i' cs) :
   ∃ cs₁ cs₂,
     cs = cs₁ ++ cs₂ ∧
     pathToNext result next nfa.nodes.size i cs₁ ∧
     pathIn result start next i' cs₂ := by
   induction path with
-  | base _ => exact absurd assm₂ (Nat.not_lt_of_le assm₃)
+  | base _ => exact absurd assm₁ (Nat.not_lt_of_le assm₂)
   | @step i j k cs cs' step rest ih =>
-    have := eq_or_ge_of_step_pushRegex eq assm₃ step.h₂ step.step
+    have := eq_or_ge_of_step_pushRegex eq assm₂ step.h₂ step.step
     cases this with
     | inl eq =>
       simp [eq] at step rest
       have pathToNext : pathToNext result next nfa.nodes.size i cs :=
-        ⟨i, [], cs, rfl, .base assm₃, step.castStart' assm₃⟩
+        ⟨i, [], cs, rfl, .base assm₂, step.castStart' assm₂⟩
       exact ⟨cs, cs', rfl, pathToNext, rest⟩
     | inr ge =>
-      obtain ⟨cs₁, cs₂, eqs, pathToNext, pathIn⟩ := ih assm₂ ge
-      exact ⟨cs ++ cs₁, cs₂, by simp [eqs], pathToNext.cons (step.castStart' assm₃), pathIn⟩
+      obtain ⟨cs₁, cs₂, eqs, pathToNext, pathIn⟩ := ih assm₁ ge
+      exact ⟨cs ++ cs₁, cs₂, by simp [eqs], pathToNext.cons (step.castStart' assm₂), pathIn⟩
 
 theorem rStart_of_push_star (eq : pushRegex nfa next (.star r) = result) :
   ∃ rStart, nfa.nodes.size + 1 ≤ rStart ∧ result.val[nfa.nodes.size]'result.property = .split rStart next := by
@@ -40,10 +40,7 @@ theorem rStart_of_push_star (eq : pushRegex nfa next (.star r) = result) :
   intro placeholder compiled patched nfa' isLt inBounds property
     eq₁ eq₂ eq₃ eq₄ eq
   exists compiled.val.start
-  simp [eq, eq₄, get_eq_nodes_get]
-  simp [eq₃]
-  rw [Array.get_set_eq]
-  simp
+  simp [eq, eq₄, get_eq_nodes_get, eq₃]
   have := ge_pushRegex_start eq₂.symm
   simp [eq₁] at this
   exact this
@@ -227,7 +224,7 @@ theorem matches_of_path.group (eq : pushRegex nfa next (.group i r) = result)
         intro i _ h₂
         rw [eq₃, pushNode_get_lt _ h₂]
       have ⟨cs₃, cs₄, eqs, path', path''⟩ :=
-        pathIn_split eq₂.symm nfa'.property (heq.left ▸ nfa'.property) (ge_pushRegex_start eq₂.symm) this
+        pathIn_split eq₂.symm (heq.left ▸ nfa'.property) (ge_pushRegex_start eq₂.symm) this
       cases path'' with
       | base _ =>
         simp at eqs
@@ -367,7 +364,7 @@ theorem matches_of_path.concat (eq : pushRegex nfa next (.concat r₁ r₂) = re
         _ < nfa₂.val.nodes.size := nfa₂.property
         _ ≤ next := ge
   have ⟨cs₃, cs₄, eqs', path₁, path₂⟩ :=
-    pathIn_split eq₁.symm nfa₂.property lti (ge_pushRegex_start eq₁.symm) path
+    pathIn_split eq₁.symm lti (ge_pushRegex_start eq₁.symm) path
   have m₁ := ih₁ eq₁.symm path₁
   have path₂ : pathToNext nfa₂ next nfa.nodes.size nfa₂.val.start.val (cs₄ ++ cs₂) := by
     have step₂ : stepIn nfa₂ nfa.nodes.size i next cs₂ := by
@@ -414,9 +411,7 @@ theorem matches_of_path.star (eq : pushRegex nfa next (.star r) = result)
   have : compiled.val.start.val = rStart_of eq := by
     have : result.val[nfa.nodes.size]'result.property = .split compiled.val.start.val next := by
       simp [eq', eq₄, get_eq_nodes_get, eq₃]
-      rw [Array.get_set_eq]
-    rw [this] at mem
-    simp at mem
+    simp [this] at mem
     exact mem
   rw [this]
   apply path'.cast
