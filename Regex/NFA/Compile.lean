@@ -127,7 +127,6 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
       intro i
       have hj : i < compiled.val.nodes.size := by
         suffices i.val < (compiled.val.nodes.set loopStart split).size by
-          -- Bare simp expands `let` declarations
           simp at this
           exact this
         exact i.isLt
@@ -281,8 +280,7 @@ def pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
     intro i
     have hj : i < compiled.val.nodes.size := by
       suffices i.val < (compiled.val.nodes.set loopStart split).size by
-        -- Bare simp expands `let` declarations
-        simp (config := {zeta := false}) at this
+        simp at this
         exact this
       exact i.isLt
     rw [Array.get_set (hj := hj)]
