@@ -122,7 +122,7 @@ def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
   nfa.nodes[i]
 
 instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
-  getElem := get
+  getElem nfa i h := get nfa i h
 
 theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) :
   nfa[i] = nfa.nodes[i] := rfl

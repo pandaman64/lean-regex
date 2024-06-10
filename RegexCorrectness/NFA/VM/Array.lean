@@ -3,7 +3,7 @@ import Regex.NFA.VM.Basic
 theorem Array.isEmpty_iff {α} {a : Array α} : a.isEmpty ↔ a = #[] := by
   simp [Array.isEmpty]
   apply Iff.intro
-  . exact eq_empty_of_size_eq_zero
+  . exact ext'
   . intro h
     simp [h]
 
@@ -23,8 +23,7 @@ theorem Array.mem_of_push (a : Array α) (x : α) :
 
 theorem Array.push_pop_eq (a : Array α) (hemp : ¬ a.isEmpty) :
   a.pop.push (a.back' hemp) = a := by
-  simp at hemp
-  have : 0 < a.size := Nat.pos_of_ne_zero hemp
+  have : 0 < a.size := zero_lt_size_of_not_empty hemp
   apply Array.ext
   . simp [Nat.sub_add_cancel this]
   . simp [Nat.sub_add_cancel this]

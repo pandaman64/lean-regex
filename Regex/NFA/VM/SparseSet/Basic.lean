@@ -1,6 +1,5 @@
 import Regex.NFA.VM.Vec.Basic
 import Regex.NFA.VM.SparseSet.Bijection
-import Std.Data.Fin.Lemmas
 
 namespace NFA.VM
 
@@ -26,7 +25,7 @@ open Bijection
 
 def empty {n : Nat} : SparseSet n :=
   let a := Array.ofFn (fun x : Fin n => ⟨0, x.size_pos⟩)
-  ⟨0, Vec.mk' a (by simp), Vec.mk' a (by simp), fun _ _ => by contradiction, Nat.zero_le _⟩
+  ⟨0, Vec.mk' a (by simp [a]), Vec.mk' a (by simp [a]), fun _ _ => by contradiction, Nat.zero_le _⟩
 
 theorem sparse_dense_fin (h : i < s.count) : s.sparse[s.dense[i]] = i :=
   s.sparse_dense i h
@@ -73,7 +72,7 @@ theorem dense_sparse_of_full (h : n ≤ s.count) : s.dense[s.sparse[j]] = j := b
     exact dense_inj (Nat.lt_of_lt_of_le x.isLt h) (Nat.lt_of_lt_of_le y.isLt h) eq
   have surj : surj f := surj_of_inj _ inj
   have ⟨i, eq⟩ := surj j
-  simp [←eq, s.sparse_dense i (Nat.lt_of_lt_of_le i.isLt h)]
+  simp [f, ←eq, s.sparse_dense i (Nat.lt_of_lt_of_le i.isLt h)]
 
 theorem lt_of_mem (i : Fin n) (h : ¬i ∈ s) : s.count < n := by
   simp [SparseSet.mem] at h
@@ -94,7 +93,7 @@ def insert (s : SparseSet n) (i : Fin n) : SparseSet n :=
       have : j ≤ count := Nat.le_of_succ_le_succ h
       cases Nat.eq_or_lt_of_le this with
       | inl eq =>
-        simp [eq]
+        simp [dense', sparse', eq]
         exact Fin.eq_of_val_eq eq.symm
       | inr lt =>
         have : dense'[j] = dense[j] := by

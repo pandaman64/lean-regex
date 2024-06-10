@@ -223,9 +223,7 @@ theorem pathToNext_of_matches.starConcat {cs₁ cs₂ : List Char}
   have := ih₁.trans ih₂
   apply this.cons (.εStep (by simp [eqStart]) nfa'.start.isLt ?_)
   rw [eq₄]
-  simp [get_eq_nodes_get, eq₃]
-  rw [Array.get_set_eq]
-  simp [Node.εStep]
+  simp [get_eq_nodes_get, eq₃, Node.εStep]
 
 theorem pathToNext_of_matches (eq : pushRegex nfa next r = nfa')
   (m : r.matches cs) :
@@ -275,9 +273,7 @@ theorem pathToNext_of_matches (eq : pushRegex nfa next r = nfa')
     rw[eq]
     have : nfa'.start.val = nfa.nodes.size := by
       rw [eq₄]
-    simp [this, eq₄, get_eq_nodes_get, eq₃]
-    rw [Array.get_set_eq]
-    simp [Node.εStep]
+    simp [this, eq₄, get_eq_nodes_get, eq₃, Node.εStep]
   | starConcat cs₁ cs₂ r _ _ ih₁ ih₂ => exact pathToNext_of_matches.starConcat eq ih₁ ih₂
 
 theorem pathToNext_of_compile_matches (eq : NFA.compile r = nfa)

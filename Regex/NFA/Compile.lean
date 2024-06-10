@@ -2,7 +2,7 @@ import Regex.Lemmas
 import Regex.Regex
 import Regex.NFA.Basic
 
-import Std.Data.Array.Lemmas
+import Batteries.Data.Array.Lemmas
 
 namespace NFA
 
@@ -12,16 +12,16 @@ def pushNode (nfa : NFA) (node : NFA.Node) (inBounds : node.inBounds (nfa.nodes.
   let nodes := nfa.nodes.push node
   have inBounds := by
     intro i
-    simp
+    simp [nodes]
     rw [Array.get_push]
     split
     case inl h =>
       have := nfa.inBounds ⟨i.val, h⟩
       apply Node.inBounds_of_inBounds_of_le this (Nat.le_succ _)
     case inr => exact inBounds
-  let nfa' : NFA := ⟨nodes, ⟨start, by simp⟩, inBounds⟩
+  let nfa' : NFA := ⟨nodes, ⟨start, by simp [nodes]⟩, inBounds⟩
 
-  ⟨nfa', by simp⟩
+  ⟨nfa', by simp [nodes]⟩
 
 @[simp]
 theorem pushNode_size {nfa : NFA} {node : Node} {inBounds : node.inBounds (nfa.nodes.size + 1)} :
@@ -88,7 +88,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
           _ < _ := nfa₂.property
           _ < _ := Nat.lt_succ_self _
       have lt₂ : start₂ < nfa₂.val.nodes.size + 1 := Nat.lt_trans start₂.isLt (Nat.lt_succ_self _)
-      simp [lt₁, lt₂]
+      simp [split, lt₁, lt₂]
 
     let nfa' := nfa₂.val.pushNode split inBounds
     have property : nfa.nodes.size < nfa'.val.nodes.size :=
@@ -122,19 +122,15 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
 
     let split := Node.split compiled.val.start next
     let patched := compiled.val.nodes.set loopStart split
-    have inBounds := by
-      -- Somehow putting the type directly on `inBounds` causes an infinite loop
-      show ∀ i : Fin patched.size, patched[i].inBounds patched.size
-      -- FIXME: I don't know how to unfold only `patched`
-      show ∀ i : Fin (compiled.val.nodes.set loopStart split).size, (compiled.val.nodes.set loopStart split)[i].inBounds (compiled.val.nodes.set loopStart split).size
+    have inBounds : ∀ i : Fin patched.size, patched[i].inBounds patched.size := by
+      simp [patched]
       intro i
       have hj : i < compiled.val.nodes.size := by
         suffices i.val < (compiled.val.nodes.set loopStart split).size by
-          -- Bare simp expands `let` declarations
-          simp (config := {zeta := false}) at this
+          simp at this
           exact this
         exact i.isLt
-      rw [getElem_fin, Array.get_set (hj := hj)]
+      rw [Array.get_set (hj := hj)]
       split
       case inl =>
         have lt₁ : compiled.val.start < compiled.val.nodes.size := compiled.val.start.isLt
@@ -143,19 +139,18 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
             _ < _ := next.isLt
             _ < _ := placeholder.property
             _ < _ := compiled.property
-        simp [lt₁, lt₂]
+        simp [compiled, split, lt₁, lt₂]
       case inr neq =>
         have := compiled.val.inBounds ⟨i, hj⟩
-        simp (config := {zeta := false}) at this
-        simp (config := {zeta := false})
-        simp [this]
+        simp at this
+        exact this
 
     let nfa' := ⟨patched, loopStart.cast (by rw [Array.size_set]), inBounds⟩
     have property :=
       calc
         _ < _ := placeholder.property
         _ < _ := compiled.property
-        _ = nfa'.nodes.size := by simp
+        _ = nfa'.nodes.size := by simp [patched]
 
     ⟨nfa', property⟩
 
@@ -163,29 +158,29 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
 def compile (r : Regex) : NFA := done.pushRegex ⟨0, by decide⟩ r
 
 -- Useful lemmas about the compilation
-theorem pushRegex.empty (eq : pushRegex nfa next .empty = result)
+def pushRegex.empty (eq : pushRegex nfa next .empty = result)
   {motive : result = nfa.pushNode .fail (by simp) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 
-theorem pushRegex.epsilon (eq : pushRegex nfa next .epsilon = result)
+def pushRegex.epsilon (eq : pushRegex nfa next .epsilon = result)
   {motive : result = nfa.pushNode (.epsilon next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 
-theorem pushRegex.char (eq : pushRegex nfa next (.char c) = result)
+def pushRegex.char (eq : pushRegex nfa next (.char c) = result)
   {motive : result = nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _)) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 
-theorem pushRegex.sparse
+def pushRegex.sparse
   (eq : pushRegex nfa next (.classes c) = result)
   {motive : result = nfa.pushNode (.sparse c next)
   ((by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))) → P} : P := by
   simp [pushRegex] at eq
   exact motive eq.symm
 
-theorem pushRegex.group (eq : pushRegex nfa next (Regex.group index r) = result)
+def pushRegex.group (eq : pushRegex nfa next (Regex.group index r) = result)
   {motive : ∀ nfa' nfa'' nfa''' property inBounds' inBounds''',
     nfa' = nfa.pushNode (.save (2 * index + 1) next) inBounds' →
     nfa'' = nfa'.val.pushRegex nfa'.val.start r →
@@ -211,7 +206,7 @@ theorem pushRegex.group (eq : pushRegex nfa next (Regex.group index r) = result)
 
   exact motive nfa' nfa'' nfa''' property inBounds' inBounds''' rfl rfl rfl eq.symm
 
-theorem pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂) = result)
+def pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂) = result)
   {motive : ∀ nfa₁ start₁ nfa₂ start₂ inBounds nfa' property,
     nfa₁ = nfa.pushRegex next r₁ →
     start₁ = nfa₁.val.start →
@@ -234,7 +229,7 @@ theorem pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂)
         _ < _ := nfa₂.property
         _ < _ := Nat.lt_succ_self _
     have lt₂ : start₂ < nfa₂.val.nodes.size + 1 := Nat.lt_trans start₂.isLt (Nat.lt_succ_self _)
-    simp [lt₁, lt₂]
+    simp [split, lt₁, lt₂]
 
   let nfa' := nfa₂.val.pushNode split inBounds
   have property : nfa.nodes.size < nfa'.val.nodes.size :=
@@ -245,7 +240,7 @@ theorem pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂)
 
   exact motive nfa₁ start₁ nfa₂ start₂ inBounds nfa' property rfl rfl rfl rfl rfl eq.symm
 
-theorem pushRegex.concat (eq : pushRegex nfa next (Regex.concat r₁ r₂) = result)
+def pushRegex.concat (eq : pushRegex nfa next (Regex.concat r₁ r₂) = result)
   {motive : ∀ nfa₂ nfa₁ property,
     nfa₂ = nfa.pushRegex next r₂ →
     nfa₁ = nfa₂.val.pushRegex nfa₂.val.start r₁ →
@@ -262,7 +257,7 @@ theorem pushRegex.concat (eq : pushRegex nfa next (Regex.concat r₁ r₂) = res
 
   exact motive nfa₂ nfa₁ property rfl rfl eq.symm
 
-theorem pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
+def pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
   {motive : ∀ placeholder compiled patched nfa' isLt inBounds property,
     placeholder = nfa.pushNode .fail (by simp) →
     compiled = placeholder.val.pushRegex ⟨nfa.nodes.size, placeholder.property⟩ r →
@@ -280,19 +275,15 @@ theorem pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
   let loopStart : Fin _ := ⟨nfa.nodes.size, Nat.lt_trans placeholder.property compiled.property⟩
   let split := Node.split compiled.val.start next
   let patched := compiled.val.nodes.set loopStart split
-  have inBounds := by
-    -- Somehow putting the type directly on `inBounds` causes an infinite loop
-    show ∀ i : Fin patched.size, patched[i].inBounds patched.size
-    -- FIXME: I don't know how to unfold only `patched`
-    show ∀ i : Fin (compiled.val.nodes.set loopStart split).size, (compiled.val.nodes.set loopStart split)[i].inBounds (compiled.val.nodes.set loopStart split).size
+  have inBounds : ∀ i : Fin patched.size, patched[i].inBounds patched.size := by
+    simp [patched]
     intro i
     have hj : i < compiled.val.nodes.size := by
       suffices i.val < (compiled.val.nodes.set loopStart split).size by
-        -- Bare simp expands `let` declarations
-        simp (config := {zeta := false}) at this
+        simp at this
         exact this
       exact i.isLt
-    rw [getElem_fin, Array.get_set (hj := hj)]
+    rw [Array.get_set (hj := hj)]
     split
     case inl =>
       have lt₁ : compiled.val.start < compiled.val.nodes.size := compiled.val.start.isLt
@@ -301,24 +292,23 @@ theorem pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
           _ < _ := next.isLt
           _ < _ := placeholder.property
           _ < _ := compiled.property
-      simp [lt₁, lt₂]
+      simp [split, lt₁, lt₂]
     case inr neq =>
       have := compiled.val.inBounds ⟨i, hj⟩
-      simp (config := {zeta := false}) at this
-      simp (config := {zeta := false})
-      simp [this]
+      simp at this
+      exact this
 
   have isLt : nfa.nodes.size < patched.size :=
     calc
       _ < _ := placeholder.property
       _ < _ := compiled.property
-      _ = _ := by simp
+      _ = _ := by simp [patched]
   let nfa' : NFA := ⟨patched, ⟨nfa.nodes.size, isLt⟩, inBounds⟩
   have property :=
     calc
       _ < _ := placeholder.property
       _ < _ := compiled.property
-      _ = nfa'.nodes.size := by simp
+      _ = nfa'.nodes.size := by simp [patched]
 
   exact motive placeholder compiled patched nfa' isLt inBounds property rfl rfl rfl rfl eq.symm
 

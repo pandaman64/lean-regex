@@ -1,5 +1,5 @@
 -- Minimal theory about the bijection between `Fin n`.
-import Std.Tactic.Basic
+import Batteries.Tactic.Basic
 
 namespace NFA.VM.Bijection
 
@@ -46,18 +46,18 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
 
       if hx : f x' < n then
         if hy : f y' < n then
-          simp [hx, hy] at eq
+          simp [f', hx, hy] at eq
           have := h _ _ (Fin.eq_of_val_eq eq)
           simp at this
           exact Fin.eq_of_val_eq this
         else
-          simp [hx, hy] at eq
+          simp [f', hx, hy] at eq
           have := h _ _ (Fin.eq_of_val_eq eq)
           simp at this
           exact absurd (this ▸ x.isLt) (Nat.lt_irrefl _)
       else
         if hy : f y' < n then
-          simp [hx, hy] at eq
+          simp [f', hx, hy] at eq
           have := h _ _ (Fin.eq_of_val_eq eq)
           simp at this
           exact absurd (this.symm ▸ y.isLt) (Nat.lt_irrefl _)
@@ -77,7 +77,7 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
 
     if isLt : y.val < n then
       let ⟨x, eq⟩ := surj ⟨y.val, isLt⟩
-      simp at eq
+      simp [f'] at eq
       split at eq
       case inl =>
         simp at eq
@@ -90,11 +90,11 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
       simp [this]
       if isLt' : f n' < n then
         let ⟨x, eq⟩ := surj ⟨(f n').val, isLt'⟩
-        simp at eq
+        simp [f'] at eq
         split at eq
         case inl =>
           simp at eq
-          have := h _ _ (Fin.eq_of_val_eq eq)
+          have := Fin.val_eq_of_eq (h _ _ (Fin.eq_of_val_eq eq))
           simp at this
           exact absurd (this ▸ x.isLt) (Nat.lt_irrefl _)
         case inr nlt =>
