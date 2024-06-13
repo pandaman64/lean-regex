@@ -1,4 +1,3 @@
-import Regex.Lemmas
 import Regex.Regex
 import Regex.NFA.Basic
 

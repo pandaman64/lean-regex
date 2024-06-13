@@ -15,3 +15,6 @@ require mathlib from git
 
 require Parser from git
   "https://github.com/fgdorais/lean4-parser" @ "3d98183d1446d27c831e911be1f428f2b0466eb6"
+
+meta if get_config? doc = some "on" then -- do not download and build doc-gen4 by default
+require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "c7f4ac84b973b6efd8f24ba2b006cad1b32c9c53"

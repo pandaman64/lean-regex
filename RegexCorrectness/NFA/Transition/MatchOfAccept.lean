@@ -196,7 +196,7 @@ theorem matches_of_path.group (eq : pushRegex nfa next (.group i r) = result)
           simp [eq₃]
         have h₂ := step.h₂
         simp [eq₃] at h₂
-        have : i' = nfa''.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
+        have : i' = nfa''.val.nodes.size := Nat.eq_of_le_of_lt_succ ge h₂
         have step := step.step
         simp [this, eqStart, Node.charStep, Node.εStep] at step
         have : nfa.nodes.size < nfa''.val.start := Nat.lt_of_lt_of_le nfa'.property (ge_pushRegex_start eq₂.symm)
@@ -435,7 +435,7 @@ where
 
     cases Nat.lt_or_ge i (nfa.nodes.size + 1) with
     | inl lt =>
-      have eqi := Nat.eq_of_ge_of_lt step.h₁ lt
+      have eqi := Nat.eq_of_le_of_lt_succ step.h₁ lt
       obtain ⟨_, node⟩ := rStart_of_spec eq
       cases step with
       | charStep _ _ step => simp [eqi, node, NFA.Node.charStep] at step
@@ -476,7 +476,7 @@ theorem matches_of_pathToNext_pushRegex
       have := step.h₂
       simp at this
       exact this
-    have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt (le_of_pathIn_right path) this
+    have : i = nfa.nodes.size := Nat.eq_of_le_of_lt_succ (le_of_pathIn_right path) this
     match step with
     | stepIn.charStep (c := c) _ _ step =>
       simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
@@ -502,7 +502,7 @@ theorem matches_of_pathToNext_pushRegex
       have := step.h₂
       simp at this
       exact this
-    have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt (le_of_pathIn_right path) this
+    have : i = nfa.nodes.size := Nat.eq_of_le_of_lt_succ (le_of_pathIn_right path) this
     cases step <;> simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
   | epsilon =>
     apply pushRegex.epsilon eq
@@ -513,7 +513,7 @@ theorem matches_of_pathToNext_pushRegex
       have := step.h₂
       simp at this
       exact this
-    have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt (le_of_pathIn_right path) this
+    have : i = nfa.nodes.size := Nat.eq_of_le_of_lt_succ (le_of_pathIn_right path) this
     cases step <;> simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
     cases path with
     | base _ => exact eqs ▸ .epsilon
@@ -533,7 +533,7 @@ theorem matches_of_pathToNext_pushRegex
       have := step.h₂
       simp at this
       exact this
-    have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt (le_of_pathIn_right path) this
+    have : i = nfa.nodes.size := Nat.eq_of_le_of_lt_succ (le_of_pathIn_right path) this
     cases step <;> simp [this, NFA.Node.charStep, NFA.Node.εStep] at *
     cases path with
     | base _ =>
