@@ -1,6 +1,6 @@
-import Regex.Classes
+import Regex.Data.Classes
 
-namespace NFA
+namespace Regex.NFA
 
 inductive Node where
   | done
@@ -10,7 +10,7 @@ inductive Node where
   | split (next₁ next₂ : Nat)
   | save (offset : Nat) (next : Nat)
   -- TODO: use an efficient representation
-  | sparse (cs : Regex.Classes) (next : Nat)
+  | sparse (cs : Regex.Data.Classes) (next : Nat)
 deriving Repr
 
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
@@ -87,10 +87,12 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
   next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
 
-end NFA
+end Regex.NFA
+
+namespace Regex
 
 /--
-  The NFA consists an array of nodes and a designated start node.
+  A NFA consists an array of nodes and a designated start node.
 
   The transition relation and accept nodes are embedded in the nodes themselves.
 -/
@@ -139,3 +141,4 @@ theorem inBounds' (nfa : NFA) (i : Fin nfa.nodes.size) (hn : nfa[i] = n) : n.inB
   exact this ▸ inBounds
 
 end NFA
+end Regex

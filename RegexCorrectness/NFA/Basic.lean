@@ -2,7 +2,7 @@ import Regex.NFA.Basic
 
 import Mathlib.Data.Set.Basic
 
-namespace NFA
+namespace Regex.NFA
 
 def Node.charStep (n : Node) (c : Char) : Set Nat :=
   match n with
@@ -109,4 +109,4 @@ theorem lt_of_charStep {nfa : NFA} {i j : Nat} {h : i < nfa.nodes.size}
 --   | none => apply εStep_cases h (epsilon rfl) (fun next₁ next₂ => split _ _ rfl)
 --   | some c' => apply charStep_cases h (char c' rfl)
 
-end NFA
+end Regex.NFA

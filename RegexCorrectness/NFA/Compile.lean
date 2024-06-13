@@ -3,7 +3,7 @@ import RegexCorrectness.NFA.Basic
 
 import Mathlib.Tactic.Common
 
-namespace NFA
+namespace Regex.NFA
 
 theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i < nfa.nodes.size) :
   result.val[i]'(Nat.lt_trans h result.property) = nfa[i] := by
@@ -126,7 +126,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
     intro eq
     subst eq
     simp at h₂
-    have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
+    have : i = nfa.nodes.size := Nat.eq_of_le_of_lt_succ h₁ h₂
     simp [this, NFA.Node.charStep, NFA.Node.εStep] at step
   | epsilon | char c | classes r =>
     try apply pushRegex.epsilon eq
@@ -135,7 +135,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
     intro eq
     subst eq
     simp at h₂
-    have : i = nfa.nodes.size := Nat.eq_of_ge_of_lt h₁ h₂
+    have : i = nfa.nodes.size := Nat.eq_of_le_of_lt_succ h₁ h₂
     simp [this, NFA.Node.charStep, NFA.Node.εStep] at step
     try exact .inl step
     try exact .inl (And.right step)
@@ -172,7 +172,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
         | inr ge => exact Nat.le_trans (Nat.le_of_lt nfa'.property) ge
       | inr ge =>
         simp [eq, eq₃] at h₂
-        have : i = nfa''.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
+        have : i = nfa''.val.nodes.size := Nat.eq_of_le_of_lt_succ ge h₂
         simp [this, eq, eq₃, Node.charStep, Node.εStep] at step
         exact .inr (Nat.le_trans (Nat.le_of_lt nfa'.property) (step ▸ ge_pushRegex_start eq₂.symm))
   | alternate r₁ r₂ ih₁ ih₂ =>
@@ -203,7 +203,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
         | inr ge => exact .inr (Nat.le_trans (Nat.le_of_lt nfa₁.property) ge)
       | inr ge =>
         simp [eq, eq₅] at h₂
-        have : i = nfa₂.val.nodes.size := Nat.eq_of_ge_of_lt ge h₂
+        have : i = nfa₂.val.nodes.size := Nat.eq_of_le_of_lt_succ ge h₂
         simp [this, eq, eq₅, NFA.Node.charStep, NFA.Node.εStep] at step
         apply Or.inr
         cases step with
@@ -430,4 +430,4 @@ theorem lt_zero_size_compile (eq : compile r = nfa) :
   have : 0 < result.val.nodes.size := Nat.zero_lt_of_lt result.property
   exact eq ▸ this
 
-end NFA
+end Regex.NFA

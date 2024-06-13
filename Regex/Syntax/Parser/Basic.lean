@@ -1,8 +1,7 @@
-import Parser
-import Regex.Regex
-import Regex.Syntax.Hir
+import Regex.Syntax.Ast
 import Regex.Syntax.Parser.ParserAux
 
+open Regex.Data (PerlClass PerlClassKind Class Expr)
 open Parser
 open Parser.Char
 
@@ -24,7 +23,7 @@ def digitToInt (c : Char) : Nat :=
 -- NOTE: I don't have any idea if the precedence or any other stuff are correct here
 mutual
 
-partial def escaped (withPerlClasses: Bool) : Parser (if withPerlClasses then Hir else Char) :=
+partial def escaped (withPerlClasses: Bool) : Parser (if withPerlClasses then Ast else Char) :=
   withErrorMessage "expected an escaped character" do
     let _ ← token '\\'
     let c ← anyToken
@@ -54,21 +53,21 @@ partial def escaped (withPerlClasses: Bool) : Parser (if withPerlClasses then Hi
         pure (Char.ofNat n)
       | _   => pure c
 
-    let perlClasses (c: Char) : Parser Hir :=
+    let perlClasses (c: Char) : Parser Ast :=
       match c with
-      | 'd' => pure (Hir.perl (PerlClass.mk false PerlClassKind.digit))
-      | 'D' => pure (Hir.perl (PerlClass.mk true PerlClassKind.digit))
-      | 's' => pure (Hir.perl (PerlClass.mk false PerlClassKind.space))
-      | 'S' => pure (Hir.perl (PerlClass.mk true PerlClassKind.space))
-      | 'w' => pure (Hir.perl (PerlClass.mk false PerlClassKind.word))
-      | 'W' => pure (Hir.perl (PerlClass.mk true PerlClassKind.word))
+      | 'd' => pure (Ast.perl (PerlClass.mk false PerlClassKind.digit))
+      | 'D' => pure (Ast.perl (PerlClass.mk true PerlClassKind.digit))
+      | 's' => pure (Ast.perl (PerlClass.mk false PerlClassKind.space))
+      | 'S' => pure (Ast.perl (PerlClass.mk true PerlClassKind.space))
+      | 'w' => pure (Ast.perl (PerlClass.mk false PerlClassKind.word))
+      | 'W' => pure (Ast.perl (PerlClass.mk true PerlClassKind.word))
       |  _  => throwUnexpected
 
     match withPerlClasses with
-    | true  => perlClasses c <|> (Hir.char <$> escape c)
+    | true  => perlClasses c <|> (Ast.char <$> escape c)
     | false => escape c
 
-partial def group : Parser Hir :=
+partial def group : Parser Ast :=
   withErrorMessage "expected a group" do
     let _ ← token '('
     let nonCapturing ← test (chars "?:")
@@ -76,22 +75,22 @@ partial def group : Parser Hir :=
     let _ ← token ')'
     pure (if nonCapturing then r else .group r)
 
-partial def charWithPerlClasses : Parser Hir :=
+partial def charWithPerlClasses : Parser Ast :=
   withErrorMessage "expected a character" do
-    escaped true <|> (Hir.char <$> tokenFilter (!specialCharacters.contains ·))
+    escaped true <|> (Ast.char <$> tokenFilter (!specialCharacters.contains ·))
 
-partial def char : Parser Hir :=
+partial def char : Parser Ast :=
   withErrorMessage "expected a character" do
-    Hir.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
+    Ast.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
 
 partial def class_ : Parser Class := do
   let cannotUsePerlClassInInterval :=
     throwUnexpectedWithMessage none "cannot use perl classes in intervals"
 
-  let expectsChar (hir: Hir) : Parser Char :=
-    match hir with
-    | Hir.perl _ => cannotUsePerlClassInInterval
-    | Hir.char c => pure c
+  let expectsChar (ast : Ast) : Parser Char :=
+    match ast with
+    | Ast.perl _ => cannotUsePerlClassInInterval
+    | Ast.char c => pure c
     | _          => throwUnexpected
 
   let first ← charWithPerlClasses
@@ -106,50 +105,50 @@ partial def class_ : Parser Class := do
       else throwUnexpectedWithMessage none "invalid range"
   else
     match first with
-    | Hir.perl p => pure (Class.perl p)
-    | Hir.char c => pure (Class.single c)
+    | Ast.perl p => pure (Class.perl p)
+    | Ast.char c => pure (Class.single c)
     | _          => throwUnexpected
 
-partial def classes : Parser Hir :=
+partial def classes : Parser Ast :=
   withErrorMessage "expected a character class" do
     let _         ← token '['
     let negated   ← test (token '^')
     let classes ← takeMany1 class_
     let _         ← token ']'
-    pure $ Hir.classes { negated := negated, classes := classes }
+    pure $ Ast.classes { negated := negated, classes := classes }
 
-partial def primitive : Parser Hir := withBacktracking group <|> classes <|> charWithPerlClasses
+partial def primitive : Parser Ast := withBacktracking group <|> classes <|> charWithPerlClasses
 
-partial def star : Parser Hir :=
+partial def star : Parser Ast :=
   withErrorMessage "expected a star" do
     let r ← primitive
     -- Eat stars as many as possible
-    foldl (fun r _ => Hir.star r) r (token '*')
+    foldl (fun r _ => Ast.star r) r (token '*')
 
-partial def concat : Parser Hir :=
+partial def concat : Parser Ast :=
   withErrorMessage "expected a concatenation" do
-    foldl1 Hir.concat star
+    foldl1 Ast.concat star
 
-partial def alternate : Parser Hir :=
+partial def alternate : Parser Ast :=
   withErrorMessage "expected an alternation" do
     let init ← branch
-    foldl Hir.alternate init (Char.char '|' *> branch)
+    foldl Ast.alternate init (Char.char '|' *> branch)
 where
-  branch : Parser Hir := optionD Hir.epsilon concat
+  branch : Parser Ast := optionD Ast.epsilon concat
 
-partial def regex : Parser Hir :=
+partial def regex : Parser Ast :=
   withErrorMessage "expected a regular expression" do
     alternate
 
 end
 
-def parse (input : String) : Except String Regex :=
+def parse (input : String) : Except String Expr :=
   match (regex <* endOfInput).run input.toSubstring with
-  | .ok _ r => .ok (Hir.group r).toRegex
+  | .ok _ r => .ok (Ast.group r).toRegex
   | .error _ e => .error (toString e)
 
 @[export lean_regex_parse_or_panic]
-def parse! (input : String) : Regex :=
+def parse! (input : String) : Expr :=
   match parse input with
   | Except.ok r => r
   | Except.error e => panic! s!"Failed to parse a regex: {e}"
