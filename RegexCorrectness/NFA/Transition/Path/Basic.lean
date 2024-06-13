@@ -1,7 +1,6 @@
 import RegexCorrectness.NFA.Basic
-import RegexCorrectness.NFA.Compile
 
-namespace NFA
+namespace Regex.NFA
 
 inductive stepIn (nfa : NFA) (start : Nat) : (current next : Nat) → (cs : List Char) → Prop where
   | charStep {i j : Nat} {c : Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) : nfa.stepIn start i j [c]
@@ -57,6 +56,24 @@ theorem stepIn.cast {nfa nfa' : NFA} {start : Nat}
     exact .charStep h₁ h (eq ▸ step)
   | εStep h₁ h₂ step =>
     exact .εStep h₁ h (eq ▸ step)
+
+theorem stepIn.nil_or_singleton {start} (h : stepIn nfa start i j cs) :
+  cs = [] ∨ ∃ c, cs = [c] := by
+  cases h with
+  | εStep => exact .inl rfl
+  | charStep => exact .inr ⟨_, rfl⟩
+
+theorem stepIn.nil_of_snoc {start} (h : stepIn nfa start i j (cs ++ [c])) :
+  cs = [] := by
+  generalize h' : cs ++ [c] = cs' at h
+  cases h with
+  | εStep => simp at h'
+  | charStep =>
+    cases cs with
+    | nil => rfl
+    | cons _ _ =>
+      have := congrArg List.length h'
+      simp at this
 
 -- Maybe we should recurse from the last as we reason about the last step often
 inductive pathIn (nfa : NFA) (start : Nat) : (first : Nat) → (last : Nat) → (cs : List Char) → Prop where
@@ -245,4 +262,4 @@ theorem pathIn_of_pathToNext {nfa : NFA} {start : Nat}
   | charStep h₁ h₂ step => exact eqs ▸ path.snoc_char h₂ step
   | εStep h₁ h₂ step => simp [eqs, path.snoc_ε h₂ step]
 
-end NFA
+end Regex.NFA

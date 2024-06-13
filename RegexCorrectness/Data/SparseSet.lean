@@ -1,6 +1,6 @@
-import Regex.NFA.VM.SparseSet
+import Regex.Data.SparseSet
 
-namespace NFA.VM.SparseSet
+namespace Regex.Data.SparseSet
 
 theorem mem_insert_of_mem {s : SparseSet n} {i j : Fin n} : i ∈ s → i ∈ s.insert j := by
   intro h
@@ -61,4 +61,4 @@ theorem mem_get {s : SparseSet n} {i : Nat} (h : i < s.count) : s[i] ∈ s := by
   simp at this
   simp [this, h]
 
-end NFA.VM.SparseSet
+end Regex.Data.SparseSet

@@ -1,3 +1,2 @@
-import RegexCorrectness.NFA.Basic
-import RegexCorrectness.NFA.Compile
-import RegexCorrectness.NFA.Transition.Equivalance
+import RegexCorrectness.NFA.Transition.Path
+import RegexCorrectness.NFA.Transition.Closure

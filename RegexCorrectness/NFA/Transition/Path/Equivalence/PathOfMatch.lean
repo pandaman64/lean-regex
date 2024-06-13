@@ -1,71 +1,12 @@
 -- When the regex matches a string, the compiled NFA accepts it.
+import RegexCorrectness.Semantics.Expr.Matches
 import RegexCorrectness.NFA.Basic
 import RegexCorrectness.NFA.Compile
-import RegexCorrectness.NFA.Transition.Basic
+import RegexCorrectness.NFA.Transition.Path.Basic
 
 import Mathlib.Tactic.Common
 
-namespace NFA
-
--- NOTE: I wanted to make this a claim about `Fin nfa.nodes.size`, but it's super cumbersome
--- to cast between `Fin nfa₁.nodes.size` and `Fin nfa₂.nodes.size`.
-inductive εClosure (nfa : NFA) : Nat → Set Nat where
-  | base : nfa.εClosure i i
-  | step {i j k : Nat} (step : j ∈ nfa.εStep i) (rest : nfa.εClosure j k) :
-    nfa.εClosure i k
-
--- theorem lt_of_εClosure_left {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i) :
---   i < nfa.nodes.size := by
---   cases h with
---   | base h => exact h
---   | step h => exact h
-
-theorem lt_of_εClosure_right {nfa : NFA} {i j : Nat}
-  (lt : i < nfa.nodes.size) (h : j ∈ nfa.εClosure i) :
-  j < nfa.nodes.size := by
-  induction h with
-  | base => exact lt
-  | @step i j _ step _ ih =>
-    have : j < nfa.nodes.size := by
-      simp [εStep] at step
-      split at step <;> exact lt_of_εStep step
-    exact ih this
-
-theorem εClosure_snoc {nfa : NFA} (cls : j ∈ nfa.εClosure i) (step : k ∈ nfa.εStep j) :
-  k ∈ nfa.εClosure i := by
-  induction cls with
-  | base => exact .step step .base
-  | step step' _ ih => exact εClosure.step step' (ih step)
-
-theorem εClosure_trans {nfa : NFA} (h₁ : j ∈ nfa.εClosure i) (h₂ : k ∈ nfa.εClosure j) :
-  k ∈ nfa.εClosure i := by
-  induction h₁ with
-  | base => exact h₂
-  | step head _ ih => exact .step head (ih h₂)
-
-theorem subset_εClosure_of_mem {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i) :
-  nfa.εClosure j ⊆ nfa.εClosure i := by
-  intro k h'
-  exact εClosure_trans h h'
-
--- Useful theorem when proving that reachability algorithm gives the εClosure
-theorem mem_εStep_iff_εClosure_sub {nfa : NFA} {S : Set Nat} :
-  (∀ i ∈ S, (_ : i < nfa.nodes.size) → ∀ j ∈ nfa[i].εStep, j ∈ S) ↔
-  ∀ i ∈ S, nfa.εClosure i ⊆ S := by
-  apply Iff.intro
-  . intro assm i mem
-    intro k cls
-    induction cls with
-    | base => exact mem
-    | @step i j k step _ ih =>
-      cases Nat.decLt i nfa.nodes.size with
-      | isTrue lt =>
-        simp [εStep, lt] at step
-        exact ih (assm i mem lt j step)
-      | isFalse nlt => simp [εStep, nlt] at step
-  . intro assm i mem _ j step
-    apply Set.mem_of_mem_of_subset _ (assm i mem)
-    exact εClosure.step (εStep_of_εStep step) .base
+namespace Regex.NFA
 
 theorem pathToNext_of_matches.group {cs : List Char}
   (eq : pushRegex nfa next (.group i r) = nfa')
@@ -276,7 +217,7 @@ theorem pathToNext_of_matches (eq : pushRegex nfa next r = nfa')
     simp [this, eq₄, get_eq_nodes_get, eq₃, Node.εStep]
   | starConcat cs₁ cs₂ r _ _ ih₁ ih₂ => exact pathToNext_of_matches.starConcat eq ih₁ ih₂
 
-theorem pathToNext_of_compile_matches (eq : NFA.compile r = nfa)
+theorem pathToNext_of_compile_matches (eq : compile r = nfa)
   (m : r.matches cs) :
   pathToNext nfa 0 1 nfa.start cs := by
   unfold NFA.compile at eq
@@ -285,4 +226,4 @@ theorem pathToNext_of_compile_matches (eq : NFA.compile r = nfa)
   rw [eq] at this
   exact this
 
-end NFA
+end Regex.NFA

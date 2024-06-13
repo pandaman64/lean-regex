@@ -1,39 +1,35 @@
-import RegexCorrectness.NFA.Transition
-import RegexCorrectness.NFA.VM
+import RegexCorrectness.NFA.Transition.Closure.Basic
+import RegexCorrectness.NFA.Transition.Path
 
-namespace NFA
+import Mathlib.Data.List.Indexes
 
-theorem pathIn_of_reaches {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char}
-  (h : nfa.reaches i m) :
-  nfa.pathIn 0 nfa.start i m := by
-  induction h with
-  | nil cls => simp [pathIn_iff_εClosure.mpr cls]
-  | @snoc i j k c m _ step cls ih =>
-    simp [charStep] at step
-    have ih' : nfa.pathIn (min 0 j) nfa.start j (m ++ [c]) :=
-      ih.snoc_char i.isLt step
-    simp at ih'
-    have := ih'.trans (pathIn_iff_εClosure.mpr cls)
-    simp at this
-    exact this
+namespace Regex.NFA
 
-theorem stepIn.nil_or_singleton {start} (h : stepIn nfa start i j cs) :
-  cs = [] ∨ ∃ c, cs = [c] := by
-  cases h with
-  | εStep => exact .inl rfl
-  | charStep => exact .inr ⟨_, rfl⟩
+theorem εClosure_of_pathIn {nfa : NFA} {start} (path : nfa.pathIn start i i' []) :
+  i' ∈ nfa.εClosure i := by
+  generalize h : [] = cs at path
+  induction path with
+  | base _ => exact .base
+  | @step i j k cs cs' step _ ih =>
+    simp at h
+    simp [h] at *
+    cases step with
+    | εStep _ _ step =>
+      exact εClosure.step (εStep_of_εStep step) ih
 
-theorem stepIn.nil_of_snoc {start} (h : stepIn nfa start i j (cs ++ [c])) :
-  cs = [] := by
-  generalize h' : cs ++ [c] = cs' at h
-  cases h with
-  | εStep => simp at h'
-  | charStep =>
-    cases cs with
-    | nil => rfl
-    | cons _ _ =>
-      have := congrArg List.length h'
-      simp at this
+theorem pathIn_iff_εClosure {nfa : NFA} :
+  nfa.pathIn 0 i i' [] ↔ i' ∈ nfa.εClosure i := by
+  apply Iff.intro
+  . exact εClosure_of_pathIn
+  . intro h
+    induction h with
+    | base => exact .base (Nat.zero_le _)
+    | @step i j k step _ ih =>
+      cases Nat.decLt i nfa.nodes.size with
+      | isTrue lt =>
+        simp [εStep, lt] at step
+        exact .step (.εStep (Nat.zero_le _) lt step) ih
+      | isFalse nlt => simp [εStep, nlt] at step
 
 theorem pathIn.of_snoc_char {start}
   (path : pathIn nfa start i l (cs ++ [c])) :
@@ -68,6 +64,20 @@ where
         simp at h₂
         exact ⟨h₁.left, h₂⟩
       simp [this]
+
+theorem pathIn_of_reaches {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char}
+  (h : nfa.reaches i m) :
+  nfa.pathIn 0 nfa.start i m := by
+  induction h with
+  | nil cls => simp [pathIn_iff_εClosure.mpr cls]
+  | @snoc i j k c m _ step cls ih =>
+    simp [charStep] at step
+    have ih' : nfa.pathIn (min 0 j) nfa.start j (m ++ [c]) :=
+      ih.snoc_char i.isLt step
+    simp at ih'
+    have := ih'.trans (pathIn_iff_εClosure.mpr cls)
+    simp at this
+    exact this
 
 theorem reaches_of_pathIn {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char}
   (h : nfa.pathIn 0 nfa.start i m) :
@@ -107,15 +117,4 @@ theorem matches_iff_reaches (eq : compile r = nfa) :
   r.matches cs ↔ ∃ i, nfa.reaches i cs ∧ nfa[i] = .done :=
   ⟨reaches_of_matches eq, fun ⟨_, h₁, h₂⟩ => matches_of_reaches eq h₁ h₂⟩
 
-theorem matches_of_captureNext
-  (eq : compile re = nfa)
-  (h : captureNext nfa it saveSize = matched)
-  (v : it.Valid)
-  (hsome : matched.isSome) :
-  ∃ (s : Substring) (l m r : List Char),
-    s.ValidFor l m r ∧ it.toString = ⟨l ++ m ++ r⟩ ∧ re.matches m := by
-  have ⟨s, l, m, r, sv, eqs, i, hr, hdone⟩ := captureNext_spec h v hsome
-  have ma := matches_of_reaches eq hr hdone
-  exact ⟨s, l, m, r, sv, eqs, ma⟩
-
-end NFA
+end Regex.NFA

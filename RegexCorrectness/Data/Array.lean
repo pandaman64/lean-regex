@@ -1,4 +1,5 @@
-import Regex.NFA.VM.Basic
+import Regex.Data.Array
+import Batteries.Data.Array
 
 theorem Array.isEmpty_iff {α} {a : Array α} : a.isEmpty ↔ a = #[] := by
   simp [Array.isEmpty]

@@ -3,7 +3,7 @@ import RegexCorrectness.NFA.Basic
 
 import Mathlib.Tactic.Common
 
-namespace NFA
+namespace Regex.NFA
 
 theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i < nfa.nodes.size) :
   result.val[i]'(Nat.lt_trans h result.property) = nfa[i] := by
@@ -430,4 +430,4 @@ theorem lt_zero_size_compile (eq : compile r = nfa) :
   have : 0 < result.val.nodes.size := Nat.zero_lt_of_lt result.property
   exact eq ▸ this
 
-end NFA
+end Regex.NFA

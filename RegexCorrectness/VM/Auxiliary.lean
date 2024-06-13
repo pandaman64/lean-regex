@@ -1,12 +1,13 @@
 -- Properties of the auxiliary graph traversal functions
-import Regex.NFA.VM.Basic
+import Regex.VM
+import RegexCorrectness.Data.Array
+import RegexCorrectness.Data.SparseSet
 import RegexCorrectness.NFA.Transition
-import RegexCorrectness.NFA.VM.Array
-import RegexCorrectness.NFA.VM.SparseSet
--- TODO: we should no longer need this once the development is settled
-import Mathlib.Tactic
 
-namespace NFA.VM
+open Regex.Data (SparseSet)
+open Regex.NFA
+
+namespace Regex.VM
 
 /-
   This section proves that the sparse set returned by `eachStepChar` corresponds to a transition by
@@ -804,4 +805,4 @@ theorem eachStepChar_spec.mem_done_iff
   contradiction
 end
 
-end NFA.VM
+end Regex.VM

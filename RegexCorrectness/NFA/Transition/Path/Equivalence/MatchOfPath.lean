@@ -1,7 +1,11 @@
 -- When the compiled NFA accepts a string, the regex matches it.
-import RegexCorrectness.NFA.Transition.Basic
+import RegexCorrectness.Semantics.Expr.Matches
+import RegexCorrectness.NFA.Compile
+import RegexCorrectness.NFA.Transition.Path.Basic
 
-namespace NFA
+open Regex.Data (Expr)
+
+namespace Regex.NFA
 
 theorem eq_next_of_pathToNext (eq : pushRegex nfa next r = result)
   (assm : next' < nfa.nodes.size)
@@ -137,7 +141,7 @@ theorem matches_of_starLoop (eq : pushRegex nfa next (.star r) = result)
     pathToNext result (Array.size nfa.nodes) (Array.size nfa.nodes + 1) (rStart_of eq) cs →
     r.matches cs)
   (loop : starLoop eq cs) :
-  (Regex.star r).matches cs := by
+  (Expr.star r).matches cs := by
   induction loop with
   | complete => exact .starEpsilon
   | loop path _ m₂ => exact .starConcat _ _ _ (mr path) m₂
@@ -148,7 +152,7 @@ theorem matches_of_path.group (eq : pushRegex nfa next (.group i r) = result)
     pushRegex nfa next r = result →
     pathToNext result next nfa.nodes.size result.val.start.val cs →
     r.matches cs) :
-  (Regex.group i r).matches cs := by
+  (Expr.group i r).matches cs := by
   apply pushRegex.group eq
   intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
 
@@ -252,7 +256,7 @@ theorem matches_of_path.alternate (eq : pushRegex nfa next (.alternate r₁ r₂
     pushRegex nfa next r₂ = result →
     pathToNext result next nfa.nodes.size result.val.start.val cs →
     r₂.matches cs) :
-  (Regex.alternate r₁ r₂).matches cs := by
+  (Expr.alternate r₁ r₂).matches cs := by
   apply pushRegex.alternate eq
   intro nfa₁ start₁ nfa₂ start₂ inBounds final property eq₁ eq₂ eq₃ eq₄ eq₅ eq'
 
@@ -335,7 +339,7 @@ theorem matches_of_path.concat (eq : pushRegex nfa next (.concat r₁ r₂) = re
     pushRegex nfa next r₂ = result →
     pathToNext result next nfa.nodes.size result.val.start.val cs →
     r₂.matches cs) :
-  (Regex.concat r₁ r₂).matches cs := by
+  (Expr.concat r₁ r₂).matches cs := by
   apply pushRegex.concat eq
   intro nfa₂ nfa₁ property eq₂ eq₁ eq'
 
@@ -382,8 +386,8 @@ theorem matches_of_path.star (eq : pushRegex nfa next (.star r) = result)
   (ih : ∀ {nfa next result cs},
     pushRegex nfa next r = result →
     pathToNext result next nfa.nodes.size result.val.start.val cs →
-    Regex.matches cs r) :
-  (Regex.star r).matches cs := by
+    Expr.matches cs r) :
+  (Expr.star r).matches cs := by
   apply pushRegex.star eq
   intro placeholder compiled patched nfa' isLt inBounds property
     eq₁ eq₂ eq₃ eq₄ eq'
@@ -551,7 +555,7 @@ theorem matches_of_pathToNext_pushRegex
   | concat r₁ r₂ ih₁ ih₂ => exact matches_of_path.concat eq path ih₁ ih₂
   | star r ih => exact matches_of_path.star eq path ih
 
-theorem matches_of_pathToNext_compile (eq : NFA.compile r = nfa)
+theorem matches_of_pathToNext_compile (eq : compile r = nfa)
   (path : pathToNext nfa 0 1 nfa.start.val cs) :
   r.matches cs := by
   set result := NFA.done.pushRegex ⟨0, by decide⟩ r
@@ -561,4 +565,4 @@ theorem matches_of_pathToNext_compile (eq : NFA.compile r = nfa)
   rw [this] at path
   exact matches_of_pathToNext_pushRegex rfl path
 
-end NFA
+end Regex.NFA

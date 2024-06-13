@@ -1,71 +1,11 @@
 -- Correctness of the graph traversal implementation
-import Regex.NFA.VM.Basic
-import RegexCorrectness.NFA.VM.Traversal.Auxiliary
+import RegexCorrectness.Data.String
+import RegexCorrectness.VM.Auxiliary
 
-open NFA.VM
+open Regex.Data (SparseSet Vec)
+open Regex.NFA
 
-/--
-Increment the end position by one character.
--/
-def Substring.expand (s : Substring) : Substring :=
-  if s.stopPos < s.str.endPos then
-    { s with stopPos := s.str.next s.stopPos }
-  else
-    s
-
-namespace Substring.ValidFor
-
-theorem expand (v : ValidFor l m (c :: r) s) : ValidFor l (m ++ [c]) r s.expand := by
-  simp [Substring.expand, v.stopPos, v.str, String.csize_pos, String.next]
-  have : String.get ⟨l ++ (m ++ c :: r)⟩ ⟨String.utf8Len l + String.utf8Len m⟩ = c := by
-    have eq₁ : l ++ (m ++ c :: r) = (l ++ m) ++ (c :: r) := by simp
-    have eq₂ : String.utf8Len l + String.utf8Len m = String.utf8Len (l ++ m) := by simp
-    rw [eq₁, eq₂, String.get_of_valid]
-    simp
-  rw [this]
-
-  apply of_eq
-  . simp
-  . simp [v.startPos]
-  . simp [Nat.add_assoc]
-
-end Substring.ValidFor
-
-namespace String.Iterator.Valid
-
-theorem next' {it : Iterator} (v : it.Valid) (h : ¬it.atEnd) : it.next.Valid := by
-  apply v.next
-  simp [hasNext, atEnd] at *
-  exact h
-
-end String.Iterator.Valid
-
-namespace String.Iterator.ValidFor
-
-theorem exists_cons_of_not_atEnd {it : Iterator} (v : it.ValidFor l r) (h : ¬it.atEnd) :
-  ∃ r', r = it.curr :: r' := by
-  have := v.atEnd
-  simp [h] at this
-  have ⟨c, r', heq⟩ := List.exists_cons_of_ne_nil this
-  subst heq
-  have := v.curr
-  simp at this
-  subst this
-  exact ⟨r', rfl⟩
-
-end String.Iterator.ValidFor
-
-namespace NFA
-
-/--
-`nfa.reaches i cs` means that there is a path from the start node to `i` given by interleaving
-ε closures and character steps, which corresponds to `cs`.
--/
-inductive reaches (nfa : NFA) : Fin nfa.nodes.size → List Char → Prop where
-  | nil (cls : i.val ∈ nfa.εClosure nfa.start) : nfa.reaches i []
-  | snoc {i : Fin nfa.nodes.size} {j : Nat} {k : Fin nfa.nodes.size} {c : Char} {cs : List Char}
-    (prev : reaches nfa i cs) (step : j ∈ nfa.charStep i c) (cls : k.val ∈ nfa.εClosure j) :
-    nfa.reaches k (cs ++ [c])
+namespace Regex.VM
 
 structure captureNext.go.Inv (nfa : NFA) (it : String.Iterator) (haystack : String)
   (current : SparseSet nfa.nodes.size) (lastMatch : Option (Array (Option String.Pos))) where
@@ -217,4 +157,4 @@ theorem captureNext_spec
       apply Substring.ValidFor.of_eq <;> simp [v'.toString, List.reverseAux_eq]
   exact captureNext_spec.go h inv v rfl (by simp) hsome
 
-end NFA
+end Regex.VM
