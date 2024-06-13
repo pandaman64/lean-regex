@@ -5,7 +5,8 @@ import Mathlib.Tactic.Common
 
 namespace Regex.NFA
 
--- TODO: make this a claim about `Fin nfa.nodes.size`
+-- TODO: make this a claim about `Fin nfa.nodes.size`.
+-- The issue is that `pathIn` uses Nat, and the conversion becomes non-trivial.
 inductive εClosure (nfa : NFA) : Nat → Set Nat where
   | base : nfa.εClosure i i
   | step {i j k : Nat} (step : j ∈ nfa.εStep i) (rest : nfa.εClosure j k) :
