@@ -1,6 +1,6 @@
 def Char.MAX_UNICODE : Nat := 0x10FFFF
 
-namespace Regex
+namespace Regex.Data
 
 inductive PerlClassKind where
   | digit
@@ -66,4 +66,4 @@ instance {c : Char} {cs : Classes} : Decidable (c ∈ cs) :=
   | true => isTrue h
   | false => isFalse (by simp [Classes.mem_mem, h])
 
-end Regex
+end Regex.Data

@@ -1,23 +1,25 @@
-import Regex.Regex
-import Regex.Classes
+import Regex.Data.Classes
+import Regex.Data.Expr
+
+open Regex.Data (Class Classes PerlClass Expr)
 
 namespace Regex.Syntax.Parser
 
-inductive Hir : Type where
-  | empty : Hir
-  | epsilon : Hir
-  | char : Char → Hir
-  | group : Hir → Hir
-  | alternate : Hir → Hir → Hir
-  | concat : Hir → Hir → Hir
-  | star : Hir → Hir
-  | classes : Classes -> Hir
-  | perl : PerlClass -> Hir
-  | dot : Hir
+inductive Ast : Type where
+  | empty : Ast
+  | epsilon : Ast
+  | char : Char → Ast
+  | group : Ast → Ast
+  | alternate : Ast → Ast → Ast
+  | concat : Ast → Ast → Ast
+  | star : Ast → Ast
+  | classes : Classes -> Ast
+  | perl : PerlClass -> Ast
+  | dot : Ast
 deriving Inhabited
 
-def Hir.toRegexAux (index : Nat) (hir : Hir) : Nat × Regex :=
-  match hir with
+def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
+  match ast with
   | .empty => (index, .empty)
   | .epsilon => (index, .epsilon)
   | .char c => (index, .char c)
@@ -39,6 +41,6 @@ def Hir.toRegexAux (index : Nat) (hir : Hir) : Nat × Regex :=
   | .perl pc => (index, .classes ⟨false, #[Class.perl pc]⟩)
   | .dot => (index, .classes ⟨false, #[Class.any]⟩)
 
-def Hir.toRegex (h : Hir) : Regex := (h.toRegexAux 0).2
+def Ast.toRegex (ast : Ast) : Expr := (ast.toRegexAux 0).2
 
 end Regex.Syntax.Parser

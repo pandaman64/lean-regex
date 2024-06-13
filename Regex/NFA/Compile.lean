@@ -1,11 +1,13 @@
-import Regex.Regex
+import Regex.Data.Expr
 import Regex.NFA.Basic
 
 import Batteries.Data.Array.Lemmas
 
-namespace NFA
+open Regex.Data (Expr)
 
-def pushNode (nfa : NFA) (node : NFA.Node) (inBounds : node.inBounds (nfa.nodes.size + 1)) :
+namespace Regex.NFA
+
+def pushNode (nfa : NFA) (node : Node) (inBounds : node.inBounds (nfa.nodes.size + 1)) :
   { nfa' : NFA // nfa.nodes.size < nfa'.nodes.size } :=
   let start := nfa.nodes.size
   let nodes := nfa.nodes.push node
@@ -54,7 +56,7 @@ theorem pushNode_start_eq {nfa : NFA} {node : Node} {inBounds : node.inBounds (n
   Compile a Regex and append the resulting nodes to the NFA. The nodes will transition to `next` on match.
 -/
 def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
-  Regex → { nfa' : NFA // nfa.nodes.size < nfa'.nodes.size }
+  Expr → { nfa' : NFA // nfa.nodes.size < nfa'.nodes.size }
   | .empty => nfa.pushNode .fail (by simp)
   | .epsilon => nfa.pushNode (.epsilon next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
   | .char c => nfa.pushNode (.char c next) (by simp [Node.inBounds]; exact Nat.lt_trans next.isLt (Nat.lt_succ_self _))
@@ -154,7 +156,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
     ⟨nfa', property⟩
 
 @[export lean_regex_compile]
-def compile (r : Regex) : NFA := done.pushRegex ⟨0, by decide⟩ r
+def compile (r : Expr) : NFA := done.pushRegex ⟨0, by decide⟩ r
 
 -- Useful lemmas about the compilation
 def pushRegex.empty (eq : pushRegex nfa next .empty = result)
@@ -179,7 +181,7 @@ def pushRegex.sparse
   simp [pushRegex] at eq
   exact motive eq.symm
 
-def pushRegex.group (eq : pushRegex nfa next (Regex.group index r) = result)
+def pushRegex.group (eq : pushRegex nfa next (.group index r) = result)
   {motive : ∀ nfa' nfa'' nfa''' property inBounds' inBounds''',
     nfa' = nfa.pushNode (.save (2 * index + 1) next) inBounds' →
     nfa'' = nfa'.val.pushRegex nfa'.val.start r →
@@ -205,7 +207,7 @@ def pushRegex.group (eq : pushRegex nfa next (Regex.group index r) = result)
 
   exact motive nfa' nfa'' nfa''' property inBounds' inBounds''' rfl rfl rfl eq.symm
 
-def pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂) = result)
+def pushRegex.alternate (eq : pushRegex nfa next (.alternate r₁ r₂) = result)
   {motive : ∀ nfa₁ start₁ nfa₂ start₂ inBounds nfa' property,
     nfa₁ = nfa.pushRegex next r₁ →
     start₁ = nfa₁.val.start →
@@ -239,7 +241,7 @@ def pushRegex.alternate (eq : pushRegex nfa next (Regex.alternate r₁ r₂) = r
 
   exact motive nfa₁ start₁ nfa₂ start₂ inBounds nfa' property rfl rfl rfl rfl rfl eq.symm
 
-def pushRegex.concat (eq : pushRegex nfa next (Regex.concat r₁ r₂) = result)
+def pushRegex.concat (eq : pushRegex nfa next (.concat r₁ r₂) = result)
   {motive : ∀ nfa₂ nfa₁ property,
     nfa₂ = nfa.pushRegex next r₂ →
     nfa₁ = nfa₂.val.pushRegex nfa₂.val.start r₁ →
@@ -256,7 +258,7 @@ def pushRegex.concat (eq : pushRegex nfa next (Regex.concat r₁ r₂) = result)
 
   exact motive nfa₂ nfa₁ property rfl rfl eq.symm
 
-def pushRegex.star (eq : pushRegex nfa next (Regex.star r) = result)
+def pushRegex.star (eq : pushRegex nfa next (.star r) = result)
   {motive : ∀ placeholder compiled patched nfa' isLt inBounds property,
     placeholder = nfa.pushNode .fail (by simp) →
     compiled = placeholder.val.pushRegex ⟨nfa.nodes.size, placeholder.property⟩ r →

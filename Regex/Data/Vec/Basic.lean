@@ -1,6 +1,6 @@
 import Batteries.Data.Array.Lemmas
 
-namespace NFA.VM
+namespace Regex.Data
 
 -- TODO: migrate to Batteries Vector
 def Vec (α : Type) (n : Nat) := { a : Array α // a.size = n }
@@ -54,4 +54,4 @@ theorem Vec.set_set (v : Vec α n) (h : i < n) :
   simp [Vec.set]
   rw [Array.set_set]
 
-end NFA.VM
+end Regex.Data

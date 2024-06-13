@@ -1,7 +1,7 @@
 -- Minimal theory about the bijection between `Fin n`.
 import Batteries.Tactic.Basic
 
-namespace NFA.VM.Bijection
+namespace Regex.Data.SparseSet.Bijection
 
 def inj (f : α → β) := ∀ x y, f x = f y → x = y
 def surj (f : α → β) := ∀ y, ∃ x, f x = y
@@ -104,4 +104,4 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
         exact ⟨n', Fin.eq_of_not_lt isLt'⟩
 
 
-end NFA.VM.Bijection
+end Regex.Data.SparseSet.Bijection

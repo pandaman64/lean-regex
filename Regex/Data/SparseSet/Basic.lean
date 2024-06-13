@@ -1,7 +1,7 @@
-import Regex.NFA.VM.Vec.Basic
-import Regex.NFA.VM.SparseSet.Bijection
+import Regex.Data.Vec
+import Regex.Data.SparseSet.Bijection
 
-namespace NFA.VM
+namespace Regex.Data
 
 structure SparseSet (n : Nat) where
   count : Nat
@@ -182,4 +182,4 @@ macro_rules | `(tactic| decreasing_trivial) => `(tactic| apply SparseSet.lt_meas
 
 end SparseSet
 
-end NFA.VM
+end Regex.Data
