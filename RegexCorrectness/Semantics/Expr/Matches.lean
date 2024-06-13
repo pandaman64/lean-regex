@@ -2,6 +2,9 @@ import Regex.Data.Expr
 
 namespace Regex.Data
 
+/--
+A language accepted by a regular expression.
+-/
 inductive Expr.matches : List Char → Expr → Prop where
   | char (c : Char) : Expr.matches [c] (.char c)
   | sparse (cs : Classes) (c : Char) (h : c ∈ cs) : Expr.matches [c] (.classes cs)
