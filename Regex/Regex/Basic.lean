@@ -22,22 +22,22 @@ def parse! (s : String) : Regex :=
 
 structure Matches where
   regex : Regex
-  heystack : String
+  haystack : String
   currentPos : Pos
 deriving Repr
 
 @[export lean_regex_regex_matches]
 def _root_.Regex.matches (regex : Regex) (s : String) : Matches :=
-  { regex := regex, heystack := s, currentPos := 0 }
+  { regex := regex, haystack := s, currentPos := 0 }
 
 @[export lean_regex_regex_matches_next]
 def Matches.next? (self : Matches) : Option ((Pos × Pos) × Matches) := do
-  let pos ← VM.searchNext self.regex.nfa ⟨self.heystack, self.currentPos⟩
+  let pos ← VM.searchNext self.regex.nfa ⟨self.haystack, self.currentPos⟩
   if self.currentPos < pos.2 then
     let next := { self with currentPos := pos.2 }
     pure (pos, next)
   else
-    let next := { self with currentPos := self.heystack.next self.currentPos }
+    let next := { self with currentPos := self.haystack.next self.currentPos }
     pure (pos, next)
 
 instance : Stream Matches (Pos × Pos) := ⟨Matches.next?⟩
