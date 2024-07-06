@@ -83,16 +83,8 @@ partial def char : Parser Ast :=
   withErrorMessage "expected a character" do
     Ast.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
 
+-- TODO: support special characters in classes. e.g., [.$^-]
 partial def class_ : Parser Class := do
-  let cannotUsePerlClassInInterval :=
-    throwUnexpectedWithMessage none "cannot use perl classes in intervals"
-
-  let expectsChar (ast : Ast) : Parser Char :=
-    match ast with
-    | Ast.perl _ => cannotUsePerlClassInInterval
-    | Ast.char c => pure c
-    | _          => throwUnexpected
-
   let first ← charWithPerlClasses
   let isInterval ← test (token '-')
 
@@ -108,6 +100,13 @@ partial def class_ : Parser Class := do
     | Ast.perl p => pure (Class.perl p)
     | Ast.char c => pure (Class.single c)
     | _          => throwUnexpected
+where
+  expectsChar (ast : Ast) : Parser Char :=
+    match ast with
+    | Ast.perl _ =>
+      throwUnexpectedWithMessage none "cannot use perl classes in intervals"
+    | Ast.char c => pure c
+    | _          => throwUnexpected
 
 partial def classes : Parser Ast :=
   withErrorMessage "expected a character class" do
@@ -117,17 +116,72 @@ partial def classes : Parser Ast :=
     let _         ← token ']'
     pure $ Ast.classes { negated := negated, classes := classes }
 
-partial def primitive : Parser Ast := withBacktracking group <|> classes <|> charWithPerlClasses
+partial def dot : Parser Ast :=
+  withErrorMessage "expected a dot" do
+    let _ ← token '.'
+    pure Ast.dot
 
-partial def star : Parser Ast :=
+partial def primitive : Parser Ast :=
+  withBacktracking group <|>
+  classes <|>
+  dot <|>
+  charWithPerlClasses
+
+partial def repetition : Parser Ast :=
   withErrorMessage "expected a star" do
     let r ← primitive
-    -- Eat stars as many as possible
-    foldl (fun r _ => Ast.star r) r (token '*')
+    -- Eat repetition operators as many as possible
+    foldl folder r repetitionOp
+where
+  repeatAux (ast accum : Ast) (n : Nat) : Ast :=
+    if n == 0 then
+      accum
+    else
+      repeatAux ast (Ast.concat ast accum) (n - 1)
+  -- requires n > 0
+  repeatAst (ast : Ast) (n : Nat) : Ast :=
+    repeatAux ast ast (n - 1)
+  folder (ast : Ast) : (Nat × Option Nat) → Ast
+    -- special case for well-known repetitions
+    | (0, some 1) => Ast.alternate ast Ast.empty
+    | (0, none) => Ast.star ast
+    | (1, none) => Ast.concat ast (Ast.star ast)
+    -- r{min,}. min > 0 as (0, none) is already covered.
+    | (min, none) => Ast.concat (repeatAst ast min) (Ast.star ast)
+    -- r{0,max}
+    | (0, some max) =>
+      if max == 0 then
+        Ast.empty
+      else
+        repeatAst (Ast.alternate ast Ast.empty) max
+    -- r{min,max} (min > 0)
+    | (min, some max) =>
+      if min == max then
+        repeatAst ast min
+      else
+        Ast.concat (repeatAst ast min) (repeatAst (Ast.alternate ast Ast.empty) (max - min))
+  repetitionOp : Parser (Nat × Option Nat) := do
+    if (← test (token '*')) then
+      return (0, none)
+    else if (← test (token '+')) then
+      return (1, none)
+    else if (← test (token '?')) then
+      return (0, some 1)
+    else if (← test (token '{')) then
+      let min ← ASCII.parseNat
+      let max ← do
+        if (← test (token ',')) then
+          option? ASCII.parseNat
+        else
+          pure (some min)
+      let _ ← token '}'
+      return (min, max)
+    else
+      throwUnexpected
 
 partial def concat : Parser Ast :=
   withErrorMessage "expected a concatenation" do
-    foldl1 Ast.concat star
+    foldl1 Ast.concat repetition
 
 partial def alternate : Parser Ast :=
   withErrorMessage "expected an alternation" do
