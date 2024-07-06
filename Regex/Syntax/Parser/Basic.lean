@@ -83,16 +83,8 @@ partial def char : Parser Ast :=
   withErrorMessage "expected a character" do
     Ast.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
 
+-- TODO: support special characters in classes. e.g., [.$^-]
 partial def class_ : Parser Class := do
-  let cannotUsePerlClassInInterval :=
-    throwUnexpectedWithMessage none "cannot use perl classes in intervals"
-
-  let expectsChar (ast : Ast) : Parser Char :=
-    match ast with
-    | Ast.perl _ => cannotUsePerlClassInInterval
-    | Ast.char c => pure c
-    | _          => throwUnexpected
-
   let first ← charWithPerlClasses
   let isInterval ← test (token '-')
 
@@ -108,6 +100,13 @@ partial def class_ : Parser Class := do
     | Ast.perl p => pure (Class.perl p)
     | Ast.char c => pure (Class.single c)
     | _          => throwUnexpected
+where
+  expectsChar (ast : Ast) : Parser Char :=
+    match ast with
+    | Ast.perl _ =>
+      throwUnexpectedWithMessage none "cannot use perl classes in intervals"
+    | Ast.char c => pure c
+    | _          => throwUnexpected
 
 partial def classes : Parser Ast :=
   withErrorMessage "expected a character class" do
@@ -117,7 +116,16 @@ partial def classes : Parser Ast :=
     let _         ← token ']'
     pure $ Ast.classes { negated := negated, classes := classes }
 
-partial def primitive : Parser Ast := withBacktracking group <|> classes <|> charWithPerlClasses
+partial def dot : Parser Ast :=
+  withErrorMessage "expected a dot" do
+    let _ ← token '.'
+    pure Ast.dot
+
+partial def primitive : Parser Ast :=
+  withBacktracking group <|>
+  classes <|>
+  dot <|>
+  charWithPerlClasses
 
 partial def repetition : Parser Ast :=
   withErrorMessage "expected a star" do
