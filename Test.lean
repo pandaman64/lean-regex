@@ -1,19 +1,26 @@
 import Regex
 
 def main : IO Unit := do
-  -- まだ+を実装してないです…
-  let digits := Regex.parse! "[0-9][0-9]*"
+  -- Search/replace the first match
+  let phoneNumber := Regex.parse! r#"\d+-\d+-\d+"#
   let haystack := "こんにちは0120-333-906🤗Lotus123"
 
-  -- prints:
-  -- (15, 19) -> 0120
-  -- (20, 23) -> 333
-  -- (24, 27) -> 906
-  -- (36, 39) -> 123
-  let results := digits.findAll haystack
-  for result in results do
-    IO.println s!"{result} -> {Substring.mk haystack result.1 result.2}"
+  -- prints: (some (15, 27)) -> 0120-333-906
+  let pos := phoneNumber.find haystack
+  IO.println s!"{pos} -> {Substring.mk haystack pos.get!.1 pos.get!.2}"
 
-  -- prints: こんにちは[redacted]-[redacted]-[redacted]🤗Lotus[redacted]
-  let replaced := digits.replaceAll haystack "[redacted]"
+  -- prints: こんにちは[redacted]🤗Lotus123
+  let replaced := phoneNumber.replace haystack "[redacted]"
+  IO.println replaced
+
+  -- Search/replace all non-overlapping matches
+  let regex := Regex.parse! "もも"
+  let haystack := "すもももももももものうち"
+
+  -- prints: #[(3, 9), (9, 15), (15, 21), (21, 27)]
+  let allMatches := regex.findAll haystack
+  IO.println allMatches
+
+  -- prints: す🍑🍑🍑🍑のうち
+  let replaced := regex.replaceAll haystack "🍑"
   IO.println replaced
