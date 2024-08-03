@@ -14,7 +14,7 @@ namespace Substring.ValidFor
 theorem expand (v : ValidFor l m (c :: r) s) : ValidFor l (m ++ [c]) r s.expand := by
   have : s.stopPos < s.str.endPos := by
     simp [v.stopPos, v.str]
-    have : 0 < String.csize c := String.csize_pos c
+    have : 0 < c.utf8Size := Char.utf8Size_pos c
     omega
   unfold expand
   simp [this]

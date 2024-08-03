@@ -84,7 +84,7 @@ theorem starLoop.intro' (eq : pushRegex nfa next (.star r) = result)
   | @step i j k cs cs' step path ih =>
     have ih := ih step.lt_right assm₂
     split
-    case inl eqi =>
+    case isTrue eqi =>
       subst eqi
       have ⟨ge, node⟩ := rStart_of_spec eq
       simp [node]
@@ -104,10 +104,10 @@ theorem starLoop.intro' (eq : pushRegex nfa next (.star r) = result)
         have : rStart_of eq ≠ nfa.nodes.size := Nat.ne_of_gt ge
         simp [this] at ih
         exact ih
-    case inr nei =>
+    case isFalse nei =>
       have gti : nfa.nodes.size < i := Nat.lt_of_le_of_ne step.h₁ (Ne.symm nei)
       split at ih
-      case inl eqj =>
+      case isTrue eqj =>
         have toNext : pathToNext result nfa.nodes.size (nfa.nodes.size + 1) i cs :=
           ⟨i, [], cs, rfl, .base gti, (eqj ▸ step).castStart' gti⟩
         cases ih with
@@ -117,7 +117,7 @@ theorem starLoop.intro' (eq : pushRegex nfa next (.star r) = result)
         | inr cond =>
           obtain ⟨cs₁, cs₂, eqs, path', loop⟩ := cond
           exact ⟨cs, cs₁ ++ cs₂, by simp [eqs], toNext, .loop path' loop⟩
-      case inr nej =>
+      case isFalse nej =>
         obtain ⟨cs₁, cs₂, eqs, path', loop⟩ := ih
         subst eqs
         cases step with
