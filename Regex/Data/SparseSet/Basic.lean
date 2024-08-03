@@ -104,21 +104,21 @@ def insert (s : SparseSet n) (i : Fin n) : SparseSet n :=
         simp
         rw [Vec.get_set]
         split
-        case inl eq =>
+        case isTrue eq =>
           simp [SparseSet.mem] at mem
           have : sparse[i.val] = j := by
             simp [eq, sparse_dense j lt]
           simp [this, lt] at mem
           exact absurd (Fin.eq_of_val_eq eq.symm) mem
-        case inr => exact sparse_dense j lt
+        case isFalse => exact sparse_dense j lt
     ⟨count + 1, dense', sparse', sparse_dense', isLt⟩
 
 @[simp]
 theorem mem_insert : i ∈ s.insert i := by
   unfold insert
   split
-  case inl m => exact m
-  case inr m => simp [mem]
+  case isTrue m => exact m
+  case isFalse m => simp [mem]
 
 def clear (s : SparseSet n) : SparseSet n :=
   ⟨0, s.dense, s.sparse, fun _ _ => by contradiction, Nat.zero_le _⟩

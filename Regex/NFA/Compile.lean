@@ -16,10 +16,10 @@ def pushNode (nfa : NFA) (node : Node) (inBounds : node.inBounds (nfa.nodes.size
     simp [nodes]
     rw [Array.get_push]
     split
-    case inl h =>
+    case isTrue h =>
       have := nfa.inBounds ⟨i.val, h⟩
       apply Node.inBounds_of_inBounds_of_le this (Nat.le_succ _)
-    case inr => exact inBounds
+    case isFalse => exact inBounds
   let nfa' : NFA := ⟨nodes, ⟨start, by simp [nodes]⟩, inBounds⟩
 
   ⟨nfa', by simp [nodes]⟩
@@ -133,7 +133,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
         exact i.isLt
       rw [Array.get_set (hj := hj)]
       split
-      case inl =>
+      case isTrue =>
         have lt₁ : compiled.val.start < compiled.val.nodes.size := compiled.val.start.isLt
         have lt₂ : next < compiled.val.nodes.size :=
           calc
@@ -141,7 +141,7 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
             _ < _ := placeholder.property
             _ < _ := compiled.property
         simp [compiled, split, lt₁, lt₂]
-      case inr neq =>
+      case isFalse neq =>
         have := compiled.val.inBounds ⟨i, hj⟩
         simp at this
         exact this
@@ -286,7 +286,7 @@ def pushRegex.star (eq : pushRegex nfa next (.star r) = result)
       exact i.isLt
     rw [Array.get_set (hj := hj)]
     split
-    case inl =>
+    case isTrue =>
       have lt₁ : compiled.val.start < compiled.val.nodes.size := compiled.val.start.isLt
       have lt₂ : next < compiled.val.nodes.size :=
         calc
@@ -294,7 +294,7 @@ def pushRegex.star (eq : pushRegex nfa next (.star r) = result)
           _ < _ := placeholder.property
           _ < _ := compiled.property
       simp [split, lt₁, lt₂]
-    case inr neq =>
+    case isFalse neq =>
       have := compiled.val.inBounds ⟨i, hj⟩
       simp at this
       exact this

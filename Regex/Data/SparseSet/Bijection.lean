@@ -79,10 +79,10 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
       let ⟨x, eq⟩ := surj ⟨y.val, isLt⟩
       simp [f'] at eq
       split at eq
-      case inl =>
+      case isTrue =>
         simp at eq
         exact ⟨⟨x.val, Nat.lt_trans x.isLt (Nat.lt_succ_self n)⟩, Fin.eq_of_val_eq eq⟩
-      case inr =>
+      case isFalse =>
         simp at eq
         exact ⟨n', Fin.eq_of_val_eq eq⟩
     else
@@ -92,12 +92,12 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
         let ⟨x, eq⟩ := surj ⟨(f n').val, isLt'⟩
         simp [f'] at eq
         split at eq
-        case inl =>
+        case isTrue =>
           simp at eq
           have := Fin.val_eq_of_eq (h _ _ (Fin.eq_of_val_eq eq))
           simp at this
           exact absurd (this ▸ x.isLt) (Nat.lt_irrefl _)
-        case inr nlt =>
+        case isFalse nlt =>
           have := Fin.eq_of_not_lt nlt
           exact ⟨⟨x.val, Nat.lt_trans x.isLt (Nat.lt_succ_self n)⟩, this⟩
       else

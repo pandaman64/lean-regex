@@ -49,13 +49,13 @@ def Matches.remaining (self : Matches) : Pos :=
 theorem Matches.lt_next?_some {m : Matches} (h : m.next? = some (pos, m')) :
   m.currentPos < m'.currentPos := by
   unfold next? at h
-  split at h <;> simp at h
+  split at h <;> simp [Option.bind_eq_some] at h
   have ⟨_, _, h⟩ := h
   split at h <;> simp at h
   next h' => simp [←h, h']
   next =>
     simp [←h, String.next]
-    have : String.csize (m.haystack.get m.currentPos) > 0 := String.csize_pos _
+    have : (m.haystack.get m.currentPos).utf8Size > 0 := Char.utf8Size_pos _
     omega
 
 theorem Matches.next?_decreasing {m : Matches} (h : m.next? = some (pos, m')) :
@@ -63,7 +63,7 @@ theorem Matches.next?_decreasing {m : Matches} (h : m.next? = some (pos, m')) :
   unfold remaining
   have : m'.haystack = m.haystack := by
     unfold next? at h
-    split at h <;> simp at h
+    split at h <;> simp [Option.bind_eq_some] at h
     have ⟨_, _, h⟩ := h
     split at h <;> simp at h <;> simp [←h]
   rw [this]
