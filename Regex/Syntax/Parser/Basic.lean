@@ -122,10 +122,7 @@ partial def dot : Parser Ast :=
     pure Ast.dot
 
 partial def primitive : Parser Ast :=
-  withBacktracking group <|>
-  classes <|>
-  dot <|>
-  charWithPerlClasses
+  first [group, classes, dot, charWithPerlClasses]
 
 partial def repetition : Parser Ast :=
   withErrorMessage "expected a star" do
@@ -188,7 +185,7 @@ partial def alternate : Parser Ast :=
     let init ← branch
     foldl Ast.alternate init (Char.char '|' *> branch)
 where
-  branch : Parser Ast := optionD Ast.epsilon concat
+  branch : Parser Ast := optionD concat Ast.epsilon
 
 partial def regex : Parser Ast :=
   withErrorMessage "expected a regular expression" do

@@ -32,8 +32,8 @@ theorem eq_or_mem_of_mem_insert {s : SparseSet n} {i j : Fin n} : i ∈ s.insert
       have ne : j.val ≠ i.val := Ne.symm (Fin.val_ne_of_ne heq)
       simp [mem, Vec.get_set, ne] at h
       split at h
-      case inl heq' => simp [h] at heq
-      case inr heq' =>
+      case isTrue heq' => simp [h] at heq
+      case isFalse heq' =>
         have : s.sparse[i.val] < s.count := by
           have : s.sparse[i.val] ≤ s.count := Nat.le_of_lt_succ h.left
           exact Nat.lt_of_le_of_ne this (Ne.symm heq')

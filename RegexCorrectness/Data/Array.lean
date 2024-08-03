@@ -31,8 +31,8 @@ theorem Array.push_pop_eq (a : Array α) (hemp : ¬ a.isEmpty) :
     intro i h _
     rw [Array.get_push]
     split
-    case inl h' => rw [Array.getElem_pop]
-    case inr h' =>
+    case isTrue h' => rw [Array.getElem_pop]
+    case isFalse h' =>
       simp at h'
       have : i + 1 - 1 ≤ a.size - 1 := Nat.sub_le_sub_right h _
       simp at this
