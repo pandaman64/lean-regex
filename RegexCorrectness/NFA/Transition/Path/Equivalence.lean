@@ -4,10 +4,10 @@ import RegexCorrectness.NFA.Transition.Path.Equivalence.MatchOfPath
 
 namespace Regex.NFA
 
-theorem pathIn'_of_compile_pathIn'Aux {cs : List Char} (eq : compile r = nfa)
+theorem pathIn_of_compile_pathInAux {cs : List Char} (eq : compile r = nfa)
   (assm₁ : 0 < i) (assm₂ : next = 0)
-  (path : nfa.pathIn' 0 i next cs) :
-  nfa.pathIn' 1 i next cs := by
+  (path : nfa.pathIn 0 i next cs) :
+  nfa.pathIn 1 i next cs := by
   have : 0 < nfa.nodes.size := zero_lt_size
   have get : nfa[0] = .done := by
     unfold NFA.compile at eq
@@ -31,22 +31,22 @@ theorem pathIn'_of_compile_pathIn'Aux {cs : List Char} (eq : compile r = nfa)
         simp [get, Node.charStep, Node.εStep] at step
     exact .more (step.castStart' assm₁) (ih this assm₂)
 
-theorem pathIn'_of_compile_pathIn' {cs : List Char} (eq : compile r = nfa)
-  (path : nfa.pathIn' 0 nfa.start.val 0 cs) :
-  nfa.pathIn' 1 nfa.start.val 0 cs := by
+theorem pathIn_of_compile_pathIn {cs : List Char} (eq : compile r = nfa)
+  (path : nfa.pathIn 0 nfa.start.val 0 cs) :
+  nfa.pathIn 1 nfa.start.val 0 cs := by
   have : 0 < nfa.start.val := by
     unfold NFA.compile at eq
     set result := NFA.done.pushRegex ⟨0, by decide⟩ r with h
     rw [←eq]
     exact ge_pushRegex_start h
-  exact pathIn'_of_compile_pathIn'Aux eq this rfl path
+  exact pathIn_of_compile_pathInAux eq this rfl path
 
-theorem matches_iff_pathIn' {cs : List Char} (eq : compile r = nfa) :
-  r.matches cs ↔ nfa.pathIn' 0 nfa.start.val 0 cs := by
+theorem matches_iff_pathIn {cs : List Char} (eq : compile r = nfa) :
+  r.matches cs ↔ nfa.pathIn 0 nfa.start.val 0 cs := by
   apply Iff.intro
   . intro m
     exact (pathIn_of_compile_matches eq m).castBound (by decide)
   . intro path
-    exact matches_of_pathIn'_compile eq (pathIn'_of_compile_pathIn' eq path)
+    exact matches_of_pathIn_compile eq (pathIn_of_compile_pathIn eq path)
 
 end Regex.NFA
