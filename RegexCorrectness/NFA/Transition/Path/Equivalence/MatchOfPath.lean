@@ -400,8 +400,6 @@ theorem matches_of_pathIn.star (eq : pushRegex nfa next (.star r) = result)
     simp [eq', eq₄, NFA.get_eq_nodes_get, eq₃]
     rw [Array.get_set_ne (hj := h₂) (h := (by simp; exact Nat.ne_of_lt h₁))]
 
--- theorem List.concat_eq_append {α} {c : α} (l₂ : List α) : [c] ++ l₂ = c :: l₂ := rfl
-
 theorem matches_of_pathIn_pushRegex
   (eq : pushRegex nfa next r = result)
   (path : pathIn result nfa.nodes.size result.val.start.val next cs) :
