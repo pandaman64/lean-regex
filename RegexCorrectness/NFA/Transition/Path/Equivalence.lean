@@ -16,7 +16,7 @@ theorem pathIn_of_compile_pathInAux {cs : List Char} (eq : compile r = nfa)
     rw [pushRegex_get_lt h _ (by decide)]
     rfl
   induction path with
-  | last step => exact .last (step.castStart' assm₁)
+  | last step => exact .last (step.castBound' assm₁)
   | @more i j k cs₁ cs₂ step rest ih =>
     have : 0 < j := by
       apply Nat.zero_lt_of_ne_zero
@@ -29,7 +29,7 @@ theorem pathIn_of_compile_pathInAux {cs : List Char} (eq : compile r = nfa)
       | more step =>
         have step := step.step
         simp [get, Node.charStep, Node.εStep] at step
-    exact .more (step.castStart' assm₁) (ih this assm₂)
+    exact .more (step.castBound' assm₁) (ih this assm₂)
 
 theorem pathIn_of_compile_pathIn {cs : List Char} (eq : compile r = nfa)
   (path : nfa.pathIn 0 nfa.start.val 0 cs) :

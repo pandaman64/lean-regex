@@ -57,14 +57,14 @@ theorem pathIn.split (eq : pushRegex nfa next r = result)
     cases this with
     | inl eq =>
       subst eq
-      exact .inr ⟨cs₁, cs₂, rfl, .last (step.castStart' assm₂), rest⟩
+      exact .inr ⟨cs₁, cs₂, rfl, .last (step.castBound' assm₂), rest⟩
     | inr ge =>
       have ih := ih assm₁ ge
       cases ih with
       | inl eq => exact .inl eq
       | inr ih =>
         have ⟨cs₃, cs₄, eqs, path₁, path₂⟩ := ih
-        exact .inr ⟨cs₁ ++ cs₃, cs₄, by simp [eqs], .more (step.castStart' assm₂) path₁, path₂⟩
+        exact .inr ⟨cs₁ ++ cs₃, cs₄, by simp [eqs], .more (step.castBound' assm₂) path₁, path₂⟩
 
 inductive starLoop (eq : pushRegex nfa next (.star r) = result) : List Char → Prop where
   | last (step : stepIn result nfa.nodes.size nfa.nodes.size next cs) : starLoop eq cs
@@ -136,16 +136,16 @@ theorem starLoop.intro' (eq : pushRegex nfa next (.star r) = result)
       next h' =>
         cases ih with
         | inl step' =>
-          have path := pathIn.last (step.castStart' gt)
+          have path := pathIn.last (step.castBound' gt)
           exact ⟨cs₁, cs₂, rfl, h' ▸ path, .last step'⟩
         | inr ih =>
           have ⟨cs₃, cs₄, eqs, path', loop'⟩ := ih
-          have path'' : pathIn result (nfa.nodes.size + 1) i j cs₁ := .last (step.castStart' gt)
+          have path'' : pathIn result (nfa.nodes.size + 1) i j cs₁ := .last (step.castBound' gt)
           have loop'' : starLoop eq (cs₃ ++ cs₄) := .loop path' loop'
           exact ⟨cs₁, cs₃ ++ cs₄, by simp [eqs], h' ▸ path'', loop''⟩
       next h' =>
         have ⟨cs₃, cs₄, eqs, path', loop'⟩ := ih
-        exact ⟨cs₁ ++ cs₃, cs₄, by simp [eqs], .more (step.castStart' gt) path', loop'⟩
+        exact ⟨cs₁ ++ cs₃, cs₄, by simp [eqs], .more (step.castBound' gt) path', loop'⟩
 
 theorem starLoop.intro (eq : pushRegex nfa next (.star r) = result)
   (path : pathIn result nfa.nodes.size nfa.nodes.size next cs) :
