@@ -2,68 +2,66 @@ import RegexCorrectness.NFA.Basic
 
 namespace Regex.NFA
 
-inductive stepIn (nfa : NFA) (start : Nat) : (current next : Nat) → (cs : List Char) → Prop where
-  | charStep {i j : Nat} {c : Char} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) : nfa.stepIn start i j [c]
-  | εStep {i j : Nat} (h₁ : start ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) : nfa.stepIn start i j []
+inductive stepIn (nfa : NFA) (lowerBound : Nat) : (current next : Nat) → (cs : List Char) → Prop where
+  | charStep {i j : Nat} {c : Char} (h₁ : lowerBound ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].charStep c) : nfa.stepIn lowerBound i j [c]
+  | εStep {i j : Nat} (h₁ : lowerBound ≤ i) (h₂ : i < nfa.nodes.size) (step : j ∈ nfa[i].εStep) : nfa.stepIn lowerBound i j []
 
-theorem stepIn.h₁ {nfa : NFA} {start : Nat} {i j : Nat} {cs : List Char}
-  (step : nfa.stepIn start i j cs) : start ≤ i := by
+theorem stepIn.h₁ {nfa : NFA} {lb i j : Nat} {cs : List Char}
+  (step : nfa.stepIn lb i j cs) : lb ≤ i := by
   cases step with
   | charStep h₁ _ _ => exact h₁
   | εStep h₁ _ _ => exact h₁
 
-theorem stepIn.h₂ {nfa : NFA} {start : Nat} {i j : Nat} {cs : List Char}
-  (step : nfa.stepIn start i j cs) : i < nfa.nodes.size := by
+theorem stepIn.h₂ {nfa : NFA} {lb i j : Nat} {cs : List Char}
+  (step : nfa.stepIn lb i j cs) : i < nfa.nodes.size := by
   cases step with
   | charStep _ h₂ _ => exact h₂
   | εStep _ h₂ _ => exact h₂
 
-theorem stepIn.step {nfa : NFA} {start : Nat} {i j : Nat} {cs : List Char}
-  (step : nfa.stepIn start i j cs) :
+theorem stepIn.step {nfa : NFA} {lb i j : Nat} {cs : List Char}
+  (step : nfa.stepIn lb i j cs) :
   (∃ c, j ∈ (nfa[i]'step.h₂).charStep c) ∨ j ∈ (nfa[i]'step.h₂).εStep := by
   cases step with
   | charStep _ _ step => exact .inl ⟨_, step⟩
   | εStep _ _ step => exact .inr step
 
-theorem le_of_stepIn {start} (step : stepIn nfa start i j cs) : start ≤ i := by
+theorem le_of_stepIn (step : stepIn nfa lb i j cs) : lb ≤ i := by
   cases step with
   | charStep h₁ => exact h₁
   | εStep h₁ => exact h₁
 
-theorem stepIn.lt_right {start} (step : stepIn nfa start i j cs) : j < nfa.nodes.size := by
+theorem stepIn.lt_right (step : stepIn nfa lb i j cs) : j < nfa.nodes.size := by
   match step.step with
   | .inl ⟨_, step⟩ => exact lt_of_charStep step
   | .inr step => exact lt_of_εStep step
 
-theorem stepIn.castStart' {nfa : NFA} {start start' : Nat}
-  (le : start' ≤ i) (step : stepIn nfa start i j cs) :
-  nfa.stepIn start' i j cs := by
+theorem stepIn.castBound' {nfa : NFA} (le : lb' ≤ i) (step : stepIn nfa lb i j cs) :
+  nfa.stepIn lb' i j cs := by
   cases step with
   | charStep h₁ h₂ step => exact .charStep le h₂ step
   | εStep h₁ h₂ step => exact .εStep le h₂ step
 
-theorem stepIn.castStart {nfa : NFA} {start start' : Nat}
-  (le : start' ≤ start) (step : stepIn nfa start i j cs) :
-  nfa.stepIn start' i j cs := step.castStart' (Nat.le_trans le step.h₁)
+theorem stepIn.castBound {nfa : NFA} (le : lb' ≤ lb) (step : stepIn nfa lb i j cs) :
+  nfa.stepIn lb' i j cs := step.castBound' (Nat.le_trans le step.h₁)
 
-theorem stepIn.cast {nfa nfa' : NFA} {start : Nat}
-  (step : nfa.stepIn start i j cs)
+theorem stepIn.cast {nfa nfa' : NFA}
+  (step : nfa.stepIn lb i j cs)
   (h : i < nfa'.nodes.size)
   (eq : nfa[i]'(step.h₂) = nfa'[i]) :
-  nfa'.stepIn start i j cs := by
+  nfa'.stepIn lb i j cs := by
   cases step with
   | charStep h₁ h₂ step =>
     exact .charStep h₁ h (eq ▸ step)
   | εStep h₁ h₂ step =>
     exact .εStep h₁ h (eq ▸ step)
 
-theorem stepIn.nil_or_singleton {start} (h : stepIn nfa start i j cs) :
+theorem stepIn.nil_or_singleton (h : stepIn nfa lb i j cs) :
   cs = [] ∨ ∃ c, cs = [c] := by
   cases h with
   | εStep => exact .inl rfl
   | charStep => exact .inr ⟨_, rfl⟩
 
-theorem stepIn.nil_of_snoc {start} (h : stepIn nfa start i j (cs ++ [c])) :
+theorem stepIn.nil_of_snoc (h : stepIn nfa lb i j (cs ++ [c])) :
   cs = [] := by
   generalize h' : cs ++ [c] = cs' at h
   cases h with
@@ -75,191 +73,119 @@ theorem stepIn.nil_of_snoc {start} (h : stepIn nfa start i j (cs ++ [c])) :
       have := congrArg List.length h'
       simp at this
 
--- Maybe we should recurse from the last as we reason about the last step often
-inductive pathIn (nfa : NFA) (start : Nat) : (first : Nat) → (last : Nat) → (cs : List Char) → Prop where
-  | base (h : start ≤ i) : nfa.pathIn start i i []
-  | step {i j k : Nat} {cs₁ cs₂ : List Char}
-    (step : nfa.stepIn start i j cs₁) (rest : nfa.pathIn start j k cs₂) : nfa.pathIn start i k (cs₁ ++ cs₂)
+/--
 
-theorem le_of_pathIn_left {start} (path : pathIn nfa start i j cs) : start ≤ i := by
+A predicate that represents a path in a NFA, with each starting node being at least `lowerBound`.
+
+## Motivation
+
+When we reason about an NFA constructed by `pushRegex nfa next r`, we are typically intersted in
+paths that uses only the nodes added by `pushRegex` (and the last step to escape to `next`).
+The definition of `pathIn` limits `first` to be at least `lowerBound` to capture this notion.
+
+-/
+inductive pathIn (nfa : NFA) (lowerBound : Nat) : (first : Nat) → (last : Nat) → (cs : List Char) → Prop where
+  | last (step : nfa.stepIn lowerBound i j cs) : nfa.pathIn lowerBound i j cs
+  | more {i j k : Nat} {cs₁ cs₂ : List Char}
+    (step : nfa.stepIn lowerBound i j cs₁) (rest : nfa.pathIn lowerBound j k cs₂) : nfa.pathIn lowerBound i k (cs₁ ++ cs₂)
+
+theorem pathIn.le_left (path : pathIn nfa lb i j cs) : lb ≤ i := by
   cases path with
-  | base h => exact h
-  | step step _ => exact le_of_stepIn step
+  | last step => exact step.h₁
+  | more step => exact step.h₁
 
-theorem le_of_pathIn_right {start} (path : pathIn nfa start i j cs) : start ≤ j := by
+theorem pathIn.lt_left (path : pathIn nfa lb i j cs) : i < nfa.nodes.size := by
+  cases path with
+  | last step => exact step.h₂
+  | more step => exact step.h₂
+
+theorem pathIn.lt_right (path : pathIn nfa lb i j cs) : j < nfa.nodes.size := by
   induction path with
-  | base h => exact h
-  | step _ _ ih => exact ih
+  | last step => exact step.lt_right
+  | more _ _ ih => exact ih
 
-theorem pathIn.castStart {nfa : NFA} {start start' : Nat}
-  (le : start' ≤ start)
-  (path : nfa.pathIn start i j cs) :
-  nfa.pathIn start' i j cs := by
+theorem pathIn.castBound {nfa : NFA} {lb lb' : Nat}
+  (le : lb' ≤ lb)
+  (path : nfa.pathIn lb i j cs) :
+  nfa.pathIn lb' i j cs := by
   induction path with
-  | base h => exact .base (Nat.le_trans le h)
-  | step step _ ih => exact .step (step.castStart le) ih
+  | last step => exact .last (step.castBound le)
+  | more step _ ih => exact .more (step.castBound le) ih
 
-theorem pathIn.cast {nfa nfa' : NFA} (start : Nat)
-  (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
-  (path : pathIn nfa start i j cs) :
-  pathIn nfa' start i j cs := by
+theorem pathIn.cast {nfa nfa' : NFA} (lb : Nat)
+  (eq : ∀ i, (h₁ : lb ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
+  (path : pathIn nfa lb i j cs) :
+  pathIn nfa' lb i j cs := by
   induction path with
-  | base h => exact .base h
-  | step step _ ih =>
-    let ⟨h, eq⟩ := eq _ step.h₁ step.h₂
-    exact .step (step.cast h eq) ih
+  | last step =>
+    have ⟨isLt, eq⟩ := eq _ step.h₁ step.h₂
+    exact .last (step.cast isLt eq)
+  | more step _ ih =>
+    have ⟨isLt, eq⟩ := eq _ step.h₁ step.h₂
+    exact .more (step.cast isLt eq) ih
 
-theorem pathIn.cast' {nfa nfa' : NFA} {start : Nat}
+theorem pathIn.cast' {nfa nfa' : NFA} {lb : Nat}
   (assm : i < nfa.nodes.size) (le : nfa.nodes.size ≤ nfa'.nodes.size)
-  (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → nfa[i] = nfa'[i]'(Nat.lt_of_lt_of_le h₂ le))
-  (path : pathIn nfa' start i j cs) :
-  pathIn nfa start i j cs := by
+  (eq : ∀ i, (h₁ : lb ≤ i) → (h₂ : i < nfa.nodes.size) → nfa[i] = nfa'[i]'(Nat.lt_of_lt_of_le h₂ le))
+  (path : pathIn nfa' lb i j cs) :
+  pathIn nfa lb i j cs := by
   induction path with
-  | base h => exact .base h
-  | @step i j k cs cs' step _ ih =>
-    have eq := eq _ step.h₁ assm
-    have : j < nfa.nodes.size := by
-      cases step with
-      | @charStep c _ _ step => exact lt_of_charStep (eq.symm ▸ step)
-      | εStep _ _ step => exact lt_of_εStep (eq.symm ▸ step)
-    exact .step (step.cast assm eq.symm) (ih this)
+  | last step => exact .last (step.cast assm (eq _ step.h₁ assm).symm)
+  | more step _ ih =>
+    have step' := step.cast assm (eq _ step.h₁ assm).symm
+    have rest := ih step'.lt_right
+    exact .more step' rest
 
-theorem pathIn.castLE {nfa : NFA} {start start' i i' : Nat}
-  (assm : start' ≤ i)
-  (inBounds : ∀ i j, (h₁ : start' ≤ i) →
+theorem pathIn.castLE {nfa : NFA} {lb lb' i i' : Nat}
+  (assm : lb' ≤ i)
+  (inBounds : ∀ i j, (h₁ : lb' ≤ i) →
     (h₂ : i < nfa.nodes.size) →
     (∃ c, j ∈ nfa[i].charStep c) ∨ j ∈ nfa[i].εStep →
-    start ≤ j →
-    start' ≤ j)
-  (path : pathIn nfa start i i' cs) :
-  pathIn nfa start' i i' cs := by
+    lb ≤ j →
+    lb' ≤ j)
+  (path : pathIn nfa lb i i' cs) :
+  pathIn nfa lb' i i' cs := by
   induction path with
-  | base _ => exact .base assm
-  | @step i j k cs cs' step rest ih =>
-    have h₂ := step.h₂
-    have : start' ≤ j := by
+  | last step => exact .last (step.castBound' assm)
+  | @more i j k cs₁ cs₂ step rest ih =>
+    have step' := step.castBound' assm
+    have : lb' ≤ j := by
       cases step with
-      | charStep _ _ step => exact inBounds i j assm h₂ (.inl ⟨_, step⟩) (le_of_pathIn_left rest)
-      | εStep _ _ step => exact inBounds i j assm h₂ (.inr step) (le_of_pathIn_left rest)
-    exact .step (step.castStart' assm) (ih this)
+      | charStep _ h₂ step => exact inBounds i j assm h₂ (.inl ⟨_, step⟩) rest.le_left
+      | εStep _ h₂ step => exact inBounds i j assm h₂ (.inr step) rest.le_left
+    have rest' := ih this
+    exact .more step' rest'
 
-theorem pathIn.lt_right {nfa : NFA} {start i i' : Nat}
-  (assm : i < nfa.nodes.size)
-  (path : pathIn nfa start i i' cs) :
-  i' < nfa.nodes.size := by
+theorem pathIn.snoc_char (path : pathIn nfa lb i j cs) (assm : min lb k ≤ j)
+  (step : k ∈ (nfa[j]'path.lt_right).charStep c)
+  : pathIn nfa (min lb k) i k (cs ++ [c]) := by
   induction path with
-  | base _ => exact assm
-  | @step i j _ _ _ step _ ih =>
-    have : j < nfa.nodes.size := by
-      cases step with
-      | charStep _ _ step => exact lt_of_charStep step
-      | εStep _ _ step => exact lt_of_εStep step
-    exact ih this
-
-theorem pathIn.snoc_char {start}
-  (assm : j < nfa.nodes.size)
-  (step : k ∈ nfa[j].charStep c) (path : pathIn nfa start i j cs)
-  : pathIn nfa (min start k) i k (cs ++ [c]) := by
-  induction path with
-  | base h =>
+  | @last i j cs step' =>
+    have step'' : nfa.stepIn (min lb k) j k [c] := .charStep assm step'.lt_right step
+    exact .more (step'.castBound (Nat.min_le_left lb k)) (.last step'')
+  | @more i j k cs₁ cs₂ step' _ ih =>
     simp
-    exact .step (.charStep (Nat.le_trans (Nat.min_le_left _ _) h) assm step) (.base (Nat.min_le_right _ _))
-  | @step i j k' cs'' cs''' step' rest ih =>
-    simp
-    have ih := ih assm step
-    exact pathIn.step (step'.castStart (Nat.min_le_left _ _)) ih
+    exact .more (step'.castBound (Nat.min_le_left _ _)) (ih assm step)
 
-theorem pathIn.snoc_ε {start}
-  (assm : j < nfa.nodes.size)
-  (step : k ∈ nfa[j].εStep) (path : pathIn nfa start i j cs)
-  : pathIn nfa (min start k) i k cs := by
+theorem pathIn.snoc_ε (path : pathIn nfa lb i j cs) (assm : min lb k ≤ j)
+  (step : k ∈ (nfa[j]'path.lt_right).εStep)
+  : pathIn nfa (min lb k) i k cs := by
   induction path with
-  | base h =>
-    exact .step (.εStep (Nat.le_trans (Nat.min_le_left _ _) h) assm step) (.base (Nat.min_le_right _ _))
-  | step step' rest ih =>
-    have ih := ih assm step
-    exact .step (step'.castStart (Nat.min_le_left _ _)) ih
+  | @last i j cs step' =>
+    suffices nfa.pathIn (min lb k) i k (cs ++ []) by
+      simp at this
+      exact this
+    have step'' : nfa.stepIn (min lb k) j k [] := .εStep assm step'.lt_right step
+    exact .more (step'.castBound (Nat.min_le_left lb k)) (.last step'')
+  | @more i j k cs₁ cs₂ step' _ ih =>
+    exact .more (step'.castBound (Nat.min_le_left _ _)) (ih assm step)
 
-theorem pathIn.trans {start}
-  (path₁ : pathIn nfa start i j cs) (path₂ : pathIn nfa start j k cs') :
-  pathIn nfa start i k (cs ++ cs') := by
+theorem pathIn.trans (path₁ : pathIn nfa lb i j cs) (path₂ : pathIn nfa lb j k cs') :
+  pathIn nfa lb i k (cs ++ cs') := by
   induction path₁ with
-  | base _ => exact path₂
-  | step step _ ih =>
+  | last step => exact .more step path₂
+  | more step _ ih =>
     simp
-    exact .step step (ih path₂)
-
-def pathToNext (nfa : NFA) (next start i : Nat) (cs : List Char) : Prop :=
-  ∃ (i' : Nat) (pcs scs : List Char),
-    cs = pcs ++ scs ∧
-    nfa.pathIn start i i' pcs ∧
-    nfa.stepIn start i' next scs
-
-theorem le_of_pathToNext {start} (path : pathToNext nfa next start i cs) : start ≤ i := by
-  obtain ⟨_, _, _, _, path, _⟩ := path
-  exact le_of_pathIn_left path
-
-theorem pathToNext.cons {start} {cs₁ cs₂ : List Char}
-  (step : stepIn nfa start i j cs₁) (path : pathToNext nfa next start j cs₂) :
-  pathToNext nfa next start i (cs₁ ++ cs₂) := by
-  obtain ⟨i', pcs, scs, eqs, path, step'⟩ := path
-  subst eqs
-  cases step with
-  | charStep h₁ h₂ step =>
-    exact ⟨i', _ :: pcs, scs, rfl, .step (.charStep h₁ h₂ step) path, step'⟩
-  | εStep h₁ h₂ step =>
-    exact ⟨i', pcs, scs, rfl, .step (.εStep h₁ h₂ step) path, step'⟩
-
-theorem pathToNext.cast {nfa nfa' : NFA} {next start i : Nat} {cs : List Char}
-  (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → ∃ h' : i < nfa'.nodes.size, nfa[i] = nfa'[i])
-  (path : pathToNext nfa next start i cs) :
-  pathToNext nfa' next start i cs := by
-  obtain ⟨i', pcs, scs, eqs, path, step⟩ := path
-  obtain ⟨h', eq'⟩ := eq _ (le_of_pathIn_right path) step.h₂
-  exact ⟨i', pcs, scs, eqs, pathIn.cast start eq path, step.cast h' eq'⟩
-
-theorem pathToNext.cast' {nfa nfa' : NFA} {start : Nat}
-  (assm : i < nfa.nodes.size) (le : nfa.nodes.size ≤ nfa'.nodes.size)
-  (eq : ∀ i, (h₁ : start ≤ i) → (h₂ : i < nfa.nodes.size) → nfa[i] = nfa'[i]'(Nat.lt_of_lt_of_le h₂ le))
-  (path : pathToNext nfa' next start i cs) :
-  pathToNext nfa next start i cs := by
-  obtain ⟨i', pcs, scs, eqs, path, step⟩ := path
-  have path' := path.cast' assm le eq
-  have lt : i' < nfa.nodes.size := path'.lt_right assm
-  exact ⟨i', pcs, scs, eqs, path', step.cast lt (eq i' step.h₁ lt).symm⟩
-
-theorem pathToNext.castStart {nfa : NFA} {start start' : Nat} {i : Nat} {cs : List Char}
-  (le : start' ≤ start) (path : pathToNext nfa next start i cs) :
-  pathToNext nfa next start' i cs := by
-  obtain ⟨i', pcs, scs, eqs, path, step⟩ := path
-  exact ⟨i', pcs, scs, eqs, path.castStart le, step.castStart le⟩
-
-theorem pathToNext.castLE {nfa : NFA} {next start start' i : Nat} {cs : List Char}
-  (assm : start' ≤ i)
-  (inBounds : ∀ i j, (h₁ : start' ≤ i) →
-    (h₂ : i < nfa.nodes.size) →
-    (∃ c, j ∈ nfa[i].charStep c) ∨ j ∈ nfa[i].εStep →
-    start ≤ j →
-    start' ≤ j)
-  (path : pathToNext nfa next start i cs) :
-  pathToNext nfa next start' i cs := by
-  obtain ⟨i', pcs, scs, eqs, path, step⟩ := path
-  have path' := path.castLE assm inBounds
-  exact ⟨i', pcs, scs, eqs, path', step.castStart' (le_of_pathIn_right path')⟩
-
-theorem pathToNext.trans {nfa : NFA} {start : Nat} {cs cs' : List Char}
-  (path₁ : pathToNext nfa j start i cs) (path₂ : pathToNext nfa k start j cs') :
-  pathToNext nfa k start i (cs ++ cs') := by
-  obtain ⟨i₁, pcs₁, scs₁, eqs₁, path₁, step₁⟩ := path₁
-  obtain ⟨i₂, pcs₂, scs₂, eqs₂, path₂, step₂⟩ := path₂
-  exact ⟨i₂, pcs₁ ++ (scs₁ ++ pcs₂), scs₂, by simp [eqs₁, eqs₂], path₁.trans (.step step₁ path₂), step₂⟩
-
-theorem pathIn_of_pathToNext {nfa : NFA} {start : Nat}
-  (path : pathToNext nfa next start i cs) :
-  pathIn nfa (min start next) i next cs := by
-  obtain ⟨i', pcs, scs, eqs, path, step⟩ := path
-  cases step with
-  | charStep h₁ h₂ step => exact eqs ▸ path.snoc_char h₂ step
-  | εStep h₁ h₂ step => simp [eqs, path.snoc_ε h₂ step]
+    exact .more step (ih path₂)
 
 end Regex.NFA
