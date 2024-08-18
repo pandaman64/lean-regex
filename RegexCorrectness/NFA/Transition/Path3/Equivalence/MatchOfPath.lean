@@ -7,6 +7,25 @@ open Regex.Data (Expr)
 
 namespace Regex.NFA
 
+theorem rStart_of_push_star (eq : pushRegex nfa next (.star r) = result) :
+  ∃ rStart, nfa.nodes.size + 1 ≤ rStart ∧ result.val[nfa.nodes.size]'result.property = .split rStart next := by
+  apply pushRegex.star eq
+  intro placeholder compiled patched nfa' isLt inBounds property
+    eq₁ eq₂ eq₃ eq₄ eq
+  exists compiled.val.start
+  simp [eq, eq₄, get_eq_nodes_get, eq₃]
+  have := ge_pushRegex_start eq₂.symm
+  simp [eq₁] at this
+  exact this
+
+-- NOTE: we can redo the compilation to compute the start position pedantically, but I don't care
+noncomputable def rStart_of (eq : pushRegex nfa next (.star r) = result) : Nat :=
+  Exists.choose (rStart_of_push_star eq)
+
+theorem rStart_of_spec (eq : pushRegex nfa next (.star r) = result) :
+  nfa.nodes.size + 1 ≤ (rStart_of eq) ∧ result.val[nfa.nodes.size]'result.property = .split (rStart_of eq) next :=
+  (rStart_of_push_star eq).choose_spec
+
 theorem eq_next_of_pathIn' (eq : pushRegex nfa next r = result)
   (assm : next' < nfa.nodes.size)
   (path : pathIn' result nfa.nodes.size i next' cs) :

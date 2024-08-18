@@ -109,21 +109,4 @@ theorem pathIn'.trans (path₁ : pathIn' nfa lb i j cs) (path₂ : pathIn' nfa l
     simp
     exact .more step (ih path₂)
 
-theorem pathToNext_of_pathIn' (path : pathIn' nfa lb i j cs) : nfa.pathToNext j lb i cs := by
-  induction path with
-  | @last i j cs step => exact ⟨i, [], cs, rfl, .base step.h₁, step⟩
-  | @more i j k cs₁ cs₂ step _ ih => exact ih.cons step
-
-theorem pathIn'_of_pathIn_of_last (path : pathIn nfa lb i j cs₁) (last : stepIn nfa lb j k cs₂) :
-  pathIn' nfa lb i k (cs₁ ++ cs₂) := by
-  induction path with
-  | base => exact .last last
-  | step step' _ ih =>
-    simp
-    exact .more step' (ih last)
-
-theorem pathIn'_of_pathToNext (path : pathToNext nfa j lb i cs) : nfa.pathIn' lb i j cs := by
-  have ⟨i', pcs, scs, eq, path, last⟩ := path
-  exact eq ▸ (pathIn'_of_pathIn_of_last path last)
-
 end Regex.NFA
