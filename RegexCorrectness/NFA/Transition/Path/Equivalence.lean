@@ -1,6 +1,6 @@
 -- Equivalance between a Regex match and a NFA path to the .done node
-import RegexCorrectness.NFA.Transition.Path3.Equivalence.PathOfMatch
-import RegexCorrectness.NFA.Transition.Path3.Equivalence.MatchOfPath
+import RegexCorrectness.NFA.Transition.Path.Equivalence.PathOfMatch
+import RegexCorrectness.NFA.Transition.Path.Equivalence.MatchOfPath
 
 namespace Regex.NFA
 

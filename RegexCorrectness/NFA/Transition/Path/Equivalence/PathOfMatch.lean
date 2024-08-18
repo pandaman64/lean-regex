@@ -2,7 +2,7 @@
 import RegexCorrectness.Semantics.Expr.Matches
 import RegexCorrectness.NFA.Basic
 import RegexCorrectness.NFA.Compile
-import RegexCorrectness.NFA.Transition.Path3.Basic
+import RegexCorrectness.NFA.Transition.Path.Basic
 
 import Mathlib.Tactic.Common
 

@@ -1,6 +1,5 @@
 import RegexCorrectness.NFA.Transition.Closure.Basic
 import RegexCorrectness.NFA.Transition.Path
-import RegexCorrectness.NFA.Transition.Path3
 
 import Mathlib.Data.List.Indexes
 

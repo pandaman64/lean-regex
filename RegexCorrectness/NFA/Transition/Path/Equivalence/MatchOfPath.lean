@@ -1,7 +1,7 @@
 -- When the compiled NFA accepts a string, the regex matches it.
 import RegexCorrectness.Semantics.Expr.Matches
 import RegexCorrectness.NFA.Compile
-import RegexCorrectness.NFA.Transition.Path3.Basic
+import RegexCorrectness.NFA.Transition.Path.Basic
 
 open Regex.Data (Expr)
 
