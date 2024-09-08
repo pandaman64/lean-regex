@@ -36,8 +36,9 @@ instance : Repr Class where
     | .range s e _ => s!"{repr s}-{repr e}"
     | .perl pc => repr pc
 
--- TODO: prove that Class.any matches any character
-def Class.any : Class := Class.range (Char.ofNat 0) (Char.ofNat Char.MAX_UNICODE) (by decide)
+-- '.' matches any character except line break (\x0A)
+def Class.beforeLineBreak : Class := Class.range (Char.ofNat 0) '\x09' (by decide)
+def Class.afterLineBreak : Class := Class.range '\x0B' (Char.ofNat Char.MAX_UNICODE) (by decide)
 
 def Class.mem (c : Char) : Class → Bool
   | Class.single c' => c == c'
