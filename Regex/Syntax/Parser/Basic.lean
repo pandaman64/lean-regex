@@ -75,45 +75,52 @@ partial def group : Parser Ast :=
     let _ ← token ')'
     pure (if nonCapturing then r else .group r)
 
-partial def charWithPerlClasses : Parser Ast :=
-  withErrorMessage "expected a character" do
-    escaped true <|> (Ast.char <$> tokenFilter (!specialCharacters.contains ·))
-
 partial def char : Parser Ast :=
   withErrorMessage "expected a character" do
     Ast.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
 
--- TODO: support special characters in classes. e.g., [.$^-]
+partial def charWithPerlClasses : Parser Ast :=
+  withErrorMessage "expected a character" do
+    escaped true <|> (Ast.char <$> tokenFilter (!specialCharacters.contains ·))
+
+partial def charInClasses : Parser Ast :=
+  withErrorMessage "expected a character" do
+    escaped true <|> (Ast.char <$> (tokenFilter (!· == ']')))
+
 partial def class_ : Parser Class := do
-  let first ← charWithPerlClasses
+  let first ← charInClasses
   let isInterval ← test (token '-')
 
   if isInterval then
-    let second ← charWithPerlClasses
-    let f ← expectsChar first
-    let s ← expectsChar second
-    if h : f ≤ s
-      then pure (Class.range f s h)
-      else throwUnexpectedWithMessage none "invalid range"
+    match ← option? charInClasses with
+    | .some second =>
+      let f ← expectsChar first
+      let s ← expectsChar second
+      if h : f ≤ s
+        then pure (Class.range f s h)
+        else throwUnexpectedWithMessage none "invalid range"
+    | .none =>
+      -- '-' just before ']' is treated as a normal character
+      pure (Class.single '-')
   else
     match first with
     | Ast.perl p => pure (Class.perl p)
     | Ast.char c => pure (Class.single c)
-    | _          => throwUnexpected
+    | _ => throwUnexpected
 where
   expectsChar (ast : Ast) : Parser Char :=
     match ast with
     | Ast.perl _ =>
       throwUnexpectedWithMessage none "cannot use perl classes in intervals"
     | Ast.char c => pure c
-    | _          => throwUnexpected
+    | _ => throwUnexpected
 
 partial def classes : Parser Ast :=
   withErrorMessage "expected a character class" do
-    let _         ← token '['
-    let negated   ← test (token '^')
+    let _ ← token '['
+    let negated ← test (token '^')
     let classes ← takeMany1 class_
-    let _         ← token ']'
+    let _ ← token ']'
     pure $ Ast.classes { negated := negated, classes := classes }
 
 partial def dot : Parser Ast :=
