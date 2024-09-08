@@ -39,7 +39,7 @@ def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
     (index', .star r)
   | .classes cs => (index, .classes cs)
   | .perl pc => (index, .classes ⟨false, #[Class.perl pc]⟩)
-  | .dot => (index, .classes ⟨false, #[Class.any]⟩)
+  | .dot => (index, .classes ⟨false, #[Class.beforeLineBreak, Class.afterLineBreak]⟩)
 
 def Ast.toRegex (ast : Ast) : Expr := (ast.toRegexAux 0).2
 
