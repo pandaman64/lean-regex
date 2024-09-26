@@ -140,5 +140,11 @@ theorem inBounds' (nfa : NFA) (i : Fin nfa.nodes.size) (hn : nfa[i] = n) : n.inB
   have : nfa[i] = nfa.nodes[i.val] := rfl
   exact this ▸ inBounds
 
+def maxTag (nfa : NFA) : Nat :=
+  nfa.nodes.foldl (init := 0) fun accum node =>
+    match node with
+    | .save tag _ => accum.max tag
+    | _ => accum
+
 end NFA
 end Regex

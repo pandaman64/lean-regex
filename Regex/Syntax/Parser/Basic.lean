@@ -205,7 +205,6 @@ def parse (input : String) : Except String Expr :=
   | .ok _ r => .ok (Ast.group r).toRegex
   | .error _ e => .error (toString e)
 
-@[export lean_regex_parse_or_panic]
 def parse! (input : String) : Expr :=
   match parse input with
   | Except.ok r => r

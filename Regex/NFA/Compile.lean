@@ -155,7 +155,6 @@ def pushRegex (nfa : NFA) (next : Fin nfa.nodes.size) :
 
     ⟨nfa', property⟩
 
-@[export lean_regex_compile]
 def compile (r : Expr) : NFA := done.pushRegex ⟨0, by decide⟩ r
 
 -- Useful lemmas about the compilation
