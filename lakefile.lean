@@ -13,9 +13,9 @@ lean_lib RegexCorrectness where
 -- TODO: make a proper test_driver
 lean_exe Test where
 
-require "leanprover-community" / "mathlib" @ git "v4.10.0"
-require "fgdorais" / "Parser" @ git "56d6a480d666c33262a30c87a9e8b74e83805288"
+require "leanprover-community" / "mathlib" @ git "v4.13.0"
+require "fgdorais" / "Parser" @ git "176dab14ce044b48203d159ef604e04d7e050fa2"
 
 -- TODO: stop using meta if
 meta if get_config? doc = some "on" then -- do not download and build doc-gen4 by default
-require "leanprover" / "doc-gen4" @ git "32c52a4b35ba8a3d261056e0d264de7bb94c062e"
+require "leanprover" / "doc-gen4" @ git "v4.13.0"

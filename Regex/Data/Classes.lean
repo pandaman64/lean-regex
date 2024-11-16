@@ -57,7 +57,7 @@ def Classes.mem (c : Char) (cs : Classes) : Bool :=
     cs.classes.any (fun cls => cls.mem c)
 
 instance : Membership Char Classes where
-  mem c cs := cs.mem c
+  mem cs c := cs.mem c
 
 theorem Classes.mem_mem {c : Char} {cs : Classes} : c ∈ cs ↔ cs.mem c := Iff.rfl
 

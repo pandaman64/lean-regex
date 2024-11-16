@@ -9,7 +9,7 @@ theorem Array.isEmpty_iff {α} {a : Array α} : a.isEmpty ↔ a = #[] := by
     simp [h]
 
 theorem Array.mem_back' {a : Array α} (hemp : ¬ a.isEmpty) : a.back' hemp ∈ a := by
-  simp [back', Array.mem_def, Array.getElem_eq_data_get]
+  simp [back', Array.mem_def]
   apply List.get_mem
 
 theorem Array.mem_push (a : Array α) (x y : α) :

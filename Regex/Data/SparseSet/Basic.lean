@@ -35,7 +35,7 @@ def mem (s : SparseSet n) (i : Fin n) : Bool :=
   s.sparse[i] < s.count && s.dense[s.sparse[i]] == i
 
 instance : Membership (Fin n) (SparseSet n) where
-  mem i s := s.mem i
+  mem s i := s.mem i
 
 @[simp]
 theorem mem_mem : i ∈ s ↔ s.mem i := Iff.rfl
@@ -136,8 +136,6 @@ theorem not_mem_of_isEmpty (h : s.isEmpty) : ¬ i ∈ s := by
   intro m
   simp [isEmpty] at h
   simp [mem, h] at m
-  have := m.left
-  contradiction
 
 @[inline]
 def foldl {α : Type} (f : α → Fin n → α) (init : α) (s : SparseSet n) : α :=
