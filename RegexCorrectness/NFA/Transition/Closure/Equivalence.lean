@@ -49,7 +49,7 @@ theorem pathIn.of_snoc_char (assm : cs' = cs ++ [c])
       have : [] ++ [c'] = cs ++ [c] := by simp [assm]
       have := List.append_inj' this rfl
       simp at this
-      simp [←this] at *
+      simp [this] at *
       exact ⟨0, j, .inl (.charStep h₁ h₂ step), .inl rfl⟩
     | εStep => simp at assm
   | @more i j k cs₁ cs₂ step rest ih =>

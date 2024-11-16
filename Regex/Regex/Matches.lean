@@ -56,7 +56,6 @@ theorem _root_.String.Pos.sizeOf_eq {p : Pos} : sizeOf p = 1 + p.byteIdx := rfl
 theorem _root_.String.Pos.sizeOf_lt_iff {p p' : Pos} :
   sizeOf p < sizeOf p' ↔ p < p' := by
   simp [String.Pos.sizeOf_eq]
-  omega
 
 macro_rules | `(tactic| decreasing_trivial) => `(tactic|
   rw [String.Pos.sizeOf_lt_iff];

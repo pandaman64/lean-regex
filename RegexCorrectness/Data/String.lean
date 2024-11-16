@@ -16,7 +16,7 @@ theorem expand (v : ValidFor l m (c :: r) s) : ValidFor l (m ++ [c]) r s.expand 
     simp [v.stopPos, v.str]
     have : 0 < c.utf8Size := Char.utf8Size_pos c
     omega
-  unfold expand
+  unfold Substring.expand
   simp [this]
   simp [v.stopPos, v.str, String.next]
   have : String.get ⟨l ++ (m ++ c :: r)⟩ ⟨String.utf8Len l + String.utf8Len m⟩ = c := by
