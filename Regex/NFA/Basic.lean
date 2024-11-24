@@ -98,8 +98,7 @@ namespace Regex
 -/
 structure NFA where
   nodes : Array NFA.Node
-  start : Fin nodes.size
-  inBounds : ∀ i : Fin nodes.size, nodes[i.val].inBounds nodes.size
+  start : Nat
 deriving Repr
 
 instance : ToString NFA where
@@ -109,16 +108,8 @@ namespace NFA
 
 def done : NFA :=
   let nodes := #[NFA.Node.done]
-  let start := ⟨0, by decide⟩
-  have inBounds := by
-    intro i
-    match i with
-    | ⟨0, isLt⟩ =>
-      simp [Node.inBounds]
-      split <;> try contradiction
-      trivial
-    | ⟨i + 1, isLt⟩ => contradiction
-  ⟨nodes, start, inBounds⟩
+  let start := 0
+  ⟨nodes, start⟩
 
 def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
   nfa.nodes[i]
@@ -129,22 +120,36 @@ instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
 theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) :
   nfa[i] = nfa.nodes[i] := rfl
 
-theorem zero_lt_size {nfa : NFA} : 0 < nfa.nodes.size := by
-  apply Nat.zero_lt_of_ne_zero
-  intro h
-  exact (h ▸ nfa.start).elim0
-
-theorem inBounds' (nfa : NFA) (i : Fin nfa.nodes.size) (hn : nfa[i] = n) : n.inBounds nfa.nodes.size := by
-  rw [←hn]
-  have inBounds := nfa.inBounds i
-  have : nfa[i] = nfa.nodes[i.val] := rfl
-  exact this ▸ inBounds
-
 def maxTag (nfa : NFA) : Nat :=
   nfa.nodes.foldl (init := 0) fun accum node =>
     match node with
     | .save tag _ => accum.max tag
     | _ => accum
+
+structure WellFormed (nfa : NFA) : Prop where
+  start_lt : nfa.start < nfa.nodes.size
+  inBounds : ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size
+
+theorem WellFormed.iff {nfa : NFA} :
+  nfa.WellFormed ↔ nfa.start < nfa.nodes.size ∧ ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size :=
+  ⟨fun wf => ⟨wf.start_lt, wf.inBounds⟩, fun ⟨h₁, h₂⟩ => ⟨h₁, h₂⟩⟩
+
+theorem WellFormed.inBounds' {nfa : NFA} (wf : nfa.WellFormed) (i : Fin nfa.nodes.size) (hn : nfa[i] = node) :
+  node.inBounds nfa.nodes.size := by
+  rw [←hn]
+  exact wf.inBounds i
+
+theorem done_WellFormed : done.WellFormed :=
+  have start_lt : 0 < done.nodes.size := by
+    simp [done]
+  have inBounds (i : Fin done.nodes.size) : done[i].inBounds done.nodes.size := by
+    match i with
+    | ⟨0, isLt⟩ =>
+      simp [done, Node.inBounds]
+      split <;> try contradiction
+      trivial
+    | ⟨_ + 1, isLt⟩ => contradiction
+  ⟨start_lt, inBounds⟩
 
 end NFA
 end Regex
