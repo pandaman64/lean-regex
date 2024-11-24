@@ -1,5 +1,6 @@
 import Regex.NFA
 import RegexCorrectness.NFA.Basic
+import RegexCorrectness.NFA.Compile.ProofData
 
 import Mathlib.Tactic.Common
 
@@ -64,14 +65,14 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
     have : nfa.nodes.size ≠ i := Nat.ne_of_gt h
     simp [this, ←get_eq_nodes_get, ih, eq₁, pushNode_get_lt _ h]
 
+open Compile.ProofData in
 theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
   nfa.nodes.size ≤ result.val.start := by
   induction r generalizing nfa next with
   | empty =>
-    apply pushRegex.empty eq
-    intro eq
-    subst eq
-    simp
+    have data := Empty.intro eq
+    rw [←eq, data.eq]
+    simp [data.start_eq]
   | epsilon =>
     apply pushRegex.epsilon eq
     intro eq
