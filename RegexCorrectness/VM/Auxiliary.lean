@@ -17,7 +17,7 @@ section
 -- TODO: try function induciton with v4.8.0
 mutual
 theorem exploreεClosure_subset
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots')) :
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots')) :
   next ⊆ next' := by
   unfold exploreεClosure at h
   split at h
@@ -36,7 +36,7 @@ theorem exploreεClosure_subset
 termination_by (next.measure, stack.size, 1)
 
 theorem εClosure_subset
-  (h : εClosure nfa pos next currentSave matched saveSlots stack = (matched', next', saveSlots')) :
+  (h : εClosure nfa wf pos next currentSave matched saveSlots stack = (matched', next', saveSlots')) :
   next ⊆ next' := by
   unfold εClosure at h
   split at h
@@ -55,7 +55,7 @@ termination_by (next.measure, stack.size, 0)
 end
 
 theorem target_mem_exploreεClosure
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots')) :
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots')) :
   target ∈ next' := by
   unfold exploreεClosure at h
   split at h
@@ -74,7 +74,7 @@ theorem target_mem_exploreεClosure
 
 mutual
 theorem mem_stack_mem_exploreεClosure
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
   (hmem : .explore i ∈ stack) :
   i ∈ next' := by
   unfold exploreεClosure at h
@@ -96,7 +96,7 @@ theorem mem_stack_mem_exploreεClosure
 termination_by (next.measure, stack.size, 1)
 
 theorem mem_stack_mem_εClosure
-  (h : εClosure nfa pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
+  (h : εClosure nfa wf pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
   (hmem : .explore i ∈ stack) :
   i ∈ next' := by
   unfold εClosure at h
@@ -140,7 +140,7 @@ def LowerInvεClosure (nfa : NFA) (next : SparseSet nfa.nodes.size)
 
 mutual
 theorem lower_inv_exploreεClosure
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
   (inv : LowerInvExploreεClosure nfa next target stack) :
   LowerInvεClosure nfa next' #[] := by
   unfold exploreεClosure at h
@@ -159,7 +159,7 @@ theorem lower_inv_exploreεClosure
     simp at h
     split at h
     next target' hn =>
-      have isLt := nfa.inBounds' target hn
+      have isLt := wf.inBounds' target hn
       have inv' : LowerInvExploreεClosure nfa (next.insert target) ⟨target', isLt⟩ stack := by
         intro i j hi hj
         cases SparseSet.eq_or_mem_of_mem_insert hi with
@@ -174,7 +174,7 @@ theorem lower_inv_exploreεClosure
           | .inr (.inr hstack) => exact .inr (.inr hstack)
       exact lower_inv_exploreεClosure h inv'
     next target₁ target₂ hn =>
-      have isLt := nfa.inBounds' target hn
+      have isLt := wf.inBounds' target hn
       have inv' : LowerInvExploreεClosure nfa (next.insert target) ⟨target₁, isLt.1⟩ (stack.push (.explore ⟨target₂, isLt.2⟩)) := by
         intro i j hi hj
         cases SparseSet.eq_or_mem_of_mem_insert hi with
@@ -191,7 +191,7 @@ theorem lower_inv_exploreεClosure
           | .inr (.inr hstack) => exact .inr (.inr ((Array.mem_push ..).mpr (.inl hstack)))
       exact lower_inv_exploreεClosure h inv'
     next _ target' hn =>
-      have isLt := nfa.inBounds' target hn
+      have isLt := wf.inBounds' target hn
       split at h
       next =>
         have inv' : LowerInvExploreεClosure nfa (next.insert target) ⟨target', isLt⟩ (stack.push (.restore currentSave)) := by
@@ -276,7 +276,7 @@ theorem lower_inv_exploreεClosure
 termination_by (next.measure, stack.size, 1)
 
 theorem lower_inv_εClosure
-  (h : εClosure nfa pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
+  (h : εClosure nfa wf pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
   (inv : LowerInvεClosure nfa next stack) :
   LowerInvεClosure nfa next' #[] := by
   unfold εClosure at h
@@ -323,13 +323,13 @@ theorem lower_inv_εClosure
 termination_by (next.measure, stack.size, 0)
 end
 
-theorem εClosure_subset_lower_inv (inv : LowerInvεClosure nfa next #[]) :
+theorem εClosure_subset_lower_inv (inv : LowerInvεClosure nfa next #[]) (wf : nfa.WellFormed) :
   ∀ i ∈ next, ∀ j ∈ nfa.εClosure i, ∃ isLt : j < nfa.nodes.size, ⟨j, isLt⟩ ∈ next := by
   let S := { j | ∃ isLt : j < nfa.nodes.size, ⟨j, isLt⟩ ∈ next }
   have : ∀ i ∈ S, (_ : i < nfa.nodes.size) → ∀ j ∈ nfa[i].εStep, j ∈ S := by
     intro i hi iLt j hj
     have ⟨_, hi⟩ := hi
-    have jLt : j < nfa.nodes.size := lt_of_εStep hj
+    have jLt : j < nfa.nodes.size := lt_of_εStep wf hj
     have hj : j ∈ nfa.εStep i := by
       simp [εStep, iLt, hj]
     have := inv ⟨i, iLt⟩ ⟨j, jLt⟩ hi hj
@@ -346,7 +346,7 @@ def LowerBoundεClosure (nfa : NFA) (i : Fin nfa.nodes.size) (next next' : Spars
   ∀ j, j ∈ next ∨ j.val ∈ nfa.εClosure i → j ∈ next'
 
 theorem lower_bound_exploreεClosure
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
   (inv : LowerInvExploreεClosure nfa next target stack) :
   LowerBoundεClosure nfa target next next' := by
   intro j hj
@@ -354,7 +354,7 @@ theorem lower_bound_exploreεClosure
   | inl hnext => exact exploreεClosure_subset h j hnext
   | inr hcls =>
     have inv' := lower_inv_exploreεClosure h inv
-    have ⟨_, hmem⟩ := εClosure_subset_lower_inv inv' target (target_mem_exploreεClosure h) j hcls
+    have ⟨_, hmem⟩ := εClosure_subset_lower_inv inv' wf target (target_mem_exploreεClosure h) j hcls
     exact hmem
 
 def UpperInvExploreεClosure (nfa : NFA) (i : Fin nfa.nodes.size)
@@ -370,7 +370,7 @@ def UpperBoundεClosure (nfa : NFA) (i : Fin nfa.nodes.size) (next next' : Spars
 
 mutual
 theorem upper_bound_exploreεClosure {i}
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
   (inv : UpperInvExploreεClosure nfa i target stack) :
   UpperBoundεClosure nfa i next next' := by
   unfold exploreεClosure at h
@@ -389,12 +389,12 @@ theorem upper_bound_exploreεClosure {i}
     simp at h
     split at h
     next target' hn =>
-      have isLt := nfa.inBounds' target hn
+      have isLt := wf.inBounds' target hn
       have inv' : UpperInvExploreεClosure nfa i ⟨target', isLt⟩ stack :=
         ⟨εClosure_snoc inv.1 (by simp [εStep, Node.εStep, hn]), inv.2⟩
       exact upper_bound_exploreεClosure h inv'
     next target₁ target₂ hn =>
-      have isLt := nfa.inBounds' target hn
+      have isLt := wf.inBounds' target hn
       have inv' : UpperInvExploreεClosure nfa i ⟨target₁, isLt.1⟩ (stack.push (.explore ⟨target₂, isLt.2⟩)) := by
         refine ⟨εClosure_snoc inv.1 (by simp [εStep, Node.εStep, hn]), ?_⟩
         intro j hj
@@ -405,7 +405,7 @@ theorem upper_bound_exploreεClosure {i}
           exact εClosure_snoc inv.1 (by simp [εStep, Node.εStep, hn, hj])
       exact upper_bound_exploreεClosure h inv'
     next _ target' hn =>
-      have isLt := nfa.inBounds' target hn
+      have isLt := wf.inBounds' target hn
       split at h
       next =>
         have inv' : UpperInvExploreεClosure nfa i ⟨target', isLt⟩ (stack.push (.restore currentSave)) := by
@@ -426,7 +426,7 @@ theorem upper_bound_exploreεClosure {i}
 termination_by (next.measure, stack.size, 1)
 
 theorem upper_bound_εClosure {i}
-  (h : εClosure nfa pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
+  (h : εClosure nfa wf pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
   (inv : UpperInvεClosure nfa i stack) :
   UpperBoundεClosure nfa i next next' := by
   unfold εClosure at h
@@ -451,7 +451,7 @@ termination_by (next.measure, stack.size, 0)
 end
 
 theorem exploreεClosure_spec.mem_next_iff
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target #[] = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target #[] = (matched', next', saveSlots'))
   (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
   ∀ i, i ∈ next' ↔ i ∈ next ∨ i.val ∈ nfa.εClosure target := by
   have lower_inv : LowerInvExploreεClosure nfa next target #[] := by
@@ -465,7 +465,7 @@ theorem exploreεClosure_spec.mem_next_iff
   exact ⟨upper_bound i, lower_bound i⟩
 
 theorem exploreεClosure_spec.preserve_cls
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target #[] = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target #[] = (matched', next', saveSlots'))
   (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
   ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
   have lower_inv : LowerInvExploreεClosure nfa next target #[] := by
@@ -476,7 +476,7 @@ theorem exploreεClosure_spec.preserve_cls
   exact lower_inv'
 
 theorem stepChar_spec.mem_next_iff
-  (h : stepChar nfa c pos next saveSlots target = (matched', next', saveSlots'))
+  (h : stepChar nfa wf c pos next saveSlots target = (matched', next', saveSlots'))
   (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
   ∀ j, j ∈ next' ↔ j ∈ next ∨ ∃ i ∈ nfa.charStep target c, j.val ∈ nfa.εClosure i := by
   unfold stepChar at h
@@ -544,7 +544,7 @@ theorem stepChar_spec.mem_next_iff
     simp [h, this]
 
 theorem stepChar_spec.preserve_cls
-  (h : stepChar nfa c pos next saveSlots target = (matched', next', saveSlots'))
+  (h : stepChar nfa wf c pos next saveSlots target = (matched', next', saveSlots'))
   (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
   ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
   unfold stepChar at h
@@ -573,7 +573,7 @@ theorem stepChar_spec.preserve_cls
     exact inv
 
 theorem eachStepChar_spec.mem_next_iff.go
-  (h : eachStepChar.go nfa c pos current i hle next saveSlots = (matched', next', saveSlots'))
+  (h : eachStepChar.go nfa wf c pos current i hle next saveSlots = (matched', next', saveSlots'))
   (inv₁ : ∀ j, j ∈ next ↔ ∃ i', ∃ _ : i' < current.count, i' < i ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'')
   (inv₂ : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
   -- TODO: do we want to add istop < current.count?
@@ -590,7 +590,7 @@ theorem eachStepChar_spec.mem_next_iff.go
   next hi =>
     have hlt : i < current.count := Nat.lt_of_le_of_ne hle hi
     simp at h
-    generalize hres : stepChar nfa c pos next saveSlots current[i] = result at h
+    generalize hres : stepChar nfa wf c pos next saveSlots current[i] = result at h
     let (matched'', next'', saveSlots'') := result
 
     have inv₁' : ∀ j, j ∈ next'' ↔ ∃ i', ∃ _ : i' < current.count, i' < i + 1 ∧ ∃ i'' ∈ nfa.charStep current[i'] c, j.val ∈ nfa.εClosure i'' := by
@@ -624,7 +624,7 @@ theorem eachStepChar_spec.mem_next_iff.go
 termination_by current.count - i
 
 theorem eachStepChar_spec.mem_next_iff
-  (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
+  (h : eachStepChar nfa wf c pos current next saveSlots = (matched', next', saveSlots'))
   (hemp : next.isEmpty) :
   ∃ istop,
     ∀ j, j ∈ next' ↔
@@ -639,7 +639,7 @@ theorem eachStepChar_spec.mem_next_iff
     exact absurd hi (SparseSet.not_mem_of_isEmpty hemp)
 
 theorem eachStepChar_spec.preserve_cls.go
-  (h : eachStepChar.go nfa c pos current i hle next saveSlots = (matched', next', saveSlots'))
+  (h : eachStepChar.go nfa wf c pos current i hle next saveSlots = (matched', next', saveSlots'))
   (inv : ∀ i j : Fin nfa.nodes.size, i ∈ next → j.val ∈ nfa.εStep i → j ∈ next) :
   ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
   unfold eachStepChar.go at h
@@ -651,7 +651,7 @@ theorem eachStepChar_spec.preserve_cls.go
   next hi =>
     have hlt : i < current.count := Nat.lt_of_le_of_ne hle hi
     simp at h
-    generalize hres : stepChar nfa c pos next saveSlots current[i] = result at h
+    generalize hres : stepChar nfa wf c pos next saveSlots current[i] = result at h
     let (matched'', next'', saveSlots'') := result
     split at h
     next =>
@@ -664,7 +664,7 @@ theorem eachStepChar_spec.preserve_cls.go
 termination_by current.count - i
 
 theorem eachStepChar_spec.preserve_cls
-  (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
+  (h : eachStepChar nfa wf c pos current next saveSlots = (matched', next', saveSlots'))
   (hemp : next.isEmpty) :
   ∀ i j : Fin nfa.nodes.size, i ∈ next' → j.val ∈ nfa.εStep i → j ∈ next' := by
   unfold eachStepChar at h
@@ -679,7 +679,7 @@ end
 section
 mutual
 theorem exploreεClosure_mem_done_iff
-  (h : exploreεClosure nfa pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
+  (h : exploreεClosure nfa wf pos next currentSave matched saveSlots target stack = (matched', next', saveSlots'))
   (inv : (∃ i, i ∈ next ∧ nfa[i] = .done) ↔ matched.isSome) :
   (∃ i, i ∈ next' ∧ nfa[i] = .done) ↔ matched'.isSome := by
   unfold exploreεClosure at h
@@ -720,7 +720,7 @@ theorem exploreεClosure_mem_done_iff
 termination_by (next.measure, stack.size, 1)
 
 theorem εClosure_mem_done_iff
-  (h : εClosure nfa pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
+  (h : εClosure nfa wf pos next currentSave matched saveSlots stack = (matched', next', saveSlots'))
   (inv : (∃ i, i ∈ next ∧ nfa[i] = .done) ↔ matched.isSome) :
   (∃ i, i ∈ next' ∧ nfa[i] = .done) ↔ matched'.isSome := by
   unfold εClosure at h
@@ -739,7 +739,7 @@ termination_by (next.measure, stack.size, 0)
 end
 
 theorem stepChar_mem_done_iff
-  (h : stepChar nfa c pos next saveSlots target = (matched', next', saveSlots'))
+  (h : stepChar nfa wf c pos next saveSlots target = (matched', next', saveSlots'))
   (hnotDone : ∀ i, i ∈ next → nfa[i] ≠ .done) :
   (∃ i, i ∈ next' ∧ nfa[i] = .done) ↔ matched'.isSome := by
   unfold stepChar at h
@@ -768,7 +768,7 @@ theorem stepChar_mem_done_iff
     exact hnotDone
 
 theorem eachStepChar_spec.mem_done_iff.go
-  (h : eachStepChar.go nfa c pos current i hle next saveSlots = (matched', next', saveSlots'))
+  (h : eachStepChar.go nfa wf c pos current i hle next saveSlots = (matched', next', saveSlots'))
   (hnotDone : ∀ j, j ∈ next → nfa[j] ≠ .done) :
   (∃ j, j ∈ next' ∧ nfa[j] = .done) ↔ matched'.isSome := by
   unfold eachStepChar.go at h
@@ -780,7 +780,7 @@ theorem eachStepChar_spec.mem_done_iff.go
   next hi =>
     have hlt : i < current.count := Nat.lt_of_le_of_ne hle hi
     simp at h
-    generalize heq : stepChar nfa c pos next saveSlots current[i] = result at h
+    generalize heq : stepChar nfa wf c pos next saveSlots current[i] = result at h
     let (matched'', next'', saveSlots'') := result
     have := stepChar_mem_done_iff heq hnotDone
 
@@ -795,7 +795,7 @@ theorem eachStepChar_spec.mem_done_iff.go
 termination_by current.count - i
 
 theorem eachStepChar_spec.mem_done_iff
-  (h : eachStepChar nfa c pos current next saveSlots = (matched', next', saveSlots'))
+  (h : eachStepChar nfa wf c pos current next saveSlots = (matched', next', saveSlots'))
   (hemp : next.isEmpty) :
   (∃ j, j ∈ next' ∧ nfa[j] = .done) ↔ matched'.isSome := by
   unfold eachStepChar at h

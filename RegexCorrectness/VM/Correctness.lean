@@ -6,7 +6,7 @@ namespace Regex.VM
 
 theorem matches_of_captureNext
   (eq : compile re = nfa)
-  (h : captureNext nfa it saveSize = matched)
+  (h : captureNext nfa wf it saveSize = matched)
   (v : it.Valid)
   (hsome : matched.isSome) :
   ∃ (s : Substring) (l m r : List Char),

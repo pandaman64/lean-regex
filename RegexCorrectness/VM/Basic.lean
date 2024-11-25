@@ -18,7 +18,7 @@ structure captureNext.go.Inv (nfa : NFA) (it : String.Iterator) (haystack : Stri
     s.ValidFor l m r ∧ haystack = ⟨l ++ m ++ r⟩ ∧ ∃ i, nfa.reaches i m ∧ nfa[i] = .done
 
 theorem captureNext_spec.go
-  (h : captureNext.go nfa saveSize it current next saveSlots lastMatch = matched)
+  (h : captureNext.go nfa wf saveSize it current next saveSlots lastMatch = matched)
   (inv : captureNext.go.Inv nfa it haystack current lastMatch)
   (v : it.Valid)
   (eqs : haystack = it.toString)
@@ -37,12 +37,12 @@ theorem captureNext_spec.go
       exact eqs ▸ inv.acceptOfLastMatch
     next =>
       if hm : lastMatch.isNone then
-        generalize he : exploreεClosure nfa it.pos current (captureNext.initSave saveSize) none saveSlots nfa.start #[] = explored at h
+        generalize he : exploreεClosure nfa wf it.pos current (captureNext.initSave saveSize) none saveSlots ⟨nfa.start, wf.start_lt⟩ #[] = explored at h
         let (_, current', saveSlots') := explored
         simp [hm] at h
         have mem_current'_iff := exploreεClosure_spec.mem_next_iff he inv.currentClosure
 
-        generalize hs : eachStepChar nfa it.curr it.next.i current' next saveSlots' = stepped at h
+        generalize hs : eachStepChar nfa wf it.curr it.next.i current' next saveSlots' = stepped at h
         let (matched', next', saveSlots'') := stepped
         simp at h
 
@@ -88,7 +88,7 @@ theorem captureNext_spec.go
       else
         simp [hm] at h
 
-        generalize hs : eachStepChar nfa it.curr it.next.i current next saveSlots = stepped at h
+        generalize hs : eachStepChar nfa wf it.curr it.next.i current next saveSlots = stepped at h
         let (matched', next', saveSlots'') := stepped
         simp at h
 
@@ -119,7 +119,7 @@ theorem captureNext_spec.go
         exact captureNext_spec.go h inv' (v.next' atEnd) (by simp [eqs, String.Iterator.next]) (by simp)
 
 theorem captureNext_spec
-  (h : captureNext nfa it saveSize = matched)
+  (h : captureNext nfa wf it saveSize = matched)
   (v : it.Valid)
   (hsome : matched.isSome) :
   ∃ (s : Substring) (l m r : List Char),
@@ -127,7 +127,7 @@ theorem captureNext_spec
   unfold captureNext at h
   generalize _hs : Vec.ofFn (fun _ => captureNext.initSave saveSize) = saveSlots at h
   simp at h
-  generalize he : exploreεClosure nfa it.i .empty (captureNext.initSave saveSize) .none saveSlots nfa.start #[] = init at h
+  generalize he : exploreεClosure nfa wf it.i .empty (captureNext.initSave saveSize) .none saveSlots ⟨nfa.start, wf.start_lt⟩ #[] = init at h
   let (matched', init', saveSlots) := init
   simp at h
 
