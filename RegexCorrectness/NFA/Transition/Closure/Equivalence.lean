@@ -87,12 +87,12 @@ where
       simp [this]
 
 theorem eq_or_pathIn_of_reaches {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char}
-  (h : nfa.reaches i m) :
+  (wf : nfa.WellFormed) (h : nfa.reaches i m) :
   (nfa.start = i ∧ m = []) ∨ nfa.pathIn 0 nfa.start i m := by
   induction h with
   | nil cls =>
     cases eq_or_pathIn_of_εClosure cls with
-    | inl eq => exact .inl ⟨Fin.eq_of_val_eq eq, rfl⟩
+    | inl eq => exact .inl ⟨eq, rfl⟩
     | inr path => exact .inr path
   | @snoc i j k c m _ step cls ih =>
     simp [charStep] at step
@@ -103,7 +103,7 @@ theorem eq_or_pathIn_of_reaches {nfa : NFA} {i : Fin nfa.nodes.size} {m : List C
       | inl eq => exact .last (.charStep (Nat.zero_le _) i.isLt (eq ▸ step))
       | inr path => exact .more (.charStep (Nat.zero_le _) i.isLt step) path
     | inr path =>
-      have := path.snoc_char (by simp) step
+      have := path.snoc_char (by simp) wf step
       simp at this
       cases eq_or_pathIn_of_εClosure cls with
       | inl eq =>
@@ -115,7 +115,7 @@ theorem eq_or_pathIn_of_reaches {nfa : NFA} {i : Fin nfa.nodes.size} {m : List C
         exact .inr this
 
 theorem reaches_of_pathIn {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char}
-  (h : nfa.pathIn 0 nfa.start i m) :
+  (wf : nfa.WellFormed) (h : nfa.pathIn 0 nfa.start i m) :
   nfa.reaches i m := by
   induction m using List.list_reverse_induction generalizing i with
   | base => exact .nil (εClosure_of_pathIn h)
@@ -130,7 +130,7 @@ theorem reaches_of_pathIn {nfa : NFA} {i : Fin nfa.nodes.size} {m : List Char}
       have := step.nil_of_snoc
       simp [this] at *
       cases step with
-      | charStep _ _ step => exact .snoc (.nil .base) (charStep_of_charStep step) cls
+      | charStep _ _ step => exact .snoc (i := ⟨nfa.start, wf.start_lt⟩) (.nil .base) (charStep_of_charStep step) cls
     | .inr ⟨path, step⟩ =>
       have prev := ih (i := ⟨j, step.h₂⟩) path
       cases step with
@@ -140,15 +140,17 @@ theorem matches_of_reaches (eq : compile r = nfa)
   (h₁ : nfa.reaches i cs) (h₂ : nfa[i] = .done) :
   r.matches cs := by
   have hi : i.val = 0 := (done_iff_zero_compile eq i).mp h₂
-  have path := eq_or_pathIn_of_reaches h₁
+  have path := eq_or_pathIn_of_reaches (eq ▸ compile_wf) h₁
   have : nfa.start ≠ i := by
-    apply Fin.ne_of_val_ne
-    rw [hi]
+    have : 1 ≤ nfa.start := by
+      suffices done.nodes.size ≤ nfa.start by
+        simp [done] at this
+        exact this
+      simp [←eq, compile]
+      apply ge_pushRegex_start rfl
+    simp [hi]
     apply Nat.ne_of_gt
-    unfold NFA.compile at eq
-    set result := NFA.done.pushRegex ⟨0, by decide⟩ r with h
-    rw [←eq]
-    exact ge_pushRegex_start h
+    exact this
   simp [this] at path
   exact (matches_iff_pathIn eq).mpr (hi ▸ path)
 
@@ -157,7 +159,7 @@ theorem reaches_of_matches (eq : compile r = nfa)
   ∃ i, nfa.reaches i cs ∧ nfa[i] = .done := by
   have := (matches_iff_pathIn eq).mp m
   let i' : Fin nfa.nodes.size := ⟨0, lt_zero_size_compile eq⟩
-  have := reaches_of_pathIn (i := i') this
+  have := reaches_of_pathIn (i := i') (eq ▸ compile_wf) this
   have hdone := (done_iff_zero_compile eq i').mpr rfl
   exact ⟨i', this, hdone⟩
 

@@ -55,14 +55,14 @@ theorem lt_of_inBounds_of_εStep {node : Node} {j k : Nat}
     simp [*]
 
 theorem lt_of_εStep {nfa : NFA} {i j : Nat} {h : i < nfa.nodes.size}
-  (mem : j ∈ nfa[i].εStep) : j < nfa.nodes.size := by
-  have inBounds := nfa.inBounds ⟨i, h⟩
+  (wf : nfa.WellFormed) (mem : j ∈ nfa[i].εStep) : j < nfa.nodes.size := by
+  have inBounds := wf.inBounds ⟨i, h⟩
   simp [get_eq_nodes_get] at mem
   exact lt_of_inBounds_of_εStep inBounds mem
 
 theorem lt_of_charStep {nfa : NFA} {i j : Nat} {h : i < nfa.nodes.size}
-  (mem : j ∈ nfa[i].charStep c) : j < nfa.nodes.size := by
-  have inBounds := nfa.inBounds ⟨i, h⟩
+  (wf : nfa.WellFormed) (mem : j ∈ nfa[i].charStep c) : j < nfa.nodes.size := by
+  have inBounds := wf.inBounds ⟨i, h⟩
   simp [get_eq_nodes_get] at mem
   exact lt_of_inBounds_of_charStep inBounds mem
 
