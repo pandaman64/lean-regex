@@ -30,10 +30,10 @@ theorem le_of_stepIn (step : stepIn nfa lb i j cs) : lb ≤ i := by
   | charStep h₁ => exact h₁
   | εStep h₁ => exact h₁
 
-theorem stepIn.lt_right (step : stepIn nfa lb i j cs) : j < nfa.nodes.size := by
+theorem stepIn.lt_right (step : stepIn nfa lb i j cs) (wf : nfa.WellFormed) : j < nfa.nodes.size := by
   match step.step with
-  | .inl ⟨_, step⟩ => exact lt_of_charStep step
-  | .inr step => exact lt_of_εStep step
+  | .inl ⟨_, step⟩ => exact lt_of_charStep wf step
+  | .inr step => exact lt_of_εStep wf step
 
 theorem stepIn.castBound' {nfa : NFA} (le : lb' ≤ i) (step : stepIn nfa lb i j cs) :
   nfa.stepIn lb' i j cs := by
@@ -99,9 +99,9 @@ theorem pathIn.lt_left (path : pathIn nfa lb i j cs) : i < nfa.nodes.size := by
   | last step => exact step.h₂
   | more step => exact step.h₂
 
-theorem pathIn.lt_right (path : pathIn nfa lb i j cs) : j < nfa.nodes.size := by
+theorem pathIn.lt_right (path : pathIn nfa lb i j cs) (wf : nfa.WellFormed) : j < nfa.nodes.size := by
   induction path with
-  | last step => exact step.lt_right
+  | last step => exact step.lt_right wf
   | more _ _ ih => exact ih
 
 theorem pathIn.castBound {nfa : NFA} {lb lb' : Nat}
@@ -125,7 +125,7 @@ theorem pathIn.cast {nfa nfa' : NFA} (lb : Nat)
     exact .more (step.cast isLt eq) ih
 
 theorem pathIn.cast' {nfa nfa' : NFA} {lb : Nat}
-  (assm : i < nfa.nodes.size) (le : nfa.nodes.size ≤ nfa'.nodes.size)
+  (assm : i < nfa.nodes.size) (le : nfa.nodes.size ≤ nfa'.nodes.size) (wf : nfa.WellFormed)
   (eq : ∀ i, (h₁ : lb ≤ i) → (h₂ : i < nfa.nodes.size) → nfa[i] = nfa'[i]'(Nat.lt_of_lt_of_le h₂ le))
   (path : pathIn nfa' lb i j cs) :
   pathIn nfa lb i j cs := by
@@ -133,7 +133,7 @@ theorem pathIn.cast' {nfa nfa' : NFA} {lb : Nat}
   | last step => exact .last (step.cast assm (eq _ step.h₁ assm).symm)
   | more step _ ih =>
     have step' := step.cast assm (eq _ step.h₁ assm).symm
-    have rest := ih step'.lt_right
+    have rest := ih (step'.lt_right wf)
     exact .more step' rest
 
 theorem pathIn.castLE {nfa : NFA} {lb lb' i i' : Nat}
@@ -156,26 +156,26 @@ theorem pathIn.castLE {nfa : NFA} {lb lb' i i' : Nat}
     have rest' := ih this
     exact .more step' rest'
 
-theorem pathIn.snoc_char (path : pathIn nfa lb i j cs) (assm : min lb k ≤ j)
-  (step : k ∈ (nfa[j]'path.lt_right).charStep c)
+theorem pathIn.snoc_char (path : pathIn nfa lb i j cs) (assm : min lb k ≤ j) (wf : nfa.WellFormed)
+  (step : k ∈ (nfa[j]'(path.lt_right wf)).charStep c)
   : pathIn nfa (min lb k) i k (cs ++ [c]) := by
   induction path with
   | @last i j cs step' =>
-    have step'' : nfa.stepIn (min lb k) j k [c] := .charStep assm step'.lt_right step
+    have step'' : nfa.stepIn (min lb k) j k [c] := .charStep assm (step'.lt_right wf) step
     exact .more (step'.castBound (Nat.min_le_left lb k)) (.last step'')
   | @more i j k cs₁ cs₂ step' _ ih =>
     simp
     exact .more (step'.castBound (Nat.min_le_left _ _)) (ih assm step)
 
-theorem pathIn.snoc_ε (path : pathIn nfa lb i j cs) (assm : min lb k ≤ j)
-  (step : k ∈ (nfa[j]'path.lt_right).εStep)
+theorem pathIn.snoc_ε (path : pathIn nfa lb i j cs) (assm : min lb k ≤ j) (wf : nfa.WellFormed)
+  (step : k ∈ (nfa[j]'(path.lt_right wf)).εStep)
   : pathIn nfa (min lb k) i k cs := by
   induction path with
   | @last i j cs step' =>
     suffices nfa.pathIn (min lb k) i k (cs ++ []) by
       simp at this
       exact this
-    have step'' : nfa.stepIn (min lb k) j k [] := .εStep assm step'.lt_right step
+    have step'' : nfa.stepIn (min lb k) j k [] := .εStep assm (step'.lt_right wf) step
     exact .more (step'.castBound (Nat.min_le_left lb k)) (.last step'')
   | @more i j k cs₁ cs₂ step' _ ih =>
     exact .more (step'.castBound (Nat.min_le_left _ _)) (ih assm step)

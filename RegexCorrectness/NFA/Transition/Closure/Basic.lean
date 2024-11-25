@@ -19,14 +19,14 @@ inductive εClosure (nfa : NFA) : Nat → Set Nat where
 --   | step h => exact h
 
 theorem lt_of_εClosure_right {nfa : NFA} {i j : Nat}
-  (lt : i < nfa.nodes.size) (h : j ∈ nfa.εClosure i) :
+  (wf : nfa.WellFormed) (lt : i < nfa.nodes.size) (h : j ∈ nfa.εClosure i) :
   j < nfa.nodes.size := by
   induction h with
   | base => exact lt
   | @step i j _ step _ ih =>
     have : j < nfa.nodes.size := by
       simp [εStep] at step
-      split at step <;> exact lt_of_εStep step
+      split at step <;> exact lt_of_εStep wf step
     exact ih this
 
 theorem εClosure_snoc {nfa : NFA} (cls : j ∈ nfa.εClosure i) (step : k ∈ nfa.εStep j) :

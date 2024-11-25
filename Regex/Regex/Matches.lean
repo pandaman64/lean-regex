@@ -12,7 +12,7 @@ deriving Repr
 
 def Matches.next? (self : Matches) : Option ((Pos × Pos) × Matches) := do
   if self.currentPos < self.haystack.endPos then
-    let pos ← VM.searchNext self.regex.nfa ⟨self.haystack, self.currentPos⟩
+    let pos ← VM.searchNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩
     if self.currentPos < pos.2 then
       let next := { self with currentPos := pos.2 }
       pure (pos, next)

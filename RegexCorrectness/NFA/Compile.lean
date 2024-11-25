@@ -1,4 +1,4 @@
-import Regex.NFA.Compile
+import Regex.NFA
 import RegexCorrectness.NFA.Basic
 
 import Mathlib.Tactic.Common
@@ -18,7 +18,7 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
     apply pushNode_get_lt i h
   | group _ r ih =>
     apply pushRegex.group eq
-    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+    intro nfa' nfa'' nfa''' property eq₁ eq₂ eq₃ eq
 
     have h₁ : i < nfa'.val.nodes.size := Nat.lt_trans h nfa'.property
     have h₂ : i < nfa''.val.nodes.size := Nat.lt_trans h₁ nfa''.property
@@ -28,7 +28,7 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
     simp [eq₁, pushNode_get_lt _ h]
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply pushRegex.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ _ eq₃ _ eq₅ eq
 
     have h₁ : i < nfa₁.val.nodes.size := Nat.lt_trans h nfa₁.property
     have h₂ : i < nfa₂.val.nodes.size := Nat.lt_trans h₁ nfa₂.property
@@ -45,7 +45,7 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
     simp [eq, ih₁ eq₁.symm h₂, ih₂ eq₂.symm h]
   | star r ih =>
     apply pushRegex.star eq
-    intro placeholder compiled patched nfa' isLt inBounds property
+    intro placeholder compiled patched nfa' property
       eq₁ eq₂ eq₃ eq₄ eq
 
     have ih := ih eq₂.symm (Nat.lt_trans h placeholder.property)
@@ -65,7 +65,7 @@ theorem pushRegex_get_lt (eq : pushRegex nfa next r = result) (i : Nat) (h : i <
     simp [this, ←get_eq_nodes_get, ih, eq₁, pushNode_get_lt _ h]
 
 theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
-  nfa.nodes.size ≤ result.val.start.val := by
+  nfa.nodes.size ≤ result.val.start := by
   induction r generalizing nfa next with
   | empty =>
     apply pushRegex.empty eq
@@ -89,7 +89,7 @@ theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
     simp
   | group =>
     apply pushRegex.group eq
-    intro nfa' nfa'' nfa''' property _ _ _ _ eq₃ eq
+    intro nfa' nfa'' nfa''' property _ _ eq₃ eq
     rw [eq]
     simp
     rw [eq₃]
@@ -97,7 +97,7 @@ theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
     apply Nat.le_of_lt (Nat.lt_trans nfa'.property nfa''.property)
   | alternate r₁ r₂ =>
     apply pushRegex.alternate eq
-    intro nfa₁ _ nfa₂ _ _ _ _ _ _ _ _ eq₅ eq
+    intro nfa₁ _ nfa₂ _ _ _ _ _ _ _ eq₅ eq
     rw [eq]
     simp
     rw [eq₅]
@@ -111,7 +111,7 @@ theorem ge_pushRegex_start (eq : pushRegex nfa next r = result) :
     exact Nat.le_trans (Nat.le_of_lt nfa₂.property) (ih₁ eq₁.symm)
   | star r =>
     apply pushRegex.star eq
-    intro _ _ _ nfa' _ _ _ _ _ _ eq₄ eq
+    intro _ _ _ nfa' _ _ _ _ eq₄ eq
     rw [eq]
     simp
     rw [eq₄]
@@ -141,7 +141,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
     try exact .inl (And.right step)
   | group _ r ih =>
     apply pushRegex.group eq
-    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+    intro nfa' nfa'' nfa''' property eq₁ eq₂ eq₃ eq
 
     have get₂ (h : i < nfa''.val.nodes.size) : result.val[i] = nfa''.val[i] := by
       simp [eq, eq₃]
@@ -177,7 +177,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
         exact .inr (Nat.le_trans (Nat.le_of_lt nfa'.property) (step ▸ ge_pushRegex_start eq₂.symm))
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply pushRegex.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ eq₂ eq₃ eq₄ eq₅ eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ eq₂ eq₃ eq₄ eq₅ eq
 
     have get₂ (h : i < nfa₂.val.nodes.size) :
       result.val[i] = nfa₂.val[i] := by
@@ -237,7 +237,7 @@ theorem eq_or_ge_of_step_pushRegex {i j : Nat} (eq : pushRegex nfa next r = resu
       | inr ge => exact Nat.le_trans (Nat.le_of_lt nfa₂.property) ge
   | star r ih =>
     apply pushRegex.star eq
-    intro placeholder compiled patched nfa' isLt inBounds property
+    intro placeholder compiled patched nfa' property
       eq₁ eq₂ eq₃ eq₄ eq
 
     cases Nat.lt_or_ge nfa.nodes.size i with
@@ -292,7 +292,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
       exact h₂ i lt
   | group _ r ih =>
     apply pushRegex.group eq
-    intro nfa' nfa'' nfa''' property _ _ eq₁ eq₂ eq₃ eq
+    intro nfa' nfa'' nfa''' property eq₁ eq₂ eq₃ eq
     subst eq
     simp
     intro i isLt
@@ -320,7 +320,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
         exact h₂ i lt
   | alternate r₁ r₂ ih₁ ih₂ =>
     apply pushRegex.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ _ nfa' property eq₁ _ eq₃ _ eq₅ eq
+    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ _ eq₃ _ eq₅ eq
     subst eq
     simp
     intro i isLt
@@ -346,7 +346,7 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
     apply ih₂ eq₂.symm h₁ h₂
   | star r ih =>
     apply pushRegex.star eq
-    intro placeholder compiled patched nfa' isLt inBounds property
+    intro placeholder compiled patched nfa' property
       eq₁ eq₂ eq₃ eq₄ eq
     subst eq
     simp
@@ -408,26 +408,17 @@ theorem done_iff_zero_pushRegex (eq : pushRegex nfa next r = result)
 
 theorem done_iff_zero_compile (eq : compile r = nfa) (i : Fin nfa.nodes.size) :
   nfa[i] = .done ↔ i.val = 0 := by
-  have h (i : Nat) (isLt : i < NFA.done.nodes.size) : done[i] = Node.done ↔ i = 0 := by
-    simp [NFA.done] at *
-    suffices i = 0 by
-      subst this
-      simp
-      rfl
-    simp [NFA.done] at isLt
-    match i with
-    | 0 => rfl
-    | i + 1 => contradiction
-  unfold compile at eq
-  set result := NFA.done.pushRegex ⟨0, by decide⟩ r with eq'
-  have := done_iff_zero_pushRegex eq'.symm (by decide) h i (eq ▸ i.isLt)
-  exact eq ▸ this
+  simp [←eq, compile]
+  apply done_iff_zero_pushRegex rfl (by simp [done])
+  intro i isLt
+  simp [done] at isLt
+  simp [isLt]
+  rfl
 
 theorem lt_zero_size_compile (eq : compile r = nfa) :
   0 < nfa.nodes.size := by
-  unfold compile at eq
-  set result := NFA.done.pushRegex ⟨0, by decide⟩ r
-  have : 0 < result.val.nodes.size := Nat.zero_lt_of_lt result.property
-  exact eq ▸ this
+  simp [←eq, compile]
+  set result := NFA.done.pushRegex 0 r
+  exact Nat.zero_lt_of_lt result.property
 
 end Regex.NFA
