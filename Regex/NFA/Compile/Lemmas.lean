@@ -1,4 +1,5 @@
-import Regex.NFA.Compile
+import Regex.NFA.Compile.Basic
+import Regex.NFA.Compile.ProofData
 
 open Regex.Data (Expr)
 

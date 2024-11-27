@@ -1,5 +1,4 @@
-import Regex.NFA.Compile
-import Mathlib.Tactic
+import Regex.NFA.Compile.Basic
 
 open Regex.Data (Classes Expr)
 
