@@ -3,12 +3,14 @@ import Regex.NFA.Compile.ProofData
 
 open Regex.Data (Expr)
 
+set_option autoImplicit false
+
 namespace Regex.NFA
 
-theorem pushNode_wf {nfa : NFA} {node result} (eq : result = nfa.pushNode node)
+theorem pushNode_wf {nfa : NFA} {node}
   (wf : nfa.WellFormed) (inBounds : node.inBounds (nfa.nodes.size + 1)) :
-  result.val.WellFormed := by
-  simp [eq, pushNode, WellFormed.iff, NFA.get_eq_nodes_get]
+  (nfa.pushNode node).val.WellFormed := by
+  simp [pushNode, WellFormed.iff, NFA.get_eq_nodes_get]
   intro i
   cases Nat.lt_or_ge i.val nfa.nodes.size with
   | inl lt =>
@@ -21,101 +23,169 @@ theorem pushNode_wf {nfa : NFA} {node result} (eq : result = nfa.pushNode node)
     have : i.val = nfa.nodes.size := by omega
     simp [this, inBounds]
 
+open Compile.ProofData in
 theorem pushRegex_wf {nfa : NFA} {next e result} (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) :
   result.val.WellFormed := by
   induction e generalizing nfa next with
   | empty =>
-    apply pushRegex.empty eq
-    intro eq
-    apply pushNode_wf eq wf
+    let pd := Empty.intro eq
+    simp [pd.eq_result eq]
+    apply pushNode_wf wf
     simp
   | epsilon =>
-    apply pushRegex.epsilon eq
-    intro eq
-    apply pushNode_wf eq wf
+    let pd := Epsilon.intro eq
+    simp [pd.eq_result eq]
+    apply pushNode_wf wf
     simp [Node.inBounds]
-    omega
+    exact Nat.lt_trans next_lt (by omega)
   | char c =>
-    apply pushRegex.char eq
-    intro eq
-    apply pushNode_wf eq wf
+    let pd := Char.intro eq
+    simp [pd.eq_result eq]
+    apply pushNode_wf wf
     simp [Node.inBounds]
-    omega
+    exact Nat.lt_trans next_lt (by omega)
   | classes cs =>
-    apply pushRegex.sparse eq
-    intro eq
-    apply pushNode_wf eq wf
+    let pd := Classes.intro eq
+    simp [pd.eq_result eq]
+    apply pushNode_wf wf
     simp [Node.inBounds]
-    omega
+    exact Nat.lt_trans next_lt (by omega)
   | group tag e ih =>
-    apply pushRegex.group eq
-    intro nfa' nfa'' nfa''' isLt eq₁ eq₂ eq₃ eq₄
-    simp [eq₄]
+    let pd := Group.intro eq
+    simp [pd.eq_result eq]
 
-    have wf'' : nfa''.val.WellFormed := by
-      refine ih eq₂.symm ?_ (by simp [eq₁])
-      apply pushNode_wf eq₁ wf
+    have wf_close : Group.nfaClose.WellFormed := by
+      apply pushNode_wf wf
       simp [Node.inBounds]
-      omega
+      exact Nat.lt_trans next_lt (by omega)
 
-    apply pushNode_wf eq₃ wf''
+    have wf_expr : Group.nfaExpr.WellFormed := ih rfl wf_close wf_close.start_lt
+
+    apply pushNode_wf wf_expr
     simp [Node.inBounds]
-    have := wf''.start_lt
-    omega
+    exact Nat.lt_trans wf_expr.start_lt (by omega)
   | alternate e₁ e₂ ih₁ ih₂ =>
-    apply pushRegex.alternate eq
-    intro nfa₁ start₁ nfa₂ start₂ nfa' property eq₁ eq₂ eq₃ eq₄ eq₅ eq₆
-    simp [eq₆]
+    let pd := Alternate.intro eq
+    simp [pd.eq_result eq]
 
-    have wf₁ : nfa₁.val.WellFormed := ih₁ eq₁.symm wf next_lt
-    have wf₂ : nfa₂.val.WellFormed := ih₂ eq₃.symm wf₁ (Nat.lt_trans next_lt nfa₁.property)
+    have wf₁ : Alternate.nfa₁.WellFormed := ih₁ rfl wf next_lt
+    have wf₂ : Alternate.nfa₂.WellFormed := ih₂ rfl wf₁ (Nat.lt_trans next_lt pd.nfa₁_property)
 
-    apply pushNode_wf eq₅ wf₂
+    apply pushNode_wf wf₂
     simp [Node.inBounds]
-    have := wf₁.start_lt
-    have := wf₂.start_lt
-    omega
+    exact ⟨
+      Nat.lt_trans wf₁.start_lt (Nat.lt_trans pd.nfa₂_property (by omega)),
+      Nat.lt_trans wf₂.start_lt (by omega)
+    ⟩
   | concat e₁ e₂ ih₁ ih₂ =>
-    apply pushRegex.concat eq
-    intro nfa₂ nfa₁ property eq₁ eq₂ eq₃
-    simp [eq₃]
+    let pd := Concat.intro eq
+    simp [pd.eq_result eq]
 
-    have wf₂ : nfa₂.val.WellFormed := ih₂ eq₁.symm wf next_lt
-    exact ih₁ eq₂.symm wf₂ wf₂.start_lt
+    have wf₂ : Concat.nfa₂.WellFormed := ih₂ rfl wf next_lt
+    apply ih₁ rfl wf₂ wf₂.start_lt
   | star e ih =>
-    apply pushRegex.star eq
-    intro placeholder compiled patched nfa' property eq₁ eq₂ eq₃ eq₄ eq₅
-    simp [eq₅]
+    let pd := Star.intro eq
+    simp [pd.eq_result eq]
 
-    have wf_placeholder : placeholder.val.WellFormed := by
-      apply pushNode_wf eq₁ wf
-      simp [Node.inBounds]
-    have wf_compiled : compiled.val.WellFormed :=
-      ih eq₂.symm wf_placeholder placeholder.property
+    have wf_placeholder : Star.nfaPlaceholder.WellFormed := by
+      apply pushNode_wf wf
+      simp
+    have wf_expr : Star.nfaExpr.WellFormed :=
+      ih rfl wf_placeholder pd.nfaPlaceholder_property
 
-    simp [eq₄, WellFormed.iff, NFA.get_eq_nodes_get]
-    refine ⟨?_, ?_⟩
-    . simp [eq₃]
-      exact Nat.lt_trans placeholder.property compiled.property
-    . intro i
-      simp [eq₃]
-      rw [Array.get_set]
-      . split
-        next =>
-          simp [Node.inBounds]
-          exact ⟨wf_compiled.start_lt, Nat.lt_trans (Nat.lt_trans next_lt placeholder.property) compiled.property⟩
-        next ne =>
-          have (i : Nat) (h : i < compiled.val.nodes.size) : compiled.val.nodes[i].inBounds compiled.val.nodes.size := by
-            have := wf_compiled.inBounds ⟨i, h⟩
-            exact this
-          apply this
-      . have := i.isLt
-        simp [eq₃] at this
-        exact this
+    simp [WellFormed.iff]
+    refine ⟨pd.size_lt, ?_⟩
+    intro i
+    cases Nat.decEq i nfa.nodes.size with
+    | isTrue eq =>
+      simp [eq]
+      show (nfa'[pd.nfa.nodes.size]'size_lt).inBounds nfa'.nodes.size
+      simp [pd.get_start, Node.inBounds]
+      exact ⟨pd.size_eq_expr' ▸ wf_expr.start_lt, Nat.lt_trans next_lt size_lt⟩
+    | isFalse ne =>
+      simp [pd.get_ne_start i i.isLt ne, pd.size_eq_expr']
+      exact wf_expr.inBounds ⟨i, pd.size_eq_expr' ▸ i.isLt⟩
 
-theorem compile_wf : (compile e).WellFormed := by
+theorem compile_wf {e} : (compile e).WellFormed := by
   simp [compile]
   apply pushRegex_wf rfl done_WellFormed (by simp [done])
+
+-- Well-formedness of the NFAs
+namespace Compile.ProofData
+
+theorem Empty.wf' [Empty] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+theorem Epsilon.wf' [Epsilon] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+theorem Char.wf' [Char] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+theorem Classes.wf' [Classes] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+namespace Group
+
+variable [Group]
+
+theorem wf_close (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfaClose.WellFormed := by
+  apply pushNode_wf wf
+  simp [Node.inBounds]
+  omega
+
+theorem wf_expr (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfaExpr.WellFormed :=
+  pushRegex_wf rfl (wf_close wf next_lt) (wf_close wf next_lt).start_lt
+
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+end Group
+
+namespace Alternate
+
+variable [Alternate]
+
+theorem wf₁ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa₁.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa₂.WellFormed :=
+  pushRegex_wf rfl (wf₁ wf next_lt) (Nat.lt_trans next_lt nfa₁_property)
+
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+end Alternate
+
+namespace Concat
+
+variable [Concat]
+
+theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa₂.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+end Concat
+
+namespace Star
+
+variable [Star]
+
+theorem wf_placeholder (wf : nfa.WellFormed) : nfaPlaceholder.WellFormed := by
+  apply pushNode_wf wf
+  simp
+
+theorem wf_expr (wf : nfa.WellFormed) : nfaExpr.WellFormed :=
+  pushRegex_wf rfl (wf_placeholder wf) (wf_placeholder wf).start_lt
+
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+  pushRegex_wf rfl wf next_lt
+
+end Star
+
+end Compile.ProofData
 
 end Regex.NFA

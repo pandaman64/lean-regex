@@ -1,6 +1,6 @@
 import Regex.NFA
+import Regex.NFA.Compile
 import RegexCorrectness.NFA.Basic
-import RegexCorrectness.NFA.Compile.ProofData
 
 import Mathlib.Tactic.Common
 
@@ -62,9 +62,12 @@ namespace Group
 
 variable [Group]
 
-theorem get_close : nfa'[nfa.nodes.size]'size_lt = .save (2 * tag + 1) next := by
-  simp [get_lt_expr size_lt_nfa_expr, nfaExpr]
+theorem get_close_expr : nfaExpr[nfa.nodes.size]'size_lt_nfa_expr = .save (2 * tag + 1) next := by
+  simp [nfaExpr]
   rw [pushRegex_get_lt rfl nfa.nodes.size nfaClose_property, get_close_pre]
+
+theorem get_close : nfa'[nfa.nodes.size]'size_lt = .save (2 * tag + 1) next := by
+  simp [get_lt_expr size_lt_nfa_expr, get_close_expr]
 
 theorem get (i : Nat) (h : i < nfa'.nodes.size) :
   if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]

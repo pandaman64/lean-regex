@@ -267,6 +267,12 @@ theorem size_lt₁ : nfa₁.nodes.size < nfa'.nodes.size :=
 theorem get_split : nfa'[nfa₂.nodes.size]'size_lt₂ = .split nfa₁.start nfa₂.start := by
   simp [eq_push]
 
+theorem start_eq : nfa'.start = nfa₂.nodes.size := by
+  simp [eq_push]
+
+theorem get_start : nfa'[nfa'.start]'(start_eq ▸ size_lt₂) = .split nfa₁.start nfa₂.start := by
+  simp [start_eq, get_split]
+
 end Alternate
 
 class Concat extends ProofData where
