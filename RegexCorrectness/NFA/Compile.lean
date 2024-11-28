@@ -85,6 +85,11 @@ theorem get (i : Nat) (h : i < nfa'.nodes.size) :
       omega
     simp [this, get_open]
 
+theorem get_lt_close {i : Nat} (h : i < nfaClose.nodes.size) :
+  nfa'[i]'(Nat.lt_trans h size_lt_close') = nfaClose[i] := by
+  simp [get_lt_expr (Nat.lt_trans h nfaExpr_property)]
+  simp [nfaExpr, pushRegex_get_lt rfl i h]
+
 end Group
 
 namespace Alternate
