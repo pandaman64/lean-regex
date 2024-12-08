@@ -104,7 +104,7 @@ theorem get (i : Nat) (h : i < nfa'.nodes.size) :
 end Epsilon
 
 class Char extends ProofData where
-  c : Char
+  c : _root_.Char
   expr_eq : e = .char c
 
 namespace Char
@@ -143,7 +143,7 @@ theorem get (i : Nat) (h : i < nfa'.nodes.size) :
 end Char
 
 class Classes extends ProofData where
-  cs : Classes
+  cs : Data.Classes
   expr_eq : e = .classes cs
 
 namespace Classes

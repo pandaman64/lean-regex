@@ -24,7 +24,7 @@ theorem pushNode_get_lt {nfa : NFA} {node : Node}
   (i : Nat) (h : i < nfa.nodes.size) :
   (nfa.pushNode node).val[i]'(Nat.lt_trans h (nfa.pushNode node).property) = nfa[i] := by
   simp [pushNode, get_eq_nodes_get]
-  rw [Array.get_push_lt]
+  rw [Array.getElem_push_lt]
 
 @[simp]
 theorem pushNode_get_eq {nfa : NFA} {node : Node} :
