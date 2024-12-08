@@ -14,7 +14,8 @@ def main : IO Unit := do
   IO.println replaced
 
   -- Search/replace all non-overlapping matches
-  let regex := Regex.parse! "もも"
+  -- The re! literal checks for regex errors at compile time and creates a compiled `Regex` object
+  let regex := re!"もも"
   let haystack := "すもももももももものうち"
 
   -- prints: #[(3, 9), (9, 15), (15, 21), (21, 27)]
