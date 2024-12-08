@@ -87,6 +87,16 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : s
   next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
 
+instance Node.decInBounds {node : Node} {size : Nat} : Decidable (node.inBounds size) :=
+  match node with
+  | .done => isTrue trivial
+  | .fail => isTrue trivial
+  | .epsilon next => inferInstanceAs (Decidable (next < size))
+  | .char _ next => inferInstanceAs (Decidable (next < size))
+  | .sparse _ next => inferInstanceAs (Decidable (next < size))
+  | .split next₁ next₂ => inferInstanceAs (Decidable (next₁ < size ∧ next₂ < size))
+  | .save _ next => inferInstanceAs (Decidable (next < size))
+
 end Regex.NFA
 
 namespace Regex
@@ -150,6 +160,16 @@ theorem done_WellFormed : done.WellFormed :=
       trivial
     | ⟨_ + 1, isLt⟩ => contradiction
   ⟨start_lt, inBounds⟩
+
+instance decWellFormed (nfa : NFA) : Decidable nfa.WellFormed :=
+  let decStartLt := inferInstanceAs (Decidable (nfa.start < nfa.nodes.size))
+  match decStartLt with
+  | isTrue h₁ =>
+    let decInBounds := inferInstanceAs (Decidable (∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size))
+    match decInBounds with
+    | isTrue h₂ => isTrue ⟨h₁, h₂⟩
+    | isFalse h₂ => isFalse (fun h => absurd h.2 h₂)
+  | isFalse h₁ => isFalse (fun h => absurd h.1 h₁)
 
 end NFA
 end Regex
