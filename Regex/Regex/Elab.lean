@@ -39,7 +39,7 @@ instance : ToExpr Class where
       let le := mkDecidableProof leType leInstance
 
       mkApp3 (mkConst ``Class.range) s e le
-    | .perl pc => toExpr pc
+    | .perl pc => .app (mkConst ``Class.perl) (toExpr pc)
 
 instance : ToExpr Classes where
   toTypeExpr := mkConst ``Classes
