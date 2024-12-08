@@ -20,7 +20,7 @@ deriving Repr
 
 def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
   if self.currentPos < self.haystack.endPos then
-    let slots ← VM.captureNext self.regex.nfa ⟨self.haystack, self.currentPos⟩ self.regex.maxTag
+    let slots ← VM.captureNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩ self.regex.maxTag
     let groups := CapturedGroups.mk slots
     let pos ← groups.get 0
     if self.currentPos < pos.2 then
@@ -68,7 +68,6 @@ theorem _root_.String.Pos.sizeOf_eq {p : Pos} : sizeOf p = 1 + p.byteIdx := rfl
 theorem _root_.String.Pos.sizeOf_lt_iff {p p' : Pos} :
   sizeOf p < sizeOf p' ↔ p < p' := by
   simp [String.Pos.sizeOf_eq]
-  omega
 
 macro_rules | `(tactic| decreasing_trivial) => `(tactic|
   rw [String.Pos.sizeOf_lt_iff];
