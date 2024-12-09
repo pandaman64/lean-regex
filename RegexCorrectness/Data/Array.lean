@@ -29,7 +29,7 @@ theorem Array.push_pop_eq (a : Array α) (hemp : ¬ a.isEmpty) :
   . simp [Nat.sub_add_cancel this]
   . simp [Nat.sub_add_cancel this]
     intro i h _
-    rw [Array.get_push]
+    rw [Array.getElem_push]
     split
     case isTrue h' => rw [Array.getElem_pop]
     case isFalse h' =>
