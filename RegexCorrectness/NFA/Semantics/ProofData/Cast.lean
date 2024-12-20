@@ -1,4 +1,4 @@
-import RegexCorrectness.Semantics.NFA.ProofData.Basic
+import RegexCorrectness.NFA.Semantics.ProofData.Basic
 
 set_option autoImplicit false
 

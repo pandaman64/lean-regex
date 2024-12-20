@@ -1,7 +1,6 @@
 import Regex.NFA
-import RegexCorrectness.NFA.Transition
-import RegexCorrectness.Semantics.NFA.Heap
-import RegexCorrectness.Semantics.NFA.Span
+import RegexCorrectness.NFA.Semantics.Heap
+import RegexCorrectness.NFA.Semantics.Span
 
 set_option autoImplicit false
 
@@ -9,7 +8,6 @@ set_option autoImplicit false
 In this file, we treat an NFA as a collection of instructions and give a small-step operational semantics.
 -/
 
--- TODO: maybe move this to `RegexCorrectness.NFA.Semantics`.
 namespace Regex.NFA
 
 open Semantics (Span Heap)
@@ -204,3 +202,5 @@ theorem trans (path₁ : nfa.Path lb i span heap j span' heap') (path₂ : nfa.P
   | more step _ ih => exact .more step (ih path₂)
 
 end Path
+
+end Regex.NFA

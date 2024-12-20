@@ -1,4 +1,4 @@
-import RegexCorrectness.Semantics.NFA.Path
+import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false

@@ -1,5 +1,5 @@
-import RegexCorrectness.Semantics.NFA.ProofData.Basic
-import RegexCorrectness.Semantics.NFA.ProofData.Cast
+import RegexCorrectness.NFA.Semantics.ProofData.Basic
+import RegexCorrectness.NFA.Semantics.ProofData.Cast
 
 open Regex.NFA.Semantics (Span Heap)
 
