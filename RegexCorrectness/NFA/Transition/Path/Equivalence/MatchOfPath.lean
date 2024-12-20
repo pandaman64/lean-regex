@@ -1,5 +1,5 @@
 -- When the compiled NFA accepts a string, the regex matches it.
-import RegexCorrectness.Semantics.Expr.Matches
+import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.NFA.Compile
 import RegexCorrectness.NFA.Transition.Path.Basic
 
