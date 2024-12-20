@@ -23,6 +23,8 @@ theorem eq_result {result} (eq : NFA.pushRegex nfa next e = result) : result = �
   simp [←eq]
   rfl
 
+theorem eq : (nfa.pushRegex next e).val = nfa' := rfl
+
 end ProofData
 
 namespace ProofData
@@ -33,6 +35,9 @@ class Empty extends ProofData where
 namespace Empty
 
 def intro {nfa next result} (_ : NFA.pushRegex nfa next .empty = result) : Empty :=
+  { nfa, next, e := .empty, expr_eq := rfl }
+
+def intro' (nfa : NFA) (next : Nat) : Empty :=
   { nfa, next, e := .empty, expr_eq := rfl }
 
 variable [Empty]
@@ -71,6 +76,9 @@ class Epsilon extends ProofData where
 namespace Epsilon
 
 def intro {nfa next result} (_ : NFA.pushRegex nfa next .epsilon = result) : Epsilon :=
+  { nfa, next, e := .epsilon, expr_eq := rfl }
+
+def intro' (nfa : NFA) (next : Nat) : Epsilon :=
   { nfa, next, e := .epsilon, expr_eq := rfl }
 
 variable [Epsilon]
@@ -112,6 +120,9 @@ namespace Char
 def intro {nfa next c result} (_ : NFA.pushRegex nfa next (.char c) = result) : Char :=
   { nfa, next, e := .char c, c, expr_eq := rfl }
 
+def intro' (nfa : NFA) (next : Nat) (c : _root_.Char) : Char :=
+  { nfa, next, e := .char c, c, expr_eq := rfl }
+
 variable [Char]
 
 theorem eq' : nfa' = (nfa.pushRegex next (.char c)).val := by
@@ -149,6 +160,9 @@ class Classes extends ProofData where
 namespace Classes
 
 def intro {nfa next cs result} (_ : NFA.pushRegex nfa next (.classes cs) = result) : Classes :=
+  { nfa, next, e := .classes cs, cs, expr_eq := rfl }
+
+def intro' (nfa : NFA) (next : Nat) (cs : Data.Classes) : Classes :=
   { nfa, next, e := .classes cs, cs, expr_eq := rfl }
 
 variable [Classes]
@@ -189,6 +203,9 @@ class Group extends ProofData where
 namespace Group
 
 def intro {nfa next tag e' result} (_ : NFA.pushRegex nfa next (.group tag e') = result) : Group :=
+  { nfa, next, e := .group tag e', tag, e', expr_eq := rfl }
+
+def intro' (nfa : NFA) (next : Nat) (tag : Nat) (e' : Expr) : Group :=
   { nfa, next, e := .group tag e', tag, e', expr_eq := rfl }
 
 variable [Group]
@@ -242,6 +259,9 @@ namespace Alternate
 def intro {nfa next e₁ e₂ result} (_ : NFA.pushRegex nfa next (.alternate e₁ e₂) = result) : Alternate :=
   { nfa, next, e := .alternate e₁ e₂, e₁, e₂, expr_eq := rfl }
 
+def intro' (nfa : NFA) (next : Nat) (e₁ e₂ : Expr) : Alternate :=
+  { nfa, next, e := .alternate e₁ e₂, e₁, e₂, expr_eq := rfl }
+
 variable [Alternate]
 
 def nfa₁ : NFA := nfa.pushRegex next e₁
@@ -285,6 +305,9 @@ namespace Concat
 def intro {nfa next e₁ e₂ result} (_ : NFA.pushRegex nfa next (.concat e₁ e₂) = result) : Concat :=
   { nfa, next, e := .concat e₁ e₂, e₁, e₂, expr_eq := rfl }
 
+def intro' (nfa : NFA) (next : Nat) (e₁ e₂ : Expr) : Concat :=
+  { nfa, next, e := .concat e₁ e₂, e₁, e₂, expr_eq := rfl }
+
 variable [Concat]
 
 def nfa₂ : NFA := nfa.pushRegex next e₂
@@ -312,6 +335,9 @@ class Star extends ProofData where
 namespace Star
 
 def intro {nfa next e' result} (_ : NFA.pushRegex nfa next (.star e') = result) : Star :=
+  { nfa, next, e := .star e', e', expr_eq := rfl }
+
+def intro' (nfa : NFA) (next : Nat) (e': Expr) : Star :=
   { nfa, next, e := .star e', e', expr_eq := rfl }
 
 variable [Star]
