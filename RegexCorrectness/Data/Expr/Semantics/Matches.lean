@@ -1,6 +1,5 @@
 import Regex.Data.Expr
 
--- TODO: maybe move this to `RegexCorrectness.Data.Expr.Semantics`
 namespace Regex.Data
 
 /--
