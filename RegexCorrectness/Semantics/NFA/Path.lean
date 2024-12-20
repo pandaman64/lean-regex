@@ -38,11 +38,15 @@ theorem ge (step : nfa.Step lb i span heap j span' heap') : lb ≤ i := by
 theorem lt (step : nfa.Step lb i span heap j span' heap') : i < nfa.nodes.size := by
   cases step <;> assumption
 
+theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i span heap j span' heap') : j < nfa.nodes.size := by
+  have inBounds := wf.inBounds ⟨i, step.lt⟩
+  cases step <;> simp_all [Node.inBounds]
+
 theorem eq_left (step : nfa.Step lb i span heap j span' heap') : span'.l = span.l := by
   cases step <;> rfl
 
 theorem cast (step : nfa.Step lb i span heap j span' heap')
-  (lt : i < nfa'.nodes.size) (h : nfa[i]'step.lt = nfa'[i]) :
+  {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
   nfa'.Step  lb i span heap j span' heap' := by
   cases step with
   | epsilon ge _ eq => exact .epsilon ge lt (h ▸ eq)
@@ -65,6 +69,75 @@ theorem liftBound' (ge : lb' ≤ i) (step : nfa.Step lb i span heap j span' heap
 theorem liftBound (le : lb' ≤ lb) (step : nfa.Step lb i span heap j span' heap') :
   nfa.Step lb' i span heap j span' heap' :=
   step.liftBound' (Nat.le_trans le step.ge)
+
+theorem iff_done {lt : i < nfa.nodes.size} (eq : nfa[i] = .done) :
+  nfa.Step lb i span heap j span' heap' ↔ False := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . simp
+
+theorem iff_fail {lt : i < nfa.nodes.size} (eq : nfa[i] = .fail) :
+  nfa.Step lb i span heap j span' heap' ↔ False := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . simp
+
+theorem iff_epsilon {next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .epsilon next) :
+  nfa.Step lb i span heap j span' heap' ↔ lb ≤ i ∧ j = next ∧ span' = span ∧ heap' = heap := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨ge, hj, hspan, hheap⟩
+    simp_all
+    exact .epsilon ge lt eq
+
+theorem iff_split {next₁ next₂} {lt : i < nfa.nodes.size} (eq : nfa[i] = .split next₁ next₂) :
+  nfa.Step lb i span heap j span' heap' ↔ lb ≤ i ∧ (j = next₁ ∨ j = next₂) ∧ span' = span ∧ heap' = heap := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨ge, hj, hspan, hheap⟩
+    cases hj with
+    | inl hj =>
+      simp_all
+      exact .splitLeft ge lt eq
+    | inr hj =>
+      simp_all
+      exact .splitRight ge lt eq
+
+theorem iff_save {tag next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .save tag next) :
+  nfa.Step lb i span heap j span' heap' ↔ lb ≤ i ∧ j = next ∧ span' = span ∧ heap' = heap[tag := span.curr] := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨ge, hj, hspan, hheap⟩
+    simp_all
+    exact .save ge lt eq
+
+theorem iff_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next) :
+  nfa.Step lb i span heap j span' heap' ↔ ∃ r', span.r = c :: r' ∧ lb ≤ i ∧ j = next ∧ span' = ⟨span.l, c :: span.m, r'⟩ ∧ heap' = heap := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨r', hspan, ge, hj, hspan', hheap⟩
+    simp_all
+    have : span = ⟨span.l, span.m, c :: r'⟩ := by
+      simp [←hspan]
+    exact this ▸ .char ge lt eq
+
+theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next) :
+  nfa.Step lb i span heap j span' heap' ↔ ∃ c r', span.r = c :: r' ∧ c ∈ cs ∧ lb ≤ i ∧ j = next ∧ span' = ⟨span.l, c :: span.m, r'⟩ ∧ heap' = heap := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+    next mem _ => exact ⟨_, _, ⟨rfl, rfl⟩, mem, rfl, rfl⟩
+  . intro ⟨c, r', hspan, mem, ge, hj, hspan', hheap⟩
+    simp_all
+    have : span = ⟨span.l, span.m, c :: r'⟩ := by
+      simp [←hspan]
+    exact this ▸ .sparse ge lt eq mem
 
 end Step
 
@@ -91,32 +164,34 @@ theorem lt (path : nfa.Path lb i span heap j span' heap') : i < nfa.nodes.size :
   | more step => exact step.lt
 
 /--
-A casting procedure where the user can "attach" a property to the originating state when proving equality between two NFAs.
--/
--- TODO: does `inv` ever require `rest` as an argument?
-theorem castAttach (P : Nat → Prop) (inv₀ : P i)
-  (inv : ∀ {i j span span' heap heap'}, P i → nfa.Step lb i span heap j span' heap' → P j)
-  (eq : ∀ i, lb ≤ i → (_ : i < nfa.nodes.size) → P i → ∃ _ : i < nfa'.nodes.size, nfa[i] = nfa'[i])
-  (path : nfa.Path lb i span heap j span' heap') :
-  nfa'.Path lb i span heap j span' heap' := by
-  induction path with
-  | last step =>
-    have ⟨lt, eq⟩ := eq _ step.ge step.lt inv₀
-    exact .last (step.cast lt eq)
-  | more step _ ih =>
-    have ⟨lt, eq⟩ := eq _ step.ge step.lt inv₀
-    have rest := ih (inv inv₀ step)
-    exact .more (step.cast lt eq) rest
-
-/--
 A simpler casting procedure where the equality can be proven easily, e.g., when casting to a larger NFA.
 -/
 theorem cast (eq : ∀ i, lb ≤ i → (_ : i < nfa.nodes.size) → ∃ _ : i < nfa'.nodes.size, nfa[i] = nfa'[i])
   (path : nfa.Path lb i span heap j span' heap') :
-  nfa'.Path lb i span heap j span' heap' :=
-  path.castAttach (fun _ => True) trivial (by intros; trivial) (fun i ge lt _ => eq i ge lt)
+  nfa'.Path lb i span heap j span' heap' := by
+  induction path with
+  | last step =>
+    have ⟨_, eq⟩ := eq _ step.ge step.lt
+    exact .last (step.cast eq)
+  | more step _ ih =>
+    have ⟨_, eq⟩ := eq _ step.ge step.lt
+    exact .more (step.cast eq) ih
 
-theorem castBound (le : lb' ≤ lb) (path : nfa.Path lb i span heap j span' heap') :
+/--
+A casting procedure that transports a path from a larger NFA to a smaller NFA.
+-/
+theorem cast' (lt : i < nfa.nodes.size) (size_le : nfa.nodes.size ≤ nfa'.nodes.size) (wf : nfa.WellFormed)
+  (eq : ∀ i, lb ≤ i → (lt : i < nfa.nodes.size) → nfa'[i]'(Nat.lt_of_lt_of_le lt size_le) = nfa[i])
+  (path : nfa'.Path lb i span heap j span' heap') :
+  nfa.Path lb i span heap j span' heap' := by
+  induction path with
+  | last step => exact .last (step.cast (eq _ step.ge lt))
+  | more step _ ih =>
+    have step := step.cast (eq _ step.ge lt)
+    have rest := ih (step.lt_right wf)
+    exact .more step rest
+
+theorem liftBound (le : lb' ≤ lb) (path : nfa.Path lb i span heap j span' heap') :
   nfa.Path lb' i span heap j span' heap' := by
   induction path with
   | last step => exact .last (step.liftBound le)
