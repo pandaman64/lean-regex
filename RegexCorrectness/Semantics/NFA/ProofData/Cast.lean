@@ -1,5 +1,4 @@
 import RegexCorrectness.Semantics.NFA.ProofData.Basic
--- TODO: Step.eq_or_ge_of_pushRegex, cast bewteen regexes
 
 set_option autoImplicit false
 
@@ -202,16 +201,16 @@ namespace Star
 
 variable [Star] {span heap span' heap'}
 
-theorem castFromExpr (path : nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span heap next span' heap') :
-  nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span heap next span' heap' := by
+theorem castFromExpr (path : nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap') :
+  nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap' := by
   apply path.cast
   intro i ge lt
   simp [nfaPlaceholder] at ge
   exact ⟨size_eq_expr' ▸ lt, (get_ne_start i (size_eq_expr' ▸ lt) (Nat.ne_of_gt ge)).symm⟩
 
 theorem castToExpr (wf : nfa.WellFormed)
-  (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span heap next span' heap') :
-  nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span heap next span' heap' := by
+  (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap') :
+  nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap' := by
   have wf_expr := wf_expr wf
   apply path.cast' wf_expr.start_lt (Nat.le_of_eq size_eq_expr'.symm) wf_expr
   intro i ge lt
