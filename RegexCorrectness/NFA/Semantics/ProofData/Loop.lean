@@ -1,7 +1,7 @@
 import RegexCorrectness.NFA.Semantics.ProofData.Basic
 import RegexCorrectness.NFA.Semantics.ProofData.Cast
 
-open Regex.NFA.Semantics (Span Heap)
+open Regex.Data (Span Heap)
 
 set_option autoImplicit false
 

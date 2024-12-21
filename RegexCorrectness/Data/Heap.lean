@@ -1,6 +1,6 @@
 set_option autoImplicit false
 
-namespace Regex.NFA.Semantics
+namespace Regex.Data
 
 def Heap := Nat → Option String.Pos
 
@@ -29,4 +29,4 @@ theorem getElem?_insert {heap : Heap} {i j : Nat} {pos : String.Pos} :
 
 end Heap
 
-end Regex.NFA.Semantics
+end Regex.Data

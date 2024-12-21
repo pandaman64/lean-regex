@@ -1,6 +1,6 @@
 import Regex.NFA
-import RegexCorrectness.NFA.Semantics.Heap
-import RegexCorrectness.NFA.Semantics.Span
+import RegexCorrectness.Data.Heap
+import RegexCorrectness.Data.Span
 
 set_option autoImplicit false
 
@@ -10,7 +10,7 @@ In this file, we treat an NFA as a collection of instructions and give a small-s
 
 namespace Regex.NFA
 
-open Semantics (Span Heap)
+open Regex.Data (Span Heap)
 
 inductive Step (nfa : NFA) (lb : Nat) : Nat → Span → Heap → Nat → Span → Heap → Prop where
   | epsilon {i j span heap} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .epsilon j) :

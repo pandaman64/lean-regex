@@ -2,7 +2,7 @@ import Batteries.Data.String
 
 set_option autoImplicit false
 
-namespace Regex.NFA.Semantics
+namespace Regex.Data
 
 structure Span where
   l : List Char
@@ -11,4 +11,4 @@ structure Span where
 
 def Span.curr (s : Span) : String.Pos := ⟨String.utf8Len s.l + String.utf8Len s.m⟩
 
-end Regex.NFA.Semantics
+end Regex.Data
