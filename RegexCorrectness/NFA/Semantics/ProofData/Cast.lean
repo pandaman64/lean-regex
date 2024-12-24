@@ -5,8 +5,8 @@ set_option autoImplicit false
 namespace Regex.NFA
 
 open Compile.ProofData in
-theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span heap j span' heap'}
-  (step : (nfa.pushRegex next e).val.Step nfa.nodes.size i span heap j span' heap') :
+theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
+  (step : (nfa.pushRegex next e).val.Step nfa.nodes.size i span j span' update) :
   j = next ∨ nfa.nodes.size ≤ j := by
   induction e generalizing nfa next with
   | empty =>
@@ -41,7 +41,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span heap j span' heap'
     exact .inl rfl
   | group tag e ih =>
     let pd := Group.intro' nfa next tag e
-    have step : (pd.nfa').Step nfa.nodes.size i span heap j span' heap' := step
+    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -52,7 +52,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span heap j span' heap'
       simp [step]
       exact .inl rfl
     next ne lt =>
-      have step : Group.nfaExpr.Step Group.nfaClose.nodes.size i span heap j span' heap' :=
+      have step : Group.nfaExpr.Step Group.nfaClose.nodes.size i span j span' update :=
         (step.cast get).liftBound' (by simp [Group.nfaClose]; omega)
       have := ih step
       cases this with
@@ -66,7 +66,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span heap j span' heap'
       exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaClose_property) (ge_pushRegex_start rfl))
   | alternate e₁ e₂ ih₁ ih₂ =>
     let pd := Alternate.intro' nfa next e₁ e₂
-    have step : (pd.nfa').Step nfa.nodes.size i span heap j span' heap' := step
+    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -87,7 +87,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span heap j span' heap'
         exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₁_property) (eq₂ ▸ this))
   | concat e₁ e₂ ih₁ ih₂ =>
     let pd := Concat.intro' nfa next e₁ e₂
-    have step : (pd.nfa').Step nfa.nodes.size i span heap j span' heap' := step
+    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -100,7 +100,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span heap j span' heap'
       | inr le => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₂_property) le)
   | star e ih =>
     let pd := Star.intro' nfa next e
-    have step : (pd.nfa').Step nfa.nodes.size i span heap j span' heap' := step
+    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -125,17 +125,17 @@ namespace Compile.ProofData
 
 namespace Group
 
-variable [Group] {span heap span' heap'}
+variable [Group] {span span' update}
 
-theorem castFromExpr (path : nfaExpr.Path nfaClose.nodes.size nfaExpr.start span heap nfaClose.start span' heap') :
-  nfa'.Path nfaClose.nodes.size nfaExpr.start span heap nfaClose.start span' heap' := by
+theorem castFromExpr (path : nfaExpr.Path nfaClose.nodes.size nfaExpr.start span nfaClose.start span' update) :
+  nfa'.Path nfaClose.nodes.size nfaExpr.start span nfaClose.start span' update := by
   apply path.cast
   intro i _ lt
   exact ⟨Nat.lt_trans lt size_lt_expr', (get_lt_expr lt).symm⟩
 
 theorem castToExpr (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfaClose.nodes.size nfaExpr.start span heap nfaClose.start span' heap') :
-  nfaExpr.Path nfaClose.nodes.size nfaExpr.start span heap nfaClose.start span' heap' := by
+  (path : nfa'.Path nfaClose.nodes.size nfaExpr.start span nfaClose.start span' update) :
+  nfaExpr.Path nfaClose.nodes.size nfaExpr.start span nfaClose.start span' update := by
   have wf_expr := wf_expr wf next_lt
   apply path.cast' wf_expr.start_lt (Nat.le_of_lt size_lt_expr') wf_expr
   intro i _ lt
@@ -145,31 +145,31 @@ end Group
 
 namespace Alternate
 
-variable [Alternate] {span heap span' heap'}
+variable [Alternate] {span span' update}
 
-theorem castFrom₁ (path : nfa₁.Path nfa.nodes.size nfa₁.start span heap next span' heap') :
-  nfa'.Path nfa.nodes.size nfa₁.start span heap next span' heap' := by
+theorem castFrom₁ (path : nfa₁.Path nfa.nodes.size nfa₁.start span next span' update) :
+  nfa'.Path nfa.nodes.size nfa₁.start span next span' update := by
   apply path.cast
   intro i _ lt
   exact ⟨Nat.lt_trans lt size_lt₁, (get_lt₁ lt).symm⟩
 
-theorem castFrom₂ (path : nfa₂.Path nfa.nodes.size nfa₂.start span heap next span' heap') :
-  nfa'.Path nfa.nodes.size nfa₂.start span heap next span' heap' := by
+theorem castFrom₂ (path : nfa₂.Path nfa.nodes.size nfa₂.start span next span' update) :
+  nfa'.Path nfa.nodes.size nfa₂.start span next span' update := by
   apply path.cast
   intro i _ lt
   exact ⟨Nat.lt_trans lt size_lt₂, (get_lt₂ lt).symm⟩
 
 theorem castTo₁ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfa.nodes.size nfa₁.start span heap next span' heap') :
-  nfa₁.Path nfa.nodes.size nfa₁.start span heap next span' heap' := by
+  (path : nfa'.Path nfa.nodes.size nfa₁.start span next span' update) :
+  nfa₁.Path nfa.nodes.size nfa₁.start span next span' update := by
   have wf₁ := wf₁ wf next_lt
   apply path.cast' wf₁.start_lt (Nat.le_of_lt size_lt₁) wf₁
   intro i _ lt
   exact get_lt₁ lt
 
 theorem castTo₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfa₁.nodes.size nfa₂.start span heap next span' heap') :
-  nfa₂.Path nfa₁.nodes.size nfa₂.start span heap next span' heap' := by
+  (path : nfa'.Path nfa₁.nodes.size nfa₂.start span next span' update) :
+  nfa₂.Path nfa₁.nodes.size nfa₂.start span next span' update := by
   have wf₂ := wf₂ wf next_lt
   apply path.cast' wf₂.start_lt (Nat.le_of_lt size_lt₂) wf₂
   intro i _ lt
@@ -179,17 +179,17 @@ end Alternate
 
 namespace Concat
 
-variable [Concat] {span heap span' heap'}
+variable [Concat] {span span' update}
 
-theorem castFrom₂ (path : nfa₂.Path nfa.nodes.size nfa₂.start span heap next span' heap') :
-  nfa'.Path nfa.nodes.size nfa₂.start span heap next span' heap' := by
+theorem castFrom₂ (path : nfa₂.Path nfa.nodes.size nfa₂.start span next span' update) :
+  nfa'.Path nfa.nodes.size nfa₂.start span next span' update := by
   apply path.cast
   intro i _ lt
   exact ⟨Nat.lt_trans lt size₂_lt, (get_lt₂ lt).symm⟩
 
 theorem castTo₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfa.nodes.size nfa₂.start span heap next span' heap') :
-  nfa₂.Path nfa.nodes.size nfa₂.start span heap next span' heap' := by
+  (path : nfa'.Path nfa.nodes.size nfa₂.start span next span' update) :
+  nfa₂.Path nfa.nodes.size nfa₂.start span next span' update := by
   have wf₂ := wf₂ wf next_lt
   apply path.cast' wf₂.start_lt (Nat.le_of_lt size₂_lt) wf₂
   intro i _ lt
@@ -199,18 +199,18 @@ end Concat
 
 namespace Star
 
-variable [Star] {span heap span' heap'}
+variable [Star] {span span' update}
 
-theorem castFromExpr (path : nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap') :
-  nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap' := by
+theorem castFromExpr (path : nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span nfaPlaceholder.start span' update) :
+  nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span nfaPlaceholder.start span' update := by
   apply path.cast
   intro i ge lt
   simp [nfaPlaceholder] at ge
   exact ⟨size_eq_expr' ▸ lt, (get_ne_start i (size_eq_expr' ▸ lt) (Nat.ne_of_gt ge)).symm⟩
 
 theorem castToExpr (wf : nfa.WellFormed)
-  (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap') :
-  nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span heap nfaPlaceholder.start span' heap' := by
+  (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start span nfaPlaceholder.start span' update) :
+  nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start span nfaPlaceholder.start span' update := by
   have wf_expr := wf_expr wf
   apply path.cast' wf_expr.start_lt (Nat.le_of_eq size_eq_expr'.symm) wf_expr
   intro i ge lt
