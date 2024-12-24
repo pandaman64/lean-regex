@@ -1,5 +1,5 @@
 import RegexCorrectness.NFA.Semantics.ProofData.Basic
-import RegexCorrectness.NFA.Semantics.ProofData.Cast
+import RegexCorrectness.NFA.Semantics.ProofData.Compile
 
 open Regex.Data (Span)
 
@@ -64,7 +64,7 @@ theorem Loop.introAux {i span j span' update}
       have := step.eq_or_ge_of_pushRegex
       simp [nfaPlaceholder, eqj] at this
       omega
-  | @more i span update₁ j span' update₂ k span'' step rest ih =>
+  | @more i span j span' k span'' update₁ update₂ step rest ih =>
     have ih' := ih rest.lt eqj
     split
     next eqi =>

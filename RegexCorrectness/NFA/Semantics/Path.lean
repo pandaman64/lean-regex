@@ -144,7 +144,7 @@ A collection of steps in an NFA forms a path.
 -/
 inductive Path (nfa : NFA) (lb : Nat) : Nat → Span → Nat → Span → List (Nat × String.Pos) → Prop where
   | last {i span j span' update} (step : Step nfa lb i span j span' update) : Path nfa lb i span j span' (List.ofOption update)
-  | more {i span update j span' updates k span''} (step : Step nfa lb i span j span' update) (rest : Path nfa lb j span' k span'' updates) :
+  | more {i span j span' k span'' update updates} (step : Step nfa lb i span j span' update) (rest : Path nfa lb j span' k span'' updates) :
     Path nfa lb i span k span'' (update ::ₒ updates)
 
 namespace Path
