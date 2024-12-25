@@ -1,6 +1,7 @@
 import Regex.NFA
 import RegexCorrectness.Data.List
 import RegexCorrectness.Data.Span
+import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
@@ -137,6 +138,15 @@ theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs
       simp [←hspan]
     exact this ▸ .sparse ge lt eq mem
 
+theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i span j span' update) :
+  nfa.Step 1 i span j span' update := by
+  cases Nat.eq_zero_or_pos i with
+  | inl eqi =>
+    have lt : i < nfa.nodes.size := eqi ▸ lt_zero_size_compile eq
+    have := (done_iff_zero_compile eq ⟨i, lt⟩).mpr eqi
+    cases step <;> simp_all
+  | inr gt => exact step.liftBound' gt
+
 end Step
 
 /--
@@ -195,6 +205,14 @@ theorem liftBound (le : lb' ≤ lb) (path : nfa.Path lb i span j span' updates) 
   | last step => exact .last (step.liftBound le)
   | more step _ ih => exact .more (step.liftBound le) ih
 
+theorem liftBound' (ge : lb' ≤ i)
+  (inv : ∀ {i span j span' update}, lb' ≤ i → lb ≤ j → nfa.Step lb i span j span' update → lb' ≤ j)
+  (path : nfa.Path lb i span j span' updates) :
+  nfa.Path lb' i span j span' updates := by
+  induction path with
+  | last step => exact .last (step.liftBound' ge)
+  | more step rest ih => exact .more (step.liftBound' ge) (ih (inv ge rest.ge step))
+
 theorem trans (path₁ : nfa.Path lb i span j span' updates₁) (path₂ : nfa.Path lb j span' k span'' updates₂) :
   nfa.Path lb i span k span'' (updates₁ ++ updates₂) := by
   induction path₁ with
@@ -204,6 +222,12 @@ theorem trans (path₁ : nfa.Path lb i span j span' updates₁) (path₂ : nfa.P
   | more step _ ih =>
     simp
     exact .more step (ih path₂)
+
+theorem compile_liftBound {e nfa} (eq : compile e = nfa) (path : nfa.Path 0 i span j span' updates) :
+  nfa.Path 1 i span j span' updates := by
+  induction path with
+  | last step => exact .last (step.compile_liftBound eq)
+  | more step _ ih => exact .more (step.compile_liftBound eq) ih
 
 end Path
 

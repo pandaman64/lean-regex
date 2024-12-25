@@ -168,6 +168,20 @@ theorem step_start_iff :
     simp_all
     exact .save (ge_pushRegex_start rfl) lt this
 
+theorem step_close_iff :
+  nfa'.Step nfa.nodes.size nfaClose.start span j span' update ↔
+  j = next ∧ span' = span ∧ update = .some (2 * tag + 1, span.curr) := by
+  have lt : nfaClose.start < nfa'.nodes.size := by
+    simp [nfaClose, size_lt]
+  have : nfa'[nfaClose.start] = .save (2 * tag + 1) next := by
+    simp [nfaClose, get_close]
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨hj, hspan, hupdate⟩
+    simp_all
+    exact .save (by simp [nfaClose]) lt this
+
 end Group
 
 namespace Alternate
