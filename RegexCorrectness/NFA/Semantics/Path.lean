@@ -195,6 +195,14 @@ theorem liftBound (le : lb' ≤ lb) (path : nfa.Path lb i span j span' updates) 
   | last step => exact .last (step.liftBound le)
   | more step _ ih => exact .more (step.liftBound le) ih
 
+theorem liftBound' (ge : lb' ≤ i)
+  (inv : ∀ {i span j span' update}, lb' ≤ i → lb ≤ j → nfa.Step lb i span j span' update → lb' ≤ j)
+  (path : nfa.Path lb i span j span' updates) :
+  nfa.Path lb' i span j span' updates := by
+  induction path with
+  | last step => exact .last (step.liftBound' ge)
+  | more step rest ih => exact .more (step.liftBound' ge) (ih (inv ge rest.ge step))
+
 theorem trans (path₁ : nfa.Path lb i span j span' updates₁) (path₂ : nfa.Path lb j span' k span'' updates₂) :
   nfa.Path lb i span k span'' (updates₁ ++ updates₂) := by
   induction path₁ with

@@ -16,9 +16,9 @@ theorem castFromExpr (path : nfaExpr.Path nfaClose.nodes.size nfaExpr.start span
   intro i _ lt
   exact ⟨Nat.lt_trans lt size_lt_expr', (get_lt_expr lt).symm⟩
 
-theorem castToExpr (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfaClose.nodes.size nfaExpr.start span nfaClose.start span' update) :
-  nfaExpr.Path nfaClose.nodes.size nfaExpr.start span nfaClose.start span' update := by
+theorem castToExpr {lb j} (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (path : nfa'.Path lb nfaExpr.start span j span' update) :
+  nfaExpr.Path lb nfaExpr.start span j span' update := by
   have wf_expr := wf_expr wf next_lt
   apply path.cast' wf_expr.start_lt (Nat.le_of_lt size_lt_expr') wf_expr
   intro i _ lt
@@ -50,9 +50,9 @@ theorem castTo₁ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   intro i _ lt
   exact get_lt₁ lt
 
-theorem castTo₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfa₁.nodes.size nfa₂.start span next span' update) :
-  nfa₂.Path nfa₁.nodes.size nfa₂.start span next span' update := by
+theorem castTo₂ {lb} (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (path : nfa'.Path lb nfa₂.start span next span' update) :
+  nfa₂.Path lb nfa₂.start span next span' update := by
   have wf₂ := wf₂ wf next_lt
   apply path.cast' wf₂.start_lt (Nat.le_of_lt size_lt₂) wf₂
   intro i _ lt
