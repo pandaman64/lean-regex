@@ -55,7 +55,7 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
       have ⟨_, hspan, hupdate⟩ := step_close_iff.mp (step.cast this)
       rw [←hspan] at c
       simp [equ, hupdate, ←hspan]
-      exact ⟨(tag, span.curr, span'.curr) :: groupExpr, .group eqv, .group c⟩
+      exact ⟨groupExpr ++ [(tag, span.curr, span'.curr)], .group eqv, .group c⟩
     | more step rest =>
       have ⟨hj, _, _⟩ := step_close_iff.mp (step.cast this)
       have : nfa.nodes.size ≤ next := show nfa.nodes.size ≤ pd.next from hj ▸ rest.ge

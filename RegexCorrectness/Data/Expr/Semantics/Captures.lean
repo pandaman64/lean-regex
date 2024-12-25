@@ -11,7 +11,7 @@ inductive Expr.Captures : Span → Span → List (Nat × String.Pos × String.Po
   | sparse {l m c r cs} (h : c ∈ cs) : Expr.Captures ⟨l, m, c :: r⟩ ⟨l, c :: m, r⟩ [] (.classes cs)
   | epsilon {span} : Expr.Captures span span [] .epsilon
   | group {span span' groups tag e} (cap : Expr.Captures span span' groups e) :
-    Expr.Captures span span' ((tag, span.curr, span'.curr) :: groups) (.group tag e)
+    Expr.Captures span span' (groups ++ [(tag, span.curr, span'.curr)]) (.group tag e)
   | alternateLeft {span span' groups e₁ e₂} (cap : Expr.Captures span span' groups e₁) :
     Expr.Captures span span' groups (.alternate e₁ e₂)
   | alternateRight {span span' groups e₁ e₂} (cap : Expr.Captures span span' groups e₂) :
@@ -30,7 +30,7 @@ theorem captures_of_matches {l n₁ n₂ r e} (m : Expr.matches n₂ e) :
   | epsilon => exact ⟨[], .epsilon⟩
   | group m ih =>
     have ⟨groups, cap⟩ := @ih n₁ r
-    exact ⟨_ :: groups, .group cap⟩
+    exact ⟨groups ++ [_], .group cap⟩
   | alternateLeft m ih =>
     have ⟨groups, cap⟩ := @ih n₁ r
     exact ⟨groups, .alternateLeft cap⟩

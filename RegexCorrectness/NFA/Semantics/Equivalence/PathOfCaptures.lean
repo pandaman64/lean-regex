@@ -14,7 +14,7 @@ theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     nfa.WellFormed →
     next < nfa.nodes.size →
     ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update) :
-  ∃ update, EquivUpdate ((tag, span.curr, span'.curr) :: groups) update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
+  ∃ update, EquivUpdate (groups ++ [(tag, span.curr, span'.curr)]) update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
   open Compile.ProofData Group in
   let pd := Group.intro eq
   simp [eq_result eq]
