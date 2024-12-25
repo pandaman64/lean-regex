@@ -171,4 +171,9 @@ theorem path_of_captures (eq : nfa.pushRegex next e = result)
     exact .last step
   | starConcat _ _ ih₁ ih₂ => exact path_of_captures.starConcat eq wf next_lt ih₁ ih₂
 
+theorem path_of_captures_compile (eq : compile e = nfa) (c : e.Captures span span' groups) :
+  ∃ update, EquivUpdate groups update ∧ nfa.Path 1 nfa.start span 0 span' update := by
+  simp [←eq, compile]
+  exact path_of_captures rfl done_WellFormed (by decide) c
+
 end Regex.NFA

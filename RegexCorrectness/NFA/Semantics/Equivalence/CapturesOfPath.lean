@@ -210,4 +210,9 @@ theorem captures_of_path (eq : nfa.pushRegex next e = result)
   | concat e₁ e₂ ih₁ ih₂ => exact captures_of_path.concat eq wf next_lt path ih₁ ih₂
   | star e ih => exact captures_of_path.star eq wf next_lt path ih
 
+theorem captures_of_path_compile (eq : compile e = nfa) (path : nfa.Path 1 nfa.start span 0 span' update) :
+  ∃ groups, EquivUpdate groups update ∧ e.Captures span span' groups := by
+  simp [←eq, compile] at path
+  exact captures_of_path rfl done_WellFormed (by decide) path
+
 end Regex.NFA
