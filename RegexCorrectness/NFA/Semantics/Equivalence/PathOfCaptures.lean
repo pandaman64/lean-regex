@@ -137,19 +137,19 @@ theorem path_of_captures (eq : nfa.pushRegex next e = result)
   ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
   open Compile.ProofData in
   induction c generalizing nfa next with
-  | @char l c r =>
+  | @char l m r c =>
     let pd := Char.intro eq
     exists [], .empty
     simp [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     exists r
-  | @sparse l c r cs =>
+  | @sparse l m c r cs mem =>
     let pd := Classes.intro eq
     exists [], .empty
     simp [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     exists c, r
-  | @epsilon l r =>
+  | epsilon =>
     let pd := Epsilon.intro eq
     exists [], .empty
     simp [pd.eq_result eq]
@@ -159,12 +159,12 @@ theorem path_of_captures (eq : nfa.pushRegex next e = result)
   | alternateLeft _ ih => exact path_of_captures.alternateLeft eq wf next_lt ih
   | alternateRight _ ih => exact path_of_captures.alternateRight eq wf next_lt ih
   | concat _ _ ih₁ ih₂ => exact path_of_captures.concat eq wf next_lt ih₁ ih₂
-  | @starEpsilon l r e =>
+  | @starEpsilon span e =>
     let pd := Star.intro eq
     exists [], .empty
     simp [pd.eq_result eq]
 
-    have step : nfa'.Step nfa.nodes.size nfa'.start ⟨l, [], r⟩ next ⟨l, [], r⟩ .none := by
+    have step : nfa'.Step nfa.nodes.size nfa'.start span next span .none := by
       apply (pd.step_start_iff).mpr
       simp
       exact .inr rfl
