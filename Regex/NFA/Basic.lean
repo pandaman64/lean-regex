@@ -136,6 +136,35 @@ def maxTag (nfa : NFA) : Nat :=
     | .save tag _ => accum.max tag
     | _ => accum
 
+theorem le_maxTag {next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = .save tag next) :
+  tag ≤ nfa.maxTag := by
+  unfold maxTag
+  let motive (i : Nat) (maxTag : Nat) : Prop :=
+    ∀ j next (lt₁ : j < i) (lt₂ : j < nfa.nodes.size) (eq : nfa[j] = .save tag next), tag ≤ maxTag
+  refine Array.foldl_induction motive
+    ?h0 ?hf i.val next i.isLt i.isLt eq
+  case h0 => simp [motive]
+  case hf =>
+    intro i maxTag accum
+    simp [motive]
+    intro j next lt₁ lt₂ eq
+    split
+    next tag' next' heq =>
+      cases Nat.lt_succ_iff_lt_or_eq.mp lt₁ with
+      | inl lt =>
+        have := accum j next lt lt₂ eq
+        exact Nat.le_trans this (Nat.le_max_left ..)
+      | inr eq' =>
+        simp [eq', get_eq_nodes_get] at eq
+        simp [eq] at heq
+        exact heq.1 ▸ Nat.le_max_right ..
+    next ne =>
+      cases Nat.lt_succ_iff_lt_or_eq.mp lt₁ with
+      | inl lt => exact accum j next lt lt₂ eq
+      | inr eq' =>
+        simp [eq', get_eq_nodes_get] at eq
+        exact absurd eq (ne tag next)
+
 structure WellFormed (nfa : NFA) : Prop where
   start_lt : nfa.start < nfa.nodes.size
   inBounds : ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size

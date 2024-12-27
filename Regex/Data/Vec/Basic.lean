@@ -2,7 +2,7 @@ import Batteries.Data.Array.Lemmas
 
 namespace Regex.Data
 
--- TODO: migrate to Batteries Vector
+-- TODO: migrate to Std Vector. It has necessary lemmas in master as of Dec 2024, but it's not released yet.
 def Vec (α : Type) (n : Nat) := { a : Array α // a.size = n }
 
 instance [Repr α] : Repr (Vec α n) := inferInstanceAs (Repr { a : Array α // a.size = n })
