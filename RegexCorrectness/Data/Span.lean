@@ -55,6 +55,16 @@ theorem eq_of_iterator_validFor {s : Span} {ml r} (v : s.iterator.ValidFor ml r)
   have v' := s.validFor
   exact v.eq v'
 
+theorem next_toString {s : Span} {c r'} (h : s.r = c :: r') : s.next.toString = s.toString := by
+  rw [Span.next_eq h]
+  unfold Span.toString
+  simp [h]
+
+theorem next_iterator {s : Span} {c r'} (h : s.r = c :: r') : s.next.iterator = s.iterator.next := by
+  rw [Span.iterator, Span.next_curr_eq_next_pos h, Span.next_toString h, Iterator.ext_iff]
+  simp [Span.iterator]
+  rfl
+
 end Span
 
 end Regex.Data

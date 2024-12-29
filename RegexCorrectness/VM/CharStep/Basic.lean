@@ -79,4 +79,27 @@ theorem eachStepChar'.go.induct' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterato
     intro i _ next updates _ hlt result notSome ih
     exact not_found i next updates hlt result.1 result.2.1 result.2.2 rfl notSome ih
 
+@[simp]
+theorem eachStepChar'.go_base {nfa wf it current next updates} :
+  eachStepChar'.go nfa wf it current current.count (Nat.le_refl _) next updates = (next, .none, updates) := by
+  simp [eachStepChar'.go]
+
+@[simp]
+theorem eachStepChar'.go_found {nfa wf it current i next updates next' matched updates'}
+  (hlt : i < current.count)
+  (h : stepChar' nfa wf it next updates current[i] = (next', matched, updates')) (found : matched.isSome) :
+  eachStepChar'.go nfa wf it current i (Nat.le_of_lt hlt) next updates = (next', matched, updates') := by
+  unfold eachStepChar'.go
+  simp [Nat.ne_of_lt hlt, h, found]
+
+@[simp]
+theorem eachStepChar'.go_not_found {nfa wf it current i next updates next' matched updates'}
+  (hlt : i < current.count)
+  (h : stepChar' nfa wf it next updates current[i] = (next', matched, updates')) (not_found : ¬matched.isSome) :
+  eachStepChar'.go nfa wf it current i (Nat.le_of_lt hlt) next updates = eachStepChar'.go nfa wf it current (i + 1) (by omega) next' updates' := by
+  conv =>
+    lhs
+    unfold eachStepChar'.go
+    simp [Nat.ne_of_lt hlt, h, not_found]
+
 end Regex.VM

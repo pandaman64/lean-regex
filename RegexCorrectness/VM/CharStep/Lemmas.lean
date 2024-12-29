@@ -1,6 +1,7 @@
 import RegexCorrectness.VM.EpsilonClosure
 import RegexCorrectness.VM.CharStep.Basic
 import RegexCorrectness.VM.CharStep.Path
+import RegexCorrectness.VM.CharStep.VMPath
 
 set_option autoImplicit false
 
@@ -86,5 +87,52 @@ theorem write_updates_of_mem_next_of_stepChar {i k} (span : Span) (hspan : span.
         exact .inr ⟨r', ⟨j, isLt⟩, update', eqr, NFA.Step.sparse (Nat.zero_le _) i.isLt hn cmem, cls, write⟩
     next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
   next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
+
+theorem eachStepChar.go.lower_bound {i hle} (h : eachStepChar'.go nfa wf it current i hle next updates = (next', matched', updates'))
+  (lb : εClosure.LowerBound next) :
+  εClosure.LowerBound next' := by
+  induction i, hle, next, updates using eachStepChar'.go.induct' nfa wf it current with
+  | base next updates => simp_all
+  | found i next updates hlt next'' matched updates' h' found =>
+    rw [eachStepChar'.go_found hlt h' found] at h
+    simp_all
+    exact stepChar.lower_bound h' lb
+  | not_found i next updates hlt next'' matched updates' h' not_found ih =>
+    rw [eachStepChar'.go_not_found hlt h' not_found] at h
+    exact ih h (stepChar.lower_bound h' lb)
+
+def eachStepChar.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SparseSet nfa.nodes.size) (updates : Vec (List (Nat × Pos)) nfa.nodes.size) : Prop :=
+  ∀ i ∈ next, ∃ span update, span.iterator = it ∧ nfa.VMPath wf span i update ∧ (WriteUpdate i → updates[i] = update)
+
+theorem eachStepChar.go.inv {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next updates = (next', matched', updates'))
+  (notEnd : ¬it.atEnd)
+  (inv_curr : eachStepChar.Inv nfa wf it current updates) (inv_next : eachStepChar.Inv nfa wf it.next next updates) :
+  eachStepChar.Inv nfa wf it.next next' updates' := by
+  induction idx, hle, next, updates using eachStepChar'.go.induct' nfa wf it current with
+  | base next updates => simp_all
+  | found idx next updates hlt next'' matched updates'' h' found =>
+    rw [eachStepChar'.go_found hlt h' found] at h
+    simp_all
+    have ⟨span, update, eqit, path, write⟩ := inv_curr current[idx] (SparseSet.mem_get hlt)
+
+    intro k mem
+    have := write_updates_of_mem_next_of_stepChar span eqit h' (by simp [notEnd]) mem
+    match this with
+    | .inl mem =>
+      -- missing `updates'[k] = updates[k]`
+      -- exact inv_next k mem
+      sorry
+    | .inr ⟨r', j, update', eqr, step, cls, write'⟩ =>
+      -- CharStep implies WriteUpdate
+      have : WriteUpdate current[idx] := sorry
+      simp [this] at write
+      have write'' : WriteUpdate k → updates'[k] = update ++ update' := write ▸ write'
+      refine ⟨span.next, update ++ update', by rw [Span.next_iterator eqr, eqit], .more path eqr step cls, write''⟩
+  | not_found idx next updates hlt next'' matched updates'' h' not_found ih =>
+    rw [eachStepChar'.go_not_found hlt h' not_found] at h
+    -- FIXME: WE HAVE A BUG. We shouldn't share `updates` between `current` and `next` since the
+    -- writes for the previous indices can pollute the updates of the remaining indices while iterating
+    -- through `next`.
+    apply ih h sorry sorry
 
 end Regex.VM

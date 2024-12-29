@@ -25,3 +25,13 @@ def main : IO Unit := do
   -- prints: す🍑🍑🍑🍑のうち
   let replaced := regex.replaceAll haystack "🍑"
   IO.println replaced
+
+-- Bad sharing of the updates buffer resulted in a bug. The following regex shouldn't report
+-- the indices for the inner parenthesis, but it does now.
+-- def re := re! "(?:c()|)c"
+-- #eval re
+-- /--
+-- info: #[{ slots := #[some { byteIdx := 0 }, some { byteIdx := 1 }, some { byteIdx := 1 }, some { byteIdx := 1 }] }]
+-- -/
+-- #guard_msgs in
+-- #eval re.captureAll "c"
