@@ -121,6 +121,53 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it nex
       exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
     | .inr mem => exact ih h mem
 
+theorem εClosure.eq_updates_of_mem_next {i} (h : εClosure' nfa wf it next matched updates stack = (next', matched', updates'))
+  (mem' : i ∈ next) :
+  updates'[i] = updates[i] := by
+  induction next, matched, updates, stack using εClosure'.induct' nfa wf it with
+  | base next matched updates =>
+    simp [εClosure'_base] at h
+    simp [h]
+  | visited next matched updates update state stack mem ih =>
+    rw [εClosure'_visited mem] at h
+    exact ih h mem'
+  | epsilon next matched updates update state stack' state' mem hn ih =>
+    rw [εClosure'_epsilon mem hn] at h
+    exact ih h (SparseSet.mem_insert_of_mem mem')
+  | split next matched updates update state stack' state₁ state₂ mem hn ih =>
+    rw [εClosure'_split mem hn] at h
+    exact ih h (SparseSet.mem_insert_of_mem mem')
+  | save next matched updates update state stack' offset state' mem hn ih =>
+    rw [εClosure'_save mem hn] at h
+    exact ih h (SparseSet.mem_insert_of_mem mem')
+  | done next matched updates update state stack' mem hn ih =>
+    rw [εClosure'_done mem hn] at h
+    have ne : state.val ≠ i.val := by
+      intro eq
+      exact absurd (Fin.eq_of_val_eq eq ▸ mem') mem
+    have := ih h (SparseSet.mem_insert_of_mem mem')
+    simp [Vec.get_set_ne updates state.isLt i.isLt ne] at this
+    simp [this]
+  | char next matched updates update state stack' c state' mem hn ih =>
+    rw [εClosure'_char mem hn] at h
+    have ne : state.val ≠ i.val := by
+      intro eq
+      exact absurd (Fin.eq_of_val_eq eq ▸ mem') mem
+    have := ih h (SparseSet.mem_insert_of_mem mem')
+    simp [Vec.get_set_ne updates state.isLt i.isLt ne] at this
+    simp [this]
+  | sparse next matched updates update state stack' cs state' mem hn ih =>
+    rw [εClosure'_sparse mem hn] at h
+    have ne : state.val ≠ i.val := by
+      intro eq
+      exact absurd (Fin.eq_of_val_eq eq ▸ mem') mem
+    have := ih h (SparseSet.mem_insert_of_mem mem')
+    simp [Vec.get_set_ne updates state.isLt i.isLt ne] at this
+    simp [this]
+  | fail next matched updates update state stack' mem hn ih =>
+    rw [εClosure'_fail mem hn] at h
+    exact ih h (SparseSet.mem_insert_of_mem mem')
+
 def εClosure.LowerInvStep (next : SparseSet nfa.nodes.size) (stack : εStack' nfa) : Prop :=
   ∀ i j span update, i ∈ next → nfa.εStep' span i j update →
     j ∈ next ∨ ∃ update', (update', j) ∈ stack

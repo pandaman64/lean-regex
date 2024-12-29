@@ -12,7 +12,7 @@ namespace Regex.VM
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
-def stepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
+def stepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vec (List (Nat × Pos)) nfa.nodes.size)
   (next : SparseSet nfa.nodes.size) (updates : Vec (List (Nat × Pos)) nfa.nodes.size)
   (state : Fin nfa.nodes.size) :
   (SparseSet nfa.nodes.size × Option (List (Nat × String.Pos)) × Vec (List (Nat × String.Pos)) nfa.nodes.size) :=
@@ -20,14 +20,14 @@ def stepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   | .char c state' =>
     if it.curr = c then
       have isLt := wf.inBounds' state hn
-      let update := updates.get state state.isLt
+      let update := currentUpdates.get state state.isLt
       εClosure' nfa wf it.next next .none updates [(update, ⟨state', isLt⟩)]
     else
       (next, .none, updates)
   | .sparse cs state' =>
     if it.curr ∈ cs then
       have isLt := wf.inBounds' state hn
-      let update := updates.get state state.isLt
+      let update := currentUpdates.get state state.isLt
       εClosure' nfa wf it.next next .none updates [(update, ⟨state', isLt⟩)]
     else
       (next, .none, updates)
@@ -38,35 +38,35 @@ For all states in `current`, make a transition on the current character of `it` 
 ε-closures from the resulting states.
 -/
 def eachStepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
-  (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
-  (updates : Vec (List (Nat × Pos)) nfa.nodes.size) :
-  (SparseSet nfa.nodes.size × Option (List (Nat × String.Pos)) × Vec (List (Nat × String.Pos)) nfa.nodes.size) :=
-  go 0 (Nat.zero_le _) next updates
+  (current : SearchState' nfa) (next : SearchState' nfa) :
+  (SearchState' nfa × Option (List (Nat × String.Pos))) :=
+  let result := go 0 (Nat.zero_le _) next.states next.updates
+  (⟨result.1, result.2.2⟩, result.2.1)
 where
-  go (i : Nat) (hle : i ≤ current.count) (next : SparseSet nfa.nodes.size) (updates : Vec (List (Nat × Pos)) nfa.nodes.size) :
+  go (i : Nat) (hle : i ≤ current.states.count) (next : SparseSet nfa.nodes.size) (updates : Vec (List (Nat × Pos)) nfa.nodes.size) :
     (SparseSet nfa.nodes.size × Option (List (Nat × String.Pos)) × Vec (List (Nat × String.Pos)) nfa.nodes.size) :=
-    if h : i = current.count then
+    if h : i = current.states.count then
       (next, .none, updates)
     else
-      have hlt : i < current.count := Nat.lt_of_le_of_ne hle h
-      let result := stepChar' nfa wf it next updates current[i]
+      have hlt : i < current.states.count := Nat.lt_of_le_of_ne hle h
+      let result := stepChar' nfa wf it current.updates next updates current.states[i]
       if result.2.1.isSome then
         result
       else
         go (i + 1) hlt result.1 result.2.2
 
 theorem eachStepChar'.go.induct' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
-  (current : SparseSet nfa.nodes.size)
-  (motive : (i : Nat) → i ≤ current.count → SparseSet nfa.nodes.size → Vec (List (Nat × Pos)) nfa.nodes.size → Prop)
-  (base : ∀ next updates, motive current.count (Nat.le_refl _) next updates)
+  (current : SearchState' nfa)
+  (motive : (i : Nat) → i ≤ current.states.count → SparseSet nfa.nodes.size → Vec (List (Nat × Pos)) nfa.nodes.size → Prop)
+  (base : ∀ next updates, motive current.states.count (Nat.le_refl _) next updates)
   (found : ∀ i next updates hlt next' matched updates',
-    stepChar' nfa wf it next updates current[i] = (next', matched, updates') →
+    stepChar' nfa wf it current.updates next updates current.states[i] = (next', matched, updates') →
     matched.isSome → motive i (Nat.le_of_lt hlt) next updates)
   (not_found : ∀ i next updates hlt next' matched updates',
-    stepChar' nfa wf it next updates current[i] = (next', matched, updates') →
+    stepChar' nfa wf it current.updates next updates current.states[i] = (next', matched, updates') →
     ¬matched.isSome → motive (i + 1) (by omega) next' updates' →
     motive i (Nat.le_of_lt hlt) next updates)
-  (i : Nat) (hle : i ≤ current.count) (next : SparseSet nfa.nodes.size) (updates : Vec (List (Nat × Pos)) nfa.nodes.size) :
+  (i : Nat) (hle : i ≤ current.states.count) (next : SparseSet nfa.nodes.size) (updates : Vec (List (Nat × Pos)) nfa.nodes.size) :
   motive i hle next updates := by
   refine eachStepChar'.go.induct nfa wf it current motive ?base ?found ?not_found i hle next updates
   case base =>
@@ -81,21 +81,21 @@ theorem eachStepChar'.go.induct' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterato
 
 @[simp]
 theorem eachStepChar'.go_base {nfa wf it current next updates} :
-  eachStepChar'.go nfa wf it current current.count (Nat.le_refl _) next updates = (next, .none, updates) := by
+  eachStepChar'.go nfa wf it current current.states.count (Nat.le_refl _) next updates = (next, .none, updates) := by
   simp [eachStepChar'.go]
 
 @[simp]
 theorem eachStepChar'.go_found {nfa wf it current i next updates next' matched updates'}
-  (hlt : i < current.count)
-  (h : stepChar' nfa wf it next updates current[i] = (next', matched, updates')) (found : matched.isSome) :
+  (hlt : i < current.states.count)
+  (h : stepChar' nfa wf it current.updates next updates current.states[i] = (next', matched, updates')) (found : matched.isSome) :
   eachStepChar'.go nfa wf it current i (Nat.le_of_lt hlt) next updates = (next', matched, updates') := by
   unfold eachStepChar'.go
   simp [Nat.ne_of_lt hlt, h, found]
 
 @[simp]
 theorem eachStepChar'.go_not_found {nfa wf it current i next updates next' matched updates'}
-  (hlt : i < current.count)
-  (h : stepChar' nfa wf it next updates current[i] = (next', matched, updates')) (not_found : ¬matched.isSome) :
+  (hlt : i < current.states.count)
+  (h : stepChar' nfa wf it current.updates next updates current.states[i] = (next', matched, updates')) (not_found : ¬matched.isSome) :
   eachStepChar'.go nfa wf it current i (Nat.le_of_lt hlt) next updates = eachStepChar'.go nfa wf it current (i + 1) (by omega) next' updates' := by
   conv =>
     lhs

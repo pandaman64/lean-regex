@@ -1,6 +1,17 @@
+import Regex.Data.SparseSet
 import Regex.NFA
 
+set_option autoImplicit false
+
+open Regex (NFA)
+open Regex.Data (SparseSet Vec)
+open String (Pos)
+
 namespace Regex.VM
+
+structure SearchState' (nfa : NFA) where
+  states : SparseSet nfa.nodes.size
+  updates : Vec (List (Nat × Pos)) nfa.nodes.size
 
 /--
 As an optimization, we write the updates to the buffer only when the state is done, a character, or a sparse state.
