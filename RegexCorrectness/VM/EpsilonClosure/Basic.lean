@@ -2,7 +2,7 @@ import Regex.Data.Array
 import Regex.Data.SparseSet
 import Regex.NFA.Basic
 import Regex.VM
-import RegexCorrectness.VM.Basic2
+import RegexCorrectness.VM.Path
 
 set_option autoImplicit false
 

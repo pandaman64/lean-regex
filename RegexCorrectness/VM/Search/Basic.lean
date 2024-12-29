@@ -32,7 +32,7 @@ where
           go it.next stepped.1 stepped.2 ⟨current.states.clear, current.updates⟩
 
 theorem captureNext'.go.induct' (nfa : NFA) (wf : nfa.WellFormed)
-  (motive : Iterator → Option (List (ℕ × Pos)) → SearchState' nfa → SearchState' nfa → Prop)
+  (motive : Iterator → Option (List (Nat × Pos)) → SearchState' nfa → SearchState' nfa → Prop)
   (not_found : ∀ it matched current next,
     it.atEnd →
     motive it matched current next)
@@ -50,7 +50,7 @@ theorem captureNext'.go.induct' (nfa : NFA) (wf : nfa.WellFormed)
     eachStepChar' nfa wf it current next = (matched', next') →
     motive it.next matched' next' ⟨current.states.clear, current.updates⟩ →
     motive it matched current next)
-  (it : Iterator) (matched : Option (List (ℕ × Pos))) (current next : SearchState' nfa) :
+  (it : Iterator) (matched : Option (List (Nat × Pos))) (current next : SearchState' nfa) :
   motive it matched current next :=
   captureNext'.go.induct nfa wf motive
     (fun it matched current next atEnd => not_found it matched current next atEnd)
@@ -66,5 +66,45 @@ theorem captureNext'.go.induct' (nfa : NFA) (wf : nfa.WellFormed)
       ind_found it matched current next stepped.1 stepped.2
         atEnd (by simp at isSome; simp [isSome] at h; simp [h]) (by cases matched <;> simp at isSome; simp) rfl ih)
     it matched current next
+
+section
+
+@[simp]
+theorem captureNext'.go_not_found {nfa wf it matched current next} (atEnd : it.atEnd) :
+  captureNext'.go nfa wf it matched current next = matched := by
+  simp [captureNext'.go, atEnd]
+
+@[simp]
+theorem captureNext'.go_found {nfa wf it matched current next}
+  (atEnd : ¬it.atEnd) (isEmpty : current.states.isEmpty) (isSome : matched.isSome) :
+  captureNext'.go nfa wf it matched current next = matched := by
+  simp [captureNext'.go, atEnd, isEmpty, isSome]
+
+@[simp]
+theorem captureNext'.go_ind_not_found {nfa wf it matched current next _matched current' matched' next'}
+  (atEnd : ¬it.atEnd) (isNone : matched.isNone)
+  (h₁ : εClosure' nfa wf it .none current [([], ⟨nfa.start, wf.start_lt⟩)] = (_matched, current'))
+  (h₂ : eachStepChar' nfa wf it current' next = (matched', next')) :
+  captureNext'.go nfa wf it matched current next = captureNext'.go nfa wf it.next matched' next' ⟨current.states.clear, current.updates⟩ := by
+  have isSome : ¬matched.isSome := by
+    cases matched <;> simp_all
+  conv =>
+    lhs
+    unfold captureNext'.go
+    simp [atEnd, isSome, isNone, h₁, h₂]
+
+@[simp]
+theorem captureNext'.go_ind_found {nfa wf it matched current next matched' next'}
+  (atEnd : ¬it.atEnd) (isEmpty : ¬current.states.isEmpty) (isSome : matched.isSome)
+  (h : eachStepChar' nfa wf it current next = (matched', next')) :
+  captureNext'.go nfa wf it matched current next = captureNext'.go nfa wf it.next matched' next' ⟨current.states.clear, current.updates⟩ := by
+  have isNone : ¬matched.isNone := by
+    cases matched <;> simp_all
+  conv =>
+    lhs
+    unfold captureNext'.go
+    simp [atEnd, isEmpty, isSome, isNone, h]
+
+end
 
 end Regex.VM

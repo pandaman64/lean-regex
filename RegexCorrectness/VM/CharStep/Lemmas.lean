@@ -155,7 +155,7 @@ theorem eachStepChar.go.inv {idx hle} (h : eachStepChar'.go nfa wf it current id
       eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
     apply ih h inv'
 
-theorem eachStepChar.inv {next next'} (h : eachStepChar' nfa wf it current next = (matched', next'))
+theorem eachStepChar.inv_of_inv {next next'} (h : eachStepChar' nfa wf it current next = (matched', next'))
   (notEnd : ¬it.atEnd) (empty : next.states.isEmpty)
   (inv : current.Inv nfa wf it) :
   next'.Inv nfa wf it.next := by

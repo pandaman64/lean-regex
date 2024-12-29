@@ -1,6 +1,5 @@
 import RegexCorrectness.Data.SparseSet
 import RegexCorrectness.NFA.Semantics.Path
-import RegexCorrectness.VM.Basic2
 import RegexCorrectness.VM.Path
 import RegexCorrectness.VM.EpsilonClosure.Basic
 
@@ -562,5 +561,26 @@ theorem write_updates_of_εClosure {i j update update'} (span : Span) (eq_curr :
   (lb : εClosure.LowerBound next.states) (cls : nfa.εClosure' span i j update') :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' span i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
   write_updates_of_mem_next_of_εClosure span eq_curr h (mem_next_of_εClosure h lb cls)
+
+theorem εClosure.inv_of_inv (h : εClosure' nfa wf it matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
+  (v : it.Valid) (inv : next.Inv nfa wf it) :
+  next'.Inv nfa wf it := by
+  intro i mem
+  have ⟨l, r, vf⟩ := v.validFor
+  let span : Span := ⟨l.reverse, [], r⟩
+  have eqs : span.toString = it.toString := by
+    simp [Span.toString, vf.toString]
+  have eqp : span.curr = it.pos := by
+    simp [Span.curr, vf.pos]
+  have eqit : span.iterator = it := by
+    simp [Span.iterator, Iterator.ext_iff, eqs, eqp]
+  have := write_updates_of_mem_next_of_εClosure span eqp h mem
+  match this with
+  | .inl mem =>
+    have equ := εClosure.eq_updates_of_mem_next h mem
+    exact equ ▸ inv i mem
+  | .inr ⟨update, cls, write⟩ =>
+    simp at write
+    exact ⟨span, update, eqit, .init cls, write⟩
 
 end Regex.VM

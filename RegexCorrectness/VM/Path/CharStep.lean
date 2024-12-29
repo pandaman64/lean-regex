@@ -1,5 +1,4 @@
 import RegexCorrectness.NFA.Semantics.Path
-import RegexCorrectness.VM.Basic2
 
 set_option autoImplicit false
 
@@ -64,9 +63,6 @@ theorem sparse {cs next} (hn : nfa[i] = .sparse cs next) :
 theorem char_or_sparse (step : nfa.CharStep l m c r i j) :
   (∃ c' next, nfa[i] = .char c' next) ∨ (∃ cs next, nfa[i] = .sparse cs next) := by
   cases step <;> simp_all
-
-theorem write_update (step : nfa.CharStep l m c r i j) : Regex.VM.WriteUpdate i := by
-  cases step <;> simp_all [VM.WriteUpdate]
 
 end CharStep
 
