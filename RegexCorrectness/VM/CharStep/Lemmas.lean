@@ -1,7 +1,6 @@
+import RegexCorrectness.VM.Path
 import RegexCorrectness.VM.EpsilonClosure
 import RegexCorrectness.VM.CharStep.Basic
-import RegexCorrectness.VM.CharStep.Path
-import RegexCorrectness.VM.CharStep.VMPath
 
 set_option autoImplicit false
 
@@ -115,23 +114,16 @@ theorem eachStepChar.go.lower_bound {i hle} (h : eachStepChar'.go nfa wf it curr
     rw [eachStepChar'.go_not_found hlt h' not_found] at h
     exact ih h (stepChar.lower_bound h' lb)
 
-def eachStepChar.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SearchState' nfa) : Prop :=
-  ∀ i ∈ next.states,
-    ∃ span update,
-      span.iterator = it ∧
-      nfa.VMPath wf span i update ∧
-      (WriteUpdate i → next.updates[i] = update)
-
-theorem eachStepChar.Inv.of_empty (h : next.states.isEmpty) : eachStepChar.Inv nfa wf it next := by
+theorem eachStepChar.inv_of_empty (h : next.states.isEmpty) : next.Inv nfa wf it := by
   intro i mem
   exact (SparseSet.not_mem_of_isEmpty h mem).elim
 
-theorem eachStepChar.Inv.of_stepChar {idx} (hlt : idx < current.states.count)
+theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
   (h : stepChar' nfa wf it current.updates next current.states[idx] = (matched', next'))
   (notEnd : ¬it.atEnd)
-  (inv_curr : eachStepChar.Inv nfa wf it current)
-  (inv_next : eachStepChar.Inv nfa wf it.next next) :
-  eachStepChar.Inv nfa wf it.next next' := by
+  (inv_curr : current.Inv nfa wf it)
+  (inv_next : next.Inv nfa wf it.next) :
+  next'.Inv nfa wf it.next := by
   have ⟨span, update, eqit, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
 
   intro k mem
@@ -148,26 +140,26 @@ theorem eachStepChar.Inv.of_stepChar {idx} (hlt : idx < current.states.count)
 
 theorem eachStepChar.go.inv {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
   (notEnd : ¬it.atEnd)
-  (inv_curr : eachStepChar.Inv nfa wf it current)
-  (inv_next : eachStepChar.Inv nfa wf it.next next) :
-  eachStepChar.Inv nfa wf it.next next' := by
+  (inv_curr : current.Inv nfa wf it)
+  (inv_next : next.Inv nfa wf it.next) :
+  next'.Inv nfa wf it.next := by
   induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
   | base next => simp_all
   | found idx hlt next matched next'' h' found =>
     rw [eachStepChar'.go_found hlt h' found] at h
     simp_all
-    exact eachStepChar.Inv.of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
+    exact eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
   | not_found idx hlt next matched next'' h' not_found ih =>
     rw [eachStepChar'.go_not_found hlt h' not_found] at h
-    have inv' : eachStepChar.Inv nfa wf it.next next'' :=
-      eachStepChar.Inv.of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
+    have inv' : next''.Inv nfa wf it.next :=
+      eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
     apply ih h inv'
 
 theorem eachStepChar.inv {next next'} (h : eachStepChar' nfa wf it current next = (matched', next'))
   (notEnd : ¬it.atEnd) (empty : next.states.isEmpty)
-  (inv : eachStepChar.Inv nfa wf it current) :
-  eachStepChar.Inv nfa wf it.next next' := by
+  (inv : current.Inv nfa wf it) :
+  next'.Inv nfa wf it.next := by
   simp [eachStepChar'] at h
-  exact eachStepChar.go.inv h notEnd inv (eachStepChar.Inv.of_empty empty)
+  exact eachStepChar.go.inv h notEnd inv (eachStepChar.inv_of_empty empty)
 
 end Regex.VM

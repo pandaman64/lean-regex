@@ -1,3 +1,4 @@
+import RegexCorrectness.VM.Path
 import RegexCorrectness.VM.EpsilonClosure
 import RegexCorrectness.VM.CharStep
 

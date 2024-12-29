@@ -1,11 +1,11 @@
-import RegexCorrectness.VM.EpsilonClosure.Path
-import RegexCorrectness.VM.CharStep.Path
+import RegexCorrectness.VM.Path.EpsilonClosure
+import RegexCorrectness.VM.Path.CharStep
 
 set_option autoImplicit false
 
 open Regex.Data (Span)
 open Regex (NFA)
-open String (Pos)
+open String (Pos Iterator)
 
 namespace Regex.NFA
 
@@ -17,3 +17,14 @@ inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) : Span → Fin nfa.nodes.size
     VMPath nfa wf span.next k (update₁ ++ update₂)
 
 end Regex.NFA
+
+namespace Regex.VM
+
+def SearchState'.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SearchState' nfa) : Prop :=
+  ∀ i ∈ next.states,
+    ∃ span update,
+      span.iterator = it ∧
+      nfa.VMPath wf span i update ∧
+      (WriteUpdate i → next.updates[i] = update)
+
+end Regex.VM
