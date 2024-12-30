@@ -52,6 +52,10 @@ theorem captureNext'.go.inv {nfa wf it matched current next matched'}
         exact ⟨state', span, hn, path⟩
     exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) next'_inv (by simp) matched''_inv
 
+/--
+If `captureNext'` returns `some`, the returned list corresponds to the updates of a path from
+`nfa.start` to a `.done` state.
+-/
 theorem captureNext'.path_done_of_matched {nfa wf it matched'}
   (h : captureNext' nfa wf it = matched') (v : it.Valid) (isSome' : matched'.isSome) :
   ∃ state span, nfa[state] = .done ∧ nfa.VMPath wf span state (matched'.get isSome') := by
