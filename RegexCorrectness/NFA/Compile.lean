@@ -383,7 +383,7 @@ theorem done_iff_zero_pushRegex {nfa next e result} (eq : pushRegex nfa next e =
         simp [pushNode_get_lt _ lt]
         exact h₂ i lt
 
-theorem done_iff_zero_compile (eq : compile r = nfa) (i : Fin nfa.nodes.size) :
+theorem done_iff_zero_compile (eq : compile e = nfa) (i : Fin nfa.nodes.size) :
   nfa[i] = .done ↔ i.val = 0 := by
   simp [←eq, compile]
   apply done_iff_zero_pushRegex rfl (by simp [done])
@@ -392,10 +392,15 @@ theorem done_iff_zero_compile (eq : compile r = nfa) (i : Fin nfa.nodes.size) :
   simp [isLt]
   rfl
 
-theorem lt_zero_size_compile (eq : compile r = nfa) :
+theorem lt_zero_size_compile (eq : compile e = nfa) :
   0 < nfa.nodes.size := by
   simp [←eq, compile]
-  set result := NFA.done.pushRegex 0 r
+  set result := NFA.done.pushRegex 0 e
   exact Nat.zero_lt_of_lt result.property
+
+theorem lt_zero_start_compile (eq : compile e = nfa) :
+  0 < nfa.start := by
+  simp [←eq, compile]
+  exact ge_pushRegex_start (nfa := done) rfl
 
 end Regex.NFA

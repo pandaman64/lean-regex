@@ -44,6 +44,13 @@ theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i span j span' update
 theorem eq_left (step : nfa.Step lb i span j span' update) : span'.l = span.l := by
   cases step <;> rfl
 
+theorem span_eq_or_next (step : nfa.Step lb i span j span' update) :
+  span' = span ∨ ∃ c r', span.r = c :: r' ∧ span' = ⟨span.l, c :: span.m, r'⟩ := by
+  cases step <;> simp_all
+
+theorem le_length (step : nfa.Step lb i span j span' update) : span.m.length ≤ span'.m.length := by
+  cases step <;> simp_all
+
 theorem cast (step : nfa.Step lb i span j span' update)
   {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
   nfa'.Step lb i span j span' update := by
@@ -126,6 +133,10 @@ theorem iff_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next)
       simp [←hspan]
     exact this ▸ .char ge lt eq
 
+theorem ne_span_of_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next)
+  (step : nfa.Step lb i span j span' update) : span ≠ span' := by
+  cases step <;> simp_all
+
 theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next) :
   nfa.Step lb i span j span' update ↔ ∃ c r', span.r = c :: r' ∧ c ∈ cs ∧ lb ≤ i ∧ j = next ∧ span' = ⟨span.l, c :: span.m, r'⟩ ∧ update = .none := by
   apply Iff.intro
@@ -137,6 +148,10 @@ theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs
     have : span = ⟨span.l, span.m, c :: r'⟩ := by
       simp [←hspan]
     exact this ▸ .sparse ge lt eq mem
+
+theorem ne_span_of_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next)
+  (step : nfa.Step lb i span j span' update) : span ≠ span' := by
+  cases step <;> simp_all
 
 theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i span j span' update) :
   nfa.Step 1 i span j span' update := by
@@ -170,6 +185,16 @@ theorem lt (path : nfa.Path lb i span j span' updates) : i < nfa.nodes.size := b
   cases path with
   | last step => exact step.lt
   | more step => exact step.lt
+
+theorem lt_right (wf : nfa.WellFormed) (path : nfa.Path lb i span j span' updates) : j < nfa.nodes.size := by
+  induction path with
+  | last step => exact step.lt_right wf
+  | more _ _ ih => exact ih
+
+theorem le_length (path : nfa.Path lb i span j span' updates) : span.m.length ≤ span'.m.length := by
+  induction path with
+  | last step => exact step.le_length
+  | more step _ ih => exact Nat.le_trans step.le_length ih
 
 /--
 A simpler casting procedure where the equality can be proven easily, e.g., when casting to a larger NFA.

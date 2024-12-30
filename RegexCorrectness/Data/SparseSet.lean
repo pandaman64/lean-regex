@@ -42,6 +42,9 @@ theorem eq_or_mem_of_mem_insert {s : SparseSet n} {i j : Fin n} : i ∈ s.insert
 theorem subset_self {s : SparseSet n} : s ⊆ s := by
   simp [HasSubset.Subset, Subset]
 
+theorem mem_of_mem_of_subset {s₁ s₂ : SparseSet n} {i : Fin n} (mem : i ∈ s₁) (sub : s₁ ⊆ s₂) : i ∈ s₂ :=
+  sub i mem
+
 theorem subset_insert {s : SparseSet n} : s ⊆ s.insert i := by
   intro j hj
   exact mem_insert_of_mem hj
