@@ -29,7 +29,7 @@ where
           go it.next stepped.1 stepped.2 ⟨current.states.clear, current.updates⟩
         else
           let stepped := eachStepChar' nfa wf it current next
-          go it.next stepped.1 stepped.2 ⟨current.states.clear, current.updates⟩
+          go it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩
 
 theorem captureNext'.go.induct' (nfa : NFA) (wf : nfa.WellFormed)
   (motive : Iterator → Option (List (Nat × Pos)) → SearchState' nfa → SearchState' nfa → Prop)
@@ -48,7 +48,7 @@ theorem captureNext'.go.induct' (nfa : NFA) (wf : nfa.WellFormed)
   (ind_found : ∀ it matched current next matched' next',
     ¬it.atEnd → ¬current.states.isEmpty → matched.isSome →
     eachStepChar' nfa wf it current next = (matched', next') →
-    motive it.next matched' next' ⟨current.states.clear, current.updates⟩ →
+    motive it.next (matched' <|> matched) next' ⟨current.states.clear, current.updates⟩ →
     motive it matched current next)
   (it : Iterator) (matched : Option (List (Nat × Pos))) (current next : SearchState' nfa) :
   motive it matched current next :=
@@ -97,7 +97,7 @@ theorem captureNext'.go_ind_not_found {nfa wf it matched current next _matched c
 theorem captureNext'.go_ind_found {nfa wf it matched current next matched' next'}
   (atEnd : ¬it.atEnd) (isEmpty : ¬current.states.isEmpty) (isSome : matched.isSome)
   (h : eachStepChar' nfa wf it current next = (matched', next')) :
-  captureNext'.go nfa wf it matched current next = captureNext'.go nfa wf it.next matched' next' ⟨current.states.clear, current.updates⟩ := by
+  captureNext'.go nfa wf it matched current next = captureNext'.go nfa wf it.next (matched' <|> matched) next' ⟨current.states.clear, current.updates⟩ := by
   have isNone : ¬matched.isNone := by
     cases matched <;> simp_all
   conv =>

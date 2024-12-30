@@ -44,6 +44,11 @@ def SearchState'.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : S
       nfa.VMPath wf span i update ∧
       (WriteUpdate i → next.updates[i] = update)
 
+theorem SearchState'.Inv.of_empty {nfa wf it} {next : SearchState' nfa} (h : next.states.isEmpty) :
+  next.Inv nfa wf it := by
+  intro i mem
+  exact (SparseSet.not_mem_of_isEmpty h mem).elim
+
 end Regex.VM
 
 theorem Regex.NFA.CharStep.write_update {nfa : NFA} {l m c r i j}

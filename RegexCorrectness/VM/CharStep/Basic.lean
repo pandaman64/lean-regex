@@ -14,7 +14,7 @@ traverse ε-closures from the resulting state.
 -/
 def stepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vec (List (Nat × Pos)) nfa.nodes.size)
   (next : SearchState' nfa) (state : Fin nfa.nodes.size) :
-  Option (List (ℕ × Pos)) × SearchState' nfa :=
+  Option (List (Nat × Pos)) × SearchState' nfa :=
   match hn : nfa[state] with
   | .char c state' =>
     if it.curr = c then
@@ -38,11 +38,11 @@ For all states in `current`, make a transition on the current character of `it` 
 -/
 def eachStepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (current : SearchState' nfa) (next : SearchState' nfa) :
-  Option (List (ℕ × Pos)) × SearchState' nfa :=
+  Option (List (Nat × Pos)) × SearchState' nfa :=
   go 0 (Nat.zero_le _) next
 where
   go (i : Nat) (hle : i ≤ current.states.count) (next : SearchState' nfa) :
-    Option (List (ℕ × Pos)) × SearchState' nfa :=
+    Option (List (Nat × Pos)) × SearchState' nfa :=
     if h : i = current.states.count then
       (.none, next)
     else

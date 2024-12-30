@@ -16,6 +16,20 @@ variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
   {next : SearchState' nfa} {state : Fin nfa.nodes.size}
   {matched' : Option (List (Nat × Pos))} {next' : SearchState' nfa}
 
+theorem stepChar.subset (h : stepChar' nfa wf it currentUpdates next state = (matched', next')) :
+  next.states ⊆ next'.states := by
+  simp [stepChar'] at h
+  split at h
+  next c' state' hn =>
+    split at h
+    next => exact εClosure.subset h
+    next => simp_all [SparseSet.subset_self]
+  next cs state' =>
+    split at h
+    next => exact εClosure.subset h
+    next => simp_all [SparseSet.subset_self]
+  next => simp_all [SparseSet.subset_self]
+
 theorem stepChar.lower_bound (h : stepChar' nfa wf it currentUpdates next state = (matched', next'))
   (lb : εClosure.LowerBound next.states) :
   εClosure.LowerBound next'.states := by
@@ -27,7 +41,7 @@ theorem stepChar.lower_bound (h : stepChar' nfa wf it currentUpdates next state 
     next => simp_all
   next cs state' =>
     split at h
-    next eq => exact εClosure.lower_bound h lb
+    next => exact εClosure.lower_bound h lb
     next => simp_all
   next => simp_all
 
@@ -38,13 +52,34 @@ theorem stepChar.eq_updates_of_mem_next {i k} (h : stepChar' nfa wf it currentUp
   split at h
   next c' j hn =>
     split at h
-    next eq => exact εClosure.eq_updates_of_mem_next h mem
+    next => exact εClosure.eq_updates_of_mem_next h mem
     next => simp_all
   next cs j =>
     split at h
     next => exact εClosure.eq_updates_of_mem_next h mem
     next => simp_all
   next => simp_all
+
+theorem stepChar.done_of_matched_some (h : stepChar' nfa wf it currentUpdates next state = (matched', next'))
+  (isSome' : matched'.isSome) :
+  ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
+  simp [stepChar'] at h
+  split at h
+  next c' j hn =>
+    split at h
+    next => exact εClosure.matched_inv h (by simp) isSome'
+    next =>
+      simp at h
+      simp [←h.1] at isSome'
+  next cs j =>
+    split at h
+    next => exact εClosure.matched_inv h (by simp) isSome'
+    next =>
+      simp at h
+      simp [←h.1] at isSome'
+  next =>
+    simp at h
+    simp [←h.1] at isSome'
 
 theorem mem_next_of_stepChar {l m r i j k update}
   (h : stepChar' nfa wf it currentUpdates next i = (matched', next'))
@@ -101,10 +136,10 @@ theorem write_updates_of_mem_next_of_stepChar {i k} (span : Span) (hspan : span.
     next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
   next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
 
-theorem eachStepChar.go.lower_bound {i hle} (h : eachStepChar'.go nfa wf it current i hle next = (matched', next'))
+theorem eachStepChar.go.lower_bound {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
   (lb : εClosure.LowerBound next.states) :
   εClosure.LowerBound next'.states := by
-  induction i, hle, next using eachStepChar'.go.induct' nfa wf it current with
+  induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
   | base next => simp_all
   | found i hlt next matched next'' h' found =>
     rw [eachStepChar'.go_found hlt h' found] at h
@@ -114,9 +149,26 @@ theorem eachStepChar.go.lower_bound {i hle} (h : eachStepChar'.go nfa wf it curr
     rw [eachStepChar'.go_not_found hlt h' not_found] at h
     exact ih h (stepChar.lower_bound h' lb)
 
-theorem eachStepChar.inv_of_empty (h : next.states.isEmpty) : next.Inv nfa wf it := by
-  intro i mem
-  exact (SparseSet.not_mem_of_isEmpty h mem).elim
+theorem eachStepChar.go.done_of_matched_some {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
+  (isSome' : matched'.isSome) :
+  ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
+  induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
+  | base next =>
+    simp at h
+    simp [←h.1] at isSome'
+  | found i hl next matched next'' h' found =>
+    rw [eachStepChar'.go_found hl h' found] at h
+    simp at h
+    simp [h] at h'
+    exact stepChar.done_of_matched_some h' isSome'
+  | not_found i hl next matched next'' h' not_found ih =>
+    rw [eachStepChar'.go_not_found hl h' not_found] at h
+    exact ih h
+
+theorem eachStepChar.done_of_matched_some (h : eachStepChar' nfa wf it current next = (matched', next'))
+  (isSome' : matched'.isSome) :
+  ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome'  :=
+  eachStepChar.go.done_of_matched_some h isSome'
 
 theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
   (h : stepChar' nfa wf it current.updates next current.states[idx] = (matched', next'))
@@ -160,6 +212,6 @@ theorem eachStepChar.inv_of_inv {next next'} (h : eachStepChar' nfa wf it curren
   (inv : current.Inv nfa wf it) :
   next'.Inv nfa wf it.next := by
   simp [eachStepChar'] at h
-  exact eachStepChar.go.inv h notEnd inv (eachStepChar.inv_of_empty empty)
+  exact eachStepChar.go.inv h notEnd inv (.of_empty empty)
 
 end Regex.VM

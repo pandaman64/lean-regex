@@ -45,13 +45,13 @@ def εClosure' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
       | .done =>
         let matched' := matched <|> update
         let updates' := next.updates.set state state.isLt update
-        εClosure' nfa wf it matched' ⟨ states', updates'⟩ stack'
+        εClosure' nfa wf it matched' ⟨states', updates'⟩ stack'
       | .char c state' =>
         let updates' := next.updates.set state state.isLt update
-        εClosure' nfa wf it matched ⟨ states', updates'⟩ stack'
+        εClosure' nfa wf it matched ⟨states', updates'⟩ stack'
       | .sparse cs state' =>
         let updates' := next.updates.set state state.isLt update
-        εClosure' nfa wf it matched ⟨ states', updates'⟩ stack'
+        εClosure' nfa wf it matched ⟨states', updates'⟩ stack'
       | .fail => εClosure' nfa wf it matched ⟨states', next.updates⟩ stack'
 termination_by (next.states.measure, stack)
 
