@@ -17,6 +17,56 @@ inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) : Span → Fin nfa.nodes.size
     (step : nfa.CharStep span.l span.m c r' i j) (cls : nfa.εClosure' span.next j k update₂) :
     VMPath nfa wf span.next k (update₁ ++ update₂)
 
+namespace VMPath
+
+theorem eq_or_nfaPath {nfa : NFA} {wf span i update} (path : nfa.VMPath wf span i update) :
+  ∃ l r,
+    (span = ⟨l, [], r⟩ ∧ i.val = nfa.start ∧ update = []) ∨
+    nfa.Path 0 nfa.start ⟨l, [], r⟩ i span update := by
+  induction path with
+  | @init l r i update cls =>
+    simp [εClosure'_iff_path nfa wf] at cls
+    exists l, r
+    cases cls with
+    | inl h => simp [←h.1, h.2]
+    | inr cls => simp [cls]
+  | @more i j k span c r' update₁ update₂ prev h step cls ih =>
+    have path₂ : nfa.Path 0 i ⟨span.l, span.m, c :: r'⟩ k ⟨span.l, c :: span.m, r'⟩ update₂ := by
+      simp [CharStep] at step
+      simp [εClosure'_iff_path nfa wf] at cls
+      match cls with
+      | .inl ⟨eqk, equpdate⟩ =>
+        subst k update₂
+        exact .last step
+      | .inr path =>
+        simp [Span.next_eq h] at path
+        exact Path.more step path
+
+    have ⟨l, r, h'⟩ := ih
+    match h' with
+    | .inl ⟨eqspan, eqi, equpdate⟩ =>
+      simp [Span.next_eq h]
+      simp [eqspan, eqi] at path₂ h
+      simp [eqspan, equpdate]
+      refine ⟨l, c :: r', path₂⟩
+    | .inr path₁ =>
+      have : span = ⟨span.l, span.m, c :: r'⟩ :=
+        calc
+          _ = (⟨span.l, span.m, span.r⟩ : Span) := rfl
+          _ = _ := by simp [h]
+      rw [this] at path₁
+      simp [Span.next_eq h]
+      exact ⟨l, r, path₁.trans path₂⟩
+
+theorem nfaPath_of_ne {nfa : NFA} {wf span i update} (path : nfa.VMPath wf span i update)
+  (ne : i.val ≠ nfa.start):
+  ∃ l r, nfa.Path 0 nfa.start ⟨l, [], r⟩ i span update := by
+  have ⟨l, r, h⟩ := eq_or_nfaPath path
+  simp [ne] at h
+  exact ⟨l, r, h⟩
+
+end VMPath
+
 end Regex.NFA
 
 namespace Regex.VM

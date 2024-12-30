@@ -669,7 +669,7 @@ theorem mem_next_of_εClosure {i update}
 All states in `next'.states` are already in `next.states` or they are reachable from `i` with the
 updates written to `next'.updates`.
 -/
-theorem write_updates_of_mem_next_of_εClosure {i j update} (span : Span) (eq_curr : span.curr = it.pos)
+theorem εClosure.write_updates_of_mem_next {i j update} (span : Span) (eq_curr : span.curr = it.pos)
   (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next'))
   (mem : j ∈ next'.states) :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' span i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
@@ -684,7 +684,7 @@ theorem write_updates_of_εClosure {i j update update'} (span : Span) (eq_curr :
   (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next'))
   (lb : εClosure.LowerBound next.states) (cls : nfa.εClosure' span i j update') :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' span i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
-  write_updates_of_mem_next_of_εClosure span eq_curr h (mem_next_of_εClosure h lb cls)
+  εClosure.write_updates_of_mem_next span eq_curr h (mem_next_of_εClosure h lb cls)
 
 theorem εClosure.inv_of_inv (h : εClosure' nfa wf it matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
   (v : it.Valid) (inv : next.Inv nfa wf it) :
@@ -698,7 +698,7 @@ theorem εClosure.inv_of_inv (h : εClosure' nfa wf it matched next [([], ⟨nfa
     simp [Span.curr, vf.pos]
   have eqit : span.iterator = it := by
     simp [Span.iterator, Iterator.ext_iff, eqs, eqp]
-  have := write_updates_of_mem_next_of_εClosure span eqp h mem
+  have := εClosure.write_updates_of_mem_next span eqp h mem
   match this with
   | .inl mem =>
     have equ := εClosure.eq_updates_of_mem_next h mem

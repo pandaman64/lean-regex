@@ -100,7 +100,7 @@ theorem mem_next_of_stepChar {l m r i j k update}
     have := step.char_or_sparse
     simp_all
 
-theorem write_updates_of_mem_next_of_stepChar {i k} (span : Span) (hspan : span.iterator = it)
+theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.iterator = it)
   (h : stepChar' nfa wf it currentUpdates next i = (matched', next'))
   (notEnd : ¬it.atEnd) (mem : k ∈ next'.states) :
   k ∈ next.states ∨ ∃ r' j update',
@@ -115,7 +115,7 @@ theorem write_updates_of_mem_next_of_stepChar {i k} (span : Span) (hspan : span.
     next eqc =>
       subst it c
       have ⟨r', eqr⟩ := span.exists_cons_of_not_atEnd notEnd
-      have := write_updates_of_mem_next_of_εClosure span.next (span.next_curr_eq_next_pos eqr) h mem
+      have := εClosure.write_updates_of_mem_next span.next (span.next_curr_eq_next_pos eqr) h mem
       match this with
       | .inl mem => exact .inl mem
       | .inr ⟨update', cls, write⟩ =>
@@ -127,7 +127,7 @@ theorem write_updates_of_mem_next_of_stepChar {i k} (span : Span) (hspan : span.
     next cmem =>
       subst it
       have ⟨r', eqr⟩ := span.exists_cons_of_not_atEnd notEnd
-      have := write_updates_of_mem_next_of_εClosure span.next (span.next_curr_eq_next_pos eqr) h mem
+      have := εClosure.write_updates_of_mem_next span.next (span.next_curr_eq_next_pos eqr) h mem
       match this with
       | .inl mem => exact .inl mem
       | .inr ⟨update', cls, write⟩ =>
@@ -179,7 +179,7 @@ theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
   have ⟨span, update, eqit, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
 
   intro k mem
-  have := write_updates_of_mem_next_of_stepChar span eqit h (by simp [notEnd]) mem
+  have := stepChar.write_updates_of_mem_next span eqit h (by simp [notEnd]) mem
   match this with
   | .inl mem =>
     have inv := inv_next k mem
