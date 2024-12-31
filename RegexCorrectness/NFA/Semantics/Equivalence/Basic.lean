@@ -1,6 +1,4 @@
-import RegexCorrectness.Data.Expr.Semantics.Captures
-import RegexCorrectness.NFA.Semantics.Path
-import RegexCorrectness.NFA.Semantics.ProofData
+import RegexCorrectness.Data.Expr.Semantics
 
 set_option autoImplicit false
 

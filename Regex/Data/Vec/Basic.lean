@@ -43,8 +43,7 @@ theorem Vec.get_set_ne (v : Vec α n) (h₁ : i < n) (h₂ : j < n) (ne : i ≠ 
 theorem Vec.get_set (v : Vec α n) (h₁ : i < n) (h₂ : j < n) :
   (v.set i h₁ a)[j] = if i = j then a else v[j] := by
   if h : i = j then
-    subst j
-    simp
+    simp [h]
   else
     simp [h]
 
@@ -53,5 +52,36 @@ theorem Vec.set_set (v : Vec α n) (h : i < n) :
   apply Subtype.eq
   simp [Vec.set]
   rw [Array.set_set]
+
+def Vec.setIfInBounds (v : Vec α n) (i : Nat) (a : α) : Vec α n :=
+  if h : i < n then v.set i h a else v
+
+@[simp]
+theorem Vec.get_setIfInBounds_eq (v : Vec α n) (h : i < n) :
+  (v.setIfInBounds i a)[i] = a := by
+  simp [Vec.setIfInBounds, h]
+
+@[simp]
+theorem Vec.get_setIfInBounds_ne (v : Vec α n) (h : j < n) (ne : i ≠ j) :
+  (v.setIfInBounds i a)[j] = v[j] := by
+  simp [Vec.setIfInBounds]
+  split <;> simp [ne]
+
+theorem Vec.get_setIfInBounds (v : Vec α n) (h : j < n) :
+  (v.setIfInBounds i a)[j] = if i = j then a else v[j] := by
+  if h : i = j then
+    simp [h]
+  else
+    simp [h]
+
+theorem Vec.ext {v₁ v₂ : Vec α n} (eq : ∀ (i : Nat) (h : i < n), v₁[i] = v₂[i]) : v₁ = v₂ := by
+  apply Subtype.eq
+  simp [Array.ext_iff, v₁.property, v₂.property]
+  intro i h _
+  exact eq i h
+
+theorem Vec.ext_iff {v₁ v₂ : Vec α n} :
+  v₁ = v₂ ↔ ∀ (i : Nat) (h : i < n), v₁[i] = v₂[i] :=
+  ⟨fun eq => by simp [eq], Vec.ext⟩
 
 end Regex.Data

@@ -1,4 +1,6 @@
 import RegexCorrectness.NFA.Semantics.Equivalence.Basic
+import RegexCorrectness.NFA.Semantics.Path
+import RegexCorrectness.NFA.Semantics.ProofData
 
 set_option autoImplicit false
 
