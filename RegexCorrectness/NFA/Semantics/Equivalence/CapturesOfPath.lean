@@ -57,7 +57,7 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
       have ⟨_, hspan, hupdate⟩ := step_close_iff.mp (step.cast this)
       rw [←hspan] at c
       simp [equ, hupdate, ←hspan]
-      exact ⟨groupExpr ++ [(tag, span.curr, span'.curr)], .group eqv, .group c⟩
+      exact ⟨.group tag span.curr span'.curr groupExpr, .group eqv, .group c⟩
     | more step rest =>
       have ⟨hj, _, _⟩ := step_close_iff.mp (step.cast this)
       have : nfa.nodes.size ≤ next := show nfa.nodes.size ≤ pd.next from hj ▸ rest.ge
@@ -138,7 +138,7 @@ theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e�
   have wf₂ := wf₂ wf next_lt
   have ⟨group₁, eqv₁, c₁⟩ := ih₁ rfl wf₂ wf₂.start_lt path₁
   have ⟨group₂, eqv₂, c₂⟩ := ih₂ rfl wf next_lt (castTo₂ wf next_lt path₂)
-  exact ⟨group₁ ++ group₂, equ ▸ .concat eqv₁ eqv₂, .concat c₁ c₂⟩
+  exact ⟨.concat group₁ group₂, equ ▸ .concat eqv₁ eqv₂, .concat c₁ c₂⟩
 
 open Compile.ProofData Star in
 theorem captures_of_path.star_of_loop [Star] (loop : Loop span span' update)
@@ -147,11 +147,11 @@ theorem captures_of_path.star_of_loop [Star] (loop : Loop span span' update)
     ∃ groups, EquivUpdate groups update ∧ e.Captures span span' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.star e).Captures span span' groups := by
   induction loop with
-  | last => exact ⟨[], .empty, .starEpsilon⟩
+  | last => exact ⟨.empty, .empty, .starEpsilon⟩
   | loop pathExpr _ ihLoop =>
     have ⟨groups₁, eqv₁, c₁⟩ := ih pathExpr
     have ⟨groups₂, eqv₂, c₂⟩ := ihLoop
-    exact ⟨groups₁ ++ groups₂, .concat eqv₁ eqv₂, .starConcat c₁ c₂⟩
+    exact ⟨.concat groups₁ groups₂, .concat eqv₁ eqv₂, .starConcat c₁ c₂⟩
 
 theorem captures_of_path.star {e} (eq : nfa.pushRegex next (.star e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
@@ -188,25 +188,25 @@ theorem captures_of_path (eq : nfa.pushRegex next e = result)
     simp [pd.eq_result eq] at path
     have := (pd.path_start_iff next_lt).mp path
     simp [this]
-    exact ⟨[], .empty, .epsilon⟩
+    exact ⟨.empty, .empty, .epsilon⟩
   | char c =>
     let pd := Char.intro eq
     simp [pd.eq_result eq] at path
     have ⟨r, eqr, eq⟩ := (pd.path_start_iff next_lt).mp path
     simp [eq]
-    have cap : Expr.Captures ⟨span.l, span.m, pd.c :: r⟩ ⟨span.l, pd.c :: span.m, r⟩ [] (.char c) := .char c
+    have cap : Expr.Captures ⟨span.l, span.m, pd.c :: r⟩ ⟨span.l, pd.c :: span.m, r⟩ .empty (.char c) := .char c
     have eqs : span = ⟨span.l, span.m, pd.c :: r⟩ := by
       rw [←eqr]
-    exact ⟨[], .empty, eqs ▸ cap⟩
+    exact ⟨.empty, .empty, eqs ▸ cap⟩
   | classes cs =>
     let pd := Classes.intro eq
     simp [pd.eq_result eq] at path
     have ⟨c, r, eqcr, mem, eq⟩ := (pd.path_start_iff next_lt).mp path
     simp [eq]
-    have cap : Expr.Captures ⟨span.l, span.m, c :: r⟩ ⟨span.l, c :: span.m, r⟩ [] (.classes cs) := .sparse mem
+    have cap : Expr.Captures ⟨span.l, span.m, c :: r⟩ ⟨span.l, c :: span.m, r⟩ .empty (.classes cs) := .sparse mem
     have eqs : span = ⟨span.l, span.m, c :: r⟩ := by
       rw [←eqcr]
-    exact ⟨[], .empty, eqs ▸ cap⟩
+    exact ⟨.empty, .empty, eqs ▸ cap⟩
   | group tag e ih => exact captures_of_path.group eq wf next_lt path ih
   | alternate e₁ e₂ ih₁ ih₂ => exact captures_of_path.alternate eq wf next_lt path ih₁ ih₂
   | concat e₁ e₂ ih₁ ih₂ => exact captures_of_path.concat eq wf next_lt path ih₁ ih₂

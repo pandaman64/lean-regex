@@ -8,17 +8,17 @@ open String (Pos)
 
 namespace Regex.NFA
 
-def denoteRegexGroupsAux (accum : Nat → Option (Pos × Pos)) : List (Nat × Pos × Pos) → Nat → Option (Pos × Pos)
+def materializeRegexGroupsAux (accum : Nat → Option (Pos × Pos)) : List (Nat × Pos × Pos) → Nat → Option (Pos × Pos)
   | [] => accum
   | (tag, first, last) :: rest =>
-    denoteRegexGroupsAux (fun tag' => if tag = tag' then .some (first, last) else accum tag') rest
+    materializeRegexGroupsAux (fun tag' => if tag = tag' then .some (first, last) else accum tag') rest
 
 /--
 `denoteRegexGroups groups` constructs a mapping that associates each capture group's tag with the
 start/end positions of the last appearance of the capture group in the input string.
 -/
-def denoteRegexGroups (groups : List (Nat × Pos × Pos)) : Nat → Option (Pos × Pos) :=
-  denoteRegexGroupsAux (fun _ => .none) groups
+def materializeRegexGroups (groups : List (Nat × Pos × Pos)) : Nat → Option (Pos × Pos) :=
+  materializeRegexGroupsAux (fun _ => .none) groups
 
 def materializeUpdatesAux (n : Nat) (accum : Vec (Option Pos) n) : List (Nat × Pos) → Vec (Option Pos) n
   | [] => accum

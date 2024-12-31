@@ -2,13 +2,15 @@ import RegexCorrectness.Data.Expr.Semantics
 
 set_option autoImplicit false
 
+open Regex.Data (CaptureGroups)
+
 namespace Regex.NFA
 
-inductive EquivUpdate : List (Nat × String.Pos × String.Pos) → List (Nat × String.Pos) → Prop where
-  | empty : EquivUpdate [] []
+inductive EquivUpdate : CaptureGroups → List (Nat × String.Pos) → Prop where
+  | empty : EquivUpdate .empty []
   | group {groups updates tag first last} (h : EquivUpdate groups updates) :
-    EquivUpdate (groups ++ [(tag, first, last)]) ((2 * tag, first) :: updates ++ [(2 * tag + 1, last)])
+    EquivUpdate (.group tag first last groups) ((2 * tag, first) :: updates ++ [(2 * tag + 1, last)])
   | concat {groups₁ groups₂ updates₁ updates₂} (h₁ : EquivUpdate groups₁ updates₁) (h₂ : EquivUpdate groups₂ updates₂) :
-    EquivUpdate (groups₁ ++ groups₂) (updates₁ ++ updates₂)
+    EquivUpdate (.concat groups₁ groups₂) (updates₁ ++ updates₂)
 
 end Regex.NFA

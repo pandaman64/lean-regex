@@ -18,8 +18,8 @@ def Disjoint : Expr → Prop
 | .concat e₁ e₂ => e₁.tags ∩ e₂.tags = ∅ ∧ e₁.Disjoint ∧ e₂.Disjoint
 | .star e => e.Disjoint
 
-theorem Captures.mem_tags_of_mem_update {e : Expr} {span span' update} (c : e.Captures span span' update) :
-  ∀ tag first last, (tag, first, last) ∈ update → tag ∈ e.tags := by
+theorem Captures.mem_tags_of_mem_groups {e : Expr} {span span' groups} (c : e.Captures span span' groups) :
+  ∀ tag first last, (tag, first, last) ∈ groups → tag ∈ e.tags := by
   intro tag first last mem
   induction c with
   | char => simp at mem
@@ -28,18 +28,18 @@ theorem Captures.mem_tags_of_mem_update {e : Expr} {span span' update} (c : e.Ca
   | group _ ih =>
     simp at mem
     cases mem with
-    | inl mem => simp [tags, ih mem]
-    | inr eq => simp [eq, tags]
+    | inl eq => simp [eq, tags]
+    | inr mem => simp [tags, ih mem]
   | alternateLeft _ ih => simp [tags, ih mem]
   | alternateRight _ ih => simp [tags, ih mem]
   | concat _ _ ih₁ ih₂ =>
-    simp only [List.mem_append] at mem
+    simp at mem
     cases mem with
     | inl mem₁ => simp [tags, ih₁ mem₁]
     | inr mem₂ => simp [tags, ih₂ mem₂]
   | starEpsilon => simp at mem
   | starConcat _ _ ih₁ ih₂ =>
-    simp only [List.mem_append] at mem
+    simp at mem
     cases mem with
     | inl mem₁ => simp [tags, ih₁ mem₁]
     | inr mem₂ => exact ih₂ mem₂

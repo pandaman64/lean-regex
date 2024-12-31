@@ -57,7 +57,4 @@ def εClosure2 (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos)
       | .fail => εClosure2 nfa wf pos next' matched buffers stack'
 termination_by (next.measure, stack)
 
--- TODO: redeclare a bit simplifed version of function induction
-#check εClosure2.induct
-
 end Regex.VM

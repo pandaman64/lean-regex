@@ -7,17 +7,17 @@ open String (Pos)
 
 namespace Regex.NFA
 
-theorem denoteRegexGroupsAux_snoc {accum groups tag first last} :
-  denoteRegexGroupsAux accum (groups ++ [(tag, first, last)]) =
-  fun tag' => if tag = tag' then .some (first, last) else denoteRegexGroupsAux accum groups tag' := by
+theorem materializeRegexGroupsAux_snoc {accum groups tag first last} :
+  materializeRegexGroupsAux accum (groups ++ [(tag, first, last)]) =
+  fun tag' => if tag = tag' then .some (first, last) else materializeRegexGroupsAux accum groups tag' := by
   induction groups generalizing accum with
-  | nil => simp [denoteRegexGroupsAux]
-  | cons _ _ ih => simp [denoteRegexGroupsAux, ih]
+  | nil => simp [materializeRegexGroupsAux]
+  | cons _ _ ih => simp [materializeRegexGroupsAux, ih]
 
-theorem denoteRegexGroupsAux_swap {accum groups tag₁ first₁ last₁ tag₂ first₂ last₂} (h : tag₁ ≠ tag₂) :
-  denoteRegexGroupsAux accum ((tag₁, first₁, last₁) :: (tag₂, first₂, last₂) :: groups) =
-  denoteRegexGroupsAux accum ((tag₂, first₂, last₂) :: (tag₁, first₁, last₁) :: groups) := by
-  simp [denoteRegexGroupsAux]
+theorem materializeRegexGroupsAux_swap {accum groups tag₁ first₁ last₁ tag₂ first₂ last₂} (h : tag₁ ≠ tag₂) :
+  materializeRegexGroupsAux accum ((tag₁, first₁, last₁) :: (tag₂, first₂, last₂) :: groups) =
+  materializeRegexGroupsAux accum ((tag₂, first₂, last₂) :: (tag₁, first₁, last₁) :: groups) := by
+  simp [materializeRegexGroupsAux]
   congr! 1
   funext tag
   if h₁ : tag₁ = tag then
@@ -26,12 +26,12 @@ theorem denoteRegexGroupsAux_swap {accum groups tag₁ first₁ last₁ tag₂ f
   else
     simp [h₁]
 
-theorem denoteRegexGroupsAux_cons_of_not_in {accum groups tag first last}
+theorem materializeRegexGroupsAux_cons_of_not_in {accum groups tag first last}
   (h : ∀ tag' first' last', (tag', first', last') ∈ groups → tag ≠ tag') :
-  denoteRegexGroupsAux accum ((tag, first, last) :: groups) =
-  fun tag' => if tag = tag' then .some (first, last) else denoteRegexGroupsAux accum groups tag' := by
+  materializeRegexGroupsAux accum ((tag, first, last) :: groups) =
+  fun tag' => if tag = tag' then .some (first, last) else materializeRegexGroupsAux accum groups tag' := by
   induction groups generalizing accum with
-  | nil => simp [denoteRegexGroupsAux]
+  | nil => simp [materializeRegexGroupsAux]
   | cons head groups ih =>
     have ne : tag ≠ head.1 := by
       have := h head.1 head.2.1 head.2.2
@@ -41,7 +41,7 @@ theorem denoteRegexGroupsAux_cons_of_not_in {accum groups tag first last}
       have : (tag', first', last') ∈ head :: groups := by
         simp [mem]
       exact h tag' first' last' this
-    rw [denoteRegexGroupsAux_swap ne, denoteRegexGroupsAux, ih h']
+    rw [materializeRegexGroupsAux_swap ne, materializeRegexGroupsAux, ih h']
     rfl
 
 theorem materializeUpdatesAux_snoc {n accum updates offset pos} :
