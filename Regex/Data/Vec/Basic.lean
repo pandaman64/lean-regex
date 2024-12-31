@@ -84,4 +84,17 @@ theorem Vec.ext_iff {v₁ v₂ : Vec α n} :
   v₁ = v₂ ↔ ∀ (i : Nat) (h : i < n), v₁[i] = v₂[i] :=
   ⟨fun eq => by simp [eq], Vec.ext⟩
 
+@[simp]
+theorem Vec.get_ofFn {α n f i} (h : i < n) : (@Vec.ofFn α n f)[i] = f ⟨i, h⟩ := by
+  simp [Vec.ofFn]
+  exact Array.getElem_ofFn f i (by simp [h])
+
+@[simp]
+theorem Vec.get?_ofFn {α n f i} :
+  (@Vec.ofFn α n f)[i]? = if h : i < n then .some (f ⟨i, h⟩) else .none := by
+  if h : i < n then
+    simp [h, getElem?_pos]
+  else
+    simp [h, getElem?_neg]
+
 end Regex.Data
