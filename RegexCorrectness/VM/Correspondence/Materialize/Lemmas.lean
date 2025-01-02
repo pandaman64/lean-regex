@@ -96,6 +96,12 @@ theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offs
 @[simp]
 theorem materializeUpdates_empty {n} : materializeUpdates n [] = Vec.ofFn (fun _ => .none) := rfl
 
+@[simp]
+theorem materializeUpdates_snoc {n updates offset pos} :
+  materializeUpdates n (updates ++ [(offset, pos)]) =
+  (materializeUpdates n updates).setIfInBounds offset (some pos) := by
+  simp [materializeUpdates]
+
 theorem materializeUpdates_append_getElem {n updates₁ updates₂} {offset : Nat} (h : offset < n) :
   (materializeUpdates n (updates₁ ++ updates₂))[offset] =
   ((materializeUpdates n updates₂)[offset] <|> (materializeUpdates n updates₁)[offset]) := by
