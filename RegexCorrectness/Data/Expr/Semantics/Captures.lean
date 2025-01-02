@@ -23,6 +23,25 @@ inductive Expr.Captures : Span → Span → CaptureGroups → Expr → Prop wher
   | starConcat {span span' span'' groups₁ groups₂ e} (cap₁ : Expr.Captures span span' groups₁ e) (cap₂ : Expr.Captures span' span'' groups₂ (.star e)) :
     Expr.Captures span span'' (.concat groups₁ groups₂) (.star e)
 
+theorem Expr.Captures.span_eq {span span' groups e} (c : Expr.Captures span span' groups e) :
+  ∃ m, span.l = span'.l ∧ m.reverse ++ span.m = span'.m ∧ span.r = m ++ span'.r := by
+  induction c with
+  | char c => exists [c]
+  | @sparse l m c r cs mem => exists [c]
+  | epsilon => exists []
+  | group _ ih => exact ih
+  | alternateLeft _ ih => exact ih
+  | alternateRight _ ih => exact ih
+  | concat _ _ ih₁ ih₂ =>
+    have ⟨m₁, eql₁, eqm₁, eqr₁⟩ := ih₁
+    have ⟨m₂, eql₂, eqm₂, eqr₂⟩ := ih₂
+    exact ⟨m₁ ++ m₂, by simp [eql₁, eql₂], by simp [←eqm₁, ←eqm₂], by simp [eqr₁, eqr₂]⟩
+  | starEpsilon => exists []
+  | starConcat _ _ ih₁ ih₂ =>
+    have ⟨m₁, eql₁, eqm₁, eqr₁⟩ := ih₁
+    have ⟨m₂, eql₂, eqm₂, eqr₂⟩ := ih₂
+    exact ⟨m₁ ++ m₂, by simp [eql₁, eql₂], by simp [←eqm₁, ←eqm₂], by simp [eqr₁, eqr₂]⟩
+
 -- NOTE: this will not be true once we add anchors (^ and $).
 theorem captures_of_matches {l n₁ n₂ r e} (m : Expr.matches n₂ e) :
   ∃ groups, Expr.Captures ⟨l, n₁, n₂ ++ r⟩ ⟨l, n₂.reverse ++ n₁, r⟩ groups e := by
