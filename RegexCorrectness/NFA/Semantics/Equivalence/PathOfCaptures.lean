@@ -1,4 +1,6 @@
 import RegexCorrectness.NFA.Semantics.Equivalence.Basic
+import RegexCorrectness.NFA.Semantics.Path
+import RegexCorrectness.NFA.Semantics.ProofData
 
 set_option autoImplicit false
 
@@ -14,7 +16,7 @@ theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     nfa.WellFormed →
     next < nfa.nodes.size →
     ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update) :
-  ∃ update, EquivUpdate (groups ++ [(tag, span.curr, span'.curr)]) update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
+  ∃ update, EquivUpdate (.group tag span.curr span'.curr groups) update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
   open Compile.ProofData Group in
   let pd := Group.intro eq
   simp [eq_result eq]
@@ -87,7 +89,7 @@ theorem path_of_captures.concat {e₁ e₂ span span' span'' groups₁ groups₂
     nfa.WellFormed →
     next < nfa.nodes.size →
     ∃ update, EquivUpdate groups₂ update ∧ result.val.Path nfa.nodes.size result.val.start span' next span'' update) :
-  ∃ update, EquivUpdate (groups₁ ++ groups₂) update ∧ result.val.Path nfa.nodes.size result.val.start span next span'' update := by
+  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.val.Path nfa.nodes.size result.val.start span next span'' update := by
   open Compile.ProofData Concat in
   let pd := Concat.intro eq
   simp [pd.eq_result eq]
@@ -111,7 +113,7 @@ theorem path_of_captures.starConcat {e span span' span'' groups₁ groups₂} (e
     nfa.WellFormed →
     next < nfa.nodes.size →
     ∃ update, EquivUpdate groups₂ update ∧ result.val.Path nfa.nodes.size result.val.start span' next span'' update) :
-  ∃ update, EquivUpdate (groups₁ ++ groups₂) update ∧ result.val.Path nfa.nodes.size result.val.start span next span'' update := by
+  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.val.Path nfa.nodes.size result.val.start span next span'' update := by
   open Compile.ProofData Star in
   let pd := Star.intro eq
   simp [pd.eq_result eq]

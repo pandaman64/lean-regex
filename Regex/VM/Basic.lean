@@ -2,9 +2,11 @@ import Regex.Data.Array
 import Regex.Data.SparseSet
 import Regex.NFA.Basic
 
+set_option autoImplicit false
+
 open Regex.Data (SparseSet Vec)
 open Regex (NFA)
-open String (Pos)
+open String (Pos Iterator)
 
 /-
   The following implementation is heavily inspired by burntsushi's regex-lite crate.
@@ -13,146 +15,128 @@ open String (Pos)
 namespace Regex.VM
 
 -- TODO: embed .none into Pos to remove allocations
-inductive StackEntry (n : Nat) : Type where
-  | explore (target : Fin n)
-  | restore (save : Array (Option Pos))
-deriving Repr
+abbrev Buffer (size : Nat) := Vec (Option Pos) size
 
-mutual
+-- TODO: check if `mkArray`-based implementation is more efficient
+def Buffer.empty {size : Nat} : Buffer size := Vec.ofFn (fun _ => .none)
 
-def exploreεClosure (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos)
-  (next : SparseSet nfa.nodes.size)
-  (currentSave : Array (Option Pos)) (matched : Option (Array (Option Pos))) (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
-  (target : Fin nfa.nodes.size) (stack : Array (StackEntry nfa.nodes.size)) :
-  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
-  if target ∈ next then
-    εClosure nfa wf pos next currentSave matched saveSlots stack
-  else
-    let next' := next.insert target
-    match hn : nfa[target] with
-    | .epsilon target' =>
-      have isLt := wf.inBounds' target hn
-      exploreεClosure nfa wf pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
-    | .split target₁ target₂ =>
-      -- NOTE: unpacking the pair here confuses the simplifier
-      have isLt := wf.inBounds' target hn
-      exploreεClosure nfa wf pos next' currentSave matched saveSlots ⟨target₁, isLt.1⟩ (stack.push (.explore ⟨target₂, isLt.2⟩))
-    | .save offset target' =>
-      have isLt := wf.inBounds' target hn
-      if h : offset < currentSave.size then
-        let nextSave := currentSave.set ⟨offset, h⟩ pos
-        let stack' := stack.push (.restore currentSave)
-        exploreεClosure nfa wf pos next' nextSave matched saveSlots ⟨target', isLt⟩ stack'
+structure SearchState (nfa : NFA) (bufferSize : Nat) where
+  states : SparseSet nfa.nodes.size
+  updates : Vec (Buffer bufferSize) nfa.nodes.size
+
+abbrev εStack (nfa : NFA) (bufferSize : Nat) := List (Buffer bufferSize × Fin nfa.nodes.size)
+
+/--
+Visit all ε-transitions from the states in the stack, updating `next.states` when the new state is
+`.done`, `.char`, or `.sparse`. Returns `.some buffer` if a `.done` state is reached, meaning a
+match is found.
+
+The actual VM implementation tracks only the last write for each offset, materializing all updates
+as a buffer.
+-/
+def εClosure {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
+  (matched : Option (Buffer bufferSize)) (next : SearchState nfa bufferSize) (stack : εStack nfa bufferSize) :
+  Option (Buffer bufferSize) × SearchState nfa bufferSize :=
+  match stack with
+  | [] => (matched, next)
+  | (update, state) :: stack' =>
+    if state ∈ next.states then
+      εClosure nfa wf it matched next stack'
+    else
+      let states' := next.states.insert state
+      match hn : nfa[state] with
+      | .epsilon state' =>
+        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+        εClosure nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+      | .split state₁ state₂ =>
+        have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
+        εClosure nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state₁, isLt.1⟩) :: (update, ⟨state₂, isLt.2⟩):: stack')
+      | .save offset state' =>
+        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+        -- Write the position only when `offset` is in bounds.
+        let update' := update.setIfInBounds offset it.pos
+        εClosure nfa wf it matched ⟨states', next.updates⟩ ((update', ⟨state', isLt⟩) :: stack')
+      | .done =>
+        let matched' := matched <|> update
+        let updates' := next.updates.set state state.isLt update
+        εClosure nfa wf it matched' ⟨states', updates'⟩ stack'
+      | .char c state' =>
+        let updates' := next.updates.set state state.isLt update
+        εClosure nfa wf it matched ⟨states', updates'⟩ stack'
+      | .sparse cs state' =>
+        let updates' := next.updates.set state state.isLt update
+        εClosure nfa wf it matched ⟨states', updates'⟩ stack'
+      | .fail => εClosure nfa wf it matched ⟨states', next.updates⟩ stack'
+termination_by (next.states.measure, stack)
+
+/--
+If the given state can make a transition on the current character of `it`, make the transition and
+traverse ε-closures from the resulting state.
+-/
+def stepChar {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vec (Buffer bufferSize) nfa.nodes.size)
+  (next : SearchState nfa bufferSize) (state : Fin nfa.nodes.size) :
+  Option (Buffer bufferSize) × SearchState nfa bufferSize :=
+  match hn : nfa[state] with
+  | .char c state' =>
+    if it.curr = c then
+      have isLt := wf.inBounds' state hn
+      let update := currentUpdates.get state state.isLt
+      εClosure nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
+    else
+      (.none, next)
+  | .sparse cs state' =>
+    if it.curr ∈ cs then
+      have isLt := wf.inBounds' state hn
+      let update := currentUpdates.get state state.isLt
+      εClosure nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
+    else
+      (.none, next)
+  | _ => (.none, next)
+
+/--
+For all states in `current`, make a transition on the current character of `it` and traverse
+ε-closures from the resulting states.
+-/
+def eachStepChar {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
+  (current : SearchState nfa bufferSize) (next : SearchState nfa bufferSize) :
+  Option (Buffer bufferSize) × SearchState nfa bufferSize :=
+  go 0 (Nat.zero_le _) next
+where
+  go (i : Nat) (hle : i ≤ current.states.count) (next : SearchState nfa bufferSize) :
+    Option (Buffer bufferSize) × SearchState nfa bufferSize :=
+    if h : i = current.states.count then
+      (.none, next)
+    else
+      have hlt : i < current.states.count := Nat.lt_of_le_of_ne hle h
+      let result := stepChar nfa wf it current.updates next current.states[i]
+      if result.1.isSome then
+        result
       else
-        exploreεClosure nfa wf pos next' currentSave matched saveSlots ⟨target', isLt⟩ stack
-    | .done =>
-      let matched' := matched <|> currentSave
-      let saveSlots' := saveSlots.set target target.isLt currentSave
-      εClosure nfa wf pos next' currentSave matched' saveSlots' stack
-    | .char _ _ =>
-      let saveSlots' := saveSlots.set target target.isLt currentSave
-      εClosure nfa wf pos next' currentSave matched saveSlots' stack
-    | .sparse _ _ =>
-      let saveSlots' := saveSlots.set target target.isLt currentSave
-      εClosure nfa wf pos next' currentSave matched saveSlots' stack
-    | .fail => εClosure nfa wf pos next' currentSave matched saveSlots stack
-termination_by (next.measure, stack.size, 1)
+        go (i + 1) hlt result.2
 
-def εClosure (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos)
-  (next : SparseSet nfa.nodes.size)
-  (currentSave : Array (Option Pos)) (matched : Option (Array (Option Pos))) (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
-  (stack : Array (StackEntry nfa.nodes.size)) :
-  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
-  if hemp : stack.isEmpty then
-    (matched, next, saveSlots)
-  else
-    let entry := stack.back' hemp
-    let stack' := stack.pop
-    have : stack'.size < stack.size := Array.lt_size_of_pop_of_not_empty _ hemp
-    match entry with
-    | .explore target => exploreεClosure nfa wf pos next currentSave matched saveSlots target stack'
-    | .restore save => εClosure nfa wf pos next save matched saveSlots stack'
-termination_by (next.measure, stack.size, 0)
-
-end
-
-def stepChar (nfa : NFA) (wf : nfa.WellFormed) (c : Char) (pos : Pos)
-  (next : SparseSet nfa.nodes.size)
-  (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
-  (target : Fin nfa.nodes.size) :
-  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
-  match hn : nfa[target] with
-  | .char c' target' =>
-    if c = c' then
-      have isLt := wf.inBounds' target hn
-      let currentSave := saveSlots.get target target.isLt
-      exploreεClosure nfa wf pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
-    else
-      (.none, next, saveSlots)
-  | .sparse cs target' =>
-    if c ∈ cs then
-      have isLt := wf.inBounds' target hn
-      let currentSave := saveSlots.get target target.isLt
-      exploreεClosure nfa wf pos next currentSave .none saveSlots ⟨target', isLt⟩ .empty
-    else
-      (.none, next, saveSlots)
-  -- We don't need this as εClosure figures it out if there is a match
-  -- | .done =>
-  --   -- Return saved positions at the match
-  --   (.some saveSlots[target], next, saveSlots)
-  | _ => (.none, next, saveSlots)
-
-def eachStepChar (nfa : NFA) (wf : nfa.WellFormed) (c : Char) (pos : Pos)
-  (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
-  (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size) :
-  (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
-  go 0 (Nat.zero_le _) next saveSlots
+def captureNext (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
+  let updates : Vec (Buffer bufferSize) nfa.nodes.size := Vec.ofFn (fun _ => Buffer.empty)
+  let (matched, current) := εClosure nfa wf it .none ⟨.empty, updates⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
+  go it matched current ⟨.empty, updates⟩
 where
-  go (i : Nat) (hle : i ≤ current.count) (next : SparseSet nfa.nodes.size) (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size) :
-    (Option (Array (Option Pos)) × SparseSet nfa.nodes.size × Vec (Array (Option Pos)) nfa.nodes.size) :=
-    if h : i = current.count then
-      (.none, next, saveSlots)
-    else
-      have hlt : i < current.count := Nat.lt_of_le_of_ne hle h
-      let result := stepChar nfa wf c pos next saveSlots current[i]
-      match result.1 with
-      | .none => go (i + 1) hlt result.2.1 result.2.2
-      | .some _ => result
-  termination_by current.count - i
-
-def captureNext (nfa : NFA) (wf : nfa.WellFormed) (it : String.Iterator) (saveSize : Nat) : Option (Array (Option Pos)) :=
-  let saveSlots := Vec.ofFn (fun _ => initSave)
-  let (matched, init, saveSlots) :=
-    exploreεClosure nfa wf it.pos .empty initSave .none saveSlots ⟨nfa.start, wf.start_lt⟩ #[]
-  go it init .empty saveSlots matched
-where
-  initSave : Array (Option Pos) := Array.ofFn (fun _ : Fin saveSize => none)
-  go (it : String.Iterator)
-    (current : SparseSet nfa.nodes.size) (next : SparseSet nfa.nodes.size)
-    (saveSlots : Vec (Array (Option Pos)) nfa.nodes.size)
-    (lastMatch : Option (Array (Option Pos)))
-    : Option (Array (Option Pos)) := do
+  go (it : Iterator) (matched : Option (Buffer bufferSize)) (current next : SearchState nfa bufferSize) :
+    Option (Buffer bufferSize) :=
     if it.atEnd then
-      lastMatch
+      matched
     else
-      if current.isEmpty && lastMatch.isSome then
-        lastMatch
+      if current.states.isEmpty && matched.isSome then
+        matched
       else
-        -- Start a new search from the current position only when there is no match
-        let currentAndSaveSlots := if lastMatch.isNone then
-          -- I think ignoring the match here is fine because the match must have happened at the initial exploration
-          -- and `lastMatch` must have already captured that.
-          let explored := exploreεClosure nfa wf it.pos current initSave .none saveSlots ⟨nfa.start, wf.start_lt⟩ #[]
-          explored.2
+        if matched.isNone then
+          let expanded := εClosure nfa wf it .none current [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
+          let stepped := eachStepChar nfa wf it expanded.2 next
+          go it.next stepped.1 stepped.2 ⟨current.states.clear, current.updates⟩
         else
-          (current, saveSlots)
-        let stepped := eachStepChar nfa wf it.curr it.next.pos currentAndSaveSlots.1 next currentAndSaveSlots.2
-        go it.next stepped.2.1 current.clear stepped.2.2 (stepped.1 <|> lastMatch)
+          let stepped := eachStepChar nfa wf it current next
+          go it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩
 
 def searchNext (nfa : NFA) (wf : nfa.WellFormed) (it : String.Iterator) : Option (Pos × Pos) := do
-  let slots ← captureNext nfa wf it 2
-  let first ← (←slots.get? 0)
-  let second ← (←slots.get? 1)
-  pure (first, second)
+  let slots ← captureNext nfa wf 2 it
+  pure (← slots[0], ← slots[1])
 
 end Regex.VM
