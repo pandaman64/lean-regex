@@ -27,11 +27,10 @@ def main : IO Unit := do
   IO.println replaced
 
 -- Bad sharing of the updates buffer resulted in a bug. The following regex shouldn't report
--- the indices for the inner parenthesis, but it does now.
--- def re := re! "(?:c()|)c"
--- #eval re
--- /--
--- info: #[{ slots := #[some { byteIdx := 0 }, some { byteIdx := 1 }, some { byteIdx := 1 }, some { byteIdx := 1 }] }]
--- -/
--- #guard_msgs in
--- #eval re.captureAll "c"
+-- the indices for the inner parenthesis.
+def re := re! "(?:c()|)c"
+/--
+info: #[{ slots := #[some { byteIdx := 0 }, some { byteIdx := 1 }, none, none] }]
+-/
+#guard_msgs in
+#eval re.captureAll "c"
