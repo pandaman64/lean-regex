@@ -5,12 +5,12 @@ open String (Pos)
 namespace Regex
 
 structure CapturedGroups where
-  slots : Array (Option Pos)
+  buffer : Array (Option Pos)
 deriving Repr
 
 def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option (Pos × Pos) := do
-  let start ← (← self.slots.get? (2 * index))
-  let stop ← (← self.slots.get? (2 * index + 1))
+  let start ← (← self.buffer.get? (2 * index))
+  let stop ← (← self.buffer.get? (2 * index + 1))
   return (start, stop)
 
 structure Captures where
@@ -21,8 +21,8 @@ deriving Repr
 
 def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
   if self.currentPos < self.haystack.endPos then
-    let slots ← VM.captureNext self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
-    let groups := CapturedGroups.mk slots.val
+    let buffer ← VM.captureNext self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
+    let groups := CapturedGroups.mk buffer.val
     let pos ← groups.get 0
     if self.currentPos < pos.2 then
       let next := { self with currentPos := pos.2 }

@@ -1,4 +1,5 @@
 import RegexCorrectness.VM.Correspondence.Materialize.Basic
+import RegexCorrectness.Data.Expr.Semantics
 
 set_option autoImplicit false
 
@@ -19,6 +20,40 @@ theorem materializeRegexGroups_group {tag first last groups} :
 theorem materializeRegexGroups_concat {g₁ g₂} :
   materializeRegexGroups (.concat g₁ g₂) =
   fun tag => materializeRegexGroups g₂ tag <|> materializeRegexGroups g₁ tag := rfl
+
+open Regex.Data Expr in
+theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {span span' groups tag}
+  (c : e.Captures span span' groups) (isSome : (materializeRegexGroups groups tag).isSome) :
+  tag ∈ e.tags := by
+  induction c with
+  | char | sparse | epsilon | starEpsilon => simp at isSome
+  | @group _ _ groups' tag' _ _ ih =>
+    simp at isSome
+    split at isSome
+    next eq =>
+      subst tag'
+      simp [tags]
+    next ne => simp [tags, ih isSome]
+  | alternateLeft _ ih => simp [tags, ih isSome]
+  | alternateRight _ ih => simp [tags, ih isSome]
+  | @concat _ _ _ g₁ g₂ _ _ _ _ ih₁ ih₂ =>
+    simp at isSome
+    match h : materializeRegexGroups g₂ tag with
+    | none =>
+      simp [h] at isSome
+      simp [tags, ih₁ isSome]
+    | some _ =>
+      simp [h] at ih₂
+      simp [tags, ih₂]
+  | @starConcat _ _ _ g₁ g₂ _ _ _ ih₁ ih₂ =>
+    simp at isSome
+    match h : materializeRegexGroups g₂ tag with
+    | none =>
+      simp [h] at isSome
+      simp [tags, ih₁ isSome]
+    | some _ =>
+      simp [h] at ih₂
+      exact ih₂
 
 @[simp]
 theorem materializeUpdatesAux_snoc {n accum updates offset pos} :

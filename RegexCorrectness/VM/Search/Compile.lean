@@ -10,6 +10,7 @@ open String (Pos Iterator)
 
 namespace Regex.VM
 
+-- TODO: state that it.toString = l ++ r
 theorem captures_of_captureNext'_some {e nfa it matched'} (eq : NFA.compile e = nfa)
   (h : captureNext' nfa (eq ▸ NFA.compile_wf) it = matched') (v : it.Valid) (isSome' : matched'.isSome) :
   ∃ l r span groups, EquivUpdate groups (matched'.get isSome') ∧ e.Captures ⟨l, [], r⟩ span groups := by
