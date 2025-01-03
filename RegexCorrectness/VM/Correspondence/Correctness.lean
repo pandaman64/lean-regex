@@ -12,7 +12,7 @@ namespace Regex.VM
 
 theorem captureNext_correct {e nfa wf bufferSize it matched}
   (eq : NFA.compile e = nfa) (disj : e.Disjoint)
-  (h : captureNext2 nfa wf bufferSize it = matched) (v : it.Valid) (isSome : matched.isSome) :
+  (h : captureNext nfa wf bufferSize it = matched) (v : it.Valid) (isSome : matched.isSome) :
   ∃ l m r groups,
     e.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) (matched.get isSome) := by

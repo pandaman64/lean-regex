@@ -83,7 +83,7 @@ theorem εStack'.refines_cons {update state' tail' stack} :
     exact eq ▸ .cons h₁ h₂ rest
 
 theorem εClosure'.refines {result result'}
-  (h : εClosure2 nfa wf it matched next stack = result)
+  (h : εClosure nfa wf it matched next stack = result)
   (h' : εClosure' nfa wf it matched' next' stack' = result')
   (refMatched : refineUpdateOpt matched' matched)
   (refState : next'.refines next)
@@ -197,7 +197,7 @@ theorem εClosure'.refines {result result'}
       exact ih h h' refMatched this rest
 
 theorem stepChar'.refines {currentUpdates currentUpdates' state result result'}
-  (h : stepChar2 nfa wf it currentUpdates next state = result)
+  (h : stepChar nfa wf it currentUpdates next state = result)
   (h' : stepChar' nfa wf it currentUpdates' next' state = result')
   (refUpdates : refineUpdates currentUpdates' currentUpdates)
   (refState : next'.refines next) :
@@ -227,7 +227,7 @@ theorem stepChar'.refines {currentUpdates currentUpdates' state result result'}
     simp [←h', ←h, refineUpdateOpt, refState]
 
 theorem eachStepChar'.go.refines {current current' i hle hle' result result'}
-  (h : eachStepChar2.go nfa wf it current i hle next = result)
+  (h : eachStepChar.go nfa wf it current i hle next = result)
   (h' : eachStepChar'.go nfa wf it current' i hle' next' = result')
   (refCurrent : current'.refines current)
   (refNext : next'.refines next) :
@@ -241,7 +241,7 @@ theorem eachStepChar'.go.refines {current current' i hle hle' result result'}
     have hlt : i < current.states.count := refCurrent.1 ▸ hlt'
     have eq : current.states[i] = current'.states[i] := by
       simp [refCurrent.1]
-    generalize hstep : stepChar2 nfa wf it current.updates next current.states[i] = stepped
+    generalize hstep : stepChar nfa wf it current.updates next current.states[i] = stepped
     have refStepChar := stepChar'.refines hstep (eq ▸ hstep') refCurrent.2 refNext
     simp at refStepChar
     have isSome : stepped.1.isSome := by
@@ -254,7 +254,7 @@ theorem eachStepChar'.go.refines {current current' i hle hle' result result'}
     have hlt : i < current.states.count := refCurrent.1 ▸ hlt'
     have eq : current.states[i] = current'.states[i] := by
       simp [refCurrent.1]
-    generalize hstep : stepChar2 nfa wf it current.updates next current.states[i] = stepped
+    generalize hstep : stepChar nfa wf it current.updates next current.states[i] = stepped
     have refStepChar := stepChar'.refines hstep (eq ▸ hstep') refCurrent.2 refNext
     simp at refStepChar
     have isSome : ¬stepped.1.isSome := by
@@ -265,7 +265,7 @@ theorem eachStepChar'.go.refines {current current' i hle hle' result result'}
     exact ih h h' refCurrent refStepChar.2
 
 theorem eachStepChar'.refines {current current' result result'}
-  (h : eachStepChar2 nfa wf it current next = result)
+  (h : eachStepChar nfa wf it current next = result)
   (h' : eachStepChar' nfa wf it current' next' = result')
   (refCurrent : current'.refines current)
   (refNext : next'.refines next) :
@@ -273,7 +273,7 @@ theorem eachStepChar'.refines {current current' result result'}
   eachStepChar'.go.refines h h' refCurrent refNext
 
 theorem captureNext'.go.refines {current current' result result'}
-  (h : captureNext2.go nfa wf bufferSize it matched current next = result)
+  (h : captureNext.go nfa wf bufferSize it matched current next = result)
   (h' : captureNext'.go nfa wf it matched' current' next' = result')
   (refMatched : refineUpdateOpt matched' matched)
   (refCurrent : current'.refines current)
@@ -296,8 +296,8 @@ theorem captureNext'.go.refines {current current' result result'}
     have isNone : matched.isNone := by
       rw [refineUpdateOpt.isNone_iff refMatched] at isNone'
       exact isNone'
-    generalize hexpand : εClosure2 nfa wf it .none current [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
-    generalize hstep : eachStepChar2 nfa wf it expanded.2 next = stepped
+    generalize hexpand : εClosure nfa wf it .none current [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
+    generalize hstep : eachStepChar nfa wf it expanded.2 next = stepped
     rw [captureNext'.go_ind_not_found atEnd isNone' h₁ h₂] at h'
     rw [captureNext.go_ind_not_found atEnd isNone hexpand hstep] at h
 
@@ -311,7 +311,7 @@ theorem captureNext'.go.refines {current current' result result'}
     have isSome : matched.isSome := by
       rw [refineUpdateOpt.isSome_iff refMatched] at isSome'
       exact isSome'
-    generalize hstep : eachStepChar2 nfa wf it current next = stepped
+    generalize hstep : eachStepChar nfa wf it current next = stepped
     rw [captureNext'.go_ind_found atEnd isEmpty' isSome' h''] at h'
     rw [captureNext.go_ind_found atEnd isEmpty isSome hstep] at h
 
@@ -323,11 +323,11 @@ theorem captureNext'.go.refines {current current' result result'}
     exact ih h h' this refNext'' (by simp [refCurrent.1, SearchState'.refines, refCurrent.2])
 
 theorem captureNext'.refines :
-  refineUpdateOpt (captureNext' nfa wf it) (captureNext2 nfa wf bufferSize it) := by
-  unfold captureNext' captureNext2
+  refineUpdateOpt (captureNext' nfa wf it) (captureNext nfa wf bufferSize it) := by
+  unfold captureNext' captureNext
   simp
   generalize hexpand' : εClosure' nfa wf it .none ⟨.empty, Vec.ofFn (fun _ => [])⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expanded'
-  generalize hexpand : εClosure2 nfa wf it .none ⟨.empty, Vec.ofFn (fun _ => Buffer.empty)⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
+  generalize hexpand : εClosure nfa wf it .none ⟨.empty, Vec.ofFn (fun _ => Buffer.empty)⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
 
   have ⟨refMatched, refState⟩ := εClosure'.refines hexpand hexpand'
     (by simp [refineUpdateOpt]) (by simp [SearchState'.refines, refineUpdates]) (.cons rfl rfl .nil)
