@@ -5,6 +5,15 @@ set_option autoImplicit false
 
 open String (Pos)
 
+/--
+`CapturedGroups` conforms to the spec if and only if:
+
+- the haystack can be split into `l`, `m`, and `r` such that `haystack = l ++ m ++ r`
+- there is a regex match starting at `l`, matching the substring `m`, and ending at `r`
+- `CapturedGroups` contains the positions of the capture groups in the match
+  - in particular, the first group corresponds to the positions of the matched substring `m`
+  - the last match of wins in case the same group is captured multiple times
+-/
 def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (self : CapturedGroups) : Prop :=
   ∃ l m r groups,
     haystack = ⟨l ++ m ++ r⟩ ∧

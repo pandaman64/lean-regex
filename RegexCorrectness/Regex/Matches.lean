@@ -7,6 +7,14 @@ open String (Pos)
 
 namespace Regex.Matches
 
+/--
+The pair of positions returned by `Matches` functions conforms to the spec if and only if:
+
+- the haystack can be split into `l`, `m`, and `r` such that `haystack = l ++ m ++ r`
+- there is a regex match starting at `l`, matching the substring `m`, and ending at `r`
+- the first position corresponds to the start of the matched substring `m`
+- the second position corresponds to the end of the matched substring `m`
+-/
 def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (positions : Pos × Pos) : Prop :=
   ∃ l m r groups,
     haystack = ⟨l ++ m ++ r⟩ ∧
