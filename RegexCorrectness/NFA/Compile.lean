@@ -1,8 +1,11 @@
 import Regex.NFA
 import Regex.NFA.Compile
 import RegexCorrectness.NFA.Basic
+import RegexCorrectness.Data.Expr.Semantics.Separation
 
 import Mathlib.Tactic.Common
+
+set_option autoImplicit false
 
 namespace Regex.NFA
 
@@ -290,6 +293,134 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
       | inl eq => exact .inr (eq ▸ Nat.le_refl _)
       | inr le => exact .inr (Nat.le_of_lt le)
 
+open Compile.ProofData Data.Expr in
+theorem mem_save_of_mem_tags_pushRegex {nfa next e result tag} (eq : pushRegex nfa next e = result)
+  (h : tag ∈ e.tags) :
+  ∃ (i j : Fin result.val.nodes.size) (offset offset' : Nat),
+    result.val[i] = .save (2 * tag) offset ∧ result.val[j] = .save (2 * tag + 1) offset' := by
+  induction e generalizing nfa next with
+  | empty | epsilon | char | classes => simp [tags] at h
+  | group tag' e ih =>
+    let pd := Group.intro eq
+    rw [pd.eq_result eq]
+
+    simp [tags] at h
+    cases h with
+    | inl eq =>
+      refine ⟨⟨(pd.nfaExpr).nodes.size, pd.size_lt_expr'⟩, ⟨(pd.nfa).nodes.size, pd.size_lt⟩, (pd.nfaExpr).start, pd.next, ?_⟩
+      simp [pd.get_open, pd.get_close, eq]
+      rfl
+    | inr h =>
+      have ⟨i, j, offset, offset', eq'⟩ := ih (result := ⟨pd.nfaExpr, _⟩) rfl h
+      simp at eq'
+      have iLt' := Nat.lt_trans i.isLt pd.size_lt_expr'
+      have jLt' := Nat.lt_trans j.isLt pd.size_lt_expr'
+      refine ⟨⟨i, iLt'⟩, ⟨j, jLt'⟩, offset, offset', ?_⟩
+      have eqi : nfa'[i.val] = pd.nfaExpr[i] := by
+        simp [pd.eq_push, pushNode_get_lt]
+      have eqj : nfa'[j.val] = pd.nfaExpr[j] := by
+        simp [pd.eq_push, pushNode_get_lt]
+      simp [eqi, eqj, eq']
+  | alternate e₁ e₂ ih₁ ih₂ =>
+    let pd := Alternate.intro eq
+    rw [pd.eq_result eq]
+
+    simp [tags] at h
+    cases h with
+    | inl h =>
+      have ⟨i, j, offset, offset', eq'⟩ := ih₁ (result := ⟨pd.nfa₁, _⟩) rfl h
+      simp at eq' i j
+      refine ⟨⟨i, Nat.lt_trans i.isLt pd.size_lt₁⟩, ⟨j, Nat.lt_trans j.isLt pd.size_lt₁⟩, offset, offset', ?_⟩
+      simp [pd.get_lt₁, eq']
+    | inr h =>
+      have ⟨i, j, offset, offset', eq'⟩ := ih₂ (result := ⟨pd.nfa₂, _⟩) rfl h
+      simp at eq' i j
+      refine ⟨⟨i, Nat.lt_trans i.isLt pd.size_lt₂⟩, ⟨j, Nat.lt_trans j.isLt pd.size_lt₂⟩, offset, offset', ?_⟩
+      simp [pd.get_lt₂, eq']
+  | concat e₁ e₂ ih₁ ih₂ =>
+    let pd := Concat.intro eq
+    rw [pd.eq_result eq]
+
+    simp [tags] at h
+    cases h with
+    | inl h => exact ih₁ (nfa := pd.nfa₂) rfl h
+    | inr h =>
+      have ⟨i, j, offset, offset', eq'⟩ := ih₂ (result := ⟨pd.nfa₂, _⟩) rfl h
+      simp at eq' i j
+      refine ⟨⟨i, Nat.lt_trans i.isLt pd.size₂_lt⟩, ⟨j, Nat.lt_trans j.isLt pd.size₂_lt⟩, offset, offset', ?_⟩
+      simp [pd.get_lt₂, eq']
+  | star e ih =>
+    let pd := Star.intro eq
+    rw [pd.eq_result eq]
+
+    simp [tags] at h
+    have ⟨i, j, offset, offset', eq'⟩ := ih (result := ⟨pd.nfaExpr, _⟩) rfl h
+    simp at eq' i j
+    have ilt : i < nfa'.nodes.size := by simp [pd.size_eq_expr']
+    have jlt : j < nfa'.nodes.size := by simp [pd.size_eq_expr']
+    refine ⟨⟨i, ilt⟩, ⟨j, jlt⟩, offset, offset', ⟨?_, ?_⟩⟩
+    . simp
+      have := pd.get i ilt
+      split_ifs at this
+      next h =>
+        have ilt' : i < (pd.nfaPlaceholder).nodes.size := by
+          simp [Star.nfaPlaceholder]
+          omega
+        have : nfa'[i.val] = pd.nfaExpr[i] :=
+          calc
+            _ = nfa[i] := pushRegex_get_lt rfl i h
+            _ = pd.nfaPlaceholder[i] := by
+              simp [Star.nfaPlaceholder, pushNode_get_lt i h]
+              rfl
+            _ = pd.nfaExpr[i] := (pushRegex_get_lt rfl i ilt').symm
+        simp [this, eq']
+      next h =>
+        have ilt' : i < (pd.nfaPlaceholder).nodes.size := by
+          simp [Star.nfaPlaceholder, h]
+        have : pd.nfaExpr[i] = .fail :=
+          calc
+            _ = pd.nfaPlaceholder[i] := pushRegex_get_lt rfl i ilt'
+            _ = .fail := by simp [h, Star.nfaPlaceholder]
+        simp [eq'] at this
+      next => simp [this, eq']
+    . simp
+      have := pd.get j jlt
+      split_ifs at this
+      next h =>
+        have jlt' : j < (pd.nfaPlaceholder).nodes.size := by
+          simp [Star.nfaPlaceholder]
+          omega
+        have : nfa'[j.val] = pd.nfaExpr[j] :=
+          calc
+            _ = nfa[j] := pushRegex_get_lt rfl j h
+            _ = pd.nfaPlaceholder[j] := by
+              simp [Star.nfaPlaceholder, pushNode_get_lt j h]
+              rfl
+            _ = pd.nfaExpr[j] := (pushRegex_get_lt rfl j jlt').symm
+        simp [this, eq']
+      next h =>
+        have jlt' : j < (pd.nfaPlaceholder).nodes.size := by
+          simp [Star.nfaPlaceholder, h]
+        have : pd.nfaExpr[j] = .fail :=
+          calc
+            _ = pd.nfaPlaceholder[j] := pushRegex_get_lt rfl j jlt'
+            _ = .fail := by simp [h, Star.nfaPlaceholder]
+        simp [eq'] at this
+      next => simp [this, eq']
+
+theorem mem_save_of_mem_tags_compile {e nfa tag} (eq : compile e = nfa) (h : tag ∈ e.tags) :
+  ∃ (i j : Fin nfa.nodes.size) (offset offset' : Nat),
+    nfa[i] = .save (2 * tag) offset ∧ nfa[j] = .save (2 * tag + 1) offset' := by
+  have := mem_save_of_mem_tags_pushRegex (result := NFA.done.pushRegex 0 e) rfl h
+  simp [compile] at eq
+  rw [eq] at this
+  exact this
+
+theorem lt_of_mem_tags_compile {e nfa tag} (eq : compile e = nfa) (h : tag ∈ e.tags) :
+  2 * tag < nfa.maxTag := by
+  have ⟨_, j, _, offset', _, hn⟩ := mem_save_of_mem_tags_compile eq h
+  exact nfa.le_maxTag j hn
+
 open Compile.ProofData in
 theorem done_iff_zero_pushRegex {nfa next e result} (eq : pushRegex nfa next e = result)
   (h₁ : 0 < nfa.nodes.size)
@@ -383,7 +514,7 @@ theorem done_iff_zero_pushRegex {nfa next e result} (eq : pushRegex nfa next e =
         simp [pushNode_get_lt _ lt]
         exact h₂ i lt
 
-theorem done_iff_zero_compile (eq : compile e = nfa) (i : Fin nfa.nodes.size) :
+theorem done_iff_zero_compile {e nfa} (eq : compile e = nfa) (i : Fin nfa.nodes.size) :
   nfa[i] = .done ↔ i.val = 0 := by
   simp [←eq, compile]
   apply done_iff_zero_pushRegex rfl (by simp [done])
@@ -392,13 +523,13 @@ theorem done_iff_zero_compile (eq : compile e = nfa) (i : Fin nfa.nodes.size) :
   simp [isLt]
   rfl
 
-theorem lt_zero_size_compile (eq : compile e = nfa) :
+theorem lt_zero_size_compile {e nfa} (eq : compile e = nfa) :
   0 < nfa.nodes.size := by
   simp [←eq, compile]
   set result := NFA.done.pushRegex 0 e
   exact Nat.zero_lt_of_lt result.property
 
-theorem lt_zero_start_compile (eq : compile e = nfa) :
+theorem lt_zero_start_compile {e nfa} (eq : compile e = nfa) :
   0 < nfa.start := by
   simp [←eq, compile]
   exact ge_pushRegex_start (nfa := done) rfl

@@ -10,7 +10,7 @@ open String (Pos)
 namespace Regex.NFA
 
 /--
-`materializeRegexGroupsAux groups` constructs a mapping that associates each capture group's tag
+`materializeRegexGroups groups` constructs a mapping that associates each capture group's tag
 with the start/end positions of the last appearance of the capture group in the input string.
 -/
 def materializeRegexGroups : CaptureGroups → Nat → Option (Pos × Pos)
