@@ -56,13 +56,14 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
 theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext re.nfa re.wf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
   ∃ l m r groups,
+    it.toString = ⟨l ++ m ++ r⟩ ∧
     s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
     matched[0] = .some ⟨String.utf8Len l⟩ ∧
     matched[1] = .some ⟨String.utf8Len l + String.utf8Len m⟩ := by
-  have ⟨l, m, r, groups, c, eqv⟩ := VM.captureNext_correct s.nfa_eq.symm s.disj h v rfl
+  have ⟨l, m, r, groups, eqstring, c, eqv⟩ := VM.captureNext_correct s.nfa_eq.symm s.disj h v rfl
   simp at eqv
-  refine ⟨l, m, r, groups, c, eqv, ?_⟩
+  refine ⟨l, m, r, groups, eqstring, c, eqv, ?_⟩
 
   generalize hspan : (⟨l, [], m ++ r⟩ : Span) = span at c
   generalize hspan' : (⟨l, m.reverse, r⟩ : Span) = span' at c
@@ -78,6 +79,7 @@ theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext r
 theorem searchNext_some {re it first last} (h : VM.searchNext re.nfa re.wf it = .some (first, last))
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ l m r groups,
+    it.toString = ⟨l ++ m ++ r⟩ ∧
     s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
     first = ⟨String.utf8Len l⟩ ∧
     last = ⟨String.utf8Len l + String.utf8Len m⟩ := by
@@ -86,9 +88,9 @@ theorem searchNext_some {re it first last} (h : VM.searchNext re.nfa re.wf it = 
   cases matched with
   | none => simp at h
   | some matched =>
-    have ⟨l, m, r, groups, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
+    have ⟨l, m, r, groups, eqstring, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
     simp [eq₁, eq₂] at h
-    exact ⟨l, m, r, groups, c, by simp [←h]⟩
+    exact ⟨l, m, r, groups, eqstring, c, by simp [←h]⟩
 
 end IsSearchRegex
 
