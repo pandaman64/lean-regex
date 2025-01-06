@@ -100,7 +100,7 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → { nfa' : NFA // nfa.nodes.size
         _ < _ := compiled.property
 
     let split := Node.split compiled.val.start next
-    let patched := compiled.val.nodes.set ⟨nfa.nodes.size, isLt⟩ split
+    let patched := compiled.val.nodes.set nfa.nodes.size split
 
     let nfa' := ⟨patched, nfa.nodes.size⟩
     have property :=

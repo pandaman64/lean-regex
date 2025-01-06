@@ -22,7 +22,7 @@ instance : GetElem (Vec α n) Nat α (fun _ i => i < n) where
   getElem := Vec.get
 
 def Vec.set (v : Vec α n) (i : Nat) (h : i < n) (a : α) : Vec α n :=
-  ⟨v.val.set ⟨i, by simp [v.property, h]⟩ a, by simp [v.property]⟩
+  ⟨v.val.set i a (by simp [v.property, h]), by simp [v.property]⟩
 
 @[simp]
 theorem Vec.get_set_eq (v : Vec α n) (h : i < n) :

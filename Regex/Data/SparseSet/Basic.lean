@@ -24,7 +24,7 @@ variable {n : Nat} {s : SparseSet n} {i j : Fin n}
 open Bijection
 
 def empty {n : Nat} : SparseSet n :=
-  let a := Array.ofFn (fun x : Fin n => ⟨0, x.size_pos⟩)
+  let a := Array.ofFn (fun x : Fin n => ⟨0, x.pos⟩)
   ⟨0, Vec.mk' a (by simp [a]), Vec.mk' a (by simp [a]), fun _ _ => by contradiction, Nat.zero_le _⟩
 
 theorem sparse_dense_fin (h : i < s.count) : s.sparse[s.dense[i]] = i :=

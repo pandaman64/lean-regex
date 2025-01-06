@@ -31,8 +31,7 @@ theorem captures_of_mem_findAll.go {m : Matches} {accum : Array (Pos × Pos)}
     simp [regex_eq, haystack_eq] at ih
 
     have ⟨v', spec⟩ := Matches.captures_of_next?_some next_some? v
-    have inv' (p₁ p₂ : Pos) (mem : (p₁, p₂) ∈ accum.push positions) : Matches.Spec v.1 m.haystack (p₁, p₂) := by
-      simp [Array.push_eq_append_singleton] at mem
+    have inv' (p₁ p₂ : Pos) (mem : (p₁, p₂) ∈ accum ∨ (p₁, p₂) = positions) : Matches.Spec v.1 m.haystack (p₁, p₂) := by
       cases mem with
       | inl mem => exact inv (p₁, p₂) mem
       | inr eq => exact eq ▸ spec
@@ -71,8 +70,7 @@ theorem captures_of_mem_captureAll.go {captures : Captures} {accum : Array Captu
     simp [regex_eq, haystack_eq] at ih
 
     have ⟨v', spec⟩ := Captures.captures_of_next?_some next?_some v
-    have inv' (captured : CapturedGroups) (mem : captured ∈ accum.push groups) : captured.Spec v.1 captures.haystack := by
-      simp [Array.push_eq_append_singleton] at mem
+    have inv' (captured : CapturedGroups) (mem : captured ∈ accum ∨ captured = groups) : captured.Spec v.1 captures.haystack := by
       cases mem with
       | inl mem => exact inv captured mem
       | inr eq => exact eq ▸ spec
