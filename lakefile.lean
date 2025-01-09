@@ -4,6 +4,9 @@ open Lake DSL
 package Regex where
   -- add package configuration options here
 
+lean_lib TParser where
+  -- add library configuration options here
+
 lean_lib Regex where
   -- add library configuration options here
 
