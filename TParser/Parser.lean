@@ -22,26 +22,45 @@ def SimpleParser (ε : Type) := Parser (Result ε)
 
 namespace Parser
 
-@[inline, specialize]
-def anyChar {m} [Alternative m] : All (Parser m Char) :=
-  Parser.mk fun {it} h =>
-    if hn : it.hasNext then
-      pure ⟨it.curr' hn, it.next' hn, by simp [Iterator.next_remainingBytes_lt, hn]⟩
-    else
-      failure
+def parse {m α} [Monad m] (p : All (Parser m α)) (input : String) : m α := do
+  let suc ← @p.run input.mkIterator (Nat.le_refl _)
+  return suc.val
+
+def parseCompleteOrElse {m α} [Monad m] (p : All (Parser m α)) (input : String) (remainingInput : m α) : m α := do
+  let suc ← @p.run input.mkIterator (Nat.le_refl _)
+  if suc.it.atEnd then
+    return suc.val
+  else
+    remainingInput
 
 @[inline, specialize]
 def map {m α β} [Functor m] (f : α → β) : All (Imp (Parser m α) (Parser m β))
   | _, ⟨run⟩ => Parser.mk fun h => Success.map f <$> run h
 
-def guardM {m α β} [Functor m] (f : α → Option β) : All (Imp (Parser m α) (Parser m (Option β)))
-  | _, ⟨run⟩ => Parser.mk fun h => Success.map f <$> run h
+@[inline]
+def mapConst {m α β} [Functor m] (a : α) : All (Imp (Parser m β) (Parser m α))
+  | _, ⟨run⟩ => Parser.mk fun h => Success.mapConst a <$> run h
 
 def failure {m α} [Alternative m] : All (Parser m α) :=
   Parser.mk fun _ => Alternative.failure
 
-def orElse {m α} [Alternative m] : All (Imp (Parser m α) (Imp (Parser m α) (Parser m α)))
+def orElse {m α} [∀ β, OrElse (m β)] : All (Imp (Parser m α) (Imp (Parser m α) (Parser m α)))
   | _, ⟨p⟩, ⟨q⟩ => Parser.mk fun h => p h <|> q h
+
+def guardMOrElse {m α β} [Monad m] (f : α → Option β) (handler : All (App m (Success β))) : All (Imp (Parser m α) (Parser m β))
+  | _, ⟨run⟩ => Parser.mk fun h => do
+    match (← run h).guardM f with
+    | .some s => pure s
+    | .none => handler
+
+def guardOrElse {m α} [Monad m] (f : α → Bool) (handler : All (App m (Success α))) : All (Imp (Parser m α) (Parser m α)) :=
+  guardMOrElse (fun a => if f a then .some a else .none) handler
+
+def guardM {m α β} [Monad m] [Alternative m] (f : α → Option β) : All (Imp (Parser m α) (Parser m β)) :=
+  guardMOrElse f Alternative.failure
+
+def guard {m α} [Monad m] [Alternative m] (f : α → Bool) : All (Imp (Parser m α) (Parser m α)) :=
+  guardOrElse f Alternative.failure
 
 def box {m α} : All (Imp (Parser m α) (Box (Parser m α))) :=
   Box.leClose (fun h ⟨run⟩ => Parser.mk fun h' => run (Nat.le_trans h' h))
@@ -54,6 +73,15 @@ def andBind {m α β} [Monad m] : All (Imp (Parser m α) (Imp (Imp (Const α) (B
 
 def and {m α β} [Monad m] : All (Imp (Parser m α) (Imp (Box (Parser m β)) (Parser m (α × β))))
   | _, p, q => andBind p (fun _ => q)
+
+def andBindR {m α β} [Monad m] : All (Imp (Parser m α) (Imp (Imp (Const α) (Box (Parser m β))) (Parser m β)))
+  | _, p, q => (andBind p q).map (·.2)
+
+def andBindM {m α β} [Monad m] : All (Imp (Parser m α) (Imp (Const (α → m β)) (Parser m β)))
+  | _, p, f => Parser.mk fun h => do
+    let ⟨a, it', h'⟩ ← p.run h
+    let b ← f a
+    return ⟨b, it', h'⟩
 
 -- `andBindOpt p q` runs `p` and optionally followed by `q`.
 def andBindOpt {m α β} [Monad m] [Alternative m] : All (Imp (Parser m α) (Imp (Imp (Const α) (Box (Parser m β))) (Parser m (α × Option β))))

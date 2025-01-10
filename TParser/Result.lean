@@ -34,6 +34,7 @@ inductive Result (ε : Type u) (α : Type v) where
   Parser failed with an unrecoverable error.
   -/
   | fatal (e : ε) : Result ε α
+deriving Repr
 
 namespace Result
 
@@ -88,6 +89,16 @@ instance {ε} : Monad (Result ε) where
 instance {ε} : MonadExcept ε (Result ε) where
   throw := Result.error
   tryCatch := Result.tryCatch
+
+@[inline]
+instance {ε} [Inhabited ε] : Alternative (Result ε) where
+  -- Is this the right choice?
+  failure := .error default
+  orElse := Result.orElse
+
+@[inline]
+instance {ε α} : OrElse (Result ε α) where
+  orElse := Result.orElse
 
 end Result
 
