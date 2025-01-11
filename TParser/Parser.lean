@@ -33,6 +33,11 @@ def parseCompleteOrElse {m α} [Monad m] (p : All (Parser m α)) (input : String
   else
     remainingInput
 
+def debug {m α} [Monad m] [ToString α] (name : String) : All (Imp (Parser m α) (Parser m α))
+  | n, ⟨run⟩ => Parser.mk fun {it} h => dbgTrace s!"{name}: at {it.curr} ({n})" fun () => do
+    let ⟨val, it', h'⟩ ← run h
+    dbgTrace s!"{name} succeeded with {val}. Remaining {it'}" fun () => pure ⟨val, it', h'⟩
+
 @[inline, specialize]
 def map {m α β} [Functor m] (f : α → β) : All (Imp (Parser m α) (Parser m β))
   | _, ⟨run⟩ => Parser.mk fun h => Success.map f <$> run h
@@ -84,25 +89,25 @@ def andBindM {m α β} [Monad m] : All (Imp (Parser m α) (Imp (Const (α → m 
     return ⟨b, it', h'⟩
 
 -- `andBindOpt p q` runs `p` and optionally followed by `q`.
-def andBindOpt {m α β} [Monad m] [Alternative m] : All (Imp (Parser m α) (Imp (Imp (Const α) (Box (Parser m β))) (Parser m (α × Option β))))
+def andBindOpt {m α β} [Monad m] [∀ γ, OrElse (m γ)] : All (Imp (Parser m α) (Imp (Imp (Const α) (Box (Parser m β))) (Parser m (α × Option β))))
   | _, p, q => Parser.mk fun h => do
     let ⟨a, it', h'⟩ ← p.run h
     let mb := ((q a).call (Nat.lt_of_lt_of_le h' h)).run (Nat.le_refl it'.remainingBytes)
     (fun ⟨b, it'', h''⟩ => ⟨(a, .some b), it'', Nat.lt_trans h'' h'⟩) <$> mb
       <|> pure ⟨(a, .none), it', h'⟩
 
-def andOpt {m α β} [Monad m] [Alternative m] : All (Imp (Parser m α) (Imp (Box (Parser m β)) (Parser m (α × Option β))))
+def andOpt {m α β} [Monad m] [∀ γ, OrElse (m γ)] : All (Imp (Parser m α) (Imp (Box (Parser m β)) (Parser m (α × Option β))))
   | _, p, q => andBindOpt p (fun _ => q)
 
-def some {m α} [Monad m] [Alternative m] (p : All (Parser m α)) : All (Parser m (List α))
+def some {m α} [Monad m] [∀ γ, OrElse (m γ)] (p : All (Parser m α)) : All (Parser m (List α))
   | _ => Box.fix fun rec => andOpt p rec |>.map (fun p => p.1 :: p.2.getD [])
 
-def optAnd {m α β} [Monad m] [Alternative m] : All (Imp (Parser m α) (Imp (Parser m β) (Parser m (Option α × β))))
+def optAnd {m α β} [Monad m] [∀ γ, OrElse (m γ)] : All (Imp (Parser m α) (Imp (Parser m β) (Parser m (Option α × β))))
   | _, p, q => and (p.map .some) q.box |>.orElse (q.map (fun q => (Option.none, q)))
 
 def LChain (m α) (n : Nat) := Success α n → Box (Parser m (α → α)) n → m (Success α n)
 
-def schainlAux {m α} [Monad m] [Alternative m] : All (Imp (Box (LChain m α)) (LChain m α))
+def schainlAux {m α} [Monad m] [∀ β, OrElse (m β)] : All (Imp (Box (LChain m α)) (LChain m α))
   | _, rec, ⟨a, it, h⟩, op =>
     let more := do
       let pop := op.call h
@@ -112,14 +117,20 @@ def schainlAux {m α} [Monad m] [Alternative m] : All (Imp (Box (LChain m α)) (
     more <|> pure ⟨a, it, h⟩
 
 -- Corresponds to `Success α → Parser m (α → α) → Success α`.
-def schainl {m α} [Monad m] [Alternative m] : All (LChain m α)
+def schainl {m α} [Monad m] [∀ β, OrElse (m β)] : All (LChain m α)
   | _ => Box.fix fun rec => schainlAux rec
 
-def iteratel {m α} [im : Monad m] [ia : Alternative m] : All (Imp (Parser m α) (Imp (Box (Parser m (α → α))) (Parser m α)))
+def iteratel {m α} [Monad m] [∀ β, OrElse (m β)] : All (Imp (Parser m α) (Imp (Box (Parser m (α → α))) (Parser m α)))
   | _, seed, op => Parser.mk fun h => do schainl (← seed.run h) (op.castLE h)
 
+def foldl {m α β} [Monad m] [∀ γ, OrElse (m γ)] (init : β) (f : β → α → β) : All (Imp (Parser m α) (Parser m β))
+  | _, elem => iteratel (elem.map fun a => f init a) (elem.map fun a accum => f accum a).box
+
+def foldl1 {m α} [Monad m] [∀ β, OrElse (m β)] (f : α → α → α) : All (Imp (Parser m α) (Parser m α))
+  | _, elem => (elem.andBindOpt (fun init => foldl init f elem |>.box)).map fun (elem₁, elems) => elems.getD elem₁
+
 -- Corresponds to `Parser m α → Parser m (α → β → α) → Parser m β → Parser m α`.
-def hchainl {m α β} [Monad m] [Alternative m] :
+def hchainl {m α β} [Monad m] [∀ γ, OrElse (m γ)] :
   All (Imp (Parser m α) (Imp (Box (Parser m (α → β → α)))
       (Imp (Box (Parser m β)) (Parser m α))))
   | _, seed, op, arg =>
@@ -130,8 +141,14 @@ def hchainl {m α β} [Monad m] [Alternative m] :
       opArg.map fun (f, b) a => f a b
     )
 
-def chainl1 {m α} [Monad m] [Alternative m] : All (Imp (Parser m α) (Imp (Box (Parser m (α → α → α))) (Parser m α)))
+def chainl1 {m α} [Monad m] [∀ β, OrElse (m β)] : All (Imp (Parser m α) (Imp (Box (Parser m (α → α → α))) (Parser m α)))
   | _, seed, op => hchainl seed op seed.box
+
+def between' {m α β γ} [Monad m] : All (Imp (Parser m α) (Imp (Box (Parser m γ)) (Imp (Box (Parser m β)) (Parser m (α × β × γ)))))
+  | _, l, r, m => l.and m |>.and r |>.map (fun ((a, b), c) => (a, b, c))
+
+def between {m α β γ} [Monad m] : All (Imp (Parser m α) (Imp (Box (Parser m γ)) (Imp (Box (Parser m β)) (Parser m β))))
+  | _, l, r, m => between' l r m |>.map (fun (_, b, _) => b)
 
 end Parser
 

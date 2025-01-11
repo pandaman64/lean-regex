@@ -16,7 +16,7 @@ inductive Ast : Type where
   | classes : Classes -> Ast
   | perl : PerlClass -> Ast
   | dot : Ast
-deriving Inhabited
+deriving Inhabited, Repr
 
 def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
   match ast with
