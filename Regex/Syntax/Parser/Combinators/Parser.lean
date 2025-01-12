@@ -6,6 +6,11 @@ open String (Iterator)
 
 namespace Regex.Syntax.Parser.Combinators
 
+/--
+Total parser combinators a la [idris2-parser](https://github.com/stefan-hoeck/idris2-parser/tree/main).
+
+`s` controls whether the input is strictly decreasing.
+-/
 abbrev Parser (s ε α) := ∀ (it : Iterator), Result s it ε α
 
 namespace Parser

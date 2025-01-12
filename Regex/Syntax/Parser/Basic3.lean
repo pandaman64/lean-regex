@@ -92,7 +92,7 @@ def dot : Parser.LT Error Ast :=
 def charInClass : Parser.LT Error (Char ⊕ PerlClass) :=
   escapedChar <|> .inl <$> charNotOrError ']'
 
--- TOOD: this is buggy
+-- TOOD: the handling of '-' is buggy
 def singleClass : Parser.LT Error Class :=
   charInClass |>.bindOr fun f => do
     let isInterval ← test '-'
@@ -146,9 +146,9 @@ def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
 def repeatConcat (ast : Ast) (n : Nat) : Ast :=
   go ast (n - 1)
 where
-  go (ast : Ast) : Nat → Ast
-    | 0 => ast
-    | n + 1 => .concat (go ast n) ast
+  go (accum : Ast) : Nat → Ast
+    | 0 => accum
+    | n + 1 => go (.concat accum ast) n
 
 def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
   match min, max with
@@ -170,6 +170,16 @@ def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
     else
       Ast.concat (repeatConcat ast min) (repeatConcat (Ast.alternate ast Ast.empty) (max - min))
 
+/-
+The following definitions describe the recursive structure of the regex parser. We duplicate the
+loops in the grammar in several definitions like `repetition1` and `concat1` since our combinators
+only work for a fully-defined parser (which can accept any input with arbitrary length), but the
+mutually recursive functions can only work for an input that is strictly decreasing.
+
+Total parser combinators a la [agdarsec](https://github.com/gallais/agdarsec) can provide parser
+combinators that can be used in mutual recursion, but it requires a more elaborate infrastructure
+like types indexed by a `Nat` to work. I found it more convenient to just duplicate the loops.
+-/
 mutual
 
 def group (it : Iterator) : Result.LT it Error Ast :=
