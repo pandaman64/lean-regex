@@ -1,33 +1,48 @@
 import Regex.Syntax.Ast
-import Regex.Syntax.Parser.ParserAux
+import Regex.Syntax.Parser.Combinators
+import Regex.Syntax.Parser.Error
 
-open Regex.Data (PerlClass PerlClassKind Class Expr)
-open Parser
-open Parser.Char
+set_option autoImplicit false
+
+open Regex.Syntax.Parser (Ast)
+open Regex.Syntax.Parser.Combinators
+open Regex.Data (PerlClass PerlClassKind Class Classes Expr)
+open String (Iterator)
 
 namespace Regex.Syntax.Parser
 
-def specialCharacters := "[](){}*+?|^$.\\"
+def anyCharOrError : Parser.LT Error Char :=
+  anyCharOrElse .unexpectedEof
 
-abbrev Parser := SimpleParser Substring Char
+def charOrError (c : Char) : Parser.LT Error Char :=
+  charOrElse c .unexpectedEof .unexpectedChar
 
-def isHexDigit (c : Char) : Bool :=
-  c.isDigit || ('a' ≤ c && c ≤ 'f') || ('A' ≤ c && c ≤ 'F')
+def digit : Parser.LT Error Nat :=
+  anyCharOrError
+  |>.guard fun c =>
+    if c.isDigit then .ok (c.toNat - '0'.toNat)
+    else .error (.unexpectedChar c)
 
-def digitToInt (c : Char) : Nat :=
-  if c.isDigit then c.toNat - '0'.toNat
-  else if 'a' ≤ c && c ≤ 'f' then c.toNat - 'a'.toNat + 10
-  else if 'A' ≤ c && c ≤ 'F' then c.toNat - 'A'.toNat + 10
-  else panic! "digitToInt: not a digit"
+def number : Parser.LT Error Nat :=
+  foldl1 (fun n d => 10 * n + d) digit
 
--- NOTE: I don't have any idea if the precedence or any other stuff are correct here
-mutual
+def hexDigit : Parser.LT Error Nat :=
+  anyCharOrError |>.guard fun c =>
+    if c.isDigit then .ok (c.toNat - '0'.toNat)
+    else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10)
+    else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10)
+    else .error (.unexpectedChar c)
 
-partial def escaped (withPerlClasses: Bool) : Parser (if withPerlClasses then Ast else Char) :=
-  withErrorMessage "expected an escaped character" do
-    let _ ← token '\\'
-    let c ← anyToken
-    let escape (c: Char) : Parser Char :=
+def hexNumberN (n : Nat) [NeZero n] : Parser.LT Error Nat :=
+  foldlPos 0 (fun n d => 16 * n + d) hexDigit n
+
+def escapedChar : Parser.LT Error (Char ⊕ PerlClass) :=
+  charOrError '\\' *>
+    ((.inl <$> (simple <|> hex2 <|> hex4)) <|> (.inr <$> perlClass))
+where
+  simple : Parser.LT Error Char :=
+    anyCharOrError
+    |>.guard fun c =>
       match c with
       | 'n' => pure '\n'
       | 't' => pure '\t'
@@ -36,178 +51,208 @@ partial def escaped (withPerlClasses: Bool) : Parser (if withPerlClasses then As
       | 'f' => pure '\x0c'
       | 'v' => pure '\x0b'
       | '0' => pure '\x00'
-      | 'x' => do
-        let d₁ ← tokenFilter isHexDigit
-        let d₂ ← tokenFilter isHexDigit
-        let n ← pure (16 * digitToInt d₁ + digitToInt d₂)
-        pure (Char.ofNat n)
-      | 'u' => do
-        let bracket ← option? $ tokenFilter (· == '{')
-        let d₁ ← tokenFilter isHexDigit
-        let d₂ ← tokenFilter isHexDigit
-        let d₃ ← tokenFilter isHexDigit
-        let d₄ ← tokenFilter isHexDigit
-        if bracket.isSome then
-          let _ ← token '}'
-        let n ← pure (4096 * digitToInt d₁ + 256 * digitToInt d₂ + 16 * digitToInt d₃ + digitToInt d₄)
-        pure (Char.ofNat n)
-      | _   => pure c
-
-    let perlClasses (c: Char) : Parser Ast :=
+      | '-' => pure '-'
+      | '\\' => pure '\\'
+      | _ => throw (.unexpectedEscapedChar c)
+  hex2 : Parser.LT Error Char :=
+    charOrError 'x' *> (Char.ofNat <$> hexNumberN 2)
+  -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
+  hex4 : Parser.LT Error Char :=
+    charOrError 'u' *> (Char.ofNat <$> hexNumberN 4)
+  perlClass : Parser.LT Error PerlClass :=
+    anyCharOrError
+    |>.guard fun c =>
       match c with
-      | 'd' => pure (Ast.perl (PerlClass.mk false PerlClassKind.digit))
-      | 'D' => pure (Ast.perl (PerlClass.mk true PerlClassKind.digit))
-      | 's' => pure (Ast.perl (PerlClass.mk false PerlClassKind.space))
-      | 'S' => pure (Ast.perl (PerlClass.mk true PerlClassKind.space))
-      | 'w' => pure (Ast.perl (PerlClass.mk false PerlClassKind.word))
-      | 'W' => pure (Ast.perl (PerlClass.mk true PerlClassKind.word))
-      |  _  => throwUnexpected
+      | 'd' => pure (PerlClass.mk false PerlClassKind.digit)
+      | 'D' => pure (PerlClass.mk true PerlClassKind.digit)
+      | 's' => pure (PerlClass.mk false PerlClassKind.space)
+      | 'S' => pure (PerlClass.mk true PerlClassKind.space)
+      | 'w' => pure (PerlClass.mk false PerlClassKind.word)
+      | 'W' => pure (PerlClass.mk true PerlClassKind.word)
+      | _ => throw (.unexpectedEscapedChar c)
 
-    match withPerlClasses with
-    | true  => perlClasses c <|> (Ast.char <$> escape c)
-    | false => escape c
+def escapedCharToAst (c : Char ⊕ PerlClass) : Ast :=
+  match c with
+  | .inl c => .char c
+  | .inr cls => .perl cls
 
-partial def group : Parser Ast :=
-  withErrorMessage "expected a group" do
-    let _ ← token '('
-    let nonCapturing ← test (chars "?:")
-    let r ← regex
-    let _ ← token ')'
-    pure (if nonCapturing then r else .group r)
+def specialCharacters := "[](){}*+?|^$.\\"
 
-partial def char : Parser Ast :=
-  withErrorMessage "expected a character" do
-    Ast.char <$> (escaped false <|> tokenFilter (!specialCharacters.contains ·))
+def plainChar : Parser.LT Error Char :=
+  anyCharOrError.guard fun c =>
+    if specialCharacters.contains c then throw (.unexpectedChar c)
+    else .ok c
 
-partial def charWithPerlClasses : Parser Ast :=
-  withErrorMessage "expected a character" do
-    escaped true <|> (Ast.char <$> tokenFilter (!specialCharacters.contains ·))
+def dot : Parser.LT Error Ast :=
+  charOrError '.' |>.mapConst .dot
 
-partial def charInClasses : Parser Ast :=
-  withErrorMessage "expected a character" do
-    escaped true <|> (Ast.char <$> (tokenFilter (!· == ']')))
+def charInClass : Parser.LT Error (Char ⊕ PerlClass) :=
+  escapedChar <|> (anyCharOrError.guard fun c =>
+    if c = ']' ∨ c = '\\' then throw (.unexpectedChar c)
+    else .ok (.inl c)
+  )
 
-partial def class_ : Parser Class := do
-  let first ← charInClasses
-  let isInterval ← test (token '-')
-
-  if isInterval then
-    match ← option? charInClasses with
-    | .some second =>
-      let f ← expectsChar first
-      let s ← expectsChar second
-      if h : f ≤ s
-        then pure (Class.range f s h)
-        else throwUnexpectedWithMessage none "invalid range"
-    | .none =>
-      -- '-' just before ']' is treated as a normal character
-      pure (Class.single '-')
-  else
-    match first with
-    | Ast.perl p => pure (Class.perl p)
-    | Ast.char c => pure (Class.single c)
-    | _ => throwUnexpected
-where
-  expectsChar (ast : Ast) : Parser Char :=
-    match ast with
-    | Ast.perl _ =>
-      throwUnexpectedWithMessage none "cannot use perl classes in intervals"
-    | Ast.char c => pure c
-    | _ => throwUnexpected
-
-partial def classes : Parser Ast :=
-  withErrorMessage "expected a character class" do
-    let _ ← token '['
-    let negated ← test (token '^')
-    let classes ← takeMany1 class_
-    let _ ← token ']'
-    pure $ Ast.classes { negated := negated, classes := classes }
-
-partial def dot : Parser Ast :=
-  withErrorMessage "expected a dot" do
-    let _ ← token '.'
-    pure Ast.dot
-
-partial def primitive : Parser Ast :=
-  first [group, classes, dot, charWithPerlClasses]
-
-partial def repetition : Parser Ast :=
-  withErrorMessage "expected a star" do
-    let r ← primitive
-    -- Eat repetition operators as many as possible
-    foldl folder r repetitionOp
-where
-  repeatAux (ast accum : Ast) (n : Nat) : Ast :=
-    if n == 0 then
-      accum
+def range : Parser.LT Error Class :=
+  ((Prod.mk <$> charInClass) <*> (charOrError '-' *> charInClass))
+  |>.guard fun (f, s) => do
+    let f ← expectsChar f
+    let s ← expectsChar s
+    if h : f ≤ s then
+      pure (.range f s h)
     else
-      repeatAux ast (Ast.concat ast accum) (n - 1)
-  -- requires n > 0
-  repeatAst (ast : Ast) (n : Nat) : Ast :=
-    repeatAux ast ast (n - 1)
-  folder (ast : Ast) : (Nat × Option Nat) → Ast
-    -- special case for well-known repetitions
-    | (0, some 1) => Ast.alternate ast Ast.empty
-    | (0, none) => Ast.star ast
-    | (1, none) => Ast.concat ast (Ast.star ast)
-    -- r{min,}. min > 0 as (0, none) is already covered.
-    | (min, none) => Ast.concat (repeatAst ast min) (Ast.star ast)
-    -- r{0,max}
-    | (0, some max) =>
-      if max == 0 then
-        Ast.empty
-      else
-        repeatAst (Ast.alternate ast Ast.empty) max
-    -- r{min,max} (min > 0)
-    | (min, some max) =>
-      if min == max then
-        repeatAst ast min
-      else
-        Ast.concat (repeatAst ast min) (repeatAst (Ast.alternate ast Ast.empty) (max - min))
-  repetitionOp : Parser (Nat × Option Nat) := do
-    if (← test (token '*')) then
-      return (0, none)
-    else if (← test (token '+')) then
-      return (1, none)
-    else if (← test (token '?')) then
-      return (0, some 1)
-    else if (← test (token '{')) then
-      let min ← ASCII.parseNat
-      let max ← do
-        if (← test (token ',')) then
-          option? ASCII.parseNat
+      throw (.invalidRange f s)
+where
+  expectsChar (c : Char ⊕ PerlClass) : Except Error Char :=
+    match c with
+    | .inl c => .ok c
+    | .inr cls => .error (.unexpectedPerlClassInRange cls)
+
+def singleClass : Parser.LT Error Class :=
+  range <|> (charToClass <$> charInClass)
+where
+  charToClass (c : Char ⊕ PerlClass) : Class :=
+    match c with
+    | .inl c => .single c
+    | .inr cls => .perl cls
+
+def classes : Parser.LT Error Ast :=
+  betweenOr (charOrError '[') (charOrError ']') (do
+    let negated ← test '^'
+    let classes ← (many1 singleClass).weaken
+    pure (.classes ⟨negated, classes⟩)
+  )
+
+def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
+  (charOrError '*' |>.mapConst (0, .none))
+  <|> (charOrError '+' |>.mapConst (1, .none))
+  <|> (charOrError '?' |>.mapConst (0, .some 1))
+  <|> (betweenOr (charOrError '{') (charOrError '}') do
+    let min ← number.weaken
+    let comma ← test ','
+    if comma then
+      match (← number.opt) with
+      | .some max =>
+        if min ≤ max then
+          pure (min, .some max) -- {N,M} represents N to M repetitions
         else
-          pure (some min)
-      let _ ← token '}'
-      return (min, max)
+          throw (.invalidRepetition min max) -- {N,M} where N > M is invalid
+      | .none => pure (min, .none) -- {N,} represents N or more repetitions
     else
-      throwUnexpected
+      pure (min, .some min) -- {N} represents N repetitions
+  )
 
-partial def concat : Parser Ast :=
-  withErrorMessage "expected a concatenation" do
-    foldl1 Ast.concat repetition
-
-partial def alternate : Parser Ast :=
-  withErrorMessage "expected an alternation" do
-    let init ← branch
-    foldl Ast.alternate init (Char.char '|' *> branch)
+def repeatConcat (ast : Ast) (n : Nat) : Ast :=
+  go ast (n - 1)
 where
-  branch : Parser Ast := optionD concat Ast.epsilon
+  go (accum : Ast) : Nat → Ast
+    | 0 => accum
+    | n + 1 => go (.concat accum ast) n
 
-partial def regex : Parser Ast :=
-  withErrorMessage "expected a regular expression" do
-    alternate
+def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
+  match min, max with
+  -- special case for well-known repetitions
+  | 0, .some 1 => .alternate ast .empty
+  | 0, .none => .star ast
+  | 1, .none => .concat ast (.star ast)
+  -- r{min,}. min > 0 as `0, .none` is already covered.
+  | min, .none => .concat (repeatConcat ast min) (.star ast)
+  -- r{0,max}
+  | 0, .some max =>
+    if max == 0 then
+      Ast.empty
+    else
+      repeatConcat (Ast.alternate ast Ast.empty) max
+  | min, .some max =>
+    if min == max then
+      repeatConcat ast min
+    else
+      Ast.concat (repeatConcat ast min) (repeatConcat (Ast.alternate ast Ast.empty) (max - min))
+
+def nonCapturing : Parser.LT Error Unit :=
+  charOrError '?' *> charOrError ':' |>.mapConst ()
+
+/-
+The following definitions describe the recursive structure of the regex parser. We duplicate the
+loops in the grammar in several definitions like `repetition1` and `concat1` since our combinators
+only work for a fully-defined parser (which can accept any input with arbitrary length), but the
+mutually recursive functions can only work for an input that is strictly decreasing.
+
+Total parser combinators a la [agdarsec](https://github.com/gallais/agdarsec) can provide parser
+combinators that can be used in mutual recursion, but it requires a more elaborate infrastructure
+like types indexed by a `Nat` to work. I found it more convenient to just duplicate the loops.
+-/
+mutual
+
+def group (it : Iterator) : Result.LT it Error Ast :=
+  (charOrError '(' it)
+  |>.bind' fun _ it' h =>
+    nonCapturing.opt it'
+    |>.bind' fun nonCapturing it'' h' =>
+      have : Rel.LT it'' it := Trans.trans h' h
+      regex it''
+      |>.bind' fun ast it''' _ =>
+        let ast := if nonCapturing.isSome then ast else .group ast
+        Functor.mapConst ast (charOrError ')' it''')
+termination_by (it.remainingBytes, 0)
+
+def primary (it : Iterator) : Result.LT it Error Ast :=
+  group it <|> classes it <|> dot it <|> (escapedCharToAst <$> escapedChar it) <|> (.char <$> plainChar it)
+termination_by (it.remainingBytes, 10)
+
+def repetition1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
+  (repetitionOp it |>.bind' fun (min, max) it' _ => repetition1 (applyRepetition min max ast) it').weaken
+  <|> pure ast
+termination_by (it.remainingBytes, 20)
+
+def repetition (it : Iterator) : Result.LT it Error Ast :=
+  primary it |>.bind' fun ast it' _ => repetition1 ast it'
+termination_by (it.remainingBytes, 21)
+
+def concat1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
+  (repetition it |>.bind' fun ast' it' _ => concat1 (.concat ast ast') it').weaken
+  <|> pure ast
+termination_by (it.remainingBytes, 30)
+
+def concat (it : Iterator) : Result.LE it Error Ast :=
+  (repetition it |>.bind' fun ast it' _ => concat1 ast it').weaken
+  <|> pure .epsilon
+termination_by (it.remainingBytes, 31)
+
+def alternate1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
+  (charOrError '|' it |>.bind' fun _ it' h =>
+    concat it' |>.bind' fun ast' it'' h' =>
+      have : Rel.LT it'' it := Trans.trans h' h
+      alternate1 (.alternate ast ast') it''
+  ).weaken
+  <|> pure ast
+termination_by (it.remainingBytes, 40)
+
+def alternate (it : Iterator) : Result.LE it Error Ast :=
+  concat it |>.bind' fun ast it' _ => alternate1 ast it'
+termination_by (it.remainingBytes, 41)
+decreasing_by
+  . simp [Prod.lex_def]
+  . simp [Prod.lex_def]
+    exact Nat.lt_or_eq_of_le (by assumption)
+
+def regex (it : Iterator) : Result.LE it Error Ast :=
+  alternate it |>.weaken
+termination_by (it.remainingBytes, 100)
 
 end
 
-def parse (input : String) : Except String Expr :=
-  match (regex <* endOfInput).run input.toSubstring with
-  | .ok _ r => .ok (Ast.group r).toRegex
-  | .error _ e => .error (toString e)
+def parseAst (input : String) : Except Error Ast :=
+  regex input.mkIterator
+  |>.complete .expectedEof
+  |>.toExcept
+
+def parse (input : String) : Except Error Expr :=
+  parseAst input
+  |>.map fun ast => Ast.toRegex (.group ast)
 
 def parse! (input : String) : Expr :=
   match parse input with
-  | Except.ok r => r
-  | Except.error e => panic! s!"Failed to parse a regex: {e}"
+  | .ok r => r
+  | .error e => panic! s!"Failed to parse a regex: {e}"
 
 end Regex.Syntax.Parser
