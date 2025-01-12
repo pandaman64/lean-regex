@@ -19,7 +19,11 @@ def anyCharOrElse {ε} (unexpectedEof : ε) : Parser.LT ε Char
 def testP {ε} (f : Char → Bool) : Parser.LE ε Bool
   | it =>
     if hn : it.hasNext then
-      .ok (f (it.curr' hn)) (it.next' hn) (Nat.le_of_lt Iterator.next'_remainingBytes_lt)
+      let b := f (it.curr' hn)
+      if b then
+        .ok b (it.next' hn) (Nat.le_of_lt Iterator.next'_remainingBytes_lt)
+      else
+        pure false
     else
       pure false
 
@@ -32,12 +36,6 @@ def charOrElse {ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char → �
   | it =>
     anyCharOrElse unexpectedEof it |>.guard fun c' =>
       if c = c' then .ok c else .error (unexpectedChar c)
-
-@[macro_inline]
-def charNotOrElse {ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char → ε) : Parser.LT ε Char
-  | it =>
-    anyCharOrElse unexpectedEof it |>.guard fun c' =>
-      if c != c' then .ok c' else .error (unexpectedChar c)
 
 def foldl {ε α β} (init : β) (f : β → α → β) (p : Parser.LT ε α) : Parser.LE ε β :=
   fun it =>

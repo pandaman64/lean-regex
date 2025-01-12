@@ -14,7 +14,7 @@ inductive Error where
   | invalidRange (c₁ : Char) (c₂ : Char)
   | invalidRepetition (min : Nat) (max : Nat)
   | expectedEof
-deriving Repr, Inhabited
+deriving Repr, Inhabited, DecidableEq
 
 instance : ToString Error where
   toString := fun e =>

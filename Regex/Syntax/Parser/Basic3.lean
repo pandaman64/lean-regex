@@ -17,9 +17,6 @@ def anyCharOrError : Parser.LT Error Char :=
 def charOrError (c : Char) : Parser.LT Error Char :=
   charOrElse c .unexpectedEof .unexpectedChar
 
-def charNotOrError (c : Char) : Parser.LT Error Char :=
-  charNotOrElse c .unexpectedEof .unexpectedChar
-
 def digit : Parser.LT Error Nat :=
   anyCharOrError
   |>.guard fun c =>
@@ -41,7 +38,7 @@ def hexNumberN (n : Nat) [NeZero n] : Parser.LT Error Nat :=
 
 def escapedChar : Parser.LT Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
-    (.inl <$> (simple <|> hex2 <|> hex4)) <|> (.inr <$> perlClass)
+    ((.inl <$> (simple <|> hex2 <|> hex4)) <|> (.inr <$> perlClass))
 where
   simple : Parser.LT Error Char :=
     anyCharOrError
@@ -58,10 +55,10 @@ where
       | '\\' => pure '\\'
       | _ => throw (.unexpectedEscapedChar c)
   hex2 : Parser.LT Error Char :=
-    charOrError 'x' *> Char.ofNat <$> hexNumberN 2
+    charOrError 'x' *> (Char.ofNat <$> hexNumberN 2)
   -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
   hex4 : Parser.LT Error Char :=
-    charOrError 'u' *> Char.ofNat <$> hexNumberN 4
+    charOrError 'u' *> (Char.ofNat <$> hexNumberN 4)
   perlClass : Parser.LT Error PerlClass :=
     anyCharOrError
     |>.guard fun c =>
@@ -90,32 +87,33 @@ def dot : Parser.LT Error Ast :=
   charOrError '.' |>.mapConst .dot
 
 def charInClass : Parser.LT Error (Char ⊕ PerlClass) :=
-  escapedChar <|> .inl <$> charNotOrError ']'
+  escapedChar <|> (anyCharOrError.guard fun c =>
+    if c = ']' ∨ c = '\\' then throw (.unexpectedChar c)
+    else .ok (.inl c)
+  )
 
--- TOOD: the handling of '-' is buggy
-def singleClass : Parser.LT Error Class :=
-  charInClass |>.bindOr fun f => do
-    let isInterval ← test '-'
-    if isInterval then
-      match (← charInClass.opt) with
-      | .some s =>
-        let f ← ofExcept (expectsChar f)
-        let s ← ofExcept (expectsChar s)
-        if h : f ≤ s
-          then pure (.range f s h)
-          else throw (.invalidRange f s)
-      | .none =>
-        -- '-' just before ']' is treated as a normal character
-        pure (.single '-')
+def range : Parser.LT Error Class :=
+  ((Prod.mk <$> charInClass) <*> (charOrError '-' *> charInClass))
+  |>.guard fun (f, s) => do
+    let f ← expectsChar f
+    let s ← expectsChar s
+    if h : f ≤ s then
+      pure (.range f s h)
     else
-      match f with
-      | .inl c => pure (.single c)
-      | .inr cls => pure (.perl cls)
+      throw (.invalidRange f s)
 where
   expectsChar (c : Char ⊕ PerlClass) : Except Error Char :=
     match c with
     | .inl c => .ok c
     | .inr cls => .error (.unexpectedPerlClassInRange cls)
+
+def singleClass : Parser.LT Error Class :=
+  range <|> (charToClass <$> charInClass)
+where
+  charToClass (c : Char ⊕ PerlClass) : Class :=
+    match c with
+    | .inl c => .single c
+    | .inr cls => .perl cls
 
 def classes : Parser.LT Error Ast :=
   betweenOr (charOrError '[') (charOrError ']') (do
@@ -170,6 +168,9 @@ def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
     else
       Ast.concat (repeatConcat ast min) (repeatConcat (Ast.alternate ast Ast.empty) (max - min))
 
+def nonCapturing : Parser.LT Error Unit :=
+  charOrError '?' *> charOrError ':' |>.mapConst ()
+
 /-
 The following definitions describe the recursive structure of the regex parser. We duplicate the
 loops in the grammar in several definitions like `repetition1` and `concat1` since our combinators
@@ -183,14 +184,19 @@ like types indexed by a `Nat` to work. I found it more convenient to just duplic
 mutual
 
 def group (it : Iterator) : Result.LT it Error Ast :=
-  charOrError '(' it
-  |>.bind' fun _ it' _ =>
-    regex it'
-    |>.bind' fun ast it'' _ => Functor.mapConst ast (charOrError ')' it'')
+  (charOrError '(' it)
+  |>.bind' fun _ it' h =>
+    nonCapturing.opt it'
+    |>.bind' fun nonCapturing it'' h' =>
+      have : Rel.LT it'' it := Trans.trans h' h
+      regex it''
+      |>.bind' fun ast it''' _ =>
+        let ast := if nonCapturing.isSome then ast else .group ast
+        Functor.mapConst ast (charOrError ')' it''')
 termination_by (it.remainingBytes, 0)
 
 def primary (it : Iterator) : Result.LT it Error Ast :=
-  group it <|> classes it <|> dot it <|> escapedCharToAst <$> escapedChar it <|> .char <$> plainChar it
+  group it <|> classes it <|> dot it <|> (escapedCharToAst <$> escapedChar it) <|> (.char <$> plainChar it)
 termination_by (it.remainingBytes, 10)
 
 def repetition1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
