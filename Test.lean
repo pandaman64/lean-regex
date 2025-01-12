@@ -30,7 +30,7 @@ def main : IO Unit := do
 -- the indices for the inner parenthesis.
 def re := re! "(?:c()|)c"
 /--
-info: #[{ slots := #[some { byteIdx := 0 }, some { byteIdx := 1 }, none, none] }]
+info: #[{ buffer := #[some { byteIdx := 0 }, some { byteIdx := 1 }, none, none] }]
 -/
 #guard_msgs in
 #eval re.captureAll "c"

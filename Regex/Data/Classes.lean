@@ -6,7 +6,7 @@ inductive PerlClassKind where
   | digit
   | space
   | word
-deriving Repr
+deriving Repr, DecidableEq
 
 -- NOTE: we may want to interpret these as Unicode character properties in the future
 def PerlClassKind.mem (c : Char) (kind : PerlClassKind) : Bool :=
@@ -18,7 +18,7 @@ def PerlClassKind.mem (c : Char) (kind : PerlClassKind) : Bool :=
 structure PerlClass where
   negated : Bool
   kind : PerlClassKind
-deriving Repr
+deriving Repr, DecidableEq
 
 def PerlClass.mem (c : Char) (pc : PerlClass) : Bool :=
   if pc.negated then !pc.kind.mem c else pc.kind.mem c
@@ -28,6 +28,7 @@ inductive Class where
   | single : Char → Class
   | range : (s : Char) → (e : Char) → s ≤ e → Class
   | perl : PerlClass → Class
+deriving DecidableEq
 
 instance : Repr Class where
   reprPrec cls _ :=
@@ -48,7 +49,7 @@ def Class.mem (c : Char) : Class → Bool
 structure Classes where
   negated : Bool
   classes : Array Class
-deriving Repr
+deriving Repr, DecidableEq
 
 def Classes.mem (c : Char) (cs : Classes) : Bool :=
   if cs.negated then

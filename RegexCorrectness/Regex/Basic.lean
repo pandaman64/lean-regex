@@ -23,14 +23,15 @@ namespace IsSearchRegex
 theorem of_parse {s : String} {re : Regex} (h : Regex.parse s = .ok re) :
   IsSearchRegex re := by
   simp [Regex.parse, Regex.Syntax.Parser.parse] at h
-  split at h
-  next _ ast h' =>
-    simp at h
+  set parseResult := Regex.Syntax.Parser.parseAst s
+  match h' : parseResult with
+  | .ok ast =>
+    simp [Except.map] at h
     have ⟨e, eq⟩ := Regex.Syntax.Parser.Ast.toRegex_group_of_group ast
     have disj : Expr.Disjoint (.group 0 e) :=
       eq ▸ Regex.Syntax.Parser.Ast.toRegex_disjoint (.group ast)
     exact ⟨e, by simp [←h, eq], disj, by simp [←h]⟩
-  next => simp at h
+  | .error e => simp [Except.map] at h
 
 noncomputable def inner {re : Regex} (s : IsSearchRegex re) : Expr :=
   s.choose

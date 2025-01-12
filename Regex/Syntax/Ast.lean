@@ -13,10 +13,10 @@ inductive Ast : Type where
   | alternate : Ast → Ast → Ast
   | concat : Ast → Ast → Ast
   | star : Ast → Ast
-  | classes : Classes -> Ast
-  | perl : PerlClass -> Ast
+  | classes : Classes → Ast
+  | perl : PerlClass → Ast
   | dot : Ast
-deriving Inhabited
+deriving Inhabited, Repr, DecidableEq
 
 def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
   match ast with

@@ -10,7 +10,7 @@ deriving Repr
 
 namespace Regex
 
-def parse (s : String) : Except String Regex := do
+def parse (s : String) : Except Regex.Syntax.Parser.Error Regex := do
   let expr ← Regex.Syntax.Parser.parse s
   let nfa := Regex.NFA.compile expr
   return { nfa := nfa, wf := Regex.NFA.compile_wf }
