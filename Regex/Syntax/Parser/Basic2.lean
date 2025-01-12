@@ -87,20 +87,11 @@ where
       | 'W' => pure (PerlClass.mk true PerlClassKind.word)
       | _ => throw (.unexpectedEscapedChar c)
 
-def escapedCharWithoutPerlClasses : All (SimpleParser Error Char) :=
-  escapedChar
-  |>.andBindM fun
-    | .inl c => pure c
-    | .inr cls => throw (.unexpectedPerlClass cls)
-
 def plainChar : All (SimpleParser Error Char) :=
   anyCharOrElse (throw .unexpectedEof)
   |>.andBindM fun c =>
     if specialCharacters.contains c then throw (.unexpectedEscapedChar c)
     else pure c
-
-def charInClass : All (SimpleParser Error Char) :=
-  escapedCharWithoutPerlClasses.orElse plainChar
 
 def classesAux : All (SimpleParser Error Class) :=
   elem
