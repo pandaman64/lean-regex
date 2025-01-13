@@ -1,5 +1,3 @@
-import Batteries.Data.Array.Lemmas
-
 namespace Regex.Data
 
 -- TODO: migrate to Std Vector. It has necessary lemmas in master as of Dec 2024, but it's not released yet.

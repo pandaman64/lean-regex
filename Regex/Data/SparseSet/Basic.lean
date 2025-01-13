@@ -76,7 +76,7 @@ theorem dense_sparse_of_full (h : n ≤ s.count) : s.dense[s.sparse[j]] = j := b
 
 theorem lt_of_mem (i : Fin n) (h : ¬i ∈ s) : s.count < n := by
   simp [SparseSet.mem] at h
-  by_contra nlt
+  refine Decidable.byContradiction fun nlt => ?_
   have ge := Nat.le_of_not_lt nlt
   apply h (Nat.lt_of_lt_of_le s.sparse[i].isLt ge)
   exact dense_sparse_of_full ge

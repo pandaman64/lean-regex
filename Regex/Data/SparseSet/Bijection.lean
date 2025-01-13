@@ -1,20 +1,21 @@
 -- Minimal theory about the bijection between `Fin n`.
-import Batteries.Tactic.Basic
+
+set_option autoImplicit false
 
 namespace Regex.Data.SparseSet.Bijection
 
-def inj (f : α → β) := ∀ x y, f x = f y → x = y
-def surj (f : α → β) := ∀ y, ∃ x, f x = y
-def bij (f : α → β) := inj f ∧ surj f
+def inj {α β} (f : α → β) := ∀ x y, f x = f y → x = y
+def surj {α β} (f : α → β) := ∀ y, ∃ x, f x = y
+def bij {α β} (f : α → β) := inj f ∧ surj f
 
-theorem _root_.Fin.eq_of_ge {i : Fin (n + 1)} (h : i ≥ n) : i = ⟨n, Nat.lt_succ_self n⟩ := by
+theorem _root_.Fin.eq_of_ge {n} {i : Fin (n + 1)} (h : i ≥ n) : i = ⟨n, Nat.lt_succ_self n⟩ := by
   apply Fin.eq_of_val_eq
   exact Nat.le_antisymm (Nat.le_of_succ_le_succ i.isLt) h
 
-theorem _root_.Fin.eq_of_not_lt {i : Fin (n + 1)} (h : ¬ i < n) : i = ⟨n, Nat.lt_succ_self n⟩ :=
+theorem _root_.Fin.eq_of_not_lt {n} {i : Fin (n + 1)} (h : ¬ i < n) : i = ⟨n, Nat.lt_succ_self n⟩ :=
   Fin.eq_of_ge (Nat.ge_of_not_lt h)
 
-theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
+theorem surj_of_inj {n} (f : Fin n → Fin n) (h : inj f) : surj f := by
   induction n with
   | zero =>
     intro y
@@ -30,7 +31,7 @@ theorem surj_of_inj (f : Fin n → Fin n) (h : inj f) : surj f := by
       else
         have eqx : f x' = n' := Fin.eq_of_not_lt isLt
         have isLt : f n' < n' := by
-          by_contra nlt
+          refine Decidable.byContradiction fun nlt => ?_
           have eqn : f n' = n' := Fin.eq_of_not_lt nlt
           have : f x' = f n' := by rw [eqx, eqn]
           have : x' = n' := h _ _ this

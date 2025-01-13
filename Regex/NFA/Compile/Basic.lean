@@ -1,8 +1,6 @@
 import Regex.Data.Expr
 import Regex.NFA.Basic
 
-import Batteries.Data.Array.Lemmas
-
 open Regex.Data (Expr)
 
 namespace Regex.NFA
