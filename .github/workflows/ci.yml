@@ -22,6 +22,7 @@ jobs:
           uses: leanprover/lean-action@v1
           with:
             build-args: '--wfail'
+            use-mathlib-cache: false
         - name: Build RegexCorrectness
           uses: leanprover/lean-action@v1
           with:
