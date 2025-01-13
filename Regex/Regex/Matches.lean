@@ -48,7 +48,7 @@ theorem Matches.next?_decreasing {m : Matches} (h : m.next? = some (pos, m')) :
   rw [this]
   have h₁ : m.currentPos < m'.currentPos := lt_next?_some h
   have h₂ : m.currentPos < m.haystack.endPos := by
-    by_contra nlt
+    refine Decidable.byContradiction fun nlt => ?_
     simp [next?, nlt] at h
   exact Nat.sub_lt_sub_left h₂ h₁
 

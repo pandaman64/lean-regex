@@ -1,4 +1,3 @@
-import Regex.Data.Array
 import Regex.Data.SparseSet
 import Regex.NFA.Basic
 import Regex.VM

@@ -1,0 +1,13 @@
+name = "RegexDoc"
+reservoir = false
+version = "0.1.0"
+packagesDir = "../correctness/.lake/packages"
+
+[[require]]
+name = "RegexCorrectness"
+path = "../correctness"
+
+[[require]]
+scope = "leanprover"
+name = "doc-gen4"
+rev = "v4.15.0"

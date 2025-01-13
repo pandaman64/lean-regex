@@ -1,0 +1,7 @@
+name = "Regex"
+version = "0.1.0"
+keywords = ["regex"]
+defaultTargets = ["Regex"]
+
+[[lean_lib]]
+name = "Regex"
