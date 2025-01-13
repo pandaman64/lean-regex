@@ -14,7 +14,11 @@ jobs:
       strategy:
         fail-fast: false
         matrix:
-          os: [windows-latest, ubuntu-latest, macos-latest]
+          os:
+            # lean-action does not provide lake executable on Windows for some reason
+            # - windows-latest
+            - ubuntu-latest
+            - macos-latest
       runs-on: ${{ matrix.os }}
       steps:
         - uses: actions/checkout@v4
