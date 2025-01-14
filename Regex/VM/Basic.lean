@@ -3,7 +3,7 @@ import Regex.NFA.Basic
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos Iterator)
 
@@ -14,14 +14,13 @@ open String (Pos Iterator)
 namespace Regex.VM
 
 -- TODO: embed .none into Pos to remove allocations
-abbrev Buffer (size : Nat) := Vec (Option Pos) size
+abbrev Buffer (size : Nat) := Vector (Option Pos) size
 
--- TODO: check if `mkArray`-based implementation is more efficient
-def Buffer.empty {size : Nat} : Buffer size := Vec.ofFn (fun _ => .none)
+def Buffer.empty {size : Nat} : Buffer size := Vector.mkVector size .none
 
 structure SearchState (nfa : NFA) (bufferSize : Nat) where
   states : SparseSet nfa.nodes.size
-  updates : Vec (Buffer bufferSize) nfa.nodes.size
+  updates : Vector (Buffer bufferSize) nfa.nodes.size
 
 abbrev εStack (nfa : NFA) (bufferSize : Nat) := List (Buffer bufferSize × Fin nfa.nodes.size)
 
@@ -57,13 +56,13 @@ def εClosure {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterato
         εClosure nfa wf it matched ⟨states', next.updates⟩ ((update', ⟨state', isLt⟩) :: stack')
       | .done =>
         let matched' := matched <|> update
-        let updates' := next.updates.set state state.isLt update
+        let updates' := next.updates.set state update
         εClosure nfa wf it matched' ⟨states', updates'⟩ stack'
       | .char c state' =>
-        let updates' := next.updates.set state state.isLt update
+        let updates' := next.updates.set state update
         εClosure nfa wf it matched ⟨states', updates'⟩ stack'
       | .sparse cs state' =>
-        let updates' := next.updates.set state state.isLt update
+        let updates' := next.updates.set state update
         εClosure nfa wf it matched ⟨states', updates'⟩ stack'
       | .fail => εClosure nfa wf it matched ⟨states', next.updates⟩ stack'
 termination_by (next.states.measure, stack)
@@ -72,21 +71,21 @@ termination_by (next.states.measure, stack)
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
-def stepChar {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vec (Buffer bufferSize) nfa.nodes.size)
+def stepChar {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vector (Buffer bufferSize) nfa.nodes.size)
   (next : SearchState nfa bufferSize) (state : Fin nfa.nodes.size) :
   Option (Buffer bufferSize) × SearchState nfa bufferSize :=
   match hn : nfa[state] with
   | .char c state' =>
     if it.curr = c then
       have isLt := wf.inBounds' state hn
-      let update := currentUpdates.get state state.isLt
+      let update := currentUpdates.get state
       εClosure nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
     else
       (.none, next)
   | .sparse cs state' =>
     if it.curr ∈ cs then
       have isLt := wf.inBounds' state hn
-      let update := currentUpdates.get state state.isLt
+      let update := currentUpdates.get state
       εClosure nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
     else
       (.none, next)
@@ -114,7 +113,7 @@ where
         go (i + 1) hlt result.2
 
 def captureNext (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
-  let updates : Vec (Buffer bufferSize) nfa.nodes.size := Vec.ofFn (fun _ => Buffer.empty)
+  let updates : Vector (Buffer bufferSize) nfa.nodes.size := Vector.mkVector nfa.nodes.size Buffer.empty
   let (matched, current) := εClosure nfa wf it .none ⟨.empty, updates⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
   go it matched current ⟨.empty, updates⟩
 where

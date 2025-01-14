@@ -4,7 +4,7 @@ import RegexCorrectness.VM.CharStep.Basic
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec Span)
+open Regex.Data (SparseSet Span)
 open Regex (NFA)
 open Regex.NFA (εStep' εClosure' CharStep)
 open String (Pos Iterator)
@@ -12,7 +12,7 @@ open String (Pos Iterator)
 namespace Regex.VM
 
 variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
-  {current : SearchState' nfa} {currentUpdates : Vec (List (Nat × Pos)) nfa.nodes.size}
+  {current : SearchState' nfa} {currentUpdates : Vector (List (Nat × Pos)) nfa.nodes.size}
   {next : SearchState' nfa} {state : Fin nfa.nodes.size}
   {matched' : Option (List (Nat × Pos))} {next' : SearchState' nfa}
 
@@ -107,7 +107,7 @@ theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.ite
     span.r = it.curr :: r' ∧
     nfa.CharStep span.l span.m it.curr r' i j ∧
     nfa.εClosure' span.next j k update' ∧
-    (WriteUpdate k → next'.updates[k] = currentUpdates.get i i.isLt ++ update') := by
+    (WriteUpdate k → next'.updates[k] = currentUpdates.get i ++ update') := by
   simp [stepChar'] at h
   split at h
   next c j hn =>

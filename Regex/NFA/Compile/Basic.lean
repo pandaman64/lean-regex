@@ -11,7 +11,7 @@ def pushNode (nfa : NFA) (node : Node) :
   let nodes := nfa.nodes.push node
   let nfa' : NFA := ⟨nodes, start⟩
 
-  ⟨nfa', by simp [nodes]⟩
+  ⟨nfa', by simp [nodes, nfa']⟩
 
 @[simp]
 theorem pushNode_size {nfa : NFA} {node : Node} :
@@ -105,7 +105,7 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → { nfa' : NFA // nfa.nodes.size
       calc
         _ < _ := placeholder.property
         _ < _ := compiled.property
-        _ = nfa'.nodes.size := by simp [patched]
+        _ = nfa'.nodes.size := by simp [patched, nfa']
 
     ⟨nfa', property⟩
 

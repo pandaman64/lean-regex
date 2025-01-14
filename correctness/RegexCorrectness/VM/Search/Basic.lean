@@ -4,14 +4,14 @@ import RegexCorrectness.VM.CharStep
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos Iterator)
 
 namespace Regex.VM
 
 def captureNext' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option (List (Nat × Pos)) :=
-  let updates : Vec (List (Nat × Pos)) nfa.nodes.size := Vec.ofFn (fun _ => [])
+  let updates := Vector.mkVector nfa.nodes.size []
   let (matched, current) := εClosure' nfa wf it .none ⟨.empty, updates⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   go it matched current ⟨.empty, updates⟩
 where

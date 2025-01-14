@@ -3,7 +3,7 @@ import RegexCorrectness.VM.Search.Lemmas
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (EquivUpdate)
 open String (Pos Iterator)

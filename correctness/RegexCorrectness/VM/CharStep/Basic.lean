@@ -2,7 +2,7 @@ import RegexCorrectness.VM.EpsilonClosure
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos Iterator)
 
@@ -12,21 +12,21 @@ namespace Regex.VM
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
-def stepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vec (List (Nat × Pos)) nfa.nodes.size)
+def stepChar' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vector (List (Nat × Pos)) nfa.nodes.size)
   (next : SearchState' nfa) (state : Fin nfa.nodes.size) :
   Option (List (Nat × Pos)) × SearchState' nfa :=
   match hn : nfa[state] with
   | .char c state' =>
     if it.curr = c then
       have isLt := wf.inBounds' state hn
-      let update := currentUpdates.get state state.isLt
+      let update := currentUpdates.get state
       εClosure' nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
     else
       (.none, next)
   | .sparse cs state' =>
     if it.curr ∈ cs then
       have isLt := wf.inBounds' state hn
-      let update := currentUpdates.get state state.isLt
+      let update := currentUpdates.get state
       εClosure' nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
     else
       (.none, next)

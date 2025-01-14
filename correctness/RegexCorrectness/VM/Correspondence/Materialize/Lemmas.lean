@@ -1,10 +1,18 @@
 import RegexCorrectness.VM.Correspondence.Materialize.Basic
 import RegexCorrectness.Data.Expr.Semantics
+import Init.Data.Vector.Lemmas
 
 set_option autoImplicit false
 
-open Regex.Data (Vec)
 open String (Pos)
+
+namespace Vector
+
+@[simp]
+theorem getElem_mkVector {α n i} (a : α) (h : i < n) : (Vector.mkVector n a)[i] = a := by
+  simp [Vector.mkVector]
+
+end Vector
 
 namespace Regex.NFA
 
@@ -68,7 +76,7 @@ theorem materializeUpdatesAux_swap {n accum updates offset₁ pos₁ offset₂ p
   materializeUpdatesAux n accum ((offset₂, pos₂) :: (offset₁, pos₁) :: updates) := by
   simp [materializeUpdatesAux]
   congr! 1
-  simp [Vec.ext_iff]
+  apply Vector.ext
   intro i h
   if h₁ : offset₁ = i then
     have h₂ : offset₂ ≠ i := (h₁ ▸ ne).symm
@@ -108,7 +116,7 @@ theorem materializeUpdatesAux_append {n accum updates₁ updates₂} :
 
 theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offset < n) :
   (materializeUpdatesAux n accum updates)[offset] =
-  ((materializeUpdatesAux n (Vec.ofFn fun _ => .none) updates)[offset] <|> accum[offset]) := by
+  ((materializeUpdatesAux n (Vector.mkVector n .none) updates)[offset] <|> accum[offset]) := by
   induction updates generalizing accum with
   | nil => simp
   | cons head updates ih =>
@@ -119,7 +127,7 @@ theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offs
     conv =>
       rhs
       rw [ih]
-    cases (materializeUpdatesAux n (Vec.ofFn fun x => none) updates)[offset] with
+    cases (materializeUpdatesAux n (Vector.mkVector n .none) updates)[offset] with
     | some _ => simp
     | none =>
       simp
@@ -129,7 +137,7 @@ theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offs
         simp [h']
 
 @[simp]
-theorem materializeUpdates_empty {n} : materializeUpdates n [] = Vec.ofFn (fun _ => .none) := rfl
+theorem materializeUpdates_empty {n} : materializeUpdates n [] = Vector.mkVector n .none := rfl
 
 @[simp]
 theorem materializeUpdates_snoc {n updates offset pos} :

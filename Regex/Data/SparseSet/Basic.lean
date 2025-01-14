@@ -1,21 +1,21 @@
-import Regex.Data.Vec
+import Init.Data.Vector.Lemmas
 import Regex.Data.SparseSet.Bijection
 
 namespace Regex.Data
 
 structure SparseSet (n : Nat) where
   count : Nat
-  dense : Vec (Fin n) n
-  sparse : Vec (Fin n) n
+  dense : Vector (Fin n) n
+  sparse : Vector (Fin n) n
   sparse_dense : ∀ i : Fin n, i < count → sparse[dense[i.val].val] = i
   le_count : count ≤ n
 
 -- Prints only the members
 instance : Repr (SparseSet n) where
-  reprPrec s i := reprPrec s.dense.val[0:s.count] i
+  reprPrec s i := reprPrec s.dense.toArray[0:s.count] i
 
 instance : ToString (SparseSet n) where
-  toString s := toString s.dense.val[0:s.count]
+  toString s := toString s.dense.toArray[0:s.count]
 
 namespace SparseSet
 
@@ -24,8 +24,8 @@ variable {n : Nat} {s : SparseSet n} {i j : Fin n}
 open Bijection
 
 def empty {n : Nat} : SparseSet n :=
-  let a := Array.ofFn (fun x : Fin n => ⟨0, x.pos⟩)
-  ⟨0, Vec.mk' a (by simp [a]), Vec.mk' a (by simp [a]), fun _ _ => by contradiction, Nat.zero_le _⟩
+  let v := Vector.ofFn (fun x : Fin n => ⟨0, x.pos⟩)
+  ⟨0, v, v, fun _ _ => by contradiction, Nat.zero_le _⟩
 
 theorem sparse_dense_fin (h : i < s.count) : s.sparse[s.dense[i]] = i :=
   s.sparse_dense i h
@@ -87,22 +87,20 @@ def insert (s : SparseSet n) (i : Fin n) : SparseSet n :=
   else
     let ⟨count, dense, sparse, sparse_dense, _⟩ := s
     have isLt : count < n := lt_of_mem i mem
-    let dense' := dense.set count isLt i
-    let sparse' := sparse.set i i.isLt ⟨count, isLt⟩
+    let dense' := dense.set count i
+    let sparse' := sparse.set i ⟨count, isLt⟩
     have sparse_dense' (j : Fin n) (h : j < count + 1) : sparse'[dense'[j]] = j := by
       have : j ≤ count := Nat.le_of_succ_le_succ h
       cases Nat.eq_or_lt_of_le this with
       | inl eq =>
-        simp [dense', sparse', eq]
+        simp [dense', sparse', eq, Vector.getElem_set_self]
         exact Fin.eq_of_val_eq eq.symm
       | inr lt =>
         have : dense'[j] = dense[j] := by
-          simp [this]
-          rw [Vec.get_set_ne]
-          exact Nat.ne_of_gt lt
-        rw [this]
-        simp
-        rw [Vec.get_set]
+          simp [dense']
+          rw [Vector.getElem_set_ne dense count i isLt j.val (by omega) (by omega)]
+        simp [sparse', this]
+        rw [Vector.getElem_set]
         split
         case isTrue eq =>
           simp [SparseSet.mem] at mem

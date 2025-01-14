@@ -2,7 +2,7 @@ import Regex.VM.Basic
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos Iterator)
 
@@ -55,7 +55,7 @@ theorem εClosure_save {update state stack' offset state'} (hmem : state ∉ nex
 @[simp]
 theorem εClosure_done {update state stack'} (hmem : state ∉ next.states) (hn : nfa[state] = .done) :
   εClosure nfa wf it matched next ((update, state) :: stack') =
-  εClosure nfa wf it (matched <|> .some update) ⟨next.states.insert state, next.updates.set state state.isLt update⟩ stack' := by
+  εClosure nfa wf it (matched <|> .some update) ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
   conv =>
     lhs
     unfold εClosure
@@ -65,7 +65,7 @@ theorem εClosure_done {update state stack'} (hmem : state ∉ next.states) (hn 
 @[simp]
 theorem εClosure_char {update state stack' c state'} (hmem : state ∉ next.states) (hn : nfa[state] = .char c state') :
   εClosure nfa wf it matched next ((update, state) :: stack') =
-  εClosure nfa wf it matched ⟨next.states.insert state, next.updates.set state state.isLt update⟩ stack' := by
+  εClosure nfa wf it matched ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
   conv =>
     lhs
     unfold εClosure
@@ -75,7 +75,7 @@ theorem εClosure_char {update state stack' c state'} (hmem : state ∉ next.sta
 @[simp]
 theorem εClosure_sparse {update state stack' cs state'} (hmem : state ∉ next.states) (hn : nfa[state] = .sparse cs state') :
   εClosure nfa wf it matched next ((update, state) :: stack') =
-  εClosure nfa wf it matched ⟨next.states.insert state, next.updates.set state state.isLt update⟩ stack' := by
+  εClosure nfa wf it matched ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
   conv =>
     lhs
     unfold εClosure
@@ -96,7 +96,7 @@ theorem εClosure_fail {update state stack'} (hmem : state ∉ next.states) (hn 
 theorem stepChar_char {currentUpdates state c state'} (hn : nfa[state] = .char c state') :
   stepChar nfa wf it currentUpdates next state =
   if it.curr = c then
-    εClosure nfa wf it.next .none next [(currentUpdates.get state state.isLt, ⟨state', by exact wf.inBounds' state hn⟩)]
+    εClosure nfa wf it.next .none next [(currentUpdates.get state, ⟨state', by exact wf.inBounds' state hn⟩)]
   else
     (.none, next) := by
   unfold stepChar
@@ -111,7 +111,7 @@ theorem stepChar_char {currentUpdates state c state'} (hn : nfa[state] = .char c
 theorem stepChar_sparse {currentUpdates state cs state'} (hn : nfa[state] = .sparse cs state') :
   stepChar nfa wf it currentUpdates next state =
   if it.curr ∈ cs then
-    εClosure nfa wf it.next .none next [(currentUpdates.get state state.isLt, ⟨state', by exact wf.inBounds' state hn⟩)]
+    εClosure nfa wf it.next .none next [(currentUpdates.get state, ⟨state', by exact wf.inBounds' state hn⟩)]
   else
     (.none, next) := by
   unfold stepChar

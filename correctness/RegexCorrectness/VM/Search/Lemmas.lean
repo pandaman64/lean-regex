@@ -2,7 +2,7 @@ import RegexCorrectness.VM.Search.Basic
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec Span)
+open Regex.Data (SparseSet Span)
 open Regex (NFA)
 open String (Pos Iterator)
 
@@ -79,7 +79,7 @@ theorem captureNext'.path_done_of_matched {nfa wf it matched'}
     nfa.VMPath wf span state (matched'.get isSome') := by
   simp [captureNext'] at h
 
-  set result := εClosure' nfa wf it .none ⟨.empty, Vec.ofFn (fun _ => [])⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure' nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   set matched := result.1
   set current := result.2
   have h' : result = (matched, current) := rfl

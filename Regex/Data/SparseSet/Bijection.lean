@@ -47,18 +47,18 @@ theorem surj_of_inj {n} (f : Fin n → Fin n) (h : inj f) : surj f := by
 
       if hx : f x' < n then
         if hy : f y' < n then
-          simp [f', hx, hy] at eq
+          simp [f', hx, hy, x', y'] at eq
           have := h _ _ (Fin.eq_of_val_eq eq)
           simp at this
           exact Fin.eq_of_val_eq this
         else
-          simp [f', hx, hy] at eq
+          simp [f', hx, hy, x', y'] at eq
           have := h _ _ (Fin.eq_of_val_eq eq)
           simp at this
           exact absurd (this ▸ x.isLt) (Nat.lt_irrefl _)
       else
         if hy : f y' < n then
-          simp [f', hx, hy] at eq
+          simp [f', hx, hy, x', y'] at eq
           have := h _ _ (Fin.eq_of_val_eq eq)
           simp at this
           exact absurd (this.symm ▸ y.isLt) (Nat.lt_irrefl _)

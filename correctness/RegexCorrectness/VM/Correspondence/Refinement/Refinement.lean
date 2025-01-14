@@ -4,7 +4,7 @@ import RegexCorrectness.VM.Correspondence.Refinement.Simp
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (materializeUpdates)
 open String (Pos Iterator)
@@ -55,7 +55,7 @@ theorem refineUpdateOpt.orElse {update₁ update₂ : Option (List (Nat × Pos))
   | .none, .none => simp [h₂]
   | .none, .some _ | .some _, .none => simp [refineUpdateOpt] at h₁
 
-def refineUpdates (updates : Vec (List (Nat × Pos)) nfa.nodes.size) (buffers : Vec (Buffer bufferSize) nfa.nodes.size) : Prop :=
+def refineUpdates (updates : Vector (List (Nat × Pos)) nfa.nodes.size) (buffers : Vector (Buffer bufferSize) nfa.nodes.size) : Prop :=
   ∀ (i : Fin nfa.nodes.size), refineUpdate updates[i] buffers[i]
 
 def SearchState'.refines (state' : SearchState' nfa) (state : SearchState nfa bufferSize) : Prop :=
@@ -109,7 +109,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_epsilon mem hn] at h'
       rw [εClosure_epsilon (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons h₁ rfl rest)
   | split matched' next' update state stack' state₁ state₂ mem hn next'' =>
@@ -119,7 +119,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_split mem hn] at h'
       rw [εClosure_split (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons h₁ rfl (.cons h₁ rfl rest))
   | save matched' next' update state stack' offset state' mem hn next'' =>
@@ -129,7 +129,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_save mem hn] at h'
       rw [εClosure_save (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons (by simp [h₁]) rfl rest)
   | done matched' next' update state stack' mem hn next'' =>
@@ -140,8 +140,8 @@ theorem εClosure'.refines {result result'}
       rw [εClosure_done (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have refMatched' : refineUpdateOpt (matched' <|> some update) (matched <|> some buffer) :=
         refineUpdateOpt.orElse refMatched h₁
-      have : next''.refines ⟨next.states.insert state, next.updates.set state state.isLt buffer⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+      have : next''.refines ⟨next.states.insert state, next.updates.set state buffer⟩ := by
+        simp [SearchState'.refines, h₂, refState.1, next'']
         intro i
         if h : state = i then
           simp [h]
@@ -157,8 +157,8 @@ theorem εClosure'.refines {result result'}
     | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
       rw [εClosure'_char mem hn] at h'
       rw [εClosure_char (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates.set state state.isLt buffer⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+      have : next''.refines ⟨next.states.insert state, next.updates.set state buffer⟩ := by
+        simp [SearchState'.refines, h₂, refState.1, next'']
         intro i
         if h : state = i then
           simp [h]
@@ -174,8 +174,8 @@ theorem εClosure'.refines {result result'}
     | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
       rw [εClosure'_sparse mem hn] at h'
       rw [εClosure_sparse (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates.set state state.isLt buffer⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+      have : next''.refines ⟨next.states.insert state, next.updates.set state buffer⟩ := by
+        simp [SearchState'.refines, h₂, refState.1, next'']
         intro i
         if h : state = i then
           simp [h]
@@ -192,7 +192,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_fail mem hn] at h'
       rw [εClosure_fail (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this rest
 
@@ -326,8 +326,8 @@ theorem captureNext'.refines :
   refineUpdateOpt (captureNext' nfa wf it) (captureNext nfa wf bufferSize it) := by
   unfold captureNext' captureNext
   simp
-  generalize hexpand' : εClosure' nfa wf it .none ⟨.empty, Vec.ofFn (fun _ => [])⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expanded'
-  generalize hexpand : εClosure nfa wf it .none ⟨.empty, Vec.ofFn (fun _ => Buffer.empty)⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
+  generalize hexpand' : εClosure' nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expanded'
+  generalize hexpand : εClosure nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size Buffer.empty⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
 
   have ⟨refMatched, refState⟩ := εClosure'.refines hexpand hexpand'
     (by simp [refineUpdateOpt]) (by simp [SearchState'.refines, refineUpdates]) (.cons rfl rfl .nil)

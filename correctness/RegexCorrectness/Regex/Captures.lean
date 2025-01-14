@@ -42,26 +42,26 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       simp at eqstring
 
       simp at h
-      set captured' := CapturedGroups.mk matched.val
+      set captured' := CapturedGroups.mk matched.toArray
       have hcaptured (i : Nat) : captured'.get i = NFA.materializeRegexGroups groups i := by
-        have eqsize : matched.val.size = self.regex.maxTag + 1 :=
-          matched.property
+        have eqsize : matched.toArray.size = self.regex.maxTag + 1 :=
+          matched.size_toArray
         if h₁ : 2 * i + 1 < self.regex.maxTag + 1 then
           match eq₁ : matched[2 * i]'(by omega) with
           | none =>
             have hgroup := (eqv i).1 (by omega)
             simp [eq₁] at hgroup
-            have : matched.val[2 * i]? = .some .none :=
-              eq₁ ▸ getElem?_pos matched.val (2 * i) (by omega)
-            simp [CapturedGroups.get, this, hgroup]
+            have : matched.toArray[2 * i]? = .some .none :=
+              eq₁ ▸ getElem?_pos matched.toArray (2 * i) (by omega)
+            simp [CapturedGroups.get, this, hgroup, captured']
           | some v₁ =>
             match eq₂ : matched[2 * i + 1] with
             | none =>
               have hgroup := (eqv i).2 (by omega)
               simp [eq₂] at hgroup
-              have : matched.val[2 * i + 1]? = .some .none :=
-                eq₂ ▸ getElem?_pos matched.val (2 * i + 1) (by omega)
-              simp [CapturedGroups.get, this, hgroup]
+              have : matched.toArray[2 * i + 1]? = .some .none :=
+                eq₂ ▸ getElem?_pos matched.toArray (2 * i + 1) (by omega)
+              simp [CapturedGroups.get, this, hgroup, captured']
             | some v₂ =>
               have hgroup₁ := (eqv i).1 (by omega)
               have hgroup₂ := (eqv i).2 (by omega)
@@ -70,17 +70,17 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
               have ⟨_, hgroup₂⟩ := hgroup₂
               simp [hgroup₁] at hgroup₂
 
-              have eq₁' : matched.val[2 * i]? = .some v₁ :=
-                eq₁ ▸ getElem?_pos matched.val (2 * i) (by omega)
-              have eq₂' : matched.val[2 * i + 1]? = .some v₂ :=
-                eq₂ ▸ getElem?_pos matched.val (2 * i + 1) (by omega)
-              simp [CapturedGroups.get, eq₁', eq₂', hgroup₁, hgroup₂]
+              have eq₁' : matched.toArray[2 * i]? = .some v₁ :=
+                eq₁ ▸ getElem?_pos matched.toArray (2 * i) (by omega)
+              have eq₂' : matched.toArray[2 * i + 1]? = .some v₂ :=
+                eq₂ ▸ getElem?_pos matched.toArray (2 * i + 1) (by omega)
+              simp [CapturedGroups.get, eq₁', eq₂', hgroup₁, hgroup₂, captured']
         else
           match h₂ : NFA.materializeRegexGroups groups i with
           | none =>
-            have : matched.val[2 * i + 1]? = .none :=
-              getElem?_neg matched.val (2 * i + 1) (by omega)
-            simp [CapturedGroups.get, this]
+            have : matched.toArray[2 * i + 1]? = .none :=
+              getElem?_neg matched.toArray (2 * i + 1) (by omega)
+            simp [CapturedGroups.get, this, captured']
           | some _ =>
             have : (NFA.materializeRegexGroups groups i).isSome := by simp [h₂]
             have := NFA.mem_tags_of_materializeRegexGroups_some c this
@@ -123,7 +123,7 @@ theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next
     | none => simp at h
     | some buffer =>
       simp at h
-      match h'' : CapturedGroups.get ⟨buffer.val⟩ 0 with
+      match h'' : CapturedGroups.get ⟨buffer.toArray⟩ 0 with
       | none => simp [h''] at h
       | some _ =>
         simp [h''] at h
@@ -147,7 +147,7 @@ theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.n
     | none => simp at h
     | some buffer =>
       simp at h
-      match h'' : CapturedGroups.get ⟨buffer.val⟩ 0 with
+      match h'' : CapturedGroups.get ⟨buffer.toArray⟩ 0 with
       | none => simp [h''] at h
       | some _ =>
         simp [h''] at h
