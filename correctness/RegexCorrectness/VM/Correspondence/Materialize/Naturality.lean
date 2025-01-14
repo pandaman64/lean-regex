@@ -4,7 +4,7 @@ import RegexCorrectness.VM.Correspondence.Materialize.Lemmas
 
 set_option autoImplicit false
 
-open Regex.Data (Vec Expr)
+open Regex.Data (Expr)
 open String (Pos)
 
 namespace Regex.NFA

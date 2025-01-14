@@ -5,7 +5,7 @@ import RegexCorrectness.VM.Path
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Vec)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos Iterator)
 
@@ -43,13 +43,13 @@ def εClosure' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
         εClosure' nfa wf it matched ⟨states', next.updates⟩ ((update', ⟨state', isLt⟩) :: stack')
       | .done =>
         let matched' := matched <|> update
-        let updates' := next.updates.set state state.isLt update
+        let updates' := next.updates.set state update
         εClosure' nfa wf it matched' ⟨states', updates'⟩ stack'
       | .char c state' =>
-        let updates' := next.updates.set state state.isLt update
+        let updates' := next.updates.set state update
         εClosure' nfa wf it matched ⟨states', updates'⟩ stack'
       | .sparse cs state' =>
-        let updates' := next.updates.set state state.isLt update
+        let updates' := next.updates.set state update
         εClosure' nfa wf it matched ⟨states', updates'⟩ stack'
       | .fail => εClosure' nfa wf it matched ⟨states', next.updates⟩ stack'
 termination_by (next.states.measure, stack)
@@ -81,17 +81,17 @@ theorem εClosure'.induct' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
     motive matched next ((update, state) :: stack'))
   (done : ∀ matched next update state stack',
     state ∉ next.states → nfa[state] = .done →
-    let next' := ⟨next.states.insert state, next.updates.set state state.isLt update⟩;
+    let next' := ⟨next.states.insert state, next.updates.set state update⟩;
     motive (matched <|> .some update) next' stack' →
     motive matched next ((update, state) :: stack'))
   (char : ∀ matched next update state stack' c (state' : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .char c state' →
-    let next' := ⟨next.states.insert state, next.updates.set state state.isLt update⟩;
+    let next' := ⟨next.states.insert state, next.updates.set state update⟩;
     motive matched next' stack' →
     motive matched next ((update, state) :: stack'))
   (sparse : ∀ matched next update state stack' cs (state' : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .sparse cs state' →
-    let next' := ⟨next.states.insert state, next.updates.set state state.isLt update⟩;
+    let next' := ⟨next.states.insert state, next.updates.set state update⟩;
     motive matched next' stack' →
     motive matched next ((update, state) :: stack'))
   (fail : ∀ matched next update state stack',
@@ -167,7 +167,7 @@ theorem εClosure'_save {update state stack' offset state'} (hmem : state ∉ ne
 @[simp]
 theorem εClosure'_done {update state stack'} (hmem : state ∉ next.states) (hn : nfa[state] = .done) :
   εClosure' nfa wf it matched next ((update, state) :: stack') =
-  εClosure' nfa wf it (matched <|> .some update) ⟨next.states.insert state, next.updates.set state state.isLt update⟩ stack' := by
+  εClosure' nfa wf it (matched <|> .some update) ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
   conv =>
     lhs
     unfold εClosure'
@@ -177,7 +177,7 @@ theorem εClosure'_done {update state stack'} (hmem : state ∉ next.states) (hn
 @[simp]
 theorem εClosure'_char {update state stack' c state'} (hmem : state ∉ next.states) (hn : nfa[state] = .char c state') :
   εClosure' nfa wf it matched next ((update, state) :: stack') =
-  εClosure' nfa wf it matched ⟨next.states.insert state, next.updates.set state state.isLt update⟩ stack' := by
+  εClosure' nfa wf it matched ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
   conv =>
     lhs
     unfold εClosure'
@@ -187,7 +187,7 @@ theorem εClosure'_char {update state stack' c state'} (hmem : state ∉ next.st
 @[simp]
 theorem εClosure'_sparse {update state stack' cs state'} (hmem : state ∉ next.states) (hn : nfa[state] = .sparse cs state') :
   εClosure' nfa wf it matched next ((update, state) :: stack') =
-  εClosure' nfa wf it matched ⟨next.states.insert state, next.updates.set state state.isLt update⟩ stack' := by
+  εClosure' nfa wf it matched ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
   conv =>
     lhs
     unfold εClosure'

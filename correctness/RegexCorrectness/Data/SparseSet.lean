@@ -8,7 +8,7 @@ theorem mem_insert_of_mem {s : SparseSet n} {i j : Fin n} : i ∈ s → i ∈ s.
   split
   next => exact h
   next hmem =>
-    simp [mem, Vec.get_set]
+    simp [mem]
     if heq : j.val = i.val then
       simp [heq]
       exact Fin.eq_of_val_eq heq
@@ -30,7 +30,7 @@ theorem eq_or_mem_of_mem_insert {s : SparseSet n} {i j : Fin n} : i ∈ s.insert
     next => exact h
     next hmem =>
       have ne : j.val ≠ i.val := Ne.symm (Fin.val_ne_of_ne heq)
-      simp [mem, Vec.get_set, ne] at h
+      simp [mem, Vector.getElem_set, ne] at h
       split at h
       case isTrue heq' => simp [h] at heq
       case isFalse heq' =>
