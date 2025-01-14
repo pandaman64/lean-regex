@@ -53,7 +53,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
             simp [eq₁] at hgroup
             have : matched.val[2 * i]? = .some .none :=
               eq₁ ▸ getElem?_pos matched.val (2 * i) (by omega)
-            simp [CapturedGroups.get, this, hgroup]
+            simp [CapturedGroups.get, this, hgroup, captured']
           | some v₁ =>
             match eq₂ : matched[2 * i + 1] with
             | none =>
@@ -61,7 +61,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
               simp [eq₂] at hgroup
               have : matched.val[2 * i + 1]? = .some .none :=
                 eq₂ ▸ getElem?_pos matched.val (2 * i + 1) (by omega)
-              simp [CapturedGroups.get, this, hgroup]
+              simp [CapturedGroups.get, this, hgroup, captured']
             | some v₂ =>
               have hgroup₁ := (eqv i).1 (by omega)
               have hgroup₂ := (eqv i).2 (by omega)
@@ -74,13 +74,13 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
                 eq₁ ▸ getElem?_pos matched.val (2 * i) (by omega)
               have eq₂' : matched.val[2 * i + 1]? = .some v₂ :=
                 eq₂ ▸ getElem?_pos matched.val (2 * i + 1) (by omega)
-              simp [CapturedGroups.get, eq₁', eq₂', hgroup₁, hgroup₂]
+              simp [CapturedGroups.get, eq₁', eq₂', hgroup₁, hgroup₂, captured']
         else
           match h₂ : NFA.materializeRegexGroups groups i with
           | none =>
             have : matched.val[2 * i + 1]? = .none :=
               getElem?_neg matched.val (2 * i + 1) (by omega)
-            simp [CapturedGroups.get, this]
+            simp [CapturedGroups.get, this, captured']
           | some _ =>
             have : (NFA.materializeRegexGroups groups i).isSome := by simp [h₂]
             have := NFA.mem_tags_of_materializeRegexGroups_some c this

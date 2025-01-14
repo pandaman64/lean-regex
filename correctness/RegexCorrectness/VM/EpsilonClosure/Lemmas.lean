@@ -144,7 +144,7 @@ theorem εClosure.eq_updates_of_mem_next {i} (h : εClosure' nfa wf it matched n
       intro eq
       exact absurd (Fin.eq_of_val_eq eq ▸ mem') mem
     have := ih h (SparseSet.mem_insert_of_mem mem')
-    simp [Vec.get_set_ne next.updates state.isLt i.isLt ne] at this
+    simp [next', Vec.get_set_ne next.updates state.isLt i.isLt ne] at this
     simp [this]
   | char matched next update state stack' c state' mem hn next' ih =>
     rw [εClosure'_char mem hn] at h
@@ -152,7 +152,7 @@ theorem εClosure.eq_updates_of_mem_next {i} (h : εClosure' nfa wf it matched n
       intro eq
       exact absurd (Fin.eq_of_val_eq eq ▸ mem') mem
     have := ih h (SparseSet.mem_insert_of_mem mem')
-    simp [Vec.get_set_ne next.updates state.isLt i.isLt ne] at this
+    simp [next', Vec.get_set_ne next.updates state.isLt i.isLt ne] at this
     simp [this]
   | sparse matched next update state stack' cs state' mem hn next' ih =>
     rw [εClosure'_sparse mem hn] at h
@@ -160,7 +160,7 @@ theorem εClosure.eq_updates_of_mem_next {i} (h : εClosure' nfa wf it matched n
       intro eq
       exact absurd (Fin.eq_of_val_eq eq ▸ mem') mem
     have := ih h (SparseSet.mem_insert_of_mem mem')
-    simp [Vec.get_set_ne next.updates state.isLt i.isLt ne] at this
+    simp [next', Vec.get_set_ne next.updates state.isLt i.isLt ne] at this
     simp [this]
   | fail matched next update state stack' mem hn next' ih =>
     rw [εClosure'_fail mem hn] at h
@@ -242,7 +242,7 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
       have : next'.updates[state] = matched'.get isSome' :=
         calc
           _ = next''.updates[state] := εClosure.eq_updates_of_mem_next h mem''
-          _ = update := by simp
+          _ = update := by simp [next'']
           _ = matched'.get isSome' := by simp [εClosure.eq_matched_some h (by simp)]
       exact ⟨state, mem', hn, this⟩
     | some matched =>
@@ -269,7 +269,7 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
         have : state ≠ i := by
           intro eq
           exact absurd (eq ▸ mem') mem
-        simp [Vec.get_set_ne next.updates state.isLt i.isLt (Fin.val_ne_of_ne this)]
+        simp [next'', Vec.get_set_ne next.updates state.isLt i.isLt (Fin.val_ne_of_ne this)]
       exact ⟨i, SparseSet.mem_insert_of_mem mem', hdone, this ▸ eq⟩
     exact ih h inv'
   | sparse matched next update state stack' cs state' mem hn next'' ih =>
@@ -280,7 +280,7 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
         have : state ≠ i := by
           intro eq
           exact absurd (eq ▸ mem') mem
-        simp [Vec.get_set_ne next.updates state.isLt i.isLt (Fin.val_ne_of_ne this)]
+        simp [next'', Vec.get_set_ne next.updates state.isLt i.isLt (Fin.val_ne_of_ne this)]
       exact ⟨i, SparseSet.mem_insert_of_mem mem', hdone, this ▸ eq⟩
     exact ih h inv'
   | fail matched next update state stack' mem hn next'' ih =>
@@ -693,9 +693,9 @@ theorem εClosure.inv_of_inv (h : εClosure' nfa wf it matched next [([], ⟨nfa
   have ⟨l, r, vf⟩ := v.validFor
   let span : Span := ⟨l.reverse, [], r⟩
   have eqs : span.toString = it.toString := by
-    simp [Span.toString, vf.toString]
+    simp [Span.toString, vf.toString, span]
   have eqp : span.curr = it.pos := by
-    simp [Span.curr, vf.pos]
+    simp [Span.curr, vf.pos, span]
   have eqit : span.iterator = it := by
     simp [Span.iterator, Iterator.ext_iff, eqs, eqp]
   have := εClosure.write_updates_of_mem_next span eqp h mem

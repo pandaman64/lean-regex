@@ -49,7 +49,6 @@ theorem Vec.set_set (v : Vec α n) (h : i < n) :
   (v.set i h a).set i h b = v.set i h b := by
   apply Subtype.eq
   simp [Vec.set]
-  rw [Array.set_set]
 
 def Vec.setIfInBounds (v : Vec α n) (i : Nat) (a : α) : Vec α n :=
   if h : i < n then v.set i h a else v

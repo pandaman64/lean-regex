@@ -32,14 +32,14 @@ theorem lt_of_εClosure_right {nfa : NFA} {i j : Nat}
 theorem εClosure_snoc {nfa : NFA} (cls : j ∈ nfa.εClosure i) (step : k ∈ nfa.εStep j) :
   k ∈ nfa.εClosure i := by
   induction cls with
-  | base => exact .step step .base
+  | base => exact εClosure.step step .base
   | step step' _ ih => exact εClosure.step step' (ih step)
 
 theorem εClosure_trans {nfa : NFA} (h₁ : j ∈ nfa.εClosure i) (h₂ : k ∈ nfa.εClosure j) :
   k ∈ nfa.εClosure i := by
   induction h₁ with
   | base => exact h₂
-  | step head _ ih => exact .step head (ih h₂)
+  | step head _ ih => exact εClosure.step head (ih h₂)
 
 theorem subset_εClosure_of_mem {nfa : NFA} {i j : Nat} (h : j ∈ nfa.εClosure i) :
   nfa.εClosure j ⊆ nfa.εClosure i := by

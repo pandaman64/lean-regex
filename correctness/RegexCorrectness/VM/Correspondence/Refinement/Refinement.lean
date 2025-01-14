@@ -109,7 +109,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_epsilon mem hn] at h'
       rw [εClosure_epsilon (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons h₁ rfl rest)
   | split matched' next' update state stack' state₁ state₂ mem hn next'' =>
@@ -119,7 +119,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_split mem hn] at h'
       rw [εClosure_split (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons h₁ rfl (.cons h₁ rfl rest))
   | save matched' next' update state stack' offset state' mem hn next'' =>
@@ -129,7 +129,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_save mem hn] at h'
       rw [εClosure_save (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons (by simp [h₁]) rfl rest)
   | done matched' next' update state stack' mem hn next'' =>
@@ -141,7 +141,7 @@ theorem εClosure'.refines {result result'}
       have refMatched' : refineUpdateOpt (matched' <|> some update) (matched <|> some buffer) :=
         refineUpdateOpt.orElse refMatched h₁
       have : next''.refines ⟨next.states.insert state, next.updates.set state state.isLt buffer⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         intro i
         if h : state = i then
           simp [h]
@@ -158,7 +158,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_char mem hn] at h'
       rw [εClosure_char (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates.set state state.isLt buffer⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         intro i
         if h : state = i then
           simp [h]
@@ -175,7 +175,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_sparse mem hn] at h'
       rw [εClosure_sparse (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates.set state state.isLt buffer⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         intro i
         if h : state = i then
           simp [h]
@@ -192,7 +192,7 @@ theorem εClosure'.refines {result result'}
       rw [εClosure'_fail mem hn] at h'
       rw [εClosure_fail (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
       have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState'.refines, h₂, refState.1]
+        simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this rest
 

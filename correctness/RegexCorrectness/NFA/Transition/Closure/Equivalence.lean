@@ -12,7 +12,7 @@ theorem εClosure_of_pathIn {nfa : NFA} (path : nfa.pathIn lb i i' []) :
   | last step =>
     subst h
     cases step with
-    | εStep _ _ step => exact .step (εStep_of_εStep step) .base
+    | εStep _ _ step => exact εClosure.step (εStep_of_εStep step) .base
   | more step _ ih =>
     simp at h
     simp [h] at *
