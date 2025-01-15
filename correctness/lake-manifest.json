@@ -6,7 +6,7 @@
    "name": "Regex",
    "manifestFile": "lake-manifest.json",
    "inherited": false,
-   "dir": "./../",
+   "dir": "./../regex",
    "configFile": "lakefile.toml"},
   {"url": "https://github.com/leanprover-community/mathlib4",
    "type": "git",
