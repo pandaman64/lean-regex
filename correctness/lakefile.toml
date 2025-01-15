@@ -13,7 +13,7 @@ rev = "v4.16.0-rc2"
 
 [[require]]
 name = "Regex"
-path = "../"
+path = "../regex"
 
 [[lean_lib]]
 name = "RegexCorrectness"
