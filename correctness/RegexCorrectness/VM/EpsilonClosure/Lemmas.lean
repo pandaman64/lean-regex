@@ -59,7 +59,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset mem (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset mem this
     | .inr mem => exact ih h mem
   | epsilon matched next update state stack' state' mem hn next' ih =>
     rw [εClosure'_epsilon mem hn] at h
@@ -67,7 +68,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
     | .inr mem => exact ih h (by simp [mem])
   | split matched next update state stack' state₁ state₂ mem hn next' ih =>
     rw [εClosure'_split mem hn] at h
@@ -75,7 +77,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
     | .inr mem => exact ih h (by simp [mem])
   | save matched next update state stack' offset state' mem hn next' ih =>
     rw [εClosure'_save mem hn] at h
@@ -83,7 +86,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
     | .inr mem => exact ih h (by simp [mem])
   | done matched next update state stack' mem hn next' ih =>
     rw [εClosure'_done mem hn] at h
@@ -91,7 +95,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
     | .inr mem => exact ih h mem
   | char matched next update state stack' c state' mem hn next' ih =>
     rw [εClosure'_char mem hn] at h
@@ -99,7 +104,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
     | .inr mem => exact ih h mem
   | sparse matched next update state stack' cs state' mem hn next' ih =>
     rw [εClosure'_sparse mem hn] at h
@@ -107,7 +113,8 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
       subst i
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert (εClosure.subset h)
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
     | .inr mem => exact ih h mem
   | fail matched next update state stack' mem hn next'' ih =>
     rw [εClosure'_fail mem hn] at h
@@ -238,7 +245,8 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
     | none =>
       simp at h
       have mem'' : state ∈ next.states.insert state := SparseSet.mem_insert
-      have mem' : state ∈ next'.states := SparseSet.mem_of_mem_of_subset mem'' (εClosure.subset h)
+      have := εClosure.subset h
+      have mem' : state ∈ next'.states := SparseSet.mem_of_mem_of_subset mem'' this
       have : next'.updates[state] = matched'.get isSome' :=
         calc
           _ = next''.updates[state] := εClosure.eq_updates_of_mem_next h mem''
@@ -249,7 +257,8 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
       simp at h inv
       have ⟨i, mem, hdone, eq⟩ := inv
       have mem'' : i ∈ next''.states := SparseSet.mem_insert_of_mem mem
-      have mem' : i ∈ next'.states := SparseSet.mem_of_mem_of_subset mem'' (εClosure.subset h)
+      have := εClosure.subset h
+      have mem' : i ∈ next'.states := SparseSet.mem_of_mem_of_subset mem'' this
       have eq₁ : next'.updates[i] = next.updates[i] :=
         calc
           _ = next''.updates[i] := εClosure.eq_updates_of_mem_next h mem''
