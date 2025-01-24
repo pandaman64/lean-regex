@@ -1,4 +1,5 @@
 import Regex.NFA.Compile.Basic
+import Regex.NFA.Compile.Lemmas
 
 open Regex.Data (Classes Expr)
 
@@ -17,13 +18,13 @@ variable [ProofData]
 
 def nfa' : NFA := nfa.pushRegex next e
 
-theorem size_lt : nfa.nodes.size < nfa'.nodes.size := (nfa.pushRegex next e).property
+theorem size_lt : nfa.nodes.size < nfa'.nodes.size := pushRegex_size_lt
 
-theorem eq_result {result} (eq : NFA.pushRegex nfa next e = result) : result = ⟨nfa', size_lt⟩ := by
+theorem eq_result {result} (eq : NFA.pushRegex nfa next e = result) : result = nfa' := by
   simp [←eq]
   rfl
 
-theorem eq : (nfa.pushRegex next e).val = nfa' := rfl
+theorem eq : nfa.pushRegex next e = nfa' := rfl
 
 end ProofData
 
@@ -42,7 +43,7 @@ def intro' (nfa : NFA) (next : Nat) : Empty :=
 
 variable [Empty]
 
-theorem eq' : nfa' = (nfa.pushRegex next .empty).val := by
+theorem eq' : nfa' = nfa.pushRegex next .empty := by
   simp [nfa', expr_eq]
 
 theorem start_eq : nfa'.start = nfa.nodes.size := by
@@ -83,7 +84,7 @@ def intro' (nfa : NFA) (next : Nat) : Epsilon :=
 
 variable [Epsilon]
 
-theorem eq' : nfa' = (nfa.pushRegex next .epsilon).val := by
+theorem eq' : nfa' = nfa.pushRegex next .epsilon := by
   simp [nfa', expr_eq]
 
 theorem start_eq : nfa'.start = nfa.nodes.size := by
@@ -125,7 +126,7 @@ def intro' (nfa : NFA) (next : Nat) (c : _root_.Char) : Char :=
 
 variable [Char]
 
-theorem eq' : nfa' = (nfa.pushRegex next (.char c)).val := by
+theorem eq' : nfa' = nfa.pushRegex next (.char c) := by
   simp [nfa', expr_eq]
 
 theorem start_eq : nfa'.start = nfa.nodes.size := by
@@ -167,7 +168,7 @@ def intro' (nfa : NFA) (next : Nat) (cs : Data.Classes) : Classes :=
 
 variable [Classes]
 
-theorem eq' : nfa' = (nfa.pushRegex next (.classes cs)).val := by
+theorem eq' : nfa' = nfa.pushRegex next (.classes cs) := by
   simp [nfa', expr_eq]
 
 theorem start_eq : nfa'.start = nfa.nodes.size := by
@@ -213,13 +214,12 @@ variable [Group]
 def nfaClose : NFA := nfa.pushNode (.save (2 * tag + 1) next)
 def nfaExpr : NFA := nfaClose.pushRegex nfaClose.start e'
 
-theorem nfaClose_property : nfa.nodes.size < nfaClose.nodes.size :=
-  (nfa.pushNode (.save (2 * tag + 1) next)).property
+theorem nfaClose_property : nfa.nodes.size < nfaClose.nodes.size := by simp [nfaClose]
 
 theorem nfaExpr_property : nfaClose.nodes.size < nfaExpr.nodes.size :=
-  (nfaClose.pushRegex nfaClose.start e').property
+  pushRegex_size_lt
 
-theorem eq' : nfa' = (nfa.pushRegex next (.group tag e')).val := by
+theorem eq' : nfa' = nfa.pushRegex next (.group tag e') := by
   simp [nfa', expr_eq]
 
 theorem eq_push : nfa' = nfaExpr.pushNode (.save (2 * tag) nfaExpr.start) := eq'
@@ -268,12 +268,12 @@ def nfa₁ : NFA := nfa.pushRegex next e₁
 def nfa₂ : NFA := nfa₁.pushRegex next e₂
 
 theorem nfa₁_property : nfa.nodes.size < nfa₁.nodes.size :=
-  (nfa.pushRegex next e₁).property
+  pushRegex_size_lt
 
 theorem nfa₂_property : nfa₁.nodes.size < nfa₂.nodes.size :=
-  (nfa₁.pushRegex next e₂).property
+  pushRegex_size_lt
 
-theorem eq' : nfa' = (nfa.pushRegex next (.alternate e₁ e₂)).val := by
+theorem eq' : nfa' = nfa.pushRegex next (.alternate e₁ e₂) := by
   simp [nfa', expr_eq]
 
 theorem eq_push : nfa' = nfa₂.pushNode (.split nfa₁.start nfa₂.start) := eq'
@@ -313,9 +313,9 @@ variable [Concat]
 def nfa₂ : NFA := nfa.pushRegex next e₂
 
 theorem nfa₂_property : nfa.nodes.size < nfa₂.nodes.size :=
-  (nfa.pushRegex next e₂).property
+  pushRegex_size_lt
 
-theorem eq' : nfa' = (NFA.pushRegex nfa next (.concat e₁ e₂)).val := by
+theorem eq' : nfa' = nfa.pushRegex next (.concat e₁ e₂) := by
   simp [nfa', expr_eq]
 
 theorem eq_push : nfa' = nfa₂.pushRegex nfa₂.start e₁ := by
@@ -324,7 +324,7 @@ theorem eq_push : nfa' = nfa₂.pushRegex nfa₂.start e₁ := by
 
 theorem size₂_lt : nfa₂.nodes.size < nfa'.nodes.size := by
   simp [eq_push]
-  exact (nfa₂.pushRegex nfa₂.start e₁).property
+  exact pushRegex_size_lt
 
 end Concat
 
@@ -342,7 +342,7 @@ def intro' (nfa : NFA) (next : Nat) (e': Expr) : Star :=
 
 variable [Star]
 
-theorem eq' : nfa' = (NFA.pushRegex nfa next (.star e')).val := by
+theorem eq' : nfa' = nfa.pushRegex next (.star e') := by
   simp [nfa', expr_eq]
 
 def nfaPlaceholder : NFA := nfa.pushNode .fail
@@ -352,7 +352,7 @@ theorem nfaPlaceholder_property : nfa.nodes.size < nfaPlaceholder.nodes.size := 
   simp [nfaPlaceholder]
 
 theorem nfaExpr_property : nfaPlaceholder.nodes.size < nfaExpr.nodes.size :=
-  (nfaPlaceholder.pushRegex nfaPlaceholder.start e').property
+  pushRegex_size_lt
 
 theorem start_eq : nfa'.start = nfa.nodes.size := by
   rw [eq', pushRegex]
@@ -367,8 +367,7 @@ theorem get_start : nfa'[nfa.nodes.size]'size_lt = .split nfaExpr.start next := 
 
 theorem get_ne_start (i : Nat) (h : i < nfa'.nodes.size) (ne : i ≠ nfa.nodes.size) :
   nfa'[i] = nfaExpr[i]'(size_eq_expr' ▸ h) := by
-  simp [eq', pushRegex, NFA.get_eq_nodes_get]
-  rw [Array.get_set_ne (h := ne.symm)]
+  simp [eq', pushRegex, NFA.get_eq_nodes_get, ne.symm]
   rfl
 
 end Star
