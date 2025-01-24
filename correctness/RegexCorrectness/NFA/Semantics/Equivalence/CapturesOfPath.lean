@@ -12,11 +12,11 @@ variable {nfa : NFA} {next e result span span' update}
 
 theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.val.Path nfa.nodes.size result.val.start span next span' update)
+  (path : result.Path nfa.nodes.size result.start span next span' update)
   (ih : ∀ {nfa : NFA} {next result span span' update}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    result.val.Path nfa.nodes.size result.val.start span next span' update →
+    result.Path nfa.nodes.size result.start span next span' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures span span' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.group tag e).Captures span span' groups := by
   open Compile.ProofData Group in
@@ -26,7 +26,7 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
   cases path with
   | last step =>
     have ⟨eqnext, _, _⟩ := step_start_iff.mp step
-    have ge := ge_pushRegex_start (result := ⟨nfaExpr, _⟩) rfl
+    have ge := ge_pushRegex_start (result := nfaExpr) rfl
     simp [←eqnext, nfaClose] at ge
     have : next < pd.nfa.nodes.size := next_lt
     omega
@@ -44,11 +44,10 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
       simp [nfaClose]
       exact Nat.ne_of_lt next_lt
     have ⟨spanm, updateExpr, updateClose, equ, pathExpr, pathClose⟩ :=
-      rest.path_next_of_ne (result := ⟨nfaExpr, _⟩) rfl next_lt_close ge_expr_start ne_next
-    simp at pathExpr pathClose
+      rest.path_next_of_ne (result := nfaExpr) rfl next_lt_close ge_expr_start ne_next
 
     have wf_close := wf_close wf next_lt
-    have ⟨groupExpr, eqv, c⟩ := ih (result := ⟨nfaExpr, _⟩) rfl wf_close wf_close.start_lt pathExpr
+    have ⟨groupExpr, eqv, c⟩ := ih (result := nfaExpr) rfl wf_close wf_close.start_lt pathExpr
 
     have : nfaExpr[nfaClose.start]'size_lt_nfa_expr = nfa'[nfaClose.start]'size_lt := by
       simp [nfaClose, get_close_expr, get_close]
@@ -65,16 +64,16 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
 
 theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.val.Path nfa.nodes.size result.val.start span next span' update)
+  (path : result.Path nfa.nodes.size result.start span next span' update)
   (ih₁ : ∀ {nfa : NFA} {next result span span' update}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    result.val.Path nfa.nodes.size result.val.start span next span' update →
+    result.Path nfa.nodes.size result.start span next span' update →
     ∃ groups, EquivUpdate groups update ∧ e₁.Captures span span' groups)
   (ih₂ : ∀ {nfa : NFA} {next result span span' update}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    result.val.Path nfa.nodes.size result.val.start span next span' update →
+    result.Path nfa.nodes.size result.start span next span' update →
     ∃ groups, EquivUpdate groups update ∧ e₂.Captures span span' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.alternate e₁ e₂).Captures span span' groups := by
   open Compile.ProofData Alternate in
@@ -115,16 +114,16 @@ theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.altern
 
 theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.val.Path nfa.nodes.size result.val.start span next span' update)
+  (path : result.Path nfa.nodes.size result.start span next span' update)
   (ih₁ : ∀ {nfa : NFA} {next result span span' update}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    result.val.Path nfa.nodes.size result.val.start span next span' update →
+    result.Path nfa.nodes.size result.start span next span' update →
     ∃ groups, EquivUpdate groups update ∧ e₁.Captures span span' groups)
   (ih₂ : ∀ {nfa : NFA} {next result span span' update}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    result.val.Path nfa.nodes.size result.val.start span next span' update →
+    result.Path nfa.nodes.size result.start span next span' update →
     ∃ groups, EquivUpdate groups update ∧ e₂.Captures span span' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.concat e₁ e₂).Captures span span' groups := by
   open Compile.ProofData Concat in
@@ -155,11 +154,11 @@ theorem captures_of_path.star_of_loop [Star] (loop : Loop span span' update)
 
 theorem captures_of_path.star {e} (eq : nfa.pushRegex next (.star e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.val.Path nfa.nodes.size result.val.start span next span' update)
+  (path : result.Path nfa.nodes.size result.start span next span' update)
   (ih : ∀ {nfa : NFA} {next result span span' update}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    result.val.Path nfa.nodes.size result.val.start span next span' update →
+    result.Path nfa.nodes.size result.start span next span' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures span span' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.star e).Captures span span' groups := by
   open Compile.ProofData Star in
@@ -175,10 +174,10 @@ theorem captures_of_path.star {e} (eq : nfa.pushRegex next (.star e) = result)
 
 theorem captures_of_path (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.val.Path nfa.nodes.size result.val.start span next span' update) :
+  (path : result.Path nfa.nodes.size result.start span next span' update) :
   ∃ groups, EquivUpdate groups update ∧ e.Captures span span' groups := by
   open Compile.ProofData in
-  induction e generalizing nfa next span span' update with
+  induction e generalizing nfa next result span span' update with
   | empty =>
     let pd := Empty.intro eq
     simp [pd.eq_result eq] at path

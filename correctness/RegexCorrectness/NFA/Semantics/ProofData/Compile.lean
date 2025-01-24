@@ -6,7 +6,7 @@ namespace Regex.NFA
 
 open Compile.ProofData in
 theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
-  (step : (nfa.pushRegex next e).val.Step nfa.nodes.size i span j span' update) :
+  (step : (nfa.pushRegex next e).Step nfa.nodes.size i span j span' update) :
   j = next ∨ nfa.nodes.size ≤ j := by
   induction e generalizing nfa next with
   | empty =>
@@ -83,7 +83,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
       cases step.2.1 with
       | inl eq₁ => exact .inr (eq₁ ▸ (ge_pushRegex_start rfl))
       | inr eq₂ =>
-        have := ge_pushRegex_start (result := ⟨Alternate.nfa₂, _⟩) rfl
+        have := ge_pushRegex_start (result := pd.nfa₂) rfl
         exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₁_property) (eq₂ ▸ this))
   | concat e₁ e₂ ih₁ ih₂ =>
     let pd := Concat.intro' nfa next e₁ e₂
@@ -123,12 +123,12 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
 
 theorem Path.eq_or_path_next {nfa : NFA} {next e result lb i span j span' update} (eq : nfa.pushRegex next e = result)
   (jlt : j < nfa.nodes.size) (ige : i ≥ nfa.nodes.size)
-  (path : result.val.Path lb i span j span' update) :
+  (path : result.Path lb i span j span' update) :
   j = next ∨
   ∃ spanm update₁ update₂,
     update = update₁ ++ update₂ ∧
-    result.val.Path nfa.nodes.size i span next spanm update₁ ∧
-    result.val.Path lb next spanm j span' update₂ := by
+    result.Path nfa.nodes.size i span next spanm update₁ ∧
+    result.Path lb next spanm j span' update₂ := by
   induction path with
   | @last i span j span' update step =>
     have step := eq ▸ step.liftBound' ige
@@ -148,11 +148,11 @@ theorem Path.eq_or_path_next {nfa : NFA} {next e result lb i span j span' update
 
 theorem Path.path_next_of_ne {nfa : NFA} {next e result lb i span j span' update} (eq : nfa.pushRegex next e = result)
   (jlt : j < nfa.nodes.size) (ige : i ≥ nfa.nodes.size) (ne : j ≠ next)
-  (path : result.val.Path lb i span j span' update) :
+  (path : result.Path lb i span j span' update) :
   ∃ spanm update₁ update₂,
     update = update₁ ++ update₂ ∧
-    result.val.Path nfa.nodes.size i span next spanm update₁ ∧
-    result.val.Path lb next spanm j span' update₂ := by
+    result.Path nfa.nodes.size i span next spanm update₁ ∧
+    result.Path lb next spanm j span' update₂ := by
   have := path.eq_or_path_next eq jlt ige
   cases this with
   | inl eq => contradiction
