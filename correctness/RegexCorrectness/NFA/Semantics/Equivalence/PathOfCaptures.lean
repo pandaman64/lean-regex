@@ -15,14 +15,14 @@ theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
   (ih : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update) :
-  ∃ update, EquivUpdate (.group tag span.curr span'.curr groups) update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
+    ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start span next span' update) :
+  ∃ update, EquivUpdate (.group tag span.curr span'.curr groups) update ∧ result.Path nfa.nodes.size result.start span next span' update := by
   open Compile.ProofData Group in
   let pd := Group.intro eq
   simp [eq_result eq]
 
   have wf_close := wf_close wf next_lt
-  have ⟨update, eqv, path⟩ := ih (result := ⟨nfaExpr, _⟩) rfl wf_close wf_close.start_lt
+  have ⟨update, eqv, path⟩ := ih (result := nfaExpr) rfl wf_close wf_close.start_lt
   exists (2 * tag, span.curr) :: update ++ [(2 * tag + 1, span'.curr)], .group eqv
 
   have stepOpen : nfa'.Step nfa.nodes.size nfa'.start span nfaExpr.start span (.some (2 * tag, span.curr)) := by
@@ -43,13 +43,13 @@ theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.al
   (ih : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update) :
-  ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
+    ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start span next span' update) :
+  ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start span next span' update := by
   open Compile.ProofData Alternate in
   let pd := Alternate.intro eq
   simp [eq_result eq]
 
-  have ⟨update, eqv, path⟩ := ih (result := ⟨nfa₁, _⟩) rfl wf next_lt
+  have ⟨update, eqv, path⟩ := ih (result := nfa₁) rfl wf next_lt
   exists update, eqv
 
   have step : nfa'.Step nfa.nodes.size nfa'.start span nfa₁.start span .none := by
@@ -63,14 +63,14 @@ theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.a
   (ih : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update) :
-  ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
+    ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start span next span' update) :
+  ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start span next span' update := by
   open Compile.ProofData Alternate in
   let pd := Alternate.intro eq
   simp [eq_result eq]
 
   have wf₁ := wf₁ wf next_lt
-  have ⟨update, eqv, path⟩ := ih (result := ⟨nfa₂, _⟩) rfl wf₁ (Nat.lt_trans next_lt nfa₁_property)
+  have ⟨update, eqv, path⟩ := ih (result := nfa₂) rfl wf₁ (Nat.lt_trans next_lt nfa₁_property)
   exists update, eqv
 
   have step : nfa'.Step nfa.nodes.size nfa'.start span nfa₂.start span .none := by
@@ -84,20 +84,19 @@ theorem path_of_captures.concat {e₁ e₂ span span' span'' groups₁ groups₂
   (ih₁ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₁ update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update)
+    ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.nodes.size result.start span next span' update)
   (ih₂ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₂ update ∧ result.val.Path nfa.nodes.size result.val.start span' next span'' update) :
-  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.val.Path nfa.nodes.size result.val.start span next span'' update := by
+    ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.nodes.size result.start span' next span'' update) :
+  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.nodes.size result.start span next span'' update := by
   open Compile.ProofData Concat in
   let pd := Concat.intro eq
   simp [pd.eq_result eq]
 
   have wf₂ := wf₂ wf next_lt
-  have ⟨update₁, eqv₁, path₁⟩ := ih₁ (result := ⟨nfa', size₂_lt⟩) (Subtype.eq eq_push.symm) wf₂ wf₂.start_lt
-  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := ⟨nfa₂, _⟩) rfl wf next_lt
-  simp at path₁ path₂
+  have ⟨update₁, eqv₁, path₁⟩ := ih₁ eq_push.symm wf₂ wf₂.start_lt
+  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := nfa₂) rfl wf next_lt
   exists update₁ ++ update₂, .concat eqv₁ eqv₂
 
   have path₂ := castFrom₂ path₂
@@ -108,20 +107,19 @@ theorem path_of_captures.starConcat {e span span' span'' groups₁ groups₂} (e
   (ih₁ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₁ update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update)
+    ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.nodes.size result.start span next span' update)
   (ih₂ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next (.star e) = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₂ update ∧ result.val.Path nfa.nodes.size result.val.start span' next span'' update) :
-  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.val.Path nfa.nodes.size result.val.start span next span'' update := by
+    ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.nodes.size result.start span' next span'' update) :
+  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.nodes.size result.start span next span'' update := by
   open Compile.ProofData Star in
   let pd := Star.intro eq
   simp [pd.eq_result eq]
 
   have wf_placeholder := wf_placeholder wf
-  have ⟨update₁, eqv₁, path₁⟩ := ih₁ (result := ⟨nfaExpr, _⟩) rfl wf_placeholder wf_placeholder.start_lt
-  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := ⟨nfa', _⟩) rfl wf next_lt
-  simp at path₁ path₂
+  have ⟨update₁, eqv₁, path₁⟩ := ih₁ (result := nfaExpr) rfl wf_placeholder wf_placeholder.start_lt
+  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := nfa') rfl wf next_lt
   exists update₁ ++ update₂, .concat eqv₁ eqv₂
 
   have start_eq_placeholder : nfaPlaceholder.start = nfa'.start := by
@@ -136,9 +134,9 @@ theorem path_of_captures.starConcat {e span span' span'' groups₁ groups₂} (e
 theorem path_of_captures (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (c : e.Captures span span' groups) :
-  ∃ update, EquivUpdate groups update ∧ result.val.Path nfa.nodes.size result.val.start span next span' update := by
+  ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start span next span' update := by
   open Compile.ProofData in
-  induction c generalizing nfa next with
+  induction c generalizing nfa next result with
   | @char l m r c =>
     let pd := Char.intro eq
     exists [], .empty
