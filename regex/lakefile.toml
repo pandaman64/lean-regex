@@ -5,3 +5,9 @@ defaultTargets = ["Regex"]
 
 [[lean_lib]]
 name = "Regex"
+buildType = "relWithDebInfo"
+
+[[lean_exe]]
+name = "Bench"
+srcDir = "scripts"
+buildType = "relWithDebInfo"
