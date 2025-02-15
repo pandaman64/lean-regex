@@ -19,7 +19,10 @@ theorem εClosure_base : εClosure nfa wf it matched next [] = (matched, next) :
 theorem εClosure_visited {update state stack'} (hmem : state ∈ next.states) :
   εClosure nfa wf it matched next ((update, state) :: stack') =
   εClosure nfa wf it matched next stack' := by
-  simp [εClosure, hmem]
+  conv =>
+    lhs
+    unfold εClosure
+    simp [hmem]
 
 @[simp]
 theorem εClosure_epsilon {update state stack' state'} (hmem : state ∉ next.states) (hn : nfa[state] = .epsilon state') :
@@ -169,7 +172,7 @@ theorem captureNext.go_ind_not_found {_matched matched'}
   (atEnd : ¬it.atEnd) (isNone : matched.isNone)
   (h₁ : εClosure nfa wf it .none current [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = (_matched, current'))
   (h₂ : eachStepChar nfa wf it current' next = (matched', next')) :
-  captureNext.go nfa wf bufferSize it matched current next = captureNext.go nfa wf bufferSize it.next matched' next' ⟨current.states.clear, current.updates⟩ := by
+  captureNext.go nfa wf bufferSize it matched current next = captureNext.go nfa wf bufferSize it.next matched' next' ⟨current'.states.clear, current'.updates⟩ := by
   have isSome : ¬matched.isSome := by
     cases matched <;> simp_all
   conv =>

@@ -41,30 +41,32 @@ def εClosure {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterato
     if state ∈ next.states then
       εClosure nfa wf it matched next stack'
     else
-      let states' := next.states.insert state
-      match hn : nfa[state] with
-      | .epsilon state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        εClosure nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state', isLt⟩) :: stack')
-      | .split state₁ state₂ =>
-        have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
-        εClosure nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state₁, isLt.1⟩) :: (update, ⟨state₂, isLt.2⟩):: stack')
-      | .save offset state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        -- Write the position only when `offset` is in bounds.
-        let update' := update.setIfInBounds offset it.pos
-        εClosure nfa wf it matched ⟨states', next.updates⟩ ((update', ⟨state', isLt⟩) :: stack')
-      | .done =>
-        let matched' := matched <|> update
-        let updates' := next.updates.set state update
-        εClosure nfa wf it matched' ⟨states', updates'⟩ stack'
-      | .char c state' =>
-        let updates' := next.updates.set state update
-        εClosure nfa wf it matched ⟨states', updates'⟩ stack'
-      | .sparse cs state' =>
-        let updates' := next.updates.set state update
-        εClosure nfa wf it matched ⟨states', updates'⟩ stack'
-      | .fail => εClosure nfa wf it matched ⟨states', next.updates⟩ stack'
+      match h : next with
+      | ⟨states, updates⟩ =>
+        let states' := states.insert state
+        match hn : nfa[state] with
+        | .epsilon state' =>
+          have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+          εClosure nfa wf it matched ⟨states', updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+        | .split state₁ state₂ =>
+          have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
+          εClosure nfa wf it matched ⟨states', updates⟩ ((update, ⟨state₁, isLt.1⟩) :: (update, ⟨state₂, isLt.2⟩):: stack')
+        | .save offset state' =>
+          have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+          -- Write the position only when `offset` is in bounds.
+          let update' := update.setIfInBounds offset it.pos
+          εClosure nfa wf it matched ⟨states', updates⟩ ((update', ⟨state', isLt⟩) :: stack')
+        | .done =>
+          let matched' := matched <|> update
+          let updates' := updates.set state update
+          εClosure nfa wf it matched' ⟨states', updates'⟩ stack'
+        | .char c state' =>
+          let updates' := updates.set state update
+          εClosure nfa wf it matched ⟨states', updates'⟩ stack'
+        | .sparse cs state' =>
+          let updates' := updates.set state update
+          εClosure nfa wf it matched ⟨states', updates'⟩ stack'
+        | .fail => εClosure nfa wf it matched ⟨states', updates⟩ stack'
 termination_by (next.states.measure, stack)
 
 /--
@@ -128,7 +130,7 @@ where
         if matched.isNone then
           let expanded := εClosure nfa wf it .none current [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
           let stepped := eachStepChar nfa wf it expanded.2 next
-          go it.next stepped.1 stepped.2 ⟨current.states.clear, current.updates⟩
+          go it.next stepped.1 stepped.2 ⟨expanded.2.states.clear, expanded.2.updates⟩
         else
           let stepped := eachStepChar nfa wf it current next
           go it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩
