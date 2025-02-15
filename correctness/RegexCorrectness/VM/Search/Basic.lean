@@ -26,7 +26,7 @@ where
         if matched.isNone then
           let expanded := εClosure' nfa wf it .none current [([], ⟨nfa.start, wf.start_lt⟩)]
           let stepped := eachStepChar' nfa wf it expanded.2 next
-          go it.next stepped.1 stepped.2 ⟨current.states.clear, current.updates⟩
+          go it.next stepped.1 stepped.2 ⟨expanded.2.states.clear, expanded.2.updates⟩
         else
           let stepped := eachStepChar' nfa wf it current next
           go it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩
@@ -43,7 +43,7 @@ theorem captureNext'.go.induct' (nfa : NFA) (wf : nfa.WellFormed)
     ¬it.atEnd → matched.isNone →
     εClosure' nfa wf it .none current [([], ⟨nfa.start, wf.start_lt⟩)] = (_matched, current') →
     eachStepChar' nfa wf it current' next = (matched', next') →
-    motive it.next matched' next' ⟨current.states.clear, current.updates⟩ →
+    motive it.next matched' next' ⟨current'.states.clear, current'.updates⟩ →
     motive it matched current next)
   (ind_found : ∀ it matched current next matched' next',
     ¬it.atEnd → ¬current.states.isEmpty → matched.isSome →
@@ -85,7 +85,7 @@ theorem captureNext'.go_ind_not_found {nfa wf it matched current next _matched c
   (atEnd : ¬it.atEnd) (isNone : matched.isNone)
   (h₁ : εClosure' nfa wf it .none current [([], ⟨nfa.start, wf.start_lt⟩)] = (_matched, current'))
   (h₂ : eachStepChar' nfa wf it current' next = (matched', next')) :
-  captureNext'.go nfa wf it matched current next = captureNext'.go nfa wf it.next matched' next' ⟨current.states.clear, current.updates⟩ := by
+  captureNext'.go nfa wf it matched current next = captureNext'.go nfa wf it.next matched' next' ⟨current'.states.clear, current'.updates⟩ := by
   have isSome : ¬matched.isSome := by
     cases matched <;> simp_all
   conv =>

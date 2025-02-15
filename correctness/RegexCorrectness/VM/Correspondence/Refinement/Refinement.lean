@@ -301,11 +301,11 @@ theorem captureNext'.go.refines {current current' result result'}
     rw [captureNext'.go_ind_not_found atEnd isNone' h₁ h₂] at h'
     rw [captureNext.go_ind_not_found atEnd isNone hexpand hstep] at h
 
-    have := εClosure'.refines hexpand h₁ (by simp [refineUpdateOpt]) refCurrent (.cons rfl rfl .nil)
-    simp at this
-    have ⟨refMatched'', refNext''⟩ := eachStepChar'.refines hstep h₂ this.2 refNext
+    have refExpanded := εClosure'.refines hexpand h₁ (by simp [refineUpdateOpt]) refCurrent (.cons rfl rfl .nil)
+    simp at refExpanded
+    have ⟨refMatched'', refNext''⟩ := eachStepChar'.refines hstep h₂ refExpanded.2 refNext
     simp at refMatched'' refNext''
-    exact ih h h' refMatched'' refNext'' (by simp [refCurrent.1, SearchState'.refines, refCurrent.2])
+    exact ih h h' refMatched'' refNext'' (by simp [SearchState'.refines, refExpanded.2.1, refExpanded.2.2])
   | ind_found it matched' current' next' matched'' next'' atEnd isEmpty' isSome' h'' ih =>
     have isEmpty : ¬current.states.isEmpty := refCurrent.1 ▸ isEmpty'
     have isSome : matched.isSome := by
