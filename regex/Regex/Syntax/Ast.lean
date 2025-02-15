@@ -1,13 +1,17 @@
+import Regex.Data.Anchor
 import Regex.Data.Classes
 import Regex.Data.Expr
 
-open Regex.Data (Class Classes PerlClass Expr)
+set_option autoImplicit false
+
+open Regex.Data (Anchor Class Classes PerlClass Expr)
 
 namespace Regex.Syntax.Parser
 
 inductive Ast : Type where
   | empty : Ast
   | epsilon : Ast
+  | anchor : Anchor → Ast
   | char : Char → Ast
   | group : Ast → Ast
   | alternate : Ast → Ast → Ast
@@ -22,6 +26,7 @@ def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
   match ast with
   | .empty => (index, .empty)
   | .epsilon => (index, .epsilon)
+  | .anchor a => (index, .anchor a)
   | .char c => (index, .char c)
   | .group h =>
     let (index', r) := h.toRegexAux (index + 1)

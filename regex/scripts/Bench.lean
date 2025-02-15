@@ -20,8 +20,21 @@ def benchmark (re : Regex) (content : String) (iterations : Nat) : IO Unit := do
   IO.println s!"Average time: {totalTimeMs / iterations.toFloat}ms per iteration"
   IO.println s!"Found {count} matches"
 
+partial def readAll (stream : IO.FS.Stream) : IO String := do
+  let mut buffer := ByteArray.empty
+  while true do
+    let data ← stream.read 8192
+    if data.isEmpty then
+      break
+    buffer := buffer.append data
+  return String.fromUTF8? buffer |>.getD ""
+
 def processFile (pattern : String) (filePath : String) (iterations : Nat := 1) : IO Unit := do
-  let content ← IO.FS.readFile filePath
+  let content ←
+    if filePath = "-" then
+      readAll (← IO.getStdin)
+    else
+      IO.FS.readFile filePath
   let regex ← ofExcept $
     Regex.parse pattern |>.mapError (IO.userError s!"Regex parse error: {·}")
   benchmark regex content iterations
@@ -54,4 +67,5 @@ def main (args : List String) : IO UInt32 := do
     return 0
   | .error err =>
     IO.eprintln err
+    printUsage
     return 1

@@ -23,6 +23,10 @@ local instance : DecidableEq (Except Error Ast) := decEq
 #guard parseAst "(a)" = .ok (.group (.char 'a'))
 #guard parseAst "(?:a)" = .ok (.char 'a')
 
+#guard parseAst "^" = .ok (.anchor .start)
+#guard parseAst "$" = .ok (.anchor .eos)
+#guard parseAst "^abc$" = .ok (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
+
 #guard parseAst "[abc]" = .ok (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
 #guard parseAst "[^abc]" = .ok (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
 #guard parseAst "[a-z]" = .ok (.classes ⟨false, #[.range 'a' 'z' (by decide)]⟩)

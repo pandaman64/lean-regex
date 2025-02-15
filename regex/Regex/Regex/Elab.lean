@@ -1,7 +1,7 @@
 import Regex.Regex.Basic
 import Lean
 
-open Regex.Data (PerlClassKind PerlClass Class Classes)
+open Regex.Data (Anchor PerlClassKind PerlClass Class Classes)
 open Regex NFA Node
 open Lean Syntax Elab Term
 
@@ -14,6 +14,12 @@ namespace Regex.Elab
 private def mkDecidableProof (prop : Expr) (inst : Expr) : Expr :=
   let refl := mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``true)
   mkApp3 (mkConst ``of_decide_eq_true) prop inst refl
+
+instance : ToExpr Anchor where
+  toTypeExpr := mkConst ``Anchor
+  toExpr
+    | .start => mkConst ``Anchor.start
+    | .eos => mkConst ``Anchor.eos
 
 instance : ToExpr PerlClassKind where
   toTypeExpr := mkConst ``PerlClassKind
@@ -51,6 +57,7 @@ instance : ToExpr Node where
     | .done => mkConst ``Node.done
     | .fail => mkConst ``Node.fail
     | .epsilon next => .app (mkConst ``Node.epsilon) (toExpr next)
+    | .anchor a next => mkApp2 (mkConst ``Node.anchor) (toExpr a) (toExpr next)
     | .char c next => mkApp2 (mkConst ``Node.char) (toExpr c) (toExpr next)
     | .sparse cs next => mkApp2 (mkConst ``Node.sparse) (toExpr cs) (toExpr next)
     | .split next₁ next₂ => mkApp2 (mkConst ``Node.split) (toExpr next₁) (toExpr next₂)
