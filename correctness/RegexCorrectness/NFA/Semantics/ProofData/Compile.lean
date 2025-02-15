@@ -23,6 +23,14 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
     have := Epsilon.step_start_iff.mp (this ▸ step)
     simp [this]
     exact .inl rfl
+  | anchor a =>
+    let pd := Anchor.intro' nfa next a
+    have lt := step.lt
+    simp [pushRegex] at lt
+    have : i = nfa'.start := Nat.eq_of_le_of_lt_succ step.ge lt
+    have := Anchor.step_start_iff.mp (this ▸ step)
+    simp [this]
+    exact .inl rfl
   | char c =>
     let pd := Char.intro' nfa next c
     have lt := step.lt

@@ -113,20 +113,20 @@ theorem get (i : Nat) (h : i < nfa'.nodes.size) :
 end Epsilon
 
 class Anchor extends ProofData where
-  a : Data.Anchor
-  expr_eq : e = .anchor a
+  anchor : Data.Anchor
+  expr_eq : e = .anchor anchor
 
 namespace Anchor
 
-def intro {nfa next a result} (_ : NFA.pushRegex nfa next (.anchor a) = result) : Anchor :=
-  { nfa, next, e := .anchor a, a, expr_eq := rfl }
+def intro {nfa next anchor result} (_ : NFA.pushRegex nfa next (.anchor anchor) = result) : Anchor :=
+  { nfa, next, e := .anchor anchor, anchor, expr_eq := rfl }
 
-def intro' (nfa : NFA) (next : Nat) (a : Data.Anchor) : Anchor :=
-  { nfa, next, e := .anchor a, a, expr_eq := rfl }
+def intro' (nfa : NFA) (next : Nat) (anchor : Data.Anchor) : Anchor :=
+  { nfa, next, e := .anchor anchor, anchor, expr_eq := rfl }
 
 variable [Anchor]
 
-theorem eq' : nfa' = nfa.pushRegex next (.anchor a) := by
+theorem eq' : nfa' = nfa.pushRegex next (.anchor anchor) := by
   simp [nfa', expr_eq]
 
 theorem start_eq : nfa'.start = nfa.nodes.size := by
@@ -138,12 +138,12 @@ theorem size_eq : nfa'.nodes.size = nfa.nodes.size + 1 := by
 theorem get_lt {i : Nat} (h : i < nfa.nodes.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
   simp [eq', pushRegex, pushNode_get_lt i h]
 
-theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .anchor a next := by
+theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .anchor anchor next := by
   simp [eq', pushRegex]
 
 theorem get (i : Nat) (h : i < nfa'.nodes.size) :
   if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
-  else nfa'[i] = .anchor a next := by
+  else nfa'[i] = .anchor anchor next := by
   split
   case isTrue => exact get_lt _
   case isFalse h' =>

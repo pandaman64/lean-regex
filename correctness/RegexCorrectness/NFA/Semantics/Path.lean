@@ -16,6 +16,8 @@ open Regex.Data (Span)
 inductive Step (nfa : NFA) (lb : Nat) : Nat → Span → Nat → Span → Option (Nat × String.Pos) → Prop where
   | epsilon {i j span} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .epsilon j) :
     Step nfa lb i span j span .none
+  | anchor {i j span a} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .anchor a j) (h : a.test span.iterator) :
+    Step nfa lb i span j span .none
   | splitLeft {i j₁ j₂ span} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .split j₁ j₂) :
     Step nfa lb i span j₁ span .none
   | splitRight {i j₁ j₂ span} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .split j₁ j₂) :
@@ -56,6 +58,7 @@ theorem cast (step : nfa.Step lb i span j span' update)
   nfa'.Step lb i span j span' update := by
   cases step with
   | epsilon ge _ eq => exact .epsilon ge lt (h ▸ eq)
+  | anchor ge _ eq h' => exact .anchor ge lt (h ▸ eq) h'
   | splitLeft ge _ eq => exact .splitLeft ge lt (h ▸ eq)
   | splitRight ge _ eq => exact .splitRight ge lt (h ▸ eq)
   | save ge _ eq => exact .save ge lt (h ▸ eq)
@@ -66,6 +69,7 @@ theorem liftBound' (ge : lb' ≤ i) (step : nfa.Step lb i span j span' update) :
   nfa.Step lb' i span j span' update := by
   cases step with
   | epsilon _ lt eq => exact .epsilon ge lt eq
+  | anchor _ lt eq h => exact .anchor ge lt eq h
   | splitLeft _ lt eq => exact .splitLeft ge lt eq
   | splitRight _ lt eq => exact .splitRight ge lt eq
   | save _ lt eq => exact .save ge lt eq
