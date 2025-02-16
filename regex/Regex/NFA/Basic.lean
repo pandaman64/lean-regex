@@ -1,4 +1,7 @@
+import Regex.Data.Anchor
 import Regex.Data.Classes
+
+set_option autoImplicit false
 
 namespace Regex.NFA
 
@@ -6,6 +9,7 @@ inductive Node where
   | done
   | fail
   | epsilon (next : Nat)
+  | anchor (anchor : Regex.Data.Anchor) (next : Nat)
   | char (c : Char) (next : Nat)
   | split (next₁ next₂ : Nat)
   | save (offset : Nat) (next : Nat)
@@ -18,6 +22,7 @@ def Node.inBounds (n : Node) (size : Nat) : Prop :=
   | .done => True
   | .fail => True
   | .epsilon next => next < size
+  | .anchor _ next => next < size
   | .char _ next => next < size
   | .split next₁ next₂ => next₁ < size ∧ next₂ < size
   | .save _ next => next < size
@@ -34,6 +39,11 @@ theorem Node.inBounds.fail {size : Nat} : Node.fail.inBounds size := by
 @[simp]
 theorem Node.inBounds.epsilon {size next : Nat} (h : next < size) :
   (Node.epsilon next).inBounds size := by
+  simp [inBounds, h]
+
+@[simp]
+theorem Node.inBounds.anchor {size next : Nat} {a : Regex.Data.Anchor} (h : next < size) :
+  (Node.anchor a next).inBounds size := by
   simp [inBounds, h]
 
 @[simp]
@@ -77,10 +87,11 @@ theorem Node.lt_of_inBounds.save {size offset next : Nat} (h : (Node.save offset
   simp [inBounds] at h
   exact h
 
-theorem Node.inBounds_of_inBounds_of_le {n : Node} (h : n.inBounds size) (le : size ≤ size') :
+theorem Node.inBounds_of_inBounds_of_le {n : Node} {size size' : Nat} (h : n.inBounds size) (le : size ≤ size') :
   n.inBounds size' := by
   simp [inBounds] at *
   split <;> simp at h <;> try simp
+  next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
   next => exact Nat.lt_of_lt_of_le h le
   next => exact ⟨Nat.lt_of_lt_of_le h.left le, Nat.lt_of_lt_of_le h.right le⟩
@@ -92,6 +103,7 @@ instance Node.decInBounds {node : Node} {size : Nat} : Decidable (node.inBounds 
   | .done => isTrue trivial
   | .fail => isTrue trivial
   | .epsilon next => inferInstanceAs (Decidable (next < size))
+  | .anchor _ next => inferInstanceAs (Decidable (next < size))
   | .char _ next => inferInstanceAs (Decidable (next < size))
   | .sparse _ next => inferInstanceAs (Decidable (next < size))
   | .split next₁ next₂ => inferInstanceAs (Decidable (next₁ < size ∧ next₂ < size))
@@ -136,7 +148,7 @@ def maxTag (nfa : NFA) : Nat :=
     | .save tag _ => accum.max tag
     | _ => accum
 
-theorem le_maxTag {next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = .save tag next) :
+theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = .save tag next) :
   tag ≤ nfa.maxTag := by
   unfold maxTag
   let motive (i : Nat) (maxTag : Nat) : Prop :=
@@ -173,7 +185,7 @@ theorem WellFormed.iff {nfa : NFA} :
   nfa.WellFormed ↔ nfa.start < nfa.nodes.size ∧ ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size :=
   ⟨fun wf => ⟨wf.start_lt, wf.inBounds⟩, fun ⟨h₁, h₂⟩ => ⟨h₁, h₂⟩⟩
 
-theorem WellFormed.inBounds' {nfa : NFA} (wf : nfa.WellFormed) (i : Fin nfa.nodes.size) (hn : nfa[i] = node) :
+theorem WellFormed.inBounds' {nfa : NFA} {node : NFA.Node} (wf : nfa.WellFormed) (i : Fin nfa.nodes.size) (hn : nfa[i] = node) :
   node.inBounds nfa.nodes.size := by
   rw [←hn]
   exact wf.inBounds i

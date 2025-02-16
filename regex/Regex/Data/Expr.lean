@@ -1,3 +1,4 @@
+import Regex.Data.Anchor
 import Regex.Data.Classes
 
 namespace Regex.Data
@@ -8,6 +9,7 @@ An inductive type that represents a regular expression.
 inductive Expr : Type where
   | empty : Expr
   | epsilon : Expr
+  | anchor : Anchor → Expr
   | char : Char → Expr
   | group : Nat → Expr → Expr
   | alternate : Expr → Expr → Expr

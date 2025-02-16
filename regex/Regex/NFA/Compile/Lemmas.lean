@@ -7,6 +7,7 @@ theorem pushRegex_size_lt {nfa : NFA} {next e} :
   induction e generalizing nfa next with
   | empty => simp [pushRegex]
   | epsilon => simp [pushRegex]
+  | anchor a => simp [pushRegex]
   | char => simp [pushRegex]
   | classes => simp [pushRegex]
   | group tag e ih =>

@@ -14,9 +14,10 @@ open Compile.ProofData in
 theorem pushRegex_get_lt {nfa next e nfa'} (eq : pushRegex nfa next e = nfa') (i : Nat) (h : i < nfa.nodes.size) :
   nfa'[i]'(Nat.lt_trans h (eq ▸ pushRegex_size_lt)) = nfa[i] := by
   induction e generalizing nfa next nfa' with
-  | empty | epsilon | char | classes =>
+  | empty | epsilon | anchor | char | classes =>
     try let pd := Empty.intro eq
     try let pd := Epsilon.intro eq
+    try let pd := Anchor.intro eq
     try let pd := Char.intro eq
     try let pd := Classes.intro eq
     simp [pd.eq_result eq, pd.get_lt h]
@@ -162,9 +163,10 @@ open Compile.ProofData in
 theorem ge_pushRegex_start {nfa next e result} (eq : pushRegex nfa next e = result) :
   nfa.nodes.size ≤ result.start := by
   induction e generalizing nfa next result with
-  | empty | epsilon | char c | classes cs =>
+  | empty | epsilon | anchor a | char c | classes cs =>
     try let pd := Empty.intro eq
     try let pd := Epsilon.intro eq
+    try let pd := Anchor.intro eq
     try let pd := Char.intro eq
     try let pd := Classes.intro eq
     simp [pd.eq_result eq, pd.start_eq]
@@ -200,8 +202,9 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
     simp [pd.eq_result eq, pd.size_eq] at step h₂
     have : i = pd.nfa.nodes.size := Nat.eq_of_le_of_lt_succ h₁ h₂
     simp [this, Node.charStep, Node.εStep, pd.get_eq] at step
-  | epsilon | char c | classes cs =>
+  | epsilon | anchor a | char c | classes cs =>
     try let pd := Epsilon.intro eq
+    try let pd := Anchor.intro eq
     try let pd := Char.intro eq
     try let pd := Classes.intro eq
     simp [pd.eq_result eq, pd.size_eq] at step h₂
@@ -299,7 +302,7 @@ theorem mem_save_of_mem_tags_pushRegex {nfa next e result tag} (eq : pushRegex n
   ∃ (i j : Fin result.nodes.size) (offset offset' : Nat),
     result[i] = .save (2 * tag) offset ∧ result[j] = .save (2 * tag + 1) offset' := by
   induction e generalizing nfa next result with
-  | empty | epsilon | char | classes => simp [tags] at h
+  | empty | epsilon | anchor | char | classes => simp [tags] at h
   | group tag' e ih =>
     let pd := Group.intro eq
     rw [pd.eq_result eq]
@@ -427,9 +430,10 @@ theorem done_iff_zero_pushRegex {nfa next e result} (eq : pushRegex nfa next e =
   (h₂ : ∀ (i : Nat) (isLt : i < nfa.nodes.size), nfa[i] = .done ↔ i = 0) :
   ∀ (i : Nat) (isLt : i < result.nodes.size), result[i] = .done ↔ i = 0 := by
   induction e generalizing nfa next result with
-  | empty | epsilon | char c | classes c =>
+  | empty | epsilon | anchor a | char c | classes c =>
     try let pd := Empty.intro eq
     try let pd := Epsilon.intro eq
+    try let pd := Anchor.intro eq
     try let pd := Char.intro eq
     try let pd := Classes.intro eq
     simp [pd.eq_result eq, pd.eq', pushRegex]

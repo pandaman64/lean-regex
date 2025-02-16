@@ -23,6 +23,9 @@ theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
   next =>
     simp [toRegexAux] at h
     simp [←h, Expr.tags]
+  next =>
+    simp [toRegexAux] at h
+    simp [←h, Expr.tags]
   next index ast index'' e' h' ih =>
     simp [toRegexAux, h'] at h
     have ⟨le, ih⟩ := ih h'
@@ -60,6 +63,7 @@ theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
 
 theorem toRegexAux_disjoint (index : Nat) (ast : Ast) : Expr.Disjoint (ast.toRegexAux index).2 := by
   induction index, ast using Ast.toRegexAux.induct
+  next => simp [toRegexAux, Expr.Disjoint]
   next => simp [toRegexAux, Expr.Disjoint]
   next => simp [toRegexAux, Expr.Disjoint]
   next => simp [toRegexAux, Expr.Disjoint]

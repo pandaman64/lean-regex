@@ -34,6 +34,12 @@ def εClosure' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
       | .epsilon state' =>
         have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
         εClosure' nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+      | .anchor anchor state' =>
+        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+        if anchor.test it then
+          εClosure' nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+        else
+          εClosure' nfa wf it matched ⟨states', next.updates⟩ stack'
       | .split state₁ state₂ =>
         have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
         εClosure' nfa wf it matched ⟨states', next.updates⟩ ((update, ⟨state₁, isLt.1⟩) :: (update, ⟨state₂, isLt.2⟩):: stack')
@@ -55,54 +61,90 @@ def εClosure' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
 termination_by (next.states.measure, stack)
 
 -- Cleaner version of the fuction induction principle
--- Using tactics in the body crashes Lean due to too high memory usage
+-- It's crucial to annotate the types of the arguments of the branches. Otherwise, Lean consumse
+-- too much memory. See https://github.com/leanprover/lean4/issues/6753.
 theorem εClosure'.induct' (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (motive : Option (List (Nat × Pos)) → SearchState' nfa → εStack' nfa → Prop)
-  (base : ∀ matched next, motive matched next [])
+  (base : ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa), motive matched next [])
   (visited :
-    ∀ matched next update state stack',
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa),
     state ∈ next.states →
     motive matched next stack' →
     motive matched next ((update, state) :: stack'))
-  (epsilon : ∀ matched next update state stack' state',
+  (epsilon :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (state' : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .epsilon state' →
-    let next' := ⟨next.states.insert state, next.updates⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates⟩;
     motive matched next' ((update, state') :: stack') →
     motive matched next ((update, state) :: stack'))
-  (split : ∀ matched next update state stack' state₁ state₂,
+  (anchor_pos :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (anchor : Data.Anchor) (state' : Fin nfa.nodes.size),
+    state ∉ next.states → nfa[state] = .anchor anchor state' →
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates⟩;
+    anchor.test it →
+    motive matched next' ((update, state') :: stack') →
+    motive matched next ((update, state) :: stack'))
+  (anchor_neg :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (anchor : Data.Anchor) (state' : Fin nfa.nodes.size),
+    state ∉ next.states → nfa[state] = .anchor anchor state' →
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates⟩;
+    ¬anchor.test it →
+    motive matched next' stack' →
+    motive matched next ((update, state) :: stack'))
+  (split :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (state₁ : Fin nfa.nodes.size) (state₂ : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .split state₁ state₂ →
-    let next' := ⟨next.states.insert state, next.updates⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates⟩;
     motive matched next' ((update, state₁) :: (update, state₂) :: stack') →
     motive matched next ((update, state) :: stack'))
-  (save : ∀ matched next update state stack' offset state',
+  (save :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (offset : Nat) (state' : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .save offset state' →
-    let next' := ⟨next.states.insert state, next.updates⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates⟩;
     motive matched next' ((update ++ [(offset, it.pos)], state') :: stack') →
     motive matched next ((update, state) :: stack'))
-  (done : ∀ matched next update state stack',
+  (done :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa),
     state ∉ next.states → nfa[state] = .done →
-    let next' := ⟨next.states.insert state, next.updates.set state update⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates.set state update⟩;
     motive (matched <|> .some update) next' stack' →
     motive matched next ((update, state) :: stack'))
-  (char : ∀ matched next update state stack' c (state' : Fin nfa.nodes.size),
+  (char :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (c : Char) (state' : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .char c state' →
-    let next' := ⟨next.states.insert state, next.updates.set state update⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates.set state update⟩;
     motive matched next' stack' →
     motive matched next ((update, state) :: stack'))
-  (sparse : ∀ matched next update state stack' cs (state' : Fin nfa.nodes.size),
+  (sparse :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
     state ∉ next.states → nfa[state] = .sparse cs state' →
-    let next' := ⟨next.states.insert state, next.updates.set state update⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates.set state update⟩;
     motive matched next' stack' →
     motive matched next ((update, state) :: stack'))
-  (fail : ∀ matched next update state stack',
+  (fail :
+    ∀ (matched : Option (List (Nat × Pos))) (next : SearchState' nfa) (update : List (Nat × Pos))
+      (state : Fin nfa.nodes.size) (stack' : εStack' nfa),
     state ∉ next.states → nfa[state] = .fail →
-    let next' := ⟨next.states.insert state, next.updates⟩;
+    let next' : SearchState' nfa := ⟨next.states.insert state, next.updates⟩;
     motive matched next' stack' →
     motive matched next ((update, state) :: stack')) :
   ∀ matched next stack, motive matched next stack := fun matched next stack =>
     εClosure'.induct nfa wf it motive base visited
       (fun matched next update state stack' mem state' hn isLt ih =>
         epsilon matched next update state stack' ⟨state', isLt⟩ mem hn ih)
+      (fun matched next update state stack' mem a state' hn isLt h ih =>
+        anchor_pos matched next update state stack' a ⟨state', isLt⟩ mem hn h ih)
+      (fun matched next update state stack' mem a state' hn isLt h ih =>
+        anchor_neg matched next update state stack' a ⟨state', isLt⟩ mem hn h ih)
       (fun matched next update state stack' mem state₁ state₂ hn isLt ih =>
         split matched next update state stack' ⟨state₁, isLt.1⟩ ⟨state₂, isLt.2⟩ mem hn ih)
       (fun matched next update state stack' mem offset state' hn isLt ih =>
@@ -138,6 +180,26 @@ theorem εClosure'_visited {update state stack'} (hmem : state ∈ next.states) 
 theorem εClosure'_epsilon {update state stack' state'} (hmem : state ∉ next.states) (hn : nfa[state] = .epsilon state') :
   εClosure' nfa wf it matched next ((update, state) :: stack') =
   εClosure' nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, state') :: stack') := by
+  conv =>
+    lhs
+    unfold εClosure'
+    simp [hmem]
+  split <;> simp_all
+
+@[simp]
+theorem εClosure'_anchor_pos {update state stack' anchor state'} (hmem : state ∉ next.states) (hn : nfa[state] = .anchor anchor state') (h : anchor.test it) :
+  εClosure' nfa wf it matched next ((update, state) :: stack') =
+  εClosure' nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, state') :: stack') := by
+  conv =>
+    lhs
+    unfold εClosure'
+    simp [hmem]
+  split <;> simp_all
+
+@[simp]
+theorem εClosure'_anchor_neg {update state stack' anchor state'} (hmem : state ∉ next.states) (hn : nfa[state] = .anchor anchor state') (h : ¬anchor.test it) :
+  εClosure' nfa wf it matched next ((update, state) :: stack') =
+  εClosure' nfa wf it matched ⟨next.states.insert state, next.updates⟩ stack' := by
   conv =>
     lhs
     unfold εClosure'

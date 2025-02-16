@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open Regex.Syntax.Parser (Ast)
 open Regex.Syntax.Parser.Combinators
-open Regex.Data (PerlClass PerlClassKind Class Classes Expr)
+open Regex.Data (Anchor PerlClass PerlClassKind Class Classes Expr)
 open String (Iterator)
 
 namespace Regex.Syntax.Parser
@@ -82,6 +82,10 @@ def plainChar : Parser.LT Error Char :=
   anyCharOrError.guard fun c =>
     if specialCharacters.contains c then throw (.unexpectedChar c)
     else .ok c
+
+def anchor : Parser.LT Error Ast :=
+  (charOrError '^' |>.mapConst (.anchor .start))
+  <|> (charOrError '$' |>.mapConst (.anchor .eos))
 
 def dot : Parser.LT Error Ast :=
   charOrError '.' |>.mapConst .dot
@@ -196,7 +200,12 @@ def group (it : Iterator) : Result.LT it Error Ast :=
 termination_by (it.remainingBytes, 0)
 
 def primary (it : Iterator) : Result.LT it Error Ast :=
-  group it <|> classes it <|> dot it <|> (escapedCharToAst <$> escapedChar it) <|> (.char <$> plainChar it)
+  group it
+  <|> classes it
+  <|> dot it
+  <|> (anchor it)
+  <|> (escapedCharToAst <$> escapedChar it)
+  <|> (.char <$> plainChar it)
 termination_by (it.remainingBytes, 10)
 
 def repetition1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=

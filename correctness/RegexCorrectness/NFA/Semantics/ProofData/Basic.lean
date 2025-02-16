@@ -61,6 +61,44 @@ theorem path_start_iff (next_lt : next < nfa.nodes.size) :
 
 end Epsilon
 
+namespace Anchor
+
+variable [Anchor] {span j span' update}
+
+theorem step_start_iff :
+  nfa'.Step nfa.nodes.size nfa'.start span j span' update ↔
+  j = next ∧ span' = span ∧ update = .none ∧ anchor.test span.iterator := by
+  have lt : nfa'.start < nfa'.nodes.size := by
+    simp [size_eq, start_eq]
+  have : nfa'[nfa'.start] = .anchor anchor next := by
+    simp [start_eq, get_eq]
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨hj, hspan, hupdate, hcond⟩
+    simp_all
+    exact .anchor (by simp [start_eq]) lt this hcond
+
+theorem path_start_iff (next_lt : next < nfa.nodes.size) :
+  nfa'.Path nfa.nodes.size nfa'.start span j span' update ↔
+  j = next ∧ span' = span ∧ update = [] ∧ anchor.test span.iterator := by
+  apply Iff.intro
+  . intro path
+    cases path with
+    | last step =>
+      simp [step_start_iff] at step
+      simp [step]
+    | more step rest =>
+      simp [step_start_iff] at step
+      simp [step] at rest
+      have ge := rest.ge
+      omega
+  . intro ⟨hj, hspan, hupdate, hcond⟩
+    simp_all
+    exact .last (step_start_iff.mpr ⟨rfl, rfl, rfl, hcond⟩)
+
+end Anchor
+
 namespace Char
 
 variable [Char] {span j span' update}

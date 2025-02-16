@@ -48,6 +48,12 @@ def εClosure {bufferSize : Nat} (nfa : NFA) (wf : nfa.WellFormed) (it : Iterato
         | .epsilon state' =>
           have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
           εClosure nfa wf it matched ⟨states', updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+        | .anchor a state' =>
+          have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+          if a.test it then
+            εClosure nfa wf it matched ⟨states', updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+          else
+            εClosure nfa wf it matched ⟨states', updates⟩ stack'
         | .split state₁ state₂ =>
           have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
           εClosure nfa wf it matched ⟨states', updates⟩ ((update, ⟨state₁, isLt.1⟩) :: (update, ⟨state₂, isLt.2⟩):: stack')

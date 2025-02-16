@@ -18,7 +18,7 @@ theorem EquivUpdate.materialize {e : Expr} {n span span' groups updates}
   (eqv : EquivUpdate groups updates) :
   EquivMaterializedUpdate (materializeRegexGroups groups) (materializeUpdates n updates) := by
   induction c generalizing updates with
-  | char | sparse | epsilon | starEpsilon =>
+  | char | sparse | epsilon | anchor | starEpsilon =>
     cases eqv with
     | empty => simp [EquivMaterializedUpdate]
   | @group span span' groups tag e c ih =>

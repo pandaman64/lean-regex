@@ -35,6 +35,10 @@ theorem pushRegex_wf {nfa : NFA} {next e}
     simp [pushRegex]
     apply pushNode_wf wf
     exact Nat.lt_trans next_lt (by omega)
+  | anchor a =>
+    simp [pushRegex]
+    apply pushNode_wf wf
+    exact Nat.lt_trans next_lt (by omega)
   | char c =>
     simp [pushRegex]
     apply pushNode_wf wf

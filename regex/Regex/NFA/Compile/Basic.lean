@@ -43,6 +43,7 @@ theorem pushNode_start_eq {nfa : NFA} {node : Node} : (nfa.pushNode node).start 
 def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
   | .empty => nfa.pushNode .fail
   | .epsilon => nfa.pushNode (.epsilon next)
+  | .anchor a => nfa.pushNode (.anchor a next)
   | .char c => nfa.pushNode (.char c next)
   | .classes cs => nfa.pushNode (.sparse cs next)
   | .group index r =>

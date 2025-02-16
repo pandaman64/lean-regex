@@ -31,8 +31,8 @@ theorem stepChar.subset (h : stepChar' nfa wf it currentUpdates next state = (ma
   next => simp_all [SparseSet.subset_self]
 
 theorem stepChar.lower_bound (h : stepChar' nfa wf it currentUpdates next state = (matched', next'))
-  (lb : εClosure.LowerBound next.states) :
-  εClosure.LowerBound next'.states := by
+  (lb : εClosure.LowerBound it.next next.states) :
+  εClosure.LowerBound it.next next'.states := by
   simp [stepChar'] at h
   split at h
   next c' state' hn =>
@@ -83,19 +83,29 @@ theorem stepChar.done_of_matched_some (h : stepChar' nfa wf it currentUpdates ne
 
 theorem mem_next_of_stepChar {l m r i j k update}
   (h : stepChar' nfa wf it currentUpdates next i = (matched', next'))
-  (lb : εClosure.LowerBound next.states)
-  (step : nfa.CharStep l m it.curr r i j) (cls : nfa.εClosure' ⟨l, it.curr :: m, r⟩ j k update) :
+  (lb : εClosure.LowerBound it.next next.states)
+  (step : nfa.CharStep l m it.curr r i j) (cls : nfa.εClosure' ⟨l, it.curr :: m, r⟩ j k update) (eqit : Span.iterator ⟨l, m, it.curr :: r⟩ = it) :
   k ∈ next'.states := by
   simp [stepChar'] at h
   split at h
   next c' j' hn =>
     rw [CharStep.char hn] at step
     simp [←step] at h
-    apply mem_next_of_εClosure h lb cls
+    generalize hspan : (⟨l, m, it.curr :: r⟩ : Span) = span at eqit
+    have eqit_next : span.next.iterator = it.next := by
+      simp [←eqit]
+      exact Span.next_iterator' hspan.symm
+    simp [Span.next_eq' hspan.symm] at eqit_next
+    exact mem_next_of_εClosure h lb cls eqit_next
   next cs j' hn =>
     rw [CharStep.sparse hn] at step
     simp [step.1, ←step.2] at h
-    apply mem_next_of_εClosure h lb cls
+    generalize hspan : (⟨l, m, it.curr :: r⟩ : Span) = span at eqit
+    have eqit_next : span.next.iterator = it.next := by
+      simp [←eqit]
+      exact Span.next_iterator' hspan.symm
+    simp [Span.next_eq' hspan.symm] at eqit_next
+    exact mem_next_of_εClosure h lb cls eqit_next
   next ne₁ ne₂ =>
     have := step.char_or_sparse
     simp_all
@@ -115,7 +125,7 @@ theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.ite
     next eqc =>
       subst it c
       have ⟨r', eqr⟩ := span.exists_cons_of_not_atEnd notEnd
-      have := εClosure.write_updates_of_mem_next span.next (span.next_curr_eq_next_pos eqr) h mem
+      have := εClosure.write_updates_of_mem_next span.next (span.next_iterator eqr) h mem
       match this with
       | .inl mem => exact .inl mem
       | .inr ⟨update', cls, write⟩ =>
@@ -127,7 +137,7 @@ theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.ite
     next cmem =>
       subst it
       have ⟨r', eqr⟩ := span.exists_cons_of_not_atEnd notEnd
-      have := εClosure.write_updates_of_mem_next span.next (span.next_curr_eq_next_pos eqr) h mem
+      have := εClosure.write_updates_of_mem_next span.next (span.next_iterator eqr) h mem
       match this with
       | .inl mem => exact .inl mem
       | .inr ⟨update', cls, write⟩ =>
@@ -137,8 +147,8 @@ theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.ite
   next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
 
 theorem eachStepChar.go.lower_bound {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
-  (lb : εClosure.LowerBound next.states) :
-  εClosure.LowerBound next'.states := by
+  (lb : εClosure.LowerBound it.next next.states) :
+  εClosure.LowerBound it.next next'.states := by
   induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
   | base next => simp_all
   | found i hlt next matched next'' h' found =>
