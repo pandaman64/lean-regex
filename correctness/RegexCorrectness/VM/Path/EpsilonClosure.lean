@@ -29,21 +29,24 @@ theorem εStep'.fail (hn : nfa[i] = .fail) :
 theorem εStep'.epsilon {next} (hn : nfa[i] = .epsilon next) :
   nfa.εStep' span i j update ↔ j = next ∧ update = .none := by
   simp [εStep', Step.iff_epsilon hn]
-  intro _
+  omega
+
+@[simp]
+theorem εStep'.anchor {anchor next} (hn : nfa[i] = .anchor anchor next) :
+  nfa.εStep' span i j update ↔ j = next ∧ update = .none ∧ anchor.test span.iterator := by
+  simp [εStep', Step.iff_anchor hn]
   omega
 
 @[simp]
 theorem εStep'.split {next₁ next₂} (hn : nfa[i] = .split next₁ next₂) :
   nfa.εStep' span i j update ↔ (j = next₁ ∨ j = next₂) ∧ update = .none := by
   simp [εStep', Step.iff_split hn]
-  intro _
   omega
 
 @[simp]
 theorem εStep'.save {offset next} (hn : nfa[i] = .save offset next) :
   nfa.εStep' span i j update ↔ j = next ∧ update = .some (offset, span.curr) := by
   simp [εStep', Step.iff_save hn]
-  intro _
   omega
 
 @[simp]

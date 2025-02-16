@@ -103,6 +103,15 @@ theorem iff_epsilon {next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .epsilon nex
     simp_all
     exact .epsilon ge lt eq
 
+theorem iff_anchor {anchor next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .anchor anchor next) :
+  nfa.Step lb i span j span' update ↔ lb ≤ i ∧ j = next ∧ span' = span ∧ update = .none ∧ anchor.test span.iterator := by
+  apply Iff.intro
+  . intro step
+    cases step <;> simp_all
+  . intro ⟨ge, hj, hspan, hupdate, htest⟩
+    simp_all
+    exact .anchor ge lt eq htest
+
 theorem iff_split {next₁ next₂} {lt : i < nfa.nodes.size} (eq : nfa[i] = .split next₁ next₂) :
   nfa.Step lb i span j span' update ↔ lb ≤ i ∧ (j = next₁ ∨ j = next₂) ∧ span' = span ∧ update = .none := by
   apply Iff.intro

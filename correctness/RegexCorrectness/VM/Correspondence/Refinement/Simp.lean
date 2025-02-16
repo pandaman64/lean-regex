@@ -35,6 +35,26 @@ theorem εClosure_epsilon {update state stack' state'} (hmem : state ∉ next.st
   split <;> simp [*] at hn; simp_all
 
 @[simp]
+theorem εClosure_anchor_pos {update state stack' anchor state'} (hmem : state ∉ next.states) (hn : nfa[state] = .anchor anchor state') (h : anchor.test it) :
+  εClosure nfa wf it matched next ((update, state) :: stack') =
+  εClosure nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, ⟨state', wf.inBounds' state hn⟩) :: stack') := by
+  conv =>
+    lhs
+    unfold εClosure
+    simp [hmem]
+  split <;> simp [*] at hn; simp_all
+
+@[simp]
+theorem εClosure_anchor_neg {update state stack' anchor state'} (hmem : state ∉ next.states) (hn : nfa[state] = .anchor anchor state') (h : ¬anchor.test it) :
+  εClosure nfa wf it matched next ((update, state) :: stack') =
+  εClosure nfa wf it matched ⟨next.states.insert state, next.updates⟩ stack' := by
+  conv =>
+    lhs
+    unfold εClosure
+    simp [hmem]
+  split <;> simp [*] at hn; simp_all
+
+@[simp]
 theorem εClosure_split {update state stack' state₁ state₂} (hmem : state ∉ next.states) (hn : nfa[state] = .split state₁ state₂) :
   εClosure nfa wf it matched next ((update, state) :: stack') =
   εClosure nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, ⟨state₁, (wf.inBounds' state hn).1⟩) :: (update, ⟨state₂, (wf.inBounds' state hn).2⟩) :: stack') := by

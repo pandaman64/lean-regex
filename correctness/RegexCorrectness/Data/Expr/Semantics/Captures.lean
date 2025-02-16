@@ -1,7 +1,6 @@
 import Regex.Data.Expr
 import RegexCorrectness.Data.Span
 import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
-import RegexCorrectness.Data.Expr.Semantics.Matches
 
 set_option autoImplicit false
 
@@ -11,6 +10,7 @@ inductive Expr.Captures : Span → Span → CaptureGroups → Expr → Prop wher
   | char {l m r} (c : Char) : Expr.Captures ⟨l, m, c :: r⟩ ⟨l, c :: m, r⟩ .empty (.char c)
   | sparse {l m c r cs} (h : c ∈ cs) : Expr.Captures ⟨l, m, c :: r⟩ ⟨l, c :: m, r⟩ .empty (.classes cs)
   | epsilon {span} : Expr.Captures span span .empty .epsilon
+  | anchor {span anchor} (h : anchor.test span.iterator) : Expr.Captures span span .empty (.anchor anchor)
   | group {span span' groups tag e} (cap : Expr.Captures span span' groups e) :
     Expr.Captures span span' (.group tag span.curr span'.curr groups) (.group tag e)
   | alternateLeft {span span' groups e₁ e₂} (cap : Expr.Captures span span' groups e₁) :
@@ -29,6 +29,7 @@ theorem Expr.Captures.span_eq {span span' groups e} (c : Expr.Captures span span
   | char c => exists [c]
   | @sparse l m c r cs mem => exists [c]
   | epsilon => exists []
+  | anchor h => exists []
   | group _ ih => exact ih
   | alternateLeft _ ih => exact ih
   | alternateRight _ ih => exact ih
@@ -41,58 +42,5 @@ theorem Expr.Captures.span_eq {span span' groups e} (c : Expr.Captures span span
     have ⟨m₁, eql₁, eqm₁, eqr₁⟩ := ih₁
     have ⟨m₂, eql₂, eqm₂, eqr₂⟩ := ih₂
     exact ⟨m₁ ++ m₂, by simp [eql₁, eql₂], by simp [←eqm₁, ←eqm₂], by simp [eqr₁, eqr₂]⟩
-
--- NOTE: this will not be true once we add anchors (^ and $).
-theorem captures_of_matches {l n₁ n₂ r e} (m : Expr.matches n₂ e) :
-  ∃ groups, Expr.Captures ⟨l, n₁, n₂ ++ r⟩ ⟨l, n₂.reverse ++ n₁, r⟩ groups e := by
-  induction m generalizing n₁ r with
-  | char c => exact ⟨.empty, .char c⟩
-  | sparse cs c mem => exact ⟨.empty, .sparse mem⟩
-  | epsilon => exact ⟨.empty, .epsilon⟩
-  | group m ih =>
-    have ⟨groups, cap⟩ := @ih n₁ r
-    exact ⟨.group _ _ _ groups, .group cap⟩
-  | alternateLeft m ih =>
-    have ⟨groups, cap⟩ := @ih n₁ r
-    exact ⟨groups, .alternateLeft cap⟩
-  | alternateRight m ih =>
-    have ⟨groups, cap⟩ := @ih n₁ r
-    exact ⟨groups, .alternateRight cap⟩
-  | concat cs₁ cs₂ _ _ m₁ m₂ ih₁ ih₂ =>
-    have ⟨groups₁, cap₁⟩ := @ih₁ n₁ (cs₂ ++ r)
-    have ⟨groups₂, cap₂⟩ := @ih₂ (cs₁.reverse ++ n₁) r
-    exact ⟨.concat groups₁ groups₂, by simp; exact .concat cap₁ cap₂⟩
-  | starEpsilon => exact ⟨.empty, .starEpsilon⟩
-  | starConcat cs₁ cs₂ _ _ _ ih₁ ih₂ =>
-    have ⟨groups₁, cap₁⟩ := @ih₁ n₁ (cs₂ ++ r)
-    have ⟨groups₂, cap₂⟩ := @ih₂ (cs₁.reverse ++ n₁) r
-    exact ⟨.concat groups₁ groups₂, by simp; exact .starConcat cap₁ cap₂⟩
-
-theorem matches_of_captures {span span' groups e} (c : Expr.Captures span span' groups e) :
-  ∃ n, Expr.matches n e ∧ span'.l = span.l ∧ span'.m = n.reverse ++ span.m ∧ n ++ span'.r = span.r := by
-  induction c with
-  | char c => exact ⟨[c], .char c, rfl, rfl, rfl⟩
-  | sparse mem => exact ⟨[_], .sparse _ _ mem, rfl, rfl, rfl⟩
-  | epsilon => exact ⟨[], .epsilon, rfl, rfl, rfl⟩
-  | group _ ih =>
-    have ⟨n, m, _⟩ := ih
-    exists n, .group m
-  | alternateLeft _ ih =>
-    have ⟨n, m, _⟩ := ih
-    exists n, .alternateLeft m
-  | alternateRight _ ih =>
-    have ⟨n, m, _⟩ := ih
-    exists n, .alternateRight m
-  | concat _ _ ih₁ ih₂ =>
-    have ⟨n₁, m₁, h₁⟩ := ih₁
-    have ⟨n₂, m₂, h₂⟩ := ih₂
-    exists n₁ ++ n₂, .concat _ _ _ _ m₁ m₂
-    simp [h₁, h₂]
-  | starEpsilon => exact ⟨[], .starEpsilon, rfl, rfl, rfl⟩
-  | starConcat _ _ ih₁ ih₂ =>
-    have ⟨n₁, m₁, h₁⟩ := ih₁
-    have ⟨n₂, m₂, h₂⟩ := ih₂
-    exists n₁ ++ n₂, .starConcat _ _ _ m₁ m₂
-    simp [h₁, h₂]
 
 end Regex.Data

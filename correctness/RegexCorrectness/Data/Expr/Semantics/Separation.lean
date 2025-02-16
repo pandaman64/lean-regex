@@ -25,6 +25,7 @@ theorem Captures.mem_tags_of_mem_groups {e : Expr} {span span' groups} (c : e.Ca
   | char => simp at mem
   | sparse => simp at mem
   | epsilon => simp at mem
+  | anchor h => simp at mem
   | group _ ih =>
     simp at mem
     cases mem with

@@ -29,6 +29,12 @@ theorem εClosure.subset (h : εClosure' nfa wf it matched next stack = (matched
   | epsilon matched next update state stack' state' mem hn next' ih =>
     rw [εClosure'_epsilon mem hn] at h
     exact (SparseSet.subset_trans SparseSet.subset_insert (ih h))
+  | anchor_pos matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    exact (SparseSet.subset_trans SparseSet.subset_insert (ih h))
+  | anchor_neg matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
+    exact (SparseSet.subset_trans SparseSet.subset_insert (ih h))
   | split matched next update state stack' state₁ state₂ mem hn next' ih =>
     rw [εClosure'_split mem hn] at h
     exact (SparseSet.subset_trans SparseSet.subset_insert (ih h))
@@ -64,6 +70,24 @@ theorem εClosure.mem_next_of_mem_stack {i update} (h : εClosure' nfa wf it mat
     | .inr mem => exact ih h mem
   | epsilon matched next update state stack' state' mem hn next' ih =>
     rw [εClosure'_epsilon mem hn] at h
+    simp at mem_stack
+    match mem_stack with
+    | .inl ⟨_, eq⟩ =>
+      subst i
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
+    | .inr mem => exact ih h (by simp [mem])
+  | anchor_pos matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    simp at mem_stack
+    match mem_stack with
+    | .inl ⟨_, eq⟩ =>
+      subst i
+      have := εClosure.subset h
+      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert this
+    | .inr mem => exact ih h (by simp [mem])
+  | anchor_neg matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
     simp at mem_stack
     match mem_stack with
     | .inl ⟨_, eq⟩ =>
@@ -139,6 +163,12 @@ theorem εClosure.eq_updates_of_mem_next {i} (h : εClosure' nfa wf it matched n
   | epsilon matched next update state stack' state' mem hn next' ih =>
     rw [εClosure'_epsilon mem hn] at h
     exact ih h (SparseSet.mem_insert_of_mem mem')
+  | anchor_pos matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    exact ih h (SparseSet.mem_insert_of_mem mem')
+  | anchor_neg matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
+    exact ih h (SparseSet.mem_insert_of_mem mem')
   | split matched next update state stack' state₁ state₂ mem hn next' ih =>
     rw [εClosure'_split mem hn] at h
     exact ih h (SparseSet.mem_insert_of_mem mem')
@@ -186,6 +216,12 @@ theorem εClosure.eq_matched_some (h : εClosure' nfa wf it matched next stack =
   | epsilon matched next update state stack' state' mem hn next' ih =>
     rw [εClosure'_epsilon mem hn] at h
     exact ih h isSome
+  | anchor_pos matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    exact ih h isSome
+  | anchor_neg matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
+    exact ih h isSome
   | split matched next update state stack' state₁ state₂ mem hn next' ih =>
     rw [εClosure'_split mem hn] at h
     exact ih h isSome
@@ -223,6 +259,18 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
     exact ih h inv
   | epsilon matched next update state stack' state' mem hn next'' ih =>
     rw [εClosure'_epsilon mem hn] at h
+    have inv' (isSome : matched.isSome) : ∃ i ∈ next''.states, nfa[i] = .done ∧ next''.updates[i] = matched.get isSome := by
+      have ⟨i, mem', hdone, eq⟩ := inv isSome
+      exact ⟨i, SparseSet.mem_insert_of_mem mem', hdone, eq⟩
+    exact ih h inv'
+  | anchor_pos matched next update state stack' anchor state' mem hn next'' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    have inv' (isSome : matched.isSome) : ∃ i ∈ next''.states, nfa[i] = .done ∧ next''.updates[i] = matched.get isSome := by
+      have ⟨i, mem', hdone, eq⟩ := inv isSome
+      exact ⟨i, SparseSet.mem_insert_of_mem mem', hdone, eq⟩
+    exact ih h inv'
+  | anchor_neg matched next update state stack' anchor state' mem hn next'' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
     have inv' (isSome : matched.isSome) : ∃ i ∈ next''.states, nfa[i] = .done ∧ next''.updates[i] = matched.get isSome := by
       have ⟨i, mem', hdone, eq⟩ := inv isSome
       exact ⟨i, SparseSet.mem_insert_of_mem mem', hdone, eq⟩
@@ -298,28 +346,28 @@ theorem εClosure.matched_inv (h : εClosure' nfa wf it matched next stack = (ma
       exact ⟨i, SparseSet.mem_insert_of_mem mem', hdone, eq⟩
     exact ih h inv'
 
-def εClosure.LowerInvStep (states : SparseSet nfa.nodes.size) (stack : εStack' nfa) : Prop :=
-  ∀ i j span update, i ∈ states → nfa.εStep' span i j update →
+def εClosure.LowerInvStep (it : Iterator) (states : SparseSet nfa.nodes.size) (stack : εStack' nfa) : Prop :=
+  ∀ i j span update, i ∈ states → nfa.εStep' span i j update → span.iterator = it →
     j ∈ states ∨ ∃ update', (update', j) ∈ stack
 
-def εClosure.LowerBoundStep (states : SparseSet nfa.nodes.size) : Prop :=
-  ∀ i j span update, i ∈ states → nfa.εStep' span i j update →
+def εClosure.LowerBoundStep (it : Iterator) (states : SparseSet nfa.nodes.size) : Prop :=
+  ∀ i j span update, i ∈ states → nfa.εStep' span i j update → span.iterator = it →
     j ∈ states
 
-def εClosure.LowerBound (states : SparseSet nfa.nodes.size) : Prop :=
-  ∀ i j span update, i ∈ states → nfa.εClosure' span i j update →
+def εClosure.LowerBound (it : Iterator) (states : SparseSet nfa.nodes.size) : Prop :=
+  ∀ i j span update, i ∈ states → nfa.εClosure' span i j update → span.iterator = it →
     j ∈ states
 
-theorem εClosure.LowerBound.of_step {states : SparseSet nfa.nodes.size} (h : εClosure.LowerBoundStep states) :
-  εClosure.LowerBound states := by
-  intro i j span update mem cls
+theorem εClosure.LowerBound.of_step {it : Iterator} {states : SparseSet nfa.nodes.size} (h : εClosure.LowerBoundStep it states) :
+  εClosure.LowerBound it states := by
+  intro i j span update mem cls eqit
   induction cls with
   | base => exact mem
-  | step step _ ih => exact ih (h _ _ _ _ mem step)
+  | step step _ ih => exact ih (h _ _ _ _ mem step eqit)
 
-theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack = (matched', next'))
-  (inv : εClosure.LowerInvStep next.states stack) :
-  εClosure.LowerBoundStep next'.states := by
+theorem εClosure.lower_bound_step {it : Iterator} (h : εClosure' nfa wf it matched next stack = (matched', next'))
+  (inv : εClosure.LowerInvStep it next.states stack) :
+  εClosure.LowerBoundStep it next'.states := by
   induction matched, next, stack using εClosure'.induct' nfa wf it with
   | base matched next =>
     simp_all
@@ -329,9 +377,9 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact this
   | visited matched next update state stack mem ih =>
     simp [*] at h
-    have inv' : εClosure.LowerInvStep next.states stack := by
-      intro i j span update mem' step'
-      have := inv i j span update mem' step'
+    have inv' : εClosure.LowerInvStep it next.states stack := by
+      intro i j span update mem' step' eqit
+      have := inv i j span update mem' step' eqit
       match this with
       | .inl mem => exact .inl mem
       | .inr ⟨update', mem''⟩ =>
@@ -342,14 +390,48 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | epsilon matched next update state stack' state' mem hn next' ih =>
     rw [εClosure'_epsilon mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) ((update, state') :: stack') := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) ((update, state') :: stack') := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq =>
         simp [eq, εStep'.epsilon hn] at step'
         exact .inr ⟨update, by simp [step']⟩
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
+        | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
+        | .inr ⟨update'', mem'''⟩ =>
+          simp at mem'''
+          cases mem''' with
+          | inl h => exact .inl (h.2 ▸ SparseSet.mem_insert)
+          | inr mem => exact .inr ⟨update'', by simp [mem]⟩
+    exact ih h inv'
+  | anchor_pos matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) ((update, state') :: stack') := by
+      intro i j span update' mem' step' eqit
+      cases SparseSet.eq_or_mem_of_mem_insert mem' with
+      | inl eq =>
+        simp [eq, εStep'.anchor hn] at step'
+        exact .inr ⟨update, by simp [step']⟩
+      | inr mem'' =>
+        match inv i j span update' mem'' step' eqit with
+        | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
+        | .inr ⟨update'', mem'''⟩ =>
+          simp at mem'''
+          cases mem''' with
+          | inl h => exact .inl (h.2 ▸ SparseSet.mem_insert)
+          | inr mem => exact .inr ⟨update'', by simp [mem]⟩
+    exact ih h inv'
+  | anchor_neg matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) stack' := by
+      intro i j span update' mem' step' eqit
+      cases SparseSet.eq_or_mem_of_mem_insert mem' with
+      | inl eq =>
+        simp [eq, εStep'.anchor hn, eqit] at step'
+        simp [step'] at test
+      | inr mem'' =>
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -359,8 +441,8 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | split matched next update state stack' state₁ state₂ mem hn next' ih =>
     rw [εClosure'_split mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) ((update, state₁) :: (update, state₂) :: stack') := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) ((update, state₁) :: (update, state₂) :: stack') := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq =>
         simp [eq, εStep'.split hn] at step'
@@ -368,7 +450,7 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
         | inl h => exact .inr ⟨update, by simp [h]⟩
         | inr h => exact .inr ⟨update, by simp [h]⟩
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -378,14 +460,14 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | save matched next update state stack' offset state' mem hn next' ih =>
     rw [εClosure'_save mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) ((update ++ [(offset, it.pos)], state') :: stack') := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) ((update ++ [(offset, it.pos)], state') :: stack') := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq =>
         simp [eq, εStep'.save hn] at step'
         exact .inr ⟨update ++ [(offset, it.pos)], by simp [step']⟩
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -395,12 +477,12 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | done matched next update state stack' mem hn next' ih =>
     rw [εClosure'_done mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) stack' := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) stack' := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq => simp [eq, εStep'.done hn] at step'
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -410,12 +492,12 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | char matched next update state stack' c state' mem hn next' ih =>
     rw [εClosure'_char mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) stack' := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) stack' := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq => simp [eq, εStep'.char hn] at step'
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -425,12 +507,12 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | sparse matched next update state stack' cs state' mem hn next' ih =>
     rw [εClosure'_sparse mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) stack' := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) stack' := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq => simp [eq, εStep'.sparse hn] at step'
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -440,12 +522,12 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
   | fail matched next update state stack' mem hn next' ih =>
     rw [εClosure'_fail mem hn] at h
-    have inv' : εClosure.LowerInvStep (next.states.insert state) stack' := by
-      intro i j span update' mem' step'
+    have inv' : εClosure.LowerInvStep it (next.states.insert state) stack' := by
+      intro i j span update' mem' step' eqit
       cases SparseSet.eq_or_mem_of_mem_insert mem' with
       | inl eq => simp [eq, εStep'.fail hn] at step'
       | inr mem'' =>
-        match inv i j span update' mem'' step' with
+        match inv i j span update' mem'' step' eqit with
         | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
         | .inr ⟨update'', mem'''⟩ =>
           simp at mem'''
@@ -455,11 +537,11 @@ theorem εClosure.lower_bound_step (h : εClosure' nfa wf it matched next stack 
     exact ih h inv'
 
 theorem εClosure.lower_bound {i update} (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next'))
-  (lb : εClosure.LowerBound next.states) :
-  εClosure.LowerBound next'.states := by
-  have inv : εClosure.LowerInvStep next.states [(update, i)] := by
-    intro i j span update mem step
-    exact .inl (lb _ _ _ _ mem (εClosure'.single step))
+  (lb : εClosure.LowerBound it next.states) :
+  εClosure.LowerBound it next'.states := by
+  have inv : εClosure.LowerInvStep it next.states [(update, i)] := by
+    intro i j span update mem step eqit
+    exact .inl (lb _ _ _ _ mem (εClosure'.single step) eqit)
   have lb_step := εClosure.lower_bound_step h inv
   exact εClosure.LowerBound.of_step lb_step
 
@@ -487,7 +569,7 @@ structure εClosure.UpperInv (states₀ : SparseSet nfa.nodes.size) (span₀ : S
 All new states in `next'` are reachable from the starting state `i₀` and have corresponding updates in `next'.updates`.
 -/
 theorem εClosure.upper_boundAux (states₀ : SparseSet nfa.nodes.size) (span₀ : Span) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Pos))
-  (eq_curr : span₀.curr = it.pos)
+  (eqit : span₀.iterator = it)
   (h : εClosure' nfa wf it matched next stack = (matched', next'))
   (inv₀ : εClosure.UpperInv states₀ span₀ i₀ update₀ next stack) :
   εClosure.UpperInv states₀ span₀ i₀ update₀ next' []  := by
@@ -525,6 +607,47 @@ theorem εClosure.upper_boundAux (states₀ : SparseSet nfa.nodes.size) (span₀
           simp at cls'
           exact ⟨update', equ, cls'⟩
         | .inr mem => exact inv₀.mem_stack u j (by simp [mem])
+      case mem_next =>
+        intro j mem
+        cases SparseSet.eq_or_mem_of_mem_insert mem with
+        | inl eq =>
+          subst j
+          exact .inr ⟨update', cls, by simp [WriteUpdate, hn]⟩
+        | inr mem => exact inv₀.mem_next j mem
+    exact ih h inv'
+  | anchor_pos matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_pos mem hn test] at h
+    have inv' : εClosure.UpperInv states₀ span₀ i₀ update₀ ⟨next.states.insert state, next.updates⟩ ((update, state') :: stack') := by
+      have ⟨update', equ, cls⟩ := inv₀.mem_stack update state (by simp)
+      refine ⟨?mem_stack, ?mem_next⟩
+      case mem_stack =>
+        intro u j mem
+        simp at mem
+        match mem with
+        | .inl ⟨equ, eqj⟩ =>
+          subst u j
+          have step : nfa.εStep' span₀ state state' .none := by
+            simp [εStep'.anchor hn, eqit, test]
+          have cls' := cls.snoc step
+          simp at cls'
+          exact ⟨update', equ, cls'⟩
+        | .inr mem => exact inv₀.mem_stack u j (by simp [mem])
+      case mem_next =>
+        intro j mem
+        cases SparseSet.eq_or_mem_of_mem_insert mem with
+        | inl eq =>
+          subst j
+          exact .inr ⟨update', cls, by simp [WriteUpdate, hn]⟩
+        | inr mem => exact inv₀.mem_next j mem
+    exact ih h inv'
+  | anchor_neg matched next update state stack' anchor state' mem hn next' test ih =>
+    rw [εClosure'_anchor_neg mem hn test] at h
+    have inv' : εClosure.UpperInv states₀ span₀ i₀ update₀ ⟨next.states.insert state, next.updates⟩ stack' := by
+      have ⟨update', equ, cls⟩ := inv₀.mem_stack update state (by simp)
+      refine ⟨?mem_stack, ?mem_next⟩
+      case mem_stack =>
+        intro u j mem
+        exact inv₀.mem_stack u j (by simp [mem])
       case mem_next =>
         intro j mem
         cases SparseSet.eq_or_mem_of_mem_insert mem with
@@ -579,7 +702,7 @@ theorem εClosure.upper_boundAux (states₀ : SparseSet nfa.nodes.size) (span₀
           have last : nfa.εStep' span₀ state state' (.some (offset, span₀.curr)) :=
             NFA.Step.save (Nat.zero_le _) state.isLt hn
           have := cls.snoc last
-          exact ⟨update' ++ [(offset, it.pos)], by simp [equ], eq_curr ▸ this⟩
+          exact ⟨update' ++ [(offset, it.pos)], by simp [equ], eqit ▸ this⟩
         | .inr mem => exact inv₀.mem_stack u j (by simp [mem])
       case mem_next =>
         intro j mem
@@ -655,11 +778,11 @@ theorem εClosure.UpperInv.intro {i₀ update₀} (span₀ : Span) :
     intro j mem
     exact .inl mem
 
-theorem εClosure.upper_bound {i update} (span : Span) (eq_curr : span.curr = it.pos)
+theorem εClosure.upper_bound {i update} (span : Span) (eqit : span.iterator = it)
   (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next')) :
   ∀ j ∈ next'.states, j ∈ next.states ∨
     ∃ update', nfa.εClosure' span i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') := by
-  have := εClosure.upper_boundAux next.states span i update eq_curr h (εClosure.UpperInv.intro span)
+  have := εClosure.upper_boundAux next.states span i update eqit h (εClosure.UpperInv.intro span)
   exact this.mem_next
 
 /--
@@ -667,32 +790,32 @@ theorem εClosure.upper_bound {i update} (span : Span) (eq_curr : span.curr = it
 -/
 theorem mem_next_of_εClosure {i update}
   (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next'))
-  (lb : εClosure.LowerBound next.states)
-  {j span update'} (cls : nfa.εClosure' span i j update') :
+  (lb : εClosure.LowerBound it next.states)
+  {j span update'} (cls : nfa.εClosure' span i j update') (eqit : span.iterator = it) :
   j ∈ next'.states := by
   have : i ∈ next'.states := εClosure.mem_next_of_mem_stack (update := update) h (by simp)
-  exact εClosure.lower_bound h lb _ _ _ _ this cls
+  exact εClosure.lower_bound h lb _ _ _ _ this cls eqit
 
 /--
 All states in `next'.states` are already in `next.states` or they are reachable from `i` with the
 updates written to `next'.updates`.
 -/
-theorem εClosure.write_updates_of_mem_next {i j update} (span : Span) (eq_curr : span.curr = it.pos)
+theorem εClosure.write_updates_of_mem_next {i j update} (span : Span) (eqit : span.iterator = it)
   (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next'))
   (mem : j ∈ next'.states) :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' span i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
-  εClosure.upper_bound span eq_curr h j mem
+  εClosure.upper_bound span eqit h j mem
 
 /--
 For all states in the ε-closure of `i`, it's already in `next.states` or there is a path from `i`
 whose updates are written to `next.updates`. The written update list can be different since the
 traversal may have reached the state through a different path.
 -/
-theorem write_updates_of_εClosure {i j update update'} (span : Span) (eq_curr : span.curr = it.pos)
+theorem write_updates_of_εClosure {i j update update'} (span : Span) (eqit : span.iterator = it)
   (h : εClosure' nfa wf it matched next [(update, i)] = (matched', next'))
-  (lb : εClosure.LowerBound next.states) (cls : nfa.εClosure' span i j update') :
+  (lb : εClosure.LowerBound it next.states) (cls : nfa.εClosure' span i j update') :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' span i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
-  εClosure.write_updates_of_mem_next span eq_curr h (mem_next_of_εClosure h lb cls)
+  εClosure.write_updates_of_mem_next span eqit h (mem_next_of_εClosure h lb cls eqit)
 
 theorem εClosure.inv_of_inv (h : εClosure' nfa wf it matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
   (v : it.Valid) (inv : next.Inv nfa wf it) :
@@ -706,7 +829,7 @@ theorem εClosure.inv_of_inv (h : εClosure' nfa wf it matched next [([], ⟨nfa
     simp [Span.curr, vf.pos, span]
   have eqit : span.iterator = it := by
     simp [Span.iterator, Iterator.ext_iff, eqs, eqp]
-  have := εClosure.write_updates_of_mem_next span eqp h mem
+  have := εClosure.write_updates_of_mem_next span eqit h mem
   match this with
   | .inl mem =>
     have equ := εClosure.eq_updates_of_mem_next h mem

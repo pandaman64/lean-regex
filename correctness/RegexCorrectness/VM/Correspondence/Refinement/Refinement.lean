@@ -112,6 +112,26 @@ theorem εClosure'.refines {result result'}
         simp [SearchState'.refines, h₂, refState.1, next'']
         exact refState.2
       exact ih h h' refMatched this (.cons h₁ rfl rest)
+  | anchor_pos matched' next' update state stack' anchor state' mem hn next'' test =>
+    rename_i ih
+    cases refStack with
+    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
+      rw [εClosure'_anchor_pos mem hn test] at h'
+      rw [εClosure_anchor_pos (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn) test] at h
+      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
+        simp [SearchState'.refines, h₂, refState.1, next'']
+        exact refState.2
+      exact ih h h' refMatched this (.cons h₁ rfl rest)
+  | anchor_neg matched' next' update state stack' anchor state' mem hn next'' test =>
+    rename_i ih
+    cases refStack with
+    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
+      rw [εClosure'_anchor_neg mem hn test] at h'
+      rw [εClosure_anchor_neg (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn) test] at h
+      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
+        simp [SearchState'.refines, h₂, refState.1, next'']
+        exact refState.2
+      exact ih h h' refMatched this rest
   | split matched' next' update state stack' state₁ state₂ mem hn next'' =>
     rename_i ih
     cases refStack with

@@ -23,6 +23,9 @@ def next (s : Span) : Span := ⟨s.l, s.r.headD default :: s.m, s.r.tail⟩
 theorem next_eq {s : Span} {c r'} (h : s.r = c :: r') : s.next = ⟨s.l, c :: s.m, r'⟩ := by
   simp [Span.next, h]
 
+theorem next_eq' {s : Span} {l m c r'} (h : s = ⟨l, m, c :: r'⟩) : s.next = ⟨l, c :: m, r'⟩ := by
+  simp [Span.next, h]
+
 theorem next_curr {s : Span} {c r'} (h : s.r = c :: r') : s.next.curr = s.curr + c := by
   simp [Span.next_eq h, Span.curr, Pos.ext_iff]
   omega
@@ -64,6 +67,9 @@ theorem next_iterator {s : Span} {c r'} (h : s.r = c :: r') : s.next.iterator = 
   rw [Span.iterator, Span.next_curr_eq_next_pos h, Span.next_toString h, Iterator.ext_iff]
   simp [Span.iterator]
   rfl
+
+theorem next_iterator' {s : Span} {l m c r'} (h : s = ⟨l, m, c :: r'⟩) : s.next.iterator = s.iterator.next := by
+  exact next_iterator (c := c) (r' := r') (by simp [h])
 
 end Span
 

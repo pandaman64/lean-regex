@@ -155,6 +155,12 @@ theorem path_of_captures (eq : nfa.pushRegex next e = result)
     simp [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     trivial
+  | anchor h =>
+    let pd := Anchor.intro eq
+    exists [], .empty
+    simp [pd.eq_result eq]
+    apply (pd.path_start_iff next_lt).mpr
+    trivial
   | group _ ih => exact path_of_captures.group eq wf next_lt ih
   | alternateLeft _ ih => exact path_of_captures.alternateLeft eq wf next_lt ih
   | alternateRight _ ih => exact path_of_captures.alternateRight eq wf next_lt ih

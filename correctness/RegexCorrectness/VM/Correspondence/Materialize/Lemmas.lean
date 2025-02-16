@@ -34,7 +34,7 @@ theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {span span' groups ta
   (c : e.Captures span span' groups) (isSome : (materializeRegexGroups groups tag).isSome) :
   tag ∈ e.tags := by
   induction c with
-  | char | sparse | epsilon | starEpsilon => simp at isSome
+  | char | sparse | epsilon | anchor h | starEpsilon => simp at isSome
   | @group _ _ groups' tag' _ _ ih =>
     simp at isSome
     split at isSome

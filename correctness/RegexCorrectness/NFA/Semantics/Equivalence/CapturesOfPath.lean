@@ -188,6 +188,12 @@ theorem captures_of_path (eq : nfa.pushRegex next e = result)
     have := (pd.path_start_iff next_lt).mp path
     simp [this]
     exact ⟨.empty, .empty, .epsilon⟩
+  | anchor a =>
+    let pd := Anchor.intro eq
+    simp [pd.eq_result eq] at path
+    have ⟨_, eqs, equ, test⟩:= (pd.path_start_iff next_lt).mp path
+    simp [eqs, equ]
+    exact ⟨.empty, .empty, .anchor test⟩
   | char c =>
     let pd := Char.intro eq
     simp [pd.eq_result eq] at path
