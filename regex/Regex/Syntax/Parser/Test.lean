@@ -48,5 +48,6 @@ local instance : DecidableEq (Except Error Ast) := decEq
   (.concat (.concat (.char 'c') (.char 'd')) (.group (.alternate (.char 'e') (.char 'f')))))
 
 #guard parseAst "a*b*c*" = .ok (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
+#guard parseAst "a?" = .ok (.alternate (.char 'a') .epsilon)
 
 end Regex.Syntax.Parser.Test

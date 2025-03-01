@@ -155,7 +155,7 @@ where
 def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
   match min, max with
   -- special case for well-known repetitions
-  | 0, .some 1 => .alternate ast .empty
+  | 0, .some 1 => .alternate ast .epsilon
   | 0, .none => .star ast
   | 1, .none => .concat ast (.star ast)
   -- r{min,}. min > 0 as `0, .none` is already covered.
@@ -163,14 +163,14 @@ def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
   -- r{0,max}
   | 0, .some max =>
     if max == 0 then
-      Ast.empty
+      .epsilon
     else
-      repeatConcat (Ast.alternate ast Ast.empty) max
+      repeatConcat (.alternate ast .epsilon) max
   | min, .some max =>
     if min == max then
       repeatConcat ast min
     else
-      Ast.concat (repeatConcat ast min) (repeatConcat (Ast.alternate ast Ast.empty) (max - min))
+      Ast.concat (repeatConcat ast min) (repeatConcat (.alternate ast .epsilon) (max - min))
 
 def nonCapturing : Parser.LT Error Unit :=
   charOrError '?' *> charOrError ':' |>.mapConst ()
