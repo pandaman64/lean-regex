@@ -21,7 +21,7 @@ deriving Repr
 
 def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
   if self.currentPos ≤ self.haystack.endPos then
-    let buffer ← VM.captureNext self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
+    let buffer ← VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
     let groups := CapturedGroups.mk buffer.toArray
     let pos ← groups.get 0
     if self.currentPos < pos.2 then
