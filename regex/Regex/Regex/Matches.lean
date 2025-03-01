@@ -11,7 +11,7 @@ structure Matches where
 deriving Repr
 
 def Matches.next? (self : Matches) : Option ((Pos × Pos) × Matches) := do
-  if self.currentPos < self.haystack.endPos then
+  if self.currentPos ≤ self.haystack.endPos then
     let pos ← VM.searchNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩
     if self.currentPos < pos.2 then
       let next := { self with currentPos := pos.2 }
@@ -23,7 +23,7 @@ def Matches.next? (self : Matches) : Option ((Pos × Pos) × Matches) := do
     throw ()
 
 def Matches.remaining (self : Matches) : Pos :=
-  self.haystack.endPos - self.currentPos
+  self.haystack.endPos + ⟨1⟩ - self.currentPos
 
 theorem Matches.lt_next?_some {m : Matches} (h : m.next? = some (pos, m')) :
   m.currentPos < m'.currentPos := by
@@ -37,19 +37,22 @@ theorem Matches.lt_next?_some {m : Matches} (h : m.next? = some (pos, m')) :
     have : (m.haystack.get m.currentPos).utf8Size > 0 := Char.utf8Size_pos _
     omega
 
+theorem Matches.haystack_eq_next?_some {m : Matches} (h : m.next? = some (pos, m')) :
+  m'.haystack = m.haystack := by
+  unfold next? at h
+  split at h <;> simp [Option.bind_eq_some] at h
+  have ⟨_, _, h⟩ := h
+  split at h <;> simp at h <;> simp [←h]
+
 theorem Matches.next?_decreasing {m : Matches} (h : m.next? = some (pos, m')) :
   m'.remaining < m.remaining := by
   unfold remaining
-  have : m'.haystack = m.haystack := by
-    unfold next? at h
-    split at h <;> simp [Option.bind_eq_some] at h
-    have ⟨_, _, h⟩ := h
-    split at h <;> simp at h <;> simp [←h]
-  rw [this]
+  rw [haystack_eq_next?_some h]
   have h₁ : m.currentPos < m'.currentPos := lt_next?_some h
-  have h₂ : m.currentPos < m.haystack.endPos := by
-    refine Decidable.byContradiction fun nlt => ?_
-    simp [next?, nlt] at h
+  have h₂ : m.currentPos < m.haystack.endPos + ⟨1⟩ := by
+    simp [next?] at h
+    split at h <;> try contradiction
+    next le => exact Nat.add_le_add_right le 1
   exact Nat.sub_lt_sub_left h₂ h₁
 
 theorem _root_.String.Pos.sizeOf_eq {p : Pos} : sizeOf p = 1 + p.byteIdx := rfl

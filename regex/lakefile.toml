@@ -2,10 +2,15 @@ name = "Regex"
 version = "0.1.0"
 keywords = ["regex"]
 defaultTargets = ["Regex"]
+testDriver = "RegexTest"
 
 [[lean_lib]]
 name = "Regex"
 buildType = "relWithDebInfo"
+
+[[lean_lib]]
+name = "RegexTest"
+globs = ["tests.+"]
 
 [[lean_exe]]
 name = "Bench"
