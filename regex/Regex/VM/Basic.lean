@@ -19,6 +19,8 @@ Visit all ε-transitions from the states in the stack, updating `next.states` wh
 `.done`, `.char`, or `.sparse`. Returns `.some updates` if a `.done` state is reached, meaning a
 match is found.
 -/
+-- We confirmed that `(σ : Strategy)` does not introduce non-negligible overhead. Once we have the
+-- new compiler, we may want to test specialization again by `@[specialize σ]`.
 def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa) :
   Option σ.Update × SearchState σ nfa :=
