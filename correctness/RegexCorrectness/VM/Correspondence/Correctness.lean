@@ -12,15 +12,15 @@ namespace Regex.VM
 
 theorem captureNext_correct {e nfa wf bufferSize it matched}
   (eq : NFA.compile e = nfa) (disj : e.Disjoint)
-  (h : captureNext nfa wf bufferSize it = matched) (v : it.Valid) (isSome : matched.isSome) :
+  (h : captureNext (BufferStrategy bufferSize) nfa wf it = matched) (v : it.Valid) (isSome : matched.isSome) :
   ∃ l m r groups,
     it.toString = ⟨l ++ m ++ r⟩ ∧
     e.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) (matched.get isSome) := by
-  generalize h' : captureNext' nfa wf it = matched'
-  have refMatched : refineUpdateOpt matched' matched := h' ▸ h ▸ captureNext'.refines
+  generalize h' : captureNext HistoryStrategy nfa wf it = matched'
+  have refMatched : refineUpdateOpt matched' matched := h' ▸ h ▸ captureNext.refines
   have isSome' := (refineUpdateOpt.isSome_iff refMatched).mpr isSome
-  have ⟨l, r, span, groups, eqstring, c, eqv⟩ := captures_of_captureNext'_some eq h' v isSome'
+  have ⟨l, r, span, groups, eqstring, c, eqv⟩ := captures_of_captureNext_some eq h' v isSome'
   have ⟨m, eql, eqm, eqr⟩ := c.span_eq
   simp at eql eqm eqr
   subst r

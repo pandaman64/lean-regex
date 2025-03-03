@@ -11,14 +11,16 @@ open String (Pos Iterator)
 
 namespace Regex.VM
 
-variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
-  {current : SearchState' nfa} {currentUpdates : Vector (List (Nat × Pos)) nfa.nodes.size}
-  {next : SearchState' nfa} {state : Fin nfa.nodes.size}
-  {matched' : Option (List (Nat × Pos))} {next' : SearchState' nfa}
+local instance : Strategy := HistoryStrategy
 
-theorem stepChar.subset (h : stepChar' nfa wf it currentUpdates next state = (matched', next')) :
+variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
+  {current : SearchState HistoryStrategy nfa} {currentUpdates : Vector (List (Nat × Pos)) nfa.nodes.size}
+  {next : SearchState HistoryStrategy nfa} {state : Fin nfa.nodes.size}
+  {matched' : Option (List (Nat × Pos))} {next' : SearchState HistoryStrategy nfa}
+
+theorem stepChar.subset (h : stepChar HistoryStrategy nfa wf it currentUpdates next state = (matched', next')) :
   next.states ⊆ next'.states := by
-  simp [stepChar'] at h
+  simp [stepChar] at h
   split at h
   next c' state' hn =>
     split at h
@@ -30,10 +32,10 @@ theorem stepChar.subset (h : stepChar' nfa wf it currentUpdates next state = (ma
     next => simp_all [SparseSet.subset_self]
   next => simp_all [SparseSet.subset_self]
 
-theorem stepChar.lower_bound (h : stepChar' nfa wf it currentUpdates next state = (matched', next'))
+theorem stepChar.lower_bound (h : stepChar HistoryStrategy nfa wf it currentUpdates next state = (matched', next'))
   (lb : εClosure.LowerBound it.next next.states) :
   εClosure.LowerBound it.next next'.states := by
-  simp [stepChar'] at h
+  simp [stepChar] at h
   split at h
   next c' state' hn =>
     split at h
@@ -45,10 +47,10 @@ theorem stepChar.lower_bound (h : stepChar' nfa wf it currentUpdates next state 
     next => simp_all
   next => simp_all
 
-theorem stepChar.eq_updates_of_mem_next {i k} (h : stepChar' nfa wf it currentUpdates next i = (matched', next'))
+theorem stepChar.eq_updates_of_mem_next {i k} (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
   (mem : k ∈ next.states) :
   next'.updates[k] = next.updates[k] := by
-  simp [stepChar'] at h
+  simp [stepChar] at h
   split at h
   next c' j hn =>
     split at h
@@ -60,10 +62,10 @@ theorem stepChar.eq_updates_of_mem_next {i k} (h : stepChar' nfa wf it currentUp
     next => simp_all
   next => simp_all
 
-theorem stepChar.done_of_matched_some (h : stepChar' nfa wf it currentUpdates next state = (matched', next'))
+theorem stepChar.done_of_matched_some (h : stepChar HistoryStrategy nfa wf it currentUpdates next state = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
-  simp [stepChar'] at h
+  simp [stepChar] at h
   split at h
   next c' j hn =>
     split at h
@@ -82,11 +84,11 @@ theorem stepChar.done_of_matched_some (h : stepChar' nfa wf it currentUpdates ne
     simp [←h.1] at isSome'
 
 theorem mem_next_of_stepChar {l m r i j k update}
-  (h : stepChar' nfa wf it currentUpdates next i = (matched', next'))
+  (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
   (lb : εClosure.LowerBound it.next next.states)
   (step : nfa.CharStep l m it.curr r i j) (cls : nfa.εClosure' ⟨l, it.curr :: m, r⟩ j k update) (eqit : Span.iterator ⟨l, m, it.curr :: r⟩ = it) :
   k ∈ next'.states := by
-  simp [stepChar'] at h
+  simp [stepChar] at h
   split at h
   next c' j' hn =>
     rw [CharStep.char hn] at step
@@ -111,14 +113,14 @@ theorem mem_next_of_stepChar {l m r i j k update}
     simp_all
 
 theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.iterator = it)
-  (h : stepChar' nfa wf it currentUpdates next i = (matched', next'))
+  (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
   (notEnd : ¬it.atEnd) (mem : k ∈ next'.states) :
   k ∈ next.states ∨ ∃ r' j update',
     span.r = it.curr :: r' ∧
     nfa.CharStep span.l span.m it.curr r' i j ∧
     nfa.εClosure' span.next j k update' ∧
     (WriteUpdate k → next'.updates[k] = currentUpdates.get i ++ update') := by
-  simp [stepChar'] at h
+  simp [stepChar] at h
   split at h
   next c j hn =>
     split at h
@@ -146,42 +148,42 @@ theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.ite
     next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
   next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
 
-theorem eachStepChar.go.lower_bound {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
+theorem eachStepChar.go.lower_bound {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
   (lb : εClosure.LowerBound it.next next.states) :
   εClosure.LowerBound it.next next'.states := by
-  induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
+  induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
   | base next => simp_all
   | found i hlt next matched next'' h' found =>
-    rw [eachStepChar'.go_found hlt h' found] at h
+    rw [eachStepChar.go_found hlt h' found] at h
     simp_all
     exact stepChar.lower_bound h' lb
   | not_found i hlt next matched next'' h' not_found ih =>
-    rw [eachStepChar'.go_not_found hlt h' not_found] at h
+    rw [eachStepChar.go_not_found hlt h' not_found] at h
     exact ih h (stepChar.lower_bound h' lb)
 
-theorem eachStepChar.go.done_of_matched_some {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
+theorem eachStepChar.go.done_of_matched_some {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
-  induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
+  induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
   | base next =>
     simp at h
     simp [←h.1] at isSome'
   | found i hl next matched next'' h' found =>
-    rw [eachStepChar'.go_found hl h' found] at h
+    rw [eachStepChar.go_found hl h' found] at h
     simp at h
     simp [h] at h'
     exact stepChar.done_of_matched_some h' isSome'
   | not_found i hl next matched next'' h' not_found ih =>
-    rw [eachStepChar'.go_not_found hl h' not_found] at h
+    rw [eachStepChar.go_not_found hl h' not_found] at h
     exact ih h
 
-theorem eachStepChar.done_of_matched_some (h : eachStepChar' nfa wf it current next = (matched', next'))
+theorem eachStepChar.done_of_matched_some (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome'  :=
   eachStepChar.go.done_of_matched_some h isSome'
 
 theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
-  (h : stepChar' nfa wf it current.updates next current.states[idx] = (matched', next'))
+  (h : stepChar HistoryStrategy nfa wf it current.updates next current.states[idx] = (matched', next'))
   (notEnd : ¬it.atEnd)
   (inv_curr : current.Inv nfa wf it)
   (inv_next : next.Inv nfa wf it.next) :
@@ -200,28 +202,28 @@ theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
     have write'' : WriteUpdate k → next'.updates[k] = update ++ update' := write ▸ write'
     exact ⟨span.next, update ++ update', by rw [Span.next_iterator eqr, eqit], .more path eqr step cls, write''⟩
 
-theorem eachStepChar.go.inv {idx hle} (h : eachStepChar'.go nfa wf it current idx hle next = (matched', next'))
+theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
   (notEnd : ¬it.atEnd)
   (inv_curr : current.Inv nfa wf it)
   (inv_next : next.Inv nfa wf it.next) :
   next'.Inv nfa wf it.next := by
-  induction idx, hle, next using eachStepChar'.go.induct' nfa wf it current with
+  induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
   | base next => simp_all
   | found idx hlt next matched next'' h' found =>
-    rw [eachStepChar'.go_found hlt h' found] at h
+    rw [eachStepChar.go_found hlt h' found] at h
     simp_all
     exact eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
   | not_found idx hlt next matched next'' h' not_found ih =>
-    rw [eachStepChar'.go_not_found hlt h' not_found] at h
+    rw [eachStepChar.go_not_found hlt h' not_found] at h
     have inv' : next''.Inv nfa wf it.next :=
       eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
     apply ih h inv'
 
-theorem eachStepChar.inv_of_inv {next next'} (h : eachStepChar' nfa wf it current next = (matched', next'))
+theorem eachStepChar.inv_of_inv {next next'} (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
   (notEnd : ¬it.atEnd) (empty : next.states.isEmpty)
   (inv : current.Inv nfa wf it) :
   next'.Inv nfa wf it.next := by
-  simp [eachStepChar'] at h
+  simp [eachStepChar] at h
   exact eachStepChar.go.inv h notEnd inv (.of_empty empty)
 
 end Regex.VM

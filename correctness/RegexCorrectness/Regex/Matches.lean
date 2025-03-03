@@ -25,6 +25,7 @@ def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (positions : Po
 def Valid (self : Matches) : Prop :=
   self.regex.IsSearchRegex ∧ self.currentPos.Valid self.haystack
 
+-- TODO: what to do when self.currentPos = self.haystack.endPos?
 theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self'))
   (v : self.Valid) :
   self'.Valid ∧ Spec v.1 self.haystack positions := by
@@ -50,7 +51,7 @@ theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next
       next =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.valid_next v.2 lt⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
+        exact ⟨⟨v.1, String.valid_next v.2 sorry⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
