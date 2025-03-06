@@ -157,7 +157,6 @@ theorem step_start_iff :
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-    next mem _ => exact ⟨_, _, (by simp), mem, rfl, rfl⟩
   . intro ⟨c, r', hr, mem, hj, hspan, hupdate⟩
     simp_all
     have : nfa'.Step nfa.nodes.size nfa'.start ⟨span.l, span.m, c :: r'⟩ next ⟨span.l, c :: span.m, r'⟩ .none :=

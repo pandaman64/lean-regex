@@ -155,7 +155,6 @@ theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-    next mem _ => exact ⟨_, _, ⟨rfl, rfl⟩, mem, rfl, rfl⟩
   . intro ⟨c, r', hspan, mem, ge, hj, hspan', hupdate⟩
     simp_all
     have : span = ⟨span.l, span.m, c :: r'⟩ := by

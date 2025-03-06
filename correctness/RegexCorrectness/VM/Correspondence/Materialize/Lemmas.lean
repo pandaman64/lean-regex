@@ -6,14 +6,6 @@ set_option autoImplicit false
 
 open String (Pos)
 
-namespace Vector
-
-@[simp]
-theorem getElem_mkVector {α n i} (a : α) (h : i < n) : (Vector.mkVector n a)[i] = a := by
-  simp [Vector.mkVector]
-
-end Vector
-
 namespace Regex.NFA
 
 @[simp]
