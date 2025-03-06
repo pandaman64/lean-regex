@@ -1,37 +1,5 @@
 import Batteries.Data.String
 import Mathlib.Tactic.Common
-/--
-Increment the end position by one character.
--/
-def Substring.expand (s : Substring) : Substring :=
-  if s.stopPos < s.str.endPos then
-    { s with stopPos := s.str.next s.stopPos }
-  else
-    s
-
-namespace Substring.ValidFor
-
-theorem expand (v : ValidFor l m (c :: r) s) : ValidFor l (m ++ [c]) r s.expand := by
-  have : s.stopPos < s.str.endPos := by
-    simp [v.stopPos, v.str]
-    have : 0 < c.utf8Size := Char.utf8Size_pos c
-    omega
-  unfold Substring.expand
-  simp [this]
-  simp [v.stopPos, v.str, String.next]
-  have : String.get ⟨l ++ (m ++ c :: r)⟩ ⟨String.utf8Len l + String.utf8Len m⟩ = c := by
-    have eq₁ : l ++ (m ++ c :: r) = (l ++ m) ++ (c :: r) := by simp
-    have eq₂ : String.utf8Len l + String.utf8Len m = String.utf8Len (l ++ m) := by simp
-    rw [eq₁, eq₂, String.get_of_valid]
-    simp
-  rw [this]
-
-  apply of_eq
-  . simp
-  . simp [v.startPos]
-  . simp [Nat.add_assoc]
-
-end Substring.ValidFor
 
 namespace String.Iterator
 
@@ -102,3 +70,39 @@ theorem exists_cons_of_not_atEnd {it : Iterator} (v : it.ValidFor l r) (h : ¬it
   exact ⟨r', rfl⟩
 
 end String.Iterator.ValidFor
+
+namespace String.Pos
+
+/--
+A variant of `Valid` that allows past-one position that represents the position after running
+a search at the end of the string.
+-/
+def ValidPlus (s : String) (p : Pos) :=
+  p.Valid s ∨ p = s.endPos + ⟨1⟩
+
+theorem validPlus_of_valid {s : String} {p : Pos} : p.Valid s → p.ValidPlus s := .inl
+
+theorem next_endPos {s : String} : (s.next s.endPos) = s.endPos + ⟨1⟩ := by
+  have next_eq := next_of_valid' s.data []
+  simp [Char.utf8Size] at next_eq
+  -- definitionally equal to the goal now.
+  exact next_eq
+
+theorem validPlus_of_next_valid {s : String} {p : Pos} (h : p.Valid s) : (s.next p).ValidPlus s := by
+  have : p ≤ s.endPos := Valid.le_endPos h
+  cases Nat.lt_or_eq_of_le this with
+  | inl lt => exact .inl (valid_next h lt)
+  | inr eq =>
+    have : p = s.endPos := ext eq
+    subst p
+    exact .inr next_endPos
+
+theorem ValidPlus.valid_of_le {s : String} {p : Pos} (le : p ≤ s.endPos) (vp : p.ValidPlus s) : p.Valid s := by
+  cases vp with
+  | inl v => exact v
+  | inr eq =>
+    subst eq
+    have : s.endPos.byteIdx + 1 ≤ s.endPos.byteIdx := le
+    omega
+
+end String.Pos
