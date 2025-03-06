@@ -153,12 +153,13 @@ theorem eachStepChar.go.lower_bound {idx hle} (h : eachStepChar.go HistoryStrate
   εClosure.LowerBound it.next next'.states := by
   induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
   | base next => simp_all
-  | found i hlt next matched next'' h' found =>
-    rw [eachStepChar.go_found hlt h' found] at h
+  | done i hlt next hn => simp_all
+  | found i hlt next hn matched next'' h' found =>
+    rw [eachStepChar.go_found hlt hn h' found] at h
     simp_all
     exact stepChar.lower_bound h' lb
-  | not_found i hlt next matched next'' h' not_found ih =>
-    rw [eachStepChar.go_not_found hlt h' not_found] at h
+  | not_found i hlt next hn matched next'' h' not_found ih =>
+    rw [eachStepChar.go_not_found hlt hn h' not_found] at h
     exact ih h (stepChar.lower_bound h' lb)
 
 theorem eachStepChar.go.done_of_matched_some {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
@@ -168,13 +169,16 @@ theorem eachStepChar.go.done_of_matched_some {idx hle} (h : eachStepChar.go Hist
   | base next =>
     simp at h
     simp [←h.1] at isSome'
-  | found i hl next matched next'' h' found =>
-    rw [eachStepChar.go_found hl h' found] at h
+  | done i hlt next hn =>
+    simp [hlt, hn] at h
+    simp [←h.1] at isSome'
+  | found i hlt next hn matched next'' h' found =>
+    rw [eachStepChar.go_found hlt hn h' found] at h
     simp at h
     simp [h] at h'
     exact stepChar.done_of_matched_some h' isSome'
-  | not_found i hl next matched next'' h' not_found ih =>
-    rw [eachStepChar.go_not_found hl h' not_found] at h
+  | not_found i hlt next hn matched next'' h' not_found ih =>
+    rw [eachStepChar.go_not_found hlt hn h' not_found] at h
     exact ih h
 
 theorem eachStepChar.done_of_matched_some (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
@@ -209,12 +213,13 @@ theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa w
   next'.Inv nfa wf it.next := by
   induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
   | base next => simp_all
-  | found idx hlt next matched next'' h' found =>
-    rw [eachStepChar.go_found hlt h' found] at h
+  | done i hlt next hn => simp_all
+  | found idx hlt next hn matched next'' h' found =>
+    rw [eachStepChar.go_found hlt hn h' found] at h
     simp_all
     exact eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
-  | not_found idx hlt next matched next'' h' not_found ih =>
-    rw [eachStepChar.go_not_found hlt h' not_found] at h
+  | not_found idx hlt next hn matched next'' h' not_found ih =>
+    rw [eachStepChar.go_not_found hlt hn h' not_found] at h
     have inv' : next''.Inv nfa wf it.next :=
       eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
     apply ih h inv'

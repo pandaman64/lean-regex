@@ -257,7 +257,14 @@ theorem eachStepChar.go.refines {current current' i hle hle' result result'}
     simp at h'
     simp [refCurrent.1] at h
     simp [←h', ←h, refineUpdateOpt, refNext]
-  | found i hlt' next' matched' next'' hstep' isSome' =>
+  | done i hlt' next' hn =>
+    have hlt : i < current.states.count := refCurrent.1 ▸ hlt'
+    have eq : current.states[i] = current'.states[i] := by
+      simp [refCurrent.1]
+    simp [hlt', hn] at h'
+    simp [hlt, eq ▸ hn] at h
+    simp [←h', ←h, refineUpdateOpt, refNext]
+  | found i hlt' next' hn matched' next'' hstep' isSome' =>
     have hlt : i < current.states.count := refCurrent.1 ▸ hlt'
     have eq : current.states[i] = current'.states[i] := by
       simp [refCurrent.1]
@@ -267,10 +274,10 @@ theorem eachStepChar.go.refines {current current' i hle hle' result result'}
     have isSome : stepped.1.isSome := by
       simp [refineUpdateOpt.isSome_iff refStepChar.1] at isSome'
       exact isSome'
-    rw [eachStepChar.go_found hlt' hstep' isSome'] at h'
-    rw [eachStepChar.go_found hlt hstep isSome] at h
+    rw [eachStepChar.go_found hlt' hn hstep' isSome'] at h'
+    rw [eachStepChar.go_found hlt (eq ▸ hn) hstep isSome] at h
     simp [←h', ←h, refStepChar]
-  | not_found i hlt' next' matched' next'' hstep' isSome' ih =>
+  | not_found i hlt' next' hn matched' next'' hstep' isSome' ih =>
     have hlt : i < current.states.count := refCurrent.1 ▸ hlt'
     have eq : current.states[i] = current'.states[i] := by
       simp [refCurrent.1]
@@ -280,8 +287,8 @@ theorem eachStepChar.go.refines {current current' i hle hle' result result'}
     have isSome : ¬stepped.1.isSome := by
       rw [refineUpdateOpt.isSome_iff refStepChar.1] at isSome'
       exact isSome'
-    rw [eachStepChar.go_not_found hlt' hstep' isSome'] at h'
-    rw [eachStepChar.go_not_found hlt hstep isSome] at h
+    rw [eachStepChar.go_not_found hlt' hn hstep' isSome'] at h'
+    rw [eachStepChar.go_not_found hlt (eq ▸ hn) hstep isSome] at h
     exact ih h h' refCurrent refStepChar.2
 
 theorem eachStepChar.refines {current current' result result'}
