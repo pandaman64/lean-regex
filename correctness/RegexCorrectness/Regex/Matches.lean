@@ -23,34 +23,35 @@ def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (positions : Po
     positions.2 = ⟨String.utf8Len l + String.utf8Len m⟩
 
 def Valid (self : Matches) : Prop :=
-  self.regex.IsSearchRegex ∧ self.currentPos.Valid self.haystack
+  self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
 
 theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self'))
   (v : self.Valid) :
   self'.Valid ∧ Spec v.1 self.haystack positions := by
   unfold next? at h
   split at h
-  next lt =>
+  next le =>
+    have pos_valid := v.2.valid_of_le le
     generalize h' : VM.searchNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩ = matched at h
     match matched with
     | none => simp at h
     | some matched =>
       simp at h
-      have ⟨l, m, r, groups, eqstring, c, eq₁, eq₂⟩ := v.1.searchNext_some h' v.2
+      have ⟨l, m, r, groups, eqstring, c, eq₁, eq₂⟩ := v.1.searchNext_some h' pos_valid
       simp at eqstring
       split at h
       next =>
         simp at h
         simp [←h, Valid]
-        have vp : Pos.Valid self.haystack matched.2 := by
+        have pos_valid' : Pos.Valid self.haystack matched.2 := by
           simp [eq₂]
           refine ⟨l ++ m, r, ?_, by simp⟩
           simp [eqstring]
-        exact ⟨⟨v.1, vp⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_valid pos_valid'⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
       next =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.valid_next v.2 lt⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
@@ -81,6 +82,6 @@ theorem haystack_eq_of_next?_some {self self' : Matches} {positions} (h : self.n
 
 theorem vaild_matches {re : Regex} (haystack : String) (s : re.IsSearchRegex) :
   (re.matches haystack).Valid :=
-  ⟨s, haystack.valid_mkIterator⟩
+  ⟨s, String.Pos.validPlus_of_valid haystack.valid_mkIterator⟩
 
 end Regex.Matches

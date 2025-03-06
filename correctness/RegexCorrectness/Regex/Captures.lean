@@ -24,21 +24,22 @@ def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : St
 namespace Regex.Captures
 
 def Valid (self : Captures) : Prop :=
-  self.regex.IsSearchRegex ∧ self.currentPos.Valid self.haystack
+  self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
 
 theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self'))
   (v : self.Valid) :
   self'.Valid ∧ captured.Spec v.1 self.haystack := by
   unfold next? at h
   split at h
-  next lt =>
-    generalize h' : VM.captureNext self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ = matched at h
+  next le =>
+    generalize h' : VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ = matched at h
     match matched with
     | none => simp at h
     | some matched =>
+      have pos_valid := v.2.valid_of_le le
       have : 1 ≤ self.regex.maxTag := v.1.le_maxTag
       have ⟨l, m, r, groups, eqstring, c, eqv, eq₁, eq₂⟩ :=
-        v.1.captures_of_captureNext h' v.2 (by omega)
+        v.1.captures_of_captureNext h' pos_valid (by omega)
       simp at eqstring
 
       simp at h
@@ -91,6 +92,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
         simp [hcaptured 0]
         have h₁ := (eqv 0).1 (by omega)
         have h₂ := (eqv 0).2 (by omega)
+        simp [VM.BufferStrategy] at eq₁ eq₂
         simp [eq₁] at h₁
         simp [eq₂] at h₂
         have ⟨_, eq₁⟩ := h₁
@@ -102,14 +104,14 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       next =>
         simp at h
         simp [←h, Valid]
-        have vp : Pos.Valid self.haystack ⟨String.utf8Len l + String.utf8Len m⟩ := by
+        have pos_valid' : Pos.Valid self.haystack ⟨String.utf8Len l + String.utf8Len m⟩ := by
           refine ⟨l ++ m, r, ?_, by simp⟩
           simp [eqstring]
-        exact ⟨⟨v.1, vp⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_valid pos_valid'⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
       next nlt =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.valid_next v.2 lt⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :
@@ -118,7 +120,7 @@ theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next
   split at h
   next =>
     simp at h
-    set captured' := VM.captureNext self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
+    set captured' := VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
     match h' : captured' with
     | none => simp at h
     | some buffer =>
@@ -142,7 +144,7 @@ theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.n
   split at h
   next =>
     simp at h
-    set captured' := VM.captureNext self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
+    set captured' := VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
     match h' : captured' with
     | none => simp at h
     | some buffer =>
@@ -162,6 +164,6 @@ theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.n
 
 theorem valid_captures {re : Regex} (haystack : String) (s : re.IsSearchRegex) :
   (re.captures haystack).Valid :=
-  ⟨s, haystack.valid_mkIterator⟩
+  ⟨s, String.Pos.validPlus_of_valid haystack.valid_mkIterator⟩
 
 end Regex.Captures

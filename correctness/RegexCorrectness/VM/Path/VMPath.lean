@@ -1,4 +1,5 @@
 import Regex.Data.SparseSet
+import Regex.VM.Strategy
 import RegexCorrectness.VM.Path.EpsilonClosure
 import RegexCorrectness.VM.Path.CharStep
 
@@ -71,10 +72,6 @@ end Regex.NFA
 
 namespace Regex.VM
 
-structure SearchState' (nfa : NFA) where
-  states : SparseSet nfa.nodes.size
-  updates : Vector (List (Nat × Pos)) nfa.nodes.size
-
 /--
 As an optimization, we write the updates to the buffer only when the state is done, a character, or a sparse state.
 -/
@@ -87,14 +84,14 @@ def WriteUpdate {nfa : NFA} (i : Fin nfa.nodes.size) : Prop :=
 All states in `next.state` have a corresponding path from `nfa.start` to the state where the span
 ends at `it`, and their updates are written to `next.updates` when necessary.
 -/
-def SearchState'.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SearchState' nfa) : Prop :=
+def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SearchState HistoryStrategy nfa) : Prop :=
   ∀ i ∈ next.states,
     ∃ span update,
       span.iterator = it ∧
       nfa.VMPath wf span i update ∧
       (WriteUpdate i → next.updates[i] = update)
 
-theorem SearchState'.Inv.of_empty {nfa wf it} {next : SearchState' nfa} (h : next.states.isEmpty) :
+theorem SearchState.Inv.of_empty {nfa wf it} {next : SearchState HistoryStrategy nfa} (h : next.states.isEmpty) :
   next.Inv nfa wf it := by
   intro i mem
   exact (SparseSet.not_mem_of_isEmpty h mem).elim
