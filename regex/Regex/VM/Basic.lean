@@ -103,11 +103,19 @@ where
       (none, next)
     else
       have hlt : i < current.states.count := Nat.lt_of_le_of_ne hle h
-      let result := stepChar σ nfa wf it current.updates next current.states[i]
-      if result.1.isSome then
-        result
+      let state := current.states[i]
+      if nfa[state] = .done then
+        -- Early-stop iteration when we encounter `.done` since the path to this `.done` node
+        -- is prioritized over the paths through the later nodes.
+        (none, next)
       else
-        go (i + 1) hlt result.2
+        let result := stepChar σ nfa wf it current.updates next state
+        if result.1.isSome then
+          -- Early-stop iteration when we found a path to `.done` after stepping from `state`
+          -- since the path will be prioritized over the paths through the later nodes.
+          result
+        else
+          go (i + 1) hlt result.2
 
 def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
   let updates : Vector σ.Update nfa.nodes.size := Vector.mkVector nfa.nodes.size σ.empty
