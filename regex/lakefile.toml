@@ -16,3 +16,7 @@ globs = ["tests.+"]
 name = "Bench"
 srcDir = "scripts"
 buildType = "relWithDebInfo"
+
+[[lean_exe]]
+name = "CorpusTest"
+srcDir = "tests"
