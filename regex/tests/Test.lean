@@ -16,8 +16,10 @@ namespace Priority
 def re := Regex.parse! r##"bool|boolean"##
 #guard re.find "boolean" = .some (⟨0⟩, ⟨4⟩)
 
--- BUG: we don't handle empty matches correctly.
--- def re' := Regex.parse! r##"|x"##
--- #guard re'.find "x" = .some (⟨0⟩, ⟨0⟩)
+def re' := Regex.parse! r##"|x"##
+#guard re'.find "x" = .some (⟨0⟩, ⟨0⟩)
+
+def re'' := Regex.parse! r##"x|"##
+#guard re''.find "x" = .some (⟨0⟩, ⟨1⟩)
 
 end Priority
