@@ -223,7 +223,11 @@ def RegexTest.run (test : RegexTest) : Except String TestResult := do
         | .error e, true => throw s!"expected {s} to compile, but it did not: {e}"
         | .error _, false => return .ok
     | .many _ => return .unsupported
-  let captures := (regex.captureAll test.haystack).map (·.toArray)
+  let allCaptures := (regex.captureAll test.haystack).map (·.toArray)
+  let captures :=
+    match test.matchLimit with
+    | .some limit => allCaptures.take limit
+    | .none => allCaptures
   if test.matches.size != captures.size then
     throw s!"expected {test.matches}, got {captures}"
   else
