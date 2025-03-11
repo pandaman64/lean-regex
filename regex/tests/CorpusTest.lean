@@ -15,23 +15,27 @@ instance : ToString DecodeError where
 
 structure Span where
   start : Nat
-  stop : Nat
+  «end» : Nat
 deriving Repr
 
 def Span.eqv (s : Option Span) (p : Option (Pos × Pos)) : Bool :=
   match s, p with
-  | .some s, .some p => s.start = p.1.byteIdx && s.stop = p.2.byteIdx
+  | .some s, .some p => s.start = p.1.byteIdx && s.end = p.2.byteIdx
   | .none, .none => true
   | .some _, .none => false
   | .none, .some _ => false
 
 instance : DecodeToml Span where
   decode
-    | .array _ #[start, stop] => do
+    | .array _ #[start, «end»] => do
       let start : Nat ← DecodeToml.decode start
-      let stop : Nat ← DecodeToml.decode stop
-      return { start, stop }
-    | x => .error #[.mk x.ref "expected array of length 2"]
+      let «end» : Nat ← DecodeToml.decode «end»
+      return { start, «end» }
+    | .table _ t => do
+      let start ← t.decode `start
+      let «end» ← t.decode `«end»
+      return { start, «end» }
+    | x => .error #[.mk x.ref "expected array of length 2 or table"]
 
 structure Match where
   id : Nat
@@ -72,22 +76,66 @@ def decodeMatch (v : Value) : Except (Array DecodeError) Match := do
 
 instance : DecodeToml Match := ⟨decodeMatch⟩
 
+inductive Expr where
+  | single : String → Expr
+  | many : Array String → Expr
+deriving Repr
+
+instance : DecodeToml Expr where
+  decode
+    | .string _ s => return .single s
+    | .array _ xs => return .many (←xs.mapM (DecodeToml.decode ·))
+    | x => .error #[.mk x.ref "expected string or array of strings"]
+
+inductive MatchKind where
+  | all
+  | leftmostFirst
+  | leftmostLongest
+deriving Repr, DecidableEq
+
+instance : DecodeToml MatchKind where
+  decode
+    | .string ref s =>
+      match s with
+      | "all" => return .all
+      | "leftmost-first" => return .leftmostFirst
+      | "leftmost-longest" => return .leftmostLongest
+      | _ => .error #[.mk ref "expected \"all\", \"leftmost\", or \"leftmost-longest\""]
+    | x => .error #[.mk x.ref "expected string"]
+
+inductive SearchKind where
+  | earliest
+  | leftmost
+  | overlapping
+deriving Repr, DecidableEq
+
+instance : DecodeToml SearchKind where
+  decode
+    | .string ref s =>
+      match s with
+      | "earliest" => return .earliest
+      | "leftmost" => return .leftmost
+      | "overlapping" => return .overlapping
+      | _ => .error #[.mk ref "expected \"earliest\", \"leftmost\", or \"overlapping\""]
+    | x => .error #[.mk x.ref "expected string"]
+
 structure RegexTest where
   group : String := ""
   name : String
-  regex : String
+  regex : Expr
   haystack : String
   «matches» : Array Match
---   matchLimit : Option Nat
---   compiles : Bool
---   anchored : Bool
---   caseInsensitive : Bool
---   unescape : Bool
---   unicode : Bool
---   utf8 : Bool
---   lineTerminator : Char
---   matchKind : String
---   searchKind : String
+  bounds : Option Span
+  matchLimit : Option Nat
+  compiles : Bool
+  anchored : Bool
+  caseInsensitive : Bool
+  unescape : Bool
+  unicode : Bool
+  utf8 : Bool
+  lineTerminator : String
+  matchKind : MatchKind
+  searchKind : SearchKind
 deriving Repr
 
 instance : ToString RegexTest where
@@ -99,15 +147,47 @@ def decodeRegexTest (test : Lake.Toml.Value) : Except (Array DecodeError) RegexT
   let regex ← table.decode `regex
   let haystack ← table.decode `haystack
   let «matches» ← table.decode `matches
+  let bounds ← table.decode? `bounds
+  let matchLimit ← table.decode? `«match-limit»
+  let compiles ← table.decode? `compiles
+  let anchored ← table.decode? `anchored
+  let caseInsensitive ← table.decode? `«case-insensitive»
+  let unescape ← table.decode? `unescape
+  let unicode ← table.decode? `unicode
+  let utf8 ← table.decode? `utf8
+  let lineTerminator ← table.decode? `«line-terminator»
+  let matchKind ← table.decode? `«match-kind»
+  let searchKind ← table.decode? `«search-kind»
 
   return {
     name,
     regex,
     haystack,
     «matches»,
+    bounds,
+    matchLimit,
+    compiles := compiles.getD true,
+    anchored := anchored.getD false,
+    caseInsensitive := caseInsensitive.getD false,
+    unescape := unescape.getD false,
+    unicode := unicode.getD true,
+    utf8 := utf8.getD true,
+    lineTerminator := lineTerminator.getD "\n",
+    matchKind := matchKind.getD .leftmostFirst,
+    searchKind := searchKind.getD .leftmost
   }
 
 instance : DecodeToml RegexTest := ⟨decodeRegexTest⟩
+
+inductive TestResult where
+  | ok
+  | unsupported
+deriving Repr
+
+instance : ToString TestResult where
+  toString
+    | .ok => "ok"
+    | .unsupported => "unsupported"
 
 def decodeRegexTests (group : String) (toml : Lake.Toml.Table) : Except (Array DecodeError) (Array RegexTest) := do
   let tests : Array RegexTest ← toml.decode `test
@@ -119,13 +199,34 @@ def RegexTest.fullName (test : RegexTest) : String :=
   else
     s!"{test.group}/{test.name}"
 
-def RegexTest.run (test : RegexTest) : Except String Bool := do
-  let regex ← Regex.parse test.regex |>.mapError toString
+def hasWordBoundary (s : String) : Bool :=
+  let re := re! r##"\\b|\\B"##
+  re.find s |>.isSome
+
+def supported (test : RegexTest) : Bool :=
+  test.bounds.isNone && !test.anchored && !test.caseInsensitive
+  && !test.unescape && test.unicode && test.utf8
+  && test.lineTerminator = "\n" && test.matchKind = .leftmostFirst && test.searchKind = .leftmost
+
+def RegexTest.run (test : RegexTest) : Except String TestResult := do
+  if not (supported test) then
+    return .unsupported
+  let regex ←
+    match test.regex with
+    | .single s =>
+      if hasWordBoundary s then
+        return .unsupported
+      else
+        Regex.parse s |>.mapError toString
+    | .many _ => return .unsupported
   let captures := (regex.captureAll test.haystack).map (·.toArray)
   if test.matches.size != captures.size then
-    return false
+    throw s!"expected {test.matches}, got {captures}"
   else
-    return test.matches.zip captures |>.all fun (m, c) => m.eqv c
+    for (m, c) in test.matches.zip captures do
+      if not (m.eqv c) then
+        throw s!"expected {test.matches}, but got {captures}"
+    return .ok
 
 def getTomlOrThrow (toml : Except Lean.MessageLog Lake.Toml.Table) : IO Lake.Toml.Table := do
   match toml with
@@ -159,18 +260,18 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
 def main : IO Unit := do
   let files ← System.FilePath.readDir "tests/testdata"
   let tomlFiles := files.filter (·.path.extension = some "toml")
-  let mut tests := #[]
-  for file in tomlFiles do
-    tests := tests ++ (←loadTestCases file.path)
-  let mut results := #[]
-  for test in tests do
-    let result ← IO.ofExcept test.run
-    results := results.push (test.fullName, result)
+
+  let tests ← tomlFiles.flatMapM (loadTestCases ·.path)
+  let results := tests.map fun test => (test.fullName, test.run)
 
   -- Write results to CSV
-  let mut csv := "test_name,result\n"
+  let mut csv := "test_name,result,error\n"
   for (name, result) in results do
-    csv := csv ++ s!"{name},{result}\n"
+    let row :=
+      match result with
+      | .ok result => s!"{name},{result},\n"
+      | .error e => s!"{name},error,\"{e}\"\n"
+    csv := csv ++ row
 
-  IO.FS.writeFile "empty_results.csv" csv
+  IO.FS.writeFile "tests/CorpusTest.csv" csv
   return ()

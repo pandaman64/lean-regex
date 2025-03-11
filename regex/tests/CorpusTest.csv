@@ -1,0 +1,840 @@
+test_name,result,error
+leftmost-all/alt,unsupported,
+leftmost-all/multi,unsupported,
+leftmost-all/dotall,unsupported,
+empty/100,ok,
+empty/110,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 0))], #[(some (1, 2))], #[(some (2, 2))], #[(some (3, 3))]]"
+empty/120,ok,
+empty/130,ok,
+empty/200,ok,
+empty/210,ok,
+empty/220,ok,
+empty/230,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 0))], #[(some (1, 2))], #[(some (2, 2))], #[(some (3, 3))]]"
+empty/240,ok,
+empty/300,ok,
+empty/310,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 0))], #[(some (1, 2))], #[(some (2, 2))], #[(some (3, 3))]]"
+empty/320,ok,
+empty/330,ok,
+empty/400,ok,
+empty/500,ok,
+empty/510,ok,
+empty/520,ok,
+empty/600,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"
+empty/610,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"
+word-boundary/wb1,unsupported,
+word-boundary/wb2,unsupported,
+word-boundary/wb3,unsupported,
+word-boundary/wb4,unsupported,
+word-boundary/wb5,unsupported,
+word-boundary/wb6,unsupported,
+word-boundary/wb7,unsupported,
+word-boundary/wb8,unsupported,
+word-boundary/wb9,unsupported,
+word-boundary/wb10,unsupported,
+word-boundary/wb11,unsupported,
+word-boundary/wb12,unsupported,
+word-boundary/wb13,unsupported,
+word-boundary/wb14,unsupported,
+word-boundary/wb15,unsupported,
+word-boundary/wb16,unsupported,
+word-boundary/wb17,unsupported,
+word-boundary/wb18,unsupported,
+word-boundary/wb19,unsupported,
+word-boundary/wb20,unsupported,
+word-boundary/wb21,unsupported,
+word-boundary/wb22,unsupported,
+word-boundary/wb23,unsupported,
+word-boundary/wb24,unsupported,
+word-boundary/wb25,unsupported,
+word-boundary/wb26,unsupported,
+word-boundary/wb27,unsupported,
+word-boundary/wb28,unsupported,
+word-boundary/wb29,unsupported,
+word-boundary/wb30,unsupported,
+word-boundary/wb31,unsupported,
+word-boundary/wb32,unsupported,
+word-boundary/wb33,unsupported,
+word-boundary/wb34,unsupported,
+word-boundary/wb35,unsupported,
+word-boundary/wb36,unsupported,
+word-boundary/wb37,unsupported,
+word-boundary/wb38,unsupported,
+word-boundary/wb39,unsupported,
+word-boundary/wb40,unsupported,
+word-boundary/wb41,unsupported,
+word-boundary/wb42,unsupported,
+word-boundary/wb43,unsupported,
+word-boundary/wb44,unsupported,
+word-boundary/nb1,unsupported,
+word-boundary/nb2,unsupported,
+word-boundary/nb3,unsupported,
+word-boundary/nb4,unsupported,
+word-boundary/nb5,unsupported,
+word-boundary/nb6,unsupported,
+word-boundary/nb7,unsupported,
+word-boundary/nb8,unsupported,
+word-boundary/nb9,unsupported,
+word-boundary/nb10,unsupported,
+word-boundary/nb11,unsupported,
+word-boundary/nb12,unsupported,
+word-boundary/nb13,unsupported,
+word-boundary/nb14,unsupported,
+word-boundary/nb15,unsupported,
+word-boundary/nb16,unsupported,
+word-boundary/nb17,unsupported,
+word-boundary/nb18,unsupported,
+word-boundary/nb19,unsupported,
+word-boundary/nb20,unsupported,
+word-boundary/nb21,unsupported,
+word-boundary/nb22,unsupported,
+word-boundary/nb23,unsupported,
+word-boundary/nb24,unsupported,
+word-boundary/nb25,unsupported,
+word-boundary/nb26,unsupported,
+word-boundary/nb27,unsupported,
+word-boundary/nb28,unsupported,
+word-boundary/nb29,unsupported,
+word-boundary/nb30,unsupported,
+word-boundary/nb31,unsupported,
+word-boundary/nb32,unsupported,
+word-boundary/nb33,unsupported,
+word-boundary/nb34,unsupported,
+word-boundary/nb35,unsupported,
+word-boundary/nb36,unsupported,
+word-boundary/nb37,unsupported,
+word-boundary/nb38,unsupported,
+word-boundary/nb39,unsupported,
+word-boundary/unicode1,unsupported,
+word-boundary/unicode1-only-ascii,unsupported,
+word-boundary/unicode2,unsupported,
+word-boundary/unicode2-only-ascii,unsupported,
+word-boundary/unicode3,unsupported,
+word-boundary/unicode3-only-ascii,unsupported,
+word-boundary/unicode4,unsupported,
+word-boundary/unicode4-only-ascii,unsupported,
+word-boundary/unicode5,unsupported,
+word-boundary/unicode5-only-ascii,unsupported,
+word-boundary/unicode5-noutf8,unsupported,
+word-boundary/unicode5-noutf8-only-ascii,unsupported,
+word-boundary/unicode5-not,unsupported,
+word-boundary/unicode5-not-only-ascii,unsupported,
+word-boundary/unicode5-not-noutf8,unsupported,
+word-boundary/unicode5-not-noutf8-only-ascii,unsupported,
+word-boundary/unicode6,unsupported,
+word-boundary/unicode7,unsupported,
+word-boundary/unicode8,unsupported,
+word-boundary/alt-with-assertion-repetition,unsupported,
+misc/ascii-literal,ok,
+misc/ascii-literal-not,ok,
+misc/ascii-literal-anchored,unsupported,
+misc/ascii-literal-anchored-not,unsupported,
+misc/anchor-start-end-line,error,"expected EOF"
+misc/prefix-literal-match,ok,
+misc/prefix-literal-match-ascii,unsupported,
+misc/prefix-literal-no-match,ok,
+misc/one-literal-edge,ok,
+misc/terminates,ok,
+misc/suffix-100,ok,
+misc/suffix-200,ok,
+misc/suffix-300,ok,
+misc/suffix-400,ok,
+misc/suffix-500,ok,
+misc/suffix-600,ok,
+utf8/empty-utf8yes,ok,
+utf8/empty-utf8yes-overlapping,unsupported,
+utf8/empty-utf8no,unsupported,
+utf8/empty-utf8no-overlapping,unsupported,
+utf8/empty-utf8yes-bounds,unsupported,
+utf8/empty-utf8yes-bounds-overlapping,unsupported,
+utf8/empty-utf8no-bounds,unsupported,
+utf8/empty-utf8no-bounds-overlapping,unsupported,
+utf8/empty-utf8yes-anchored,unsupported,
+utf8/empty-utf8yes-anchored-overlapping,unsupported,
+utf8/empty-utf8no-anchored,unsupported,
+utf8/empty-utf8no-anchored-overlapping,unsupported,
+utf8/empty-utf8yes-anchored-bounds,unsupported,
+utf8/empty-utf8yes-anchored-bounds-overlapping,unsupported,
+utf8/empty-utf8no-anchored-bounds,unsupported,
+utf8/empty-utf8no-anchored-bounds-overlapping,unsupported,
+utf8/empty-utf8yes-startbound,unsupported,
+utf8/empty-utf8yes-startbound-overlapping,unsupported,
+utf8/empty-utf8no-startbound,unsupported,
+utf8/empty-utf8no-startbound-overlapping,unsupported,
+utf8/empty-utf8yes-anchored-startbound,unsupported,
+utf8/empty-utf8yes-anchored-startbound-overlapping,unsupported,
+utf8/empty-utf8no-anchored-startbound,unsupported,
+utf8/empty-utf8no-anchored-startbound-overlapping,unsupported,
+utf8/empty-utf8yes-anchored-endbound,unsupported,
+utf8/empty-utf8yes-anchored-endbound-overlapping,unsupported,
+utf8/empty-utf8no-anchored-endbound,unsupported,
+utf8/empty-utf8no-anchored-endbound-overlapping,unsupported,
+regex-lite/perl-class-decimal,ok,
+regex-lite/perl-class-space,ok,
+regex-lite/perl-class-word,ok,
+regex-lite/word-boundary,unsupported,
+regex-lite/word-boundary-negated,unsupported,
+regex-lite/empty-no-split-codepoint,ok,
+regex-lite/dot-always-matches-codepoint,unsupported,
+regex-lite/negated-class-always-matches-codepoint,unsupported,
+regex-lite/case-insensitive-is-ascii-only,unsupported,
+no-unicode/invalid-utf8-literal1,unsupported,
+no-unicode/mixed,unsupported,
+no-unicode/case1,unsupported,
+no-unicode/case2,unsupported,
+no-unicode/case3,unsupported,
+no-unicode/case4,unsupported,
+no-unicode/negate1,ok,
+no-unicode/negate2,unsupported,
+no-unicode/dotstar-prefix1,unsupported,
+no-unicode/dotstar-prefix2,unsupported,
+no-unicode/null-bytes1,unsupported,
+no-unicode/word-ascii,unsupported,
+no-unicode/word-unicode,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], but got #[#[(some (0, 1))]]"
+no-unicode/decimal-ascii,unsupported,
+no-unicode/decimal-unicode,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 8 }] }], got #[#[(some (0, 1))], #[(some (7, 8))]]"
+no-unicode/space-ascii,unsupported,
+no-unicode/space-unicode,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 4 }] }], but got #[#[(some (0, 1))]]"
+no-unicode/iter1-bytes,unsupported,
+no-unicode/iter1-utf8,ok,
+no-unicode/iter2-bytes,unsupported,
+no-unicode/unanchored-invalid-utf8-match-100,unsupported,
+no-unicode/unanchored-invalid-utf8-nomatch,unsupported,
+no-unicode/anchored-iter-empty-utf8,unsupported,
+multiline/basic1,error,"expected EOF"
+multiline/basic1-crlf,error,"expected EOF"
+multiline/basic1-crlf-cr,error,"expected EOF"
+multiline/basic2,error,"expected EOF"
+multiline/basic2-crlf,error,"expected EOF"
+multiline/basic2-crlf-cr,error,"expected EOF"
+multiline/basic3,error,"expected EOF"
+multiline/basic3-crlf,error,"expected EOF"
+multiline/basic3-crlf-cr,error,"expected EOF"
+multiline/basic4,error,"expected EOF"
+multiline/basic4-crlf,error,"expected EOF"
+multiline/basic4-crlf-cr,error,"expected EOF"
+multiline/basic5,error,"expected EOF"
+multiline/basic5-crlf,error,"expected EOF"
+multiline/basic5-crlf-cr,error,"expected EOF"
+multiline/basic6,error,"expected EOF"
+multiline/basic6-crlf,error,"expected EOF"
+multiline/basic6-crlf-cr,error,"expected EOF"
+multiline/basic7,error,"expected EOF"
+multiline/basic7-crlf,error,"expected EOF"
+multiline/basic7-crlf-cr,error,"expected EOF"
+multiline/basic8,error,"expected EOF"
+multiline/basic8-crlf,error,"expected EOF"
+multiline/basic8-crlf-cr,error,"expected EOF"
+multiline/basic9,error,"expected EOF"
+multiline/basic9-crlf,error,"expected EOF"
+multiline/repeat1,error,"expected EOF"
+multiline/repeat1-crlf,error,"expected EOF"
+multiline/repeat1-crlf-cr,error,"expected EOF"
+multiline/repeat1-no-multi,ok,
+multiline/repeat1-no-multi-crlf,error,"expected EOF"
+multiline/repeat1-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat2,error,"expected EOF"
+multiline/repeat2-crlf,error,"expected EOF"
+multiline/repeat2-crlf-cr,error,"expected EOF"
+multiline/repeat2-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 2, end := 5 }] }], but got #[#[(some (0, 1))], #[(some (2, 5))]]"
+multiline/repeat2-no-multi-crlf,error,"expected EOF"
+multiline/repeat2-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat3,error,"expected EOF"
+multiline/repeat3-crlf,error,"expected EOF"
+multiline/repeat3-crlf-cr,error,"expected EOF"
+multiline/repeat3-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 1))], #[(some (1, 1))], #[(some (2, 5))], #[(some (5, 5))], #[(some (6, 6))]]"
+multiline/repeat3-no-multi-crlf,error,"expected EOF"
+multiline/repeat3-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat4,error,"expected EOF"
+multiline/repeat4-crlf,error,"expected EOF"
+multiline/repeat4-crlf-cr,error,"expected EOF"
+multiline/repeat4-no-multi,ok,
+multiline/repeat4-no-multi-crlf,error,"expected EOF"
+multiline/repeat4-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat5,error,"expected EOF"
+multiline/repeat5-crlf,error,"expected EOF"
+multiline/repeat5-crlf-cr,error,"expected EOF"
+multiline/repeat5-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 0))], #[(some (1, 1))], #[(some (2, 5))], #[(some (5, 5))], #[(some (6, 6))]]"
+multiline/repeat5-no-multi-crlf,error,"expected EOF"
+multiline/repeat5-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat6,error,"expected EOF"
+multiline/repeat6-crlf,error,"expected EOF"
+multiline/repeat6-crlf-cr,error,"expected EOF"
+multiline/repeat6-no-multi,ok,
+multiline/repeat6-no-multi-crlf,error,"expected EOF"
+multiline/repeat6-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat7,error,"expected EOF"
+multiline/repeat7-crlf,error,"expected EOF"
+multiline/repeat7-crlf-cr,error,"expected EOF"
+multiline/repeat7-no-multi,ok,
+multiline/repeat7-no-multi-crlf,error,"expected EOF"
+multiline/repeat7-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat8,error,"expected EOF"
+multiline/repeat8-crlf,error,"expected EOF"
+multiline/repeat8-crlf-cr,error,"expected EOF"
+multiline/repeat8-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }, { id := 0, spans := #[some { start := 7, end := 7 }] }, { id := 0, spans := #[some { start := 8, end := 8 }] }, { id := 0, spans := #[some { start := 9, end := 9 }] }, { id := 0, spans := #[some { start := 10, end := 10 }] }, { id := 0, spans := #[some { start := 11, end := 11 }] }], got #[#[(some (0, 4))], #[(some (4, 4))], #[(some (5, 5))], #[(some (6, 6))], #[(some (7, 7))], #[(some (8, 8))], #[(some (9, 9))], #[(some (10, 10))], #[(some (11, 11))]]"
+multiline/repeat8-no-multi-crlf,error,"expected EOF"
+multiline/repeat8-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat9,error,"expected EOF"
+multiline/repeat9-crlf,error,"expected EOF"
+multiline/repeat9-crlf-cr,error,"expected EOF"
+multiline/repeat9-no-multi,ok,
+multiline/repeat9-no-multi-crlf,error,"expected EOF"
+multiline/repeat9-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat10,error,"expected EOF"
+multiline/repeat10-crlf,error,"expected EOF"
+multiline/repeat10-crlf-cr,error,"expected EOF"
+multiline/repeat10-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }, { id := 0, spans := #[some { start := 7, end := 11 }] }], got #[#[(some (0, 0))], #[(some (1, 1))], #[(some (2, 2))], #[(some (3, 3))], #[(some (4, 4))], #[(some (5, 5))], #[(some (6, 6))], #[(some (7, 11))], #[(some (11, 11))]]"
+multiline/repeat10-no-multi-crlf,error,"expected EOF"
+multiline/repeat10-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat11,error,"expected EOF"
+multiline/repeat11-crlf,error,"expected EOF"
+multiline/repeat11-crlf-cr,error,"expected EOF"
+multiline/repeat11-no-multi,ok,
+multiline/repeat11-no-multi-crlf,error,"expected EOF"
+multiline/repeat11-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat12,error,"expected EOF"
+multiline/repeat12-crlf,error,"expected EOF"
+multiline/repeat12-crlf-cr,error,"expected EOF"
+multiline/repeat12-no-multi,ok,
+multiline/repeat12-no-multi-crlf,error,"expected EOF"
+multiline/repeat12-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat13,error,"expected EOF"
+multiline/repeat13-crlf,error,"expected EOF"
+multiline/repeat13-crlf-cr,error,"expected EOF"
+multiline/repeat13-no-multi,ok,
+multiline/repeat13-no-multi-crlf,error,"expected EOF"
+multiline/repeat13-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat14,error,"expected EOF"
+multiline/repeat14-crlf,error,"expected EOF"
+multiline/repeat14-crlf-cr,error,"expected EOF"
+multiline/repeat14-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 4, end := 4 }] }], got #[]"
+multiline/repeat14-no-multi-crlf,error,"expected EOF"
+multiline/repeat14-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat15,error,"expected EOF"
+multiline/repeat15-crlf,error,"expected EOF"
+multiline/repeat15-crlf-cr,error,"expected EOF"
+multiline/repeat15-no-multi,ok,
+multiline/repeat15-no-multi-crlf,error,"expected EOF"
+multiline/repeat15-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat16,error,"expected EOF"
+multiline/repeat16-crlf,error,"expected EOF"
+multiline/repeat16-crlf-cr,error,"expected EOF"
+multiline/repeat16-no-multi,ok,
+multiline/repeat16-no-multi-crlf,error,"expected EOF"
+multiline/repeat16-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat17,error,"expected EOF"
+multiline/repeat17-crlf,error,"expected EOF"
+multiline/repeat17-crlf-cr,error,"expected EOF"
+multiline/repeat17-no-multi,ok,
+multiline/repeat17-no-multi-crlf,error,"expected EOF"
+multiline/repeat17-no-multi-crlf-cr,error,"expected EOF"
+multiline/repeat18,error,"expected EOF"
+multiline/repeat18-crlf,error,"expected EOF"
+multiline/repeat18-crlf-cr,error,"expected EOF"
+multiline/repeat18-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 7, end := 7 }] }], got #[#[(some (0, 0))]]"
+multiline/repeat18-no-multi-crlf,error,"expected EOF"
+multiline/repeat18-no-multi-crlf-cr,error,"expected EOF"
+multiline/match-line-100,error,"expected EOF"
+multiline/match-line-100-crlf,error,"expected EOF"
+multiline/match-line-100-crlf-cr,error,"expected EOF"
+multiline/match-line-200,unsupported,
+multiline/match-line-200-crlf,unsupported,
+multiline/match-line-200-crlf-cr,unsupported,
+set/basic10,unsupported,
+set/basic10-leftmost-first,unsupported,
+set/basic20,unsupported,
+set/basic30,unsupported,
+set/basic40,unsupported,
+set/basic50,unsupported,
+set/basic60,unsupported,
+set/basic60-leftmost-first,unsupported,
+set/basic61,unsupported,
+set/basic61-leftmost-first,unsupported,
+set/basic70,unsupported,
+set/basic71,unsupported,
+set/basic80,unsupported,
+set/basic81,unsupported,
+set/basic82,unsupported,
+set/basic90,unsupported,
+set/basic91,unsupported,
+set/basic100,unsupported,
+set/basic101,unsupported,
+set/basic102,unsupported,
+set/basic110,unsupported,
+set/basic111,unsupported,
+set/basic120,unsupported,
+set/basic121,unsupported,
+set/basic122,unsupported,
+set/basic130,unsupported,
+set/empty10,unsupported,
+set/empty10-leftmost-first,unsupported,
+set/empty11,unsupported,
+set/empty11-leftmost-first,unsupported,
+set/empty20,unsupported,
+set/empty20-leftmost-first,unsupported,
+set/empty21,unsupported,
+set/empty21-leftmost-first,unsupported,
+set/empty22,unsupported,
+set/empty23,unsupported,
+set/empty30,unsupported,
+set/empty30-leftmost-first,unsupported,
+set/empty31,unsupported,
+set/empty31-leftmost-first,unsupported,
+set/empty40,unsupported,
+set/empty40-leftmost-first,unsupported,
+set/nomatch10,unsupported,
+set/nomatch20,unsupported,
+set/nomatch30,unsupported,
+set/nomatch40,unsupported,
+set/caps-010,unsupported,
+set/caps-020,unsupported,
+set/caps-030,unsupported,
+set/caps-110,unsupported,
+set/caps-120,unsupported,
+set/caps-121,unsupported,
+iter/1,ok,
+iter/2,ok,
+iter/empty1,ok,
+iter/empty2,ok,
+iter/empty3,ok,
+iter/empty4,ok,
+iter/empty5,ok,
+iter/empty6,ok,
+iter/empty7,ok,
+iter/empty8,ok,
+iter/empty9,ok,
+iter/empty10,ok,
+iter/empty11,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 0))], #[(some (1, 2))], #[(some (2, 2))], #[(some (3, 3))]]"
+iter/start1,ok,
+iter/start2,ok,
+iter/anchored1,unsupported,
+iter/anchored2,unsupported,
+iter/anchored3,unsupported,
+iter/nonempty-followedby-empty,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 3))], #[(some (3, 6))], #[(some (6, 6))]]"
+iter/nonempty-followedby-oneempty,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }], got #[#[(some (0, 3))], #[(some (3, 4))], #[(some (4, 4))]]"
+iter/nonempty-followedby-onemixed,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 7 }] }], got #[#[(some (0, 3))], #[(some (3, 7))], #[(some (7, 7))]]"
+iter/nonempty-followedby-twomixed,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 8 }] }], but got #[#[(some (0, 3))], #[(some (3, 8))], #[(some (8, 8))]]"
+earliest/no-greedy-100,unsupported,
+earliest/no-greedy-200,unsupported,
+earliest/is-ungreedy,unsupported,
+earliest/look-start-test,unsupported,
+earliest/look-end-test,unsupported,
+earliest/no-leftmost-first-100,unsupported,
+earliest/no-leftmost-first-200,unsupported,
+overlapping/ungreedy-dotstar-matches-everything-100,unsupported,
+overlapping/greedy-dotstar-matches-everything-100,unsupported,
+overlapping/repetition-plus-leftmost-first-100,unsupported,
+overlapping/repetition-plus-leftmost-first-110,unsupported,
+overlapping/repetition-plus-all-100,unsupported,
+overlapping/repetition-plus-all-110,unsupported,
+overlapping/repetition-plus-leftmost-first-200,unsupported,
+overlapping/repetition-plus-all-200,unsupported,
+overlapping/repetition-star-leftmost-first-100,unsupported,
+overlapping/repetition-star-all-100,unsupported,
+overlapping/repetition-star-leftmost-first-200,unsupported,
+overlapping/repetition-star-all-200,unsupported,
+overlapping/start-end-rep-leftmost-first,unsupported,
+overlapping/start-end-rep-all,unsupported,
+overlapping/alt-leftmost-first-100,unsupported,
+overlapping/alt-all-100,unsupported,
+overlapping/empty-000,unsupported,
+overlapping/empty-alt-000,unsupported,
+overlapping/empty-alt-010,unsupported,
+overlapping/iter1-bytes,unsupported,
+overlapping/iter1-utf8,unsupported,
+overlapping/iter1-incomplete-utf8,unsupported,
+overlapping/scratch,unsupported,
+word-boundary-special/word-start-ascii-010,unsupported,
+word-boundary-special/word-start-ascii-020,unsupported,
+word-boundary-special/word-start-ascii-030,unsupported,
+word-boundary-special/word-start-ascii-040,unsupported,
+word-boundary-special/word-start-ascii-050,unsupported,
+word-boundary-special/word-start-ascii-060,unsupported,
+word-boundary-special/word-start-ascii-060-bounds,unsupported,
+word-boundary-special/word-start-ascii-070,unsupported,
+word-boundary-special/word-start-ascii-080,unsupported,
+word-boundary-special/word-start-ascii-090,unsupported,
+word-boundary-special/word-start-ascii-110,unsupported,
+word-boundary-special/word-end-ascii-010,unsupported,
+word-boundary-special/word-end-ascii-020,unsupported,
+word-boundary-special/word-end-ascii-030,unsupported,
+word-boundary-special/word-end-ascii-040,unsupported,
+word-boundary-special/word-end-ascii-050,unsupported,
+word-boundary-special/word-end-ascii-060,unsupported,
+word-boundary-special/word-end-ascii-060-bounds,unsupported,
+word-boundary-special/word-end-ascii-070,unsupported,
+word-boundary-special/word-end-ascii-080,unsupported,
+word-boundary-special/word-end-ascii-090,unsupported,
+word-boundary-special/word-end-ascii-110,unsupported,
+word-boundary-special/word-start-unicode-010,unsupported,
+word-boundary-special/word-start-unicode-020,unsupported,
+word-boundary-special/word-start-unicode-030,unsupported,
+word-boundary-special/word-start-unicode-040,unsupported,
+word-boundary-special/word-start-unicode-050,unsupported,
+word-boundary-special/word-start-unicode-060,unsupported,
+word-boundary-special/word-start-unicode-060-bounds,unsupported,
+word-boundary-special/word-start-unicode-070,unsupported,
+word-boundary-special/word-start-unicode-080,unsupported,
+word-boundary-special/word-start-unicode-090,unsupported,
+word-boundary-special/word-start-unicode-110,unsupported,
+word-boundary-special/word-end-unicode-010,unsupported,
+word-boundary-special/word-end-unicode-020,unsupported,
+word-boundary-special/word-end-unicode-030,unsupported,
+word-boundary-special/word-end-unicode-040,unsupported,
+word-boundary-special/word-end-unicode-050,unsupported,
+word-boundary-special/word-end-unicode-060,unsupported,
+word-boundary-special/word-end-unicode-060-bounds,unsupported,
+word-boundary-special/word-end-unicode-070,unsupported,
+word-boundary-special/word-end-unicode-080,unsupported,
+word-boundary-special/word-end-unicode-090,unsupported,
+word-boundary-special/word-end-unicode-110,unsupported,
+word-boundary-special/word-start-half-ascii-010,unsupported,
+word-boundary-special/word-start-half-ascii-020,unsupported,
+word-boundary-special/word-start-half-ascii-030,unsupported,
+word-boundary-special/word-start-half-ascii-040,unsupported,
+word-boundary-special/word-start-half-ascii-050,unsupported,
+word-boundary-special/word-start-half-ascii-060,unsupported,
+word-boundary-special/word-start-half-ascii-060-noutf8,unsupported,
+word-boundary-special/word-start-half-ascii-060-bounds,unsupported,
+word-boundary-special/word-start-half-ascii-070,unsupported,
+word-boundary-special/word-start-half-ascii-080,unsupported,
+word-boundary-special/word-start-half-ascii-090,unsupported,
+word-boundary-special/word-start-half-ascii-110,unsupported,
+word-boundary-special/word-end-half-ascii-010,unsupported,
+word-boundary-special/word-end-half-ascii-020,unsupported,
+word-boundary-special/word-end-half-ascii-030,unsupported,
+word-boundary-special/word-end-half-ascii-040,unsupported,
+word-boundary-special/word-end-half-ascii-050,unsupported,
+word-boundary-special/word-end-half-ascii-060,unsupported,
+word-boundary-special/word-end-half-ascii-060-bounds,unsupported,
+word-boundary-special/word-end-half-ascii-070,unsupported,
+word-boundary-special/word-end-half-ascii-080,unsupported,
+word-boundary-special/word-end-half-ascii-090,unsupported,
+word-boundary-special/word-end-half-ascii-110,unsupported,
+word-boundary-special/word-start-half-unicode-010,unsupported,
+word-boundary-special/word-start-half-unicode-020,unsupported,
+word-boundary-special/word-start-half-unicode-030,unsupported,
+word-boundary-special/word-start-half-unicode-040,unsupported,
+word-boundary-special/word-start-half-unicode-050,unsupported,
+word-boundary-special/word-start-half-unicode-060,unsupported,
+word-boundary-special/word-start-half-unicode-060-bounds,unsupported,
+word-boundary-special/word-start-half-unicode-070,unsupported,
+word-boundary-special/word-start-half-unicode-080,unsupported,
+word-boundary-special/word-start-half-unicode-090,unsupported,
+word-boundary-special/word-start-half-unicode-110,unsupported,
+word-boundary-special/word-end-half-unicode-010,unsupported,
+word-boundary-special/word-end-half-unicode-020,unsupported,
+word-boundary-special/word-end-half-unicode-030,unsupported,
+word-boundary-special/word-end-half-unicode-040,unsupported,
+word-boundary-special/word-end-half-unicode-050,unsupported,
+word-boundary-special/word-end-half-unicode-060,unsupported,
+word-boundary-special/word-end-half-unicode-060-bounds,unsupported,
+word-boundary-special/word-end-half-unicode-070,unsupported,
+word-boundary-special/word-end-half-unicode-080,unsupported,
+word-boundary-special/word-end-half-unicode-090,unsupported,
+word-boundary-special/word-end-half-unicode-110,unsupported,
+word-boundary-special/word-start-half-ascii-carriage,unsupported,
+word-boundary-special/word-start-half-ascii-linefeed,unsupported,
+word-boundary-special/word-start-half-ascii-customlineterm,unsupported,
+substring/unicode-word-start,unsupported,
+substring/unicode-word-end,unsupported,
+substring/ascii-word-start,unsupported,
+substring/ascii-word-end,unsupported,
+expensive/regression-many-repeat-no-stack-overflow,ok,
+expensive/backtrack-blow-visited-capacity,error,"expected EOF"
+flags/1,error,"expected EOF"
+flags/2,error,"expected EOF"
+flags/3,error,"expected EOF"
+flags/4,error,"expected EOF"
+flags/5,error,"expected EOF"
+flags/6,error,"expected EOF"
+flags/7,error,"expected EOF"
+flags/8,error,"expected EOF"
+flags/9,error,"expected EOF"
+flags/10,error,"expected EOF"
+flags/11,unsupported,
+regression/invalid-regex-no-crash-100,error,"expected EOF"
+regression/invalid-regex-no-crash-200,error,"expected EOF"
+regression/invalid-regex-no-crash-300,error,"expected EOF"
+regression/invalid-regex-no-crash-400,error,"expected EOF"
+regression/unsorted-binary-search-100,error,"expected EOF"
+regression/unsorted-binary-search-200,error,"expected EOF"
+regression/unicode-case-lower-nocase-flag,error,"expected EOF"
+regression/negated-char-class-100,error,"expected EOF"
+regression/negated-char-class-200,error,"expected EOF"
+regression/ascii-word-underscore,error,"expected EOF"
+regression/captures-repeat,error,"expected EOF"
+regression/alt-in-alt-100,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }], got #[#[(some (0, 1))]]"
+regression/alt-in-alt-200,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], but got #[#[(some (0, 5))]]"
+regression/leftmost-first-prefix,ok,
+regression/many-alternates,ok,
+regression/word-boundary-alone-100,unsupported,
+regression/word-boundary-alone-200,unsupported,
+regression/word-boundary-ascii-no-capture,unsupported,
+regression/word-boundary-ascii-capture,unsupported,
+regression/partial-anchor,ok,
+regression/endl-or-word-boundary,unsupported,
+regression/zero-or-end,error,"expected EOF"
+regression/y-or-endl,error,"expected EOF"
+regression/word-boundary-start-x,unsupported,
+regression/word-boundary-ascii-start-x,unsupported,
+regression/end-not-word-boundary,unsupported,
+regression/partial-anchor-alternate-begin,ok,
+regression/partial-anchor-alternate-end,ok,
+regression/lits-unambiguous-100,ok,
+regression/lits-unambiguous-200,error,"expected EOF"
+regression/negated-full-byte-range,unsupported,
+regression/strange-anchor-non-complete-prefix,ok,
+regression/strange-anchor-non-complete-suffix,ok,
+regression/captures-after-dfa-premature-end-100,ok,
+regression/captures-after-dfa-premature-end-200,ok,
+regression/captures-after-dfa-premature-end-300,ok,
+regression/captures-after-dfa-premature-end-400,unsupported,
+regression/literal-panic,ok,
+regression/empty-flag-expr,error,"expected EOF"
+regression/invalid-repetition,error,"expected EOF"
+regression/flags-are-unset,error,"expected EOF"
+regression/empty-group-with-unicode,ok,
+regression/word-boundary-weird,unsupported,
+regression/word-boundary-weird-ascii,unsupported,
+regression/word-boundary-weird-minimal-ascii,unsupported,
+regression/reverse-suffix-100,ok,
+regression/reverse-suffix-200,ok,
+regression/reverse-suffix-300,unsupported,
+regression/stops,unsupported,
+regression/stops-ascii,unsupported,
+regression/adjacent-line-boundary-100,error,"expected EOF"
+regression/adjacent-line-boundary-200,error,"expected EOF"
+regression/anchored-prefix-100,error,"expected EOF"
+regression/anchored-prefix-200,error,"expected EOF"
+regression/anchored-prefix-300,ok,
+regression/aho-corasick-100,ok,
+regression/interior-anchor-capture,ok,
+regression/ruff-whitespace-around-keywords,unsupported,
+regression/i429-0,unsupported,
+regression/i429-1,unsupported,
+regression/i429-2,unsupported,
+regression/i429-3,unsupported,
+regression/i429-3-utf8,unsupported,
+regression/i429-4,unsupported,
+regression/i429-5,unsupported,
+regression/i429-6,unsupported,
+regression/i429-7,unsupported,
+regression/i429-8,unsupported,
+regression/i429-9,unsupported,
+regression/i429-10,unsupported,
+regression/i429-11,unsupported,
+regression/i429-12,unsupported,
+regression/i969,unsupported,
+regression/fowler-basic154-unanchored,ok,
+regression/word-boundary-interact-poorly-with-literal-optimizations,unsupported,
+regression/impossible-branch,ok,
+regression/captures-wrong-order,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 1 }, none, some { start := 0, end := 1 }] }], but got #[#[(some (0, 1)), (some (0, 1))]]"
+regression/negated-unicode-word-boundary-dfa-fail,unsupported,
+regression/missed-match,ok,
+regression/regex-to-glob,unsupported,
+regression/reverse-inner-plus-shorter-than-expected,ok,
+regression/reverse-inner-short,ok,
+regression/prefilter-with-aho-corasick-standard-semantics,unsupported,
+regression/non-prefix-literal-quit-state,unsupported,
+regression/hir-optimization-out-of-order-class,error,"expected EOF"
+regression/improper-reverse-suffix-optimization,error,"expected EOF"
+line-terminator/nul,unsupported,
+line-terminator/dot-changes-with-line-terminator,unsupported,
+line-terminator/not-line-feed,unsupported,
+line-terminator/non-ascii,unsupported,
+line-terminator/carriage,unsupported,
+line-terminator/word-byte,unsupported,
+line-terminator/non-word-byte,unsupported,
+line-terminator/word-boundary,unsupported,
+line-terminator/word-boundary-at,unsupported,
+line-terminator/not-word-boundary-at,unsupported,
+anchored/greedy,unsupported,
+anchored/greedy-earliest,unsupported,
+anchored/nongreedy,unsupported,
+anchored/nongreedy-all,unsupported,
+anchored/word-boundary-unicode-01,unsupported,
+anchored/word-boundary-nounicode-01,unsupported,
+anchored/no-match-at-start,unsupported,
+anchored/no-match-at-start-bounds,unsupported,
+anchored/no-match-at-start-reverse-inner,unsupported,
+anchored/no-match-at-start-reverse-inner-bounds,unsupported,
+anchored/no-match-at-start-reverse-anchored,unsupported,
+anchored/no-match-at-start-reverse-anchored-bounds,unsupported,
+bytes/word-boundary-ascii,unsupported,
+bytes/word-boundary-unicode,unsupported,
+bytes/word-boundary-ascii-not,unsupported,
+bytes/word-boundary-unicode-not,unsupported,
+bytes/perl-word-ascii,unsupported,
+bytes/perl-word-unicode,unsupported,
+bytes/perl-decimal-ascii,unsupported,
+bytes/perl-decimal-unicode,unsupported,
+bytes/perl-whitespace-ascii,unsupported,
+bytes/perl-whitespace-unicode,unsupported,
+bytes/mixed-dot,unsupported,
+bytes/case-one-ascii,unsupported,
+bytes/case-one-unicode,unsupported,
+bytes/case-class-simple-ascii,unsupported,
+bytes/case-class-ascii,unsupported,
+bytes/case-class-unicode,unsupported,
+bytes/negate-ascii,unsupported,
+bytes/negate-unicode,unsupported,
+bytes/dotstar-prefix-ascii,unsupported,
+bytes/dotstar-prefix-unicode,unsupported,
+bytes/null-bytes,unsupported,
+bytes/invalid-utf8-anchor-100,unsupported,
+bytes/invalid-utf8-anchor-200,unsupported,
+bytes/invalid-utf8-anchor-300,unsupported,
+bytes/word-boundary-ascii-100,unsupported,
+bytes/word-boundary-ascii-200,unsupported,
+unicode/literal1,ok,
+unicode/literal2,ok,
+unicode/literal3,unsupported,
+unicode/literal4,unsupported,
+unicode/wb-100,unsupported,
+unicode/wb-200,unsupported,
+unicode/wb-300,unsupported,
+unicode/wb-400,unsupported,
+unicode/class1,ok,
+unicode/class2,error,"expected EOF"
+unicode/class3,error,"expected EOF"
+unicode/class4,error,"expected EOF"
+unicode/class5,error,"expected EOF"
+unicode/class6,error,"expected EOF"
+unicode/class7,error,"expected EOF"
+unicode/class8,unsupported,
+unicode/class9,error,"expected EOF"
+unicode/class10,error,"expected EOF"
+unicode/perl1,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 4 }] }], got #[#[(some (0, 1))], #[(some (3, 4))]]"
+unicode/perl2,ok,
+unicode/perl3,ok,
+unicode/perl4,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 8 }] }], got #[#[(some (0, 1))], #[(some (7, 8))]]"
+unicode/perl5,ok,
+unicode/perl6,ok,
+unicode/perl7,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], got #[]"
+unicode/perl8,ok,
+unicode/perl9,ok,
+unicode/class-gencat1,error,"expected EOF"
+unicode/class-gencat2,error,"expected EOF"
+unicode/class-gencat3,error,"expected EOF"
+unicode/class-gencat4,error,"expected EOF"
+unicode/class-gencat5,error,"expected EOF"
+unicode/class-gencat6,error,"expected EOF"
+unicode/class-gencat7,error,"expected EOF"
+unicode/class-gencat8,error,"expected EOF"
+unicode/class-gencat9,error,"expected EOF"
+unicode/class-gencat10,error,"expected EOF"
+unicode/class-gencat11,error,"expected EOF"
+unicode/class-gencat12,error,"expected EOF"
+unicode/class-gencat13,error,"expected EOF"
+unicode/class-gencat14,error,"expected EOF"
+unicode/class-gencat15,error,"expected EOF"
+unicode/class-gencat16,error,"expected EOF"
+unicode/class-gencat17,error,"expected EOF"
+unicode/class-gencat18,error,"expected EOF"
+unicode/class-gencat19,error,"expected EOF"
+unicode/class-gencat20,error,"expected EOF"
+unicode/class-gencat21,error,"expected EOF"
+unicode/class-gencat22,error,"expected EOF"
+unicode/class-gencat23,error,"expected EOF"
+unicode/class-gencat24,error,"expected EOF"
+unicode/class-gencat25,error,"expected EOF"
+unicode/class-gencat26,error,"expected EOF"
+unicode/class-gencat27,error,"expected EOF"
+unicode/class-gencat28,error,"expected EOF"
+unicode/class-gencat29,error,"expected EOF"
+unicode/class-gencat30,error,"expected EOF"
+unicode/class-gencat31,error,"expected EOF"
+unicode/class-gencat32,error,"expected EOF"
+unicode/class-gencat33,error,"expected EOF"
+unicode/class-gencat34,error,"expected EOF"
+unicode/class-gencat35,error,"expected EOF"
+unicode/class-gencat36,error,"expected EOF"
+unicode/class-gencat37,error,"expected EOF"
+unicode/class-emoji1,error,"expected EOF"
+unicode/class-emoji2,error,"expected EOF"
+unicode/class-emoji3,error,"expected EOF"
+unicode/class-emoji4,error,"expected EOF"
+unicode/class-gcb1,error,"expected EOF"
+unicode/class-gcb2,error,"expected EOF"
+unicode/class-gcb3,error,"expected EOF"
+unicode/class-gcb4,error,"expected EOF"
+unicode/class-gcb5,error,"expected EOF"
+unicode/class-gcb6,error,"expected EOF"
+unicode/class-word-break1,error,"expected EOF"
+unicode/class-word-break2,error,"expected EOF"
+unicode/class-word-break3,error,"expected EOF"
+unicode/class-word-break4,error,"expected EOF"
+unicode/class-word-break5,error,"expected EOF"
+unicode/class-sentence-break1,error,"expected EOF"
+unicode/class-sentence-break2,error,"expected EOF"
+unicode/class-sentence-break3,error,"expected EOF"
+unicode/class-sentence-break4,error,"expected EOF"
+unicode/class-sentence-break5,error,"expected EOF"
+crazy/nothing-empty,unsupported,
+crazy/nothing-something,unsupported,
+crazy/ranges,unsupported,
+crazy/ranges-not,unsupported,
+crazy/float1,error,"expected EOF"
+crazy/float2,error,"expected EOF"
+crazy/float3,error,"expected EOF"
+crazy/float4,error,"expected EOF"
+crazy/float5,error,"expected EOF"
+crazy/email,unsupported,
+crazy/email-not,unsupported,
+crazy/email-big,error,"expected EOF"
+crazy/date1,unsupported,
+crazy/date2,unsupported,
+crazy/date3,unsupported,
+crazy/start-end-empty,ok,
+crazy/start-end-empty-rev,ok,
+crazy/start-end-empty-many-1,ok,
+crazy/start-end-empty-many-2,ok,
+crazy/start-end-empty-rep,ok,
+crazy/start-end-empty-rep-rev,ok,
+crazy/neg-class-letter,ok,
+crazy/neg-class-letter-comma,ok,
+crazy/neg-class-letter-space,error,"expected EOF"
+crazy/neg-class-comma,ok,
+crazy/neg-class-space,error,"expected EOF"
+crazy/neg-class-space-comma,error,"expected EOF"
+crazy/neg-class-comma-space,error,"expected EOF"
+crazy/neg-class-ascii,error,"expected EOF"
+crazy/lazy-many-many,ok,
+crazy/lazy-many-optional,ok,
+crazy/lazy-one-many-many,ok,
+crazy/lazy-one-many-optional,ok,
+crazy/lazy-range-min-many,ok,
+crazy/lazy-range-many,ok,
+crazy/greedy-many-many,ok,
+crazy/greedy-many-optional,ok,
+crazy/greedy-one-many-many,ok,
+crazy/greedy-one-many-optional,ok,
+crazy/greedy-range-min-many,ok,
+crazy/greedy-range-many,ok,
+crazy/empty1,ok,
+crazy/empty2,ok,
+crazy/empty3,ok,
+crazy/empty4,ok,
+crazy/empty5,ok,
+crazy/empty6,ok,
+crazy/empty7,ok,
+crazy/empty8,ok,
+crazy/empty9,ok,
+crazy/empty10,ok,
+crazy/empty11,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 0))], #[(some (1, 2))], #[(some (2, 2))], #[(some (3, 3))]]"
+crlf/basic,error,"expected EOF"
+crlf/start-end-non-empty,error,"expected EOF"
+crlf/start-end-empty,error,"expected EOF"
+crlf/start-end-before-after,error,"expected EOF"
+crlf/start-no-split,error,"expected EOF"
+crlf/start-no-split-adjacent,error,"expected EOF"
+crlf/start-no-split-adjacent-cr,error,"expected EOF"
+crlf/start-no-split-adjacent-lf,error,"expected EOF"
+crlf/end-no-split,error,"expected EOF"
+crlf/end-no-split-adjacent,error,"expected EOF"
+crlf/end-no-split-adjacent-cr,error,"expected EOF"
+crlf/end-no-split-adjacent-lf,error,"expected EOF"
+crlf/dot-no-crlf,error,"expected EOF"
+crlf/onepass-wrong-crlf-with-capture,error,"expected EOF"
+crlf/onepass-wrong-crlf-anchored,unsupported,
