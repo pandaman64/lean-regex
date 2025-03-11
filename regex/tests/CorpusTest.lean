@@ -219,8 +219,8 @@ def RegexTest.run (test : RegexTest) : Except String TestResult := do
       else
         match Regex.parse s, test.compiles with
         | .ok regex, true => pure regex
-        | .ok _, false => throw s!"expected {s} to not compile, but it did"
-        | .error e, true => throw s!"expected {s} to compile, but it did not: {e}"
+        | .ok _, false => throw s!"expected '{s}' to not compile, but it did"
+        | .error e, true => throw s!"expected '{s}' to compile, but it did not: {e}"
         | .error _, false => return .ok
     | .many _ => return .unsupported
   let allCaptures := (regex.captureAll test.haystack).map (·.toArray)
