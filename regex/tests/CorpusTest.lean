@@ -267,9 +267,12 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
 
 def main (args : List String) : IO UInt32 := do
   let files ← System.FilePath.readDir "tests/testdata"
-  let tomlFiles := files.filter (·.path.extension = some "toml")
+  let tomlFiles := files
+    |>.map (·.path)
+    |>.filter (·.extension = some "toml")
+    |>.qsort (fun a b => a.toString < b.toString)
 
-  let tests ← tomlFiles.flatMapM (loadTestCases ·.path)
+  let tests ← tomlFiles.flatMapM (loadTestCases ·)
   let results := tests.map fun test => (test.fullName, test.run)
 
   -- Write results to CSV
