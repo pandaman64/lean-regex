@@ -265,7 +265,7 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
   }).toIO')
   IO.ofExcept (decodeRegexTests group toml)
 
-def main : IO Unit := do
+def main (args : List String) : IO UInt32 := do
   let files ← System.FilePath.readDir "tests/testdata"
   let tomlFiles := files.filter (·.path.extension = some "toml")
 
@@ -281,5 +281,14 @@ def main : IO Unit := do
       | .error e => s!"{name},error,\"{e}\"\n"
     csv := csv ++ row
 
-  IO.FS.writeFile "tests/CorpusTest.csv" csv
-  return ()
+  if args.contains "--verify" then
+    let actual ← IO.FS.readFile "tests/CorpusTest.csv"
+    if actual = csv then
+      return 0
+    else
+      IO.eprintln s!"CorpusTest.csv doesn't match"
+      return 1
+  else
+    IO.println "Writing CorpusTest.csv"
+    IO.FS.writeFile "tests/CorpusTest.csv" csv
+    return 0
