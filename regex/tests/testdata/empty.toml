@@ -8,7 +8,9 @@ matches = [[0, 0], [1, 1], [2, 2], [3, 3]]
 name = "110"
 regex = "b|"
 haystack = "abc"
-matches = [[0, 0], [1, 2], [3, 3]]
+# matches = [[0, 0], [1, 2], [3, 3]]
+# Non-Rust regex engines returns the following as lean-regex.
+matches = [[0, 0], [1, 2], [2, 2], [3, 3]]
 
 [[test]]
 name = "120"
@@ -44,7 +46,9 @@ matches = [[0, 0], [1, 1], [2, 2], [3, 3]]
 name = "230"
 regex = "b||"
 haystack = "abc"
-matches = [[0, 0], [1, 2], [3, 3]]
+# matches = [[0, 0], [1, 2], [3, 3]]
+# Non-Rust regex engines returns the following as lean-regex.
+matches = [[0, 0], [1, 2], [2, 2], [3, 3]]
 
 [[test]]
 name = "240"
@@ -62,7 +66,9 @@ matches = [[0, 0], [1, 1], [2, 2], [3, 3]]
 name = "310"
 regex = "b|(?:)"
 haystack = "abc"
-matches = [[0, 0], [1, 2], [3, 3]]
+# matches = [[0, 0], [1, 2], [3, 3]]
+# Non-Rust regex engines returns the following as lean-regex.
+matches = [[0, 0], [1, 2], [2, 2], [3, 3]]
 
 [[test]]
 name = "320"
