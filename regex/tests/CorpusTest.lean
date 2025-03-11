@@ -217,7 +217,11 @@ def RegexTest.run (test : RegexTest) : Except String TestResult := do
       if hasWordBoundary s then
         return .unsupported
       else
-        Regex.parse s |>.mapError toString
+        match Regex.parse s, test.compiles with
+        | .ok regex, true => pure regex
+        | .ok _, false => throw s!"expected {s} to not compile, but it did"
+        | .error e, true => throw s!"expected {s} to compile, but it did not: {e}"
+        | .error _, false => return .ok
     | .many _ => return .unsupported
   let captures := (regex.captureAll test.haystack).map (·.toArray)
   if test.matches.size != captures.size then
