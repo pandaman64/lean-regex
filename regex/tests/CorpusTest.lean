@@ -286,7 +286,7 @@ def main (args : List String) : IO UInt32 := do
     if actual = csv then
       return 0
     else
-      IO.eprintln s!"CorpusTest.csv doesn't match"
+      IO.eprintln s!"CorpusTest.csv doesn't match. Expected:\n{csv}\n\nActual:\n{actual}"
       return 1
   else
     IO.println "Writing CorpusTest.csv"
