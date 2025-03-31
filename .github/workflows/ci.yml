@@ -27,6 +27,10 @@ jobs:
           with:
             build-args: '--wfail'
             lake-package-directory: regex
+        - name: Run CorpusTest
+          run: |
+            cd regex
+            lake exe CorpusTest --verify
         - name: Build RegexCorrectness
           uses: leanprover/lean-action@v1
           with:

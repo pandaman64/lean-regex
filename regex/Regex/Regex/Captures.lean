@@ -13,6 +13,15 @@ def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option (Pos × Po
   let stop ← (← self.buffer.get? (2 * index + 1))
   return (start, stop)
 
+def CapturedGroups.toArray (self : CapturedGroups) : Array (Option (Pos × Pos)) :=
+  go 0 #[]
+where
+  go (i : Nat) (accum : Array (Option (Pos × Pos))) : Array (Option (Pos × Pos)) :=
+    if 2 * i < self.buffer.size then
+      go (i + 1) (accum.push (self.get i))
+    else
+      accum
+
 structure Captures where
   regex : Regex
   haystack : String
