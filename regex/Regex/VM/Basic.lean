@@ -14,6 +14,8 @@ open String (Pos Iterator)
 -/
 namespace Regex.VM
 
+-- https://github.com/leanprover/lean4/issues/7826
+set_option wf.preprocess false in
 /--
 Visit all ε-transitions from the states in the stack, updating `next.states` when the new state is
 `.done`, `.char`, or `.sparse`. Returns `.some updates` if a `.done` state is reached, meaning a
@@ -27,7 +29,7 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   match stack with
   | [] => (matched, next)
   | (update, state) :: stack' =>
-    if state ∈ next.states then
+    if _ : state ∈ next.states then
       εClosure σ nfa wf it matched next stack'
     else
       match h : next with

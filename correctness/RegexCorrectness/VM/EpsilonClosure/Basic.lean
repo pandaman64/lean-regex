@@ -91,23 +91,23 @@ theorem εClosure.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it 
     motive matched next ((update, state) :: stack')) :
   ∀ matched next stack, motive matched next stack := fun matched next stack =>
     εClosure.induct σ nfa wf it motive base visited
-      (fun matched update state stack' states updates state' hn isLt mem ih =>
+      (fun matched update state stack' states updates mem state' hn isLt ih =>
         epsilon matched ⟨states, updates⟩ update state stack' ⟨state', isLt⟩ mem hn ih)
-      (fun matched update state stack' states updates anchor state' hn isLt test mem ih =>
+      (fun matched update state stack' states updates mem anchor state' hn isLt test ih =>
         anchor_pos matched ⟨states, updates⟩ update state stack' anchor ⟨state', isLt⟩ mem hn test ih)
-      (fun matched update state stack' states updates anchor state' hn isLt test mem ih =>
+      (fun matched update state stack' states updates mem anchor state' hn isLt test ih =>
         anchor_neg matched ⟨states, updates⟩ update state stack' anchor ⟨state', isLt⟩ mem hn test ih)
-      (fun matched update state stack' states updates state₁ state₂ hn isLt mem ih =>
+      (fun matched update state stack' states updates mem state₁ state₂ hn isLt ih =>
         split matched ⟨states, updates⟩ update state stack' ⟨state₁, isLt.1⟩ ⟨state₂, isLt.2⟩ mem hn ih)
-      (fun matched update state stack' states updates offset state' hn isLt mem ih =>
+      (fun matched update state stack' states updates mem offset state' hn isLt ih =>
         save matched ⟨states, updates⟩ update state stack' offset ⟨state', isLt⟩ mem hn ih)
-      (fun matched update state stack' states updates hn mem ih =>
+      (fun matched update state stack' states updates mem hn ih =>
         done matched ⟨states, updates⟩ update state stack' mem hn ih)
-      (fun matched update state stack' states updates c state' hn mem ih =>
+      (fun matched update state stack' states updates mem c state' hn ih =>
         char matched ⟨states, updates⟩ update state stack' c ⟨state', wf.inBounds' state hn⟩ mem hn ih)
-      (fun matched update state stack' states updates cs state' hn mem ih =>
+      (fun matched update state stack' states updates mem cs state' hn ih =>
         sparse matched ⟨states, updates⟩ update state stack' cs ⟨state', wf.inBounds' state hn⟩ mem hn ih)
-      (fun matched update state stack' states updates hn mem ih =>
+      (fun matched update state stack' states updates mem hn ih =>
         fail matched ⟨states, updates⟩ update state stack' mem hn ih)
       matched next stack
 
