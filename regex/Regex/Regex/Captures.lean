@@ -9,8 +9,8 @@ structure CapturedGroups where
 deriving Repr
 
 def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option (Pos × Pos) := do
-  let start ← (← self.buffer.get? (2 * index))
-  let stop ← (← self.buffer.get? (2 * index + 1))
+  let start ← (← self.buffer[2 * index]?)
+  let stop ← (← self.buffer[2 * index + 1]?)
   return (start, stop)
 
 def CapturedGroups.toArray (self : CapturedGroups) : Array (Option (Pos × Pos)) :=

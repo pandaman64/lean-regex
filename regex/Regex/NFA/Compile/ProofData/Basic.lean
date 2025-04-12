@@ -409,7 +409,8 @@ theorem get_start : nfa'[nfa.nodes.size]'size_lt = .split nfaExpr.start next := 
 
 theorem get_ne_start (i : Nat) (h : i < nfa'.nodes.size) (ne : i ≠ nfa.nodes.size) :
   nfa'[i] = nfaExpr[i]'(size_eq_expr' ▸ h) := by
-  simp [eq', pushRegex, NFA.get_eq_nodes_get, ne.symm]
+  simp [eq', pushRegex, NFA.get_eq_nodes_get]
+  rw [Array.getElem_setIfInBounds_ne (hj := size_eq_expr' ▸ h) (h := ne.symm)]
   rfl
 
 end Star
