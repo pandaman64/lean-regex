@@ -50,4 +50,69 @@ local instance : DecidableEq (Except Error Ast) := decEq
 #guard parseAst "a*b*c*" = .ok (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
 #guard parseAst "a?" = .ok (.alternate (.char 'a') .epsilon)
 
+#eval parseAst "a{1,|bx"
+#guard parseAst "a{1,|bx" = .error .expectedEof
+#eval parseAst "("
+#guard parseAst "(" = .error .expectedEof
+#eval parseAst ")"
+#guard parseAst ")" = .error .expectedEof
+#eval parseAst "(abc"
+#guard parseAst "(abc" = .error .expectedEof
+#eval parseAst "abc)"
+#guard parseAst "abc)" = .error .expectedEof
+#eval parseAst "[abc"
+#guard parseAst "[abc" = .error .expectedEof
+#eval parseAst "abc]"
+#guard parseAst "abc]" = .error .expectedEof
+#eval parseAst "a{}"
+#guard parseAst "a{}" = .error .expectedEof
+#eval parseAst "a{,}"
+#guard parseAst "a{,}" = .error .expectedEof
+#eval parseAst "a{,5}"
+#guard parseAst "a{,5}" = .error .expectedEof
+#eval parseAst "a{-1}"
+#guard parseAst "a{-1}" = .error .expectedEof
+#eval parseAst "a{-1,5}"
+#guard parseAst "a{-1,5}" = .error .expectedEof
+#eval parseAst "a{10,5}"
+#guard parseAst "a{10,5}" = .error .expectedEof
+#eval parseAst "*a"
+#guard parseAst "*a" = .error .expectedEof
+#eval parseAst "+a"
+#guard parseAst "+a" = .error .expectedEof
+#eval parseAst "?a"
+#guard parseAst "?a" = .error .expectedEof
+#eval parseAst "|*"
+#guard parseAst "|*" = .error .expectedEof
+#eval parseAst "\\x"
+#guard parseAst "\\x" = .error .expectedEof
+#eval parseAst "\\u"
+#guard parseAst "\\u" = .error .expectedEof
+#eval parseAst "\\u12"
+#guard parseAst "\\u12" = .error .expectedEof
+#eval parseAst "\\u{}"
+#guard parseAst "\\u{}" = .error .expectedEof
+#eval parseAst "\\u{xyz}"
+#guard parseAst "\\u{xyz}" = .error .expectedEof
+#eval parseAst "[]"
+#guard parseAst "[]" = .error .expectedEof
+#eval parseAst "[^]"
+#guard parseAst "[^]" = .error .expectedEof
+#eval parseAst "a{1"
+#guard parseAst "a{1" = .error .expectedEof
+#eval parseAst "a{1,"
+#guard parseAst "a{1," = .error .expectedEof
+#eval parseAst "a{1,2"
+#guard parseAst "a{1,2" = .error .expectedEof
+#eval parseAst "a{,"
+#guard parseAst "a{," = .error .expectedEof
+#eval parseAst "a)"
+#guard parseAst "a)" = .error .expectedEof
+#eval parseAst "(?:"
+#guard parseAst "(?:" = .error .expectedEof
+#eval parseAst "(?:a"
+#guard parseAst "(?:a" = .error .expectedEof
+#eval parseAst "(?:"
+#guard parseAst "(?:" = .error .expectedEof
+
 end Regex.Syntax.Parser.Test
