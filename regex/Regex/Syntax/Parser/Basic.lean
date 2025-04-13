@@ -36,7 +36,7 @@ def hexDigit : Parser.LT Error Nat :=
 def hexNumberN (n : Nat) [NeZero n] : Parser.LT Error Nat :=
   foldlPos 0 (fun n d => 16 * n + d) hexDigit n
 
-def specialCharacters := "[](){}*+?|^$.\\"
+def specialCharacters := "[](){*+?|^$.\\"
 
 def escapedChar : Parser.LT Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
@@ -54,6 +54,7 @@ where
       | 'v' => pure '\x0b'
       | '0' => pure '\x00'
       | '-' => pure '-'
+      | '}' => pure '}'
       | c =>
         if specialCharacters.contains c then
           pure c

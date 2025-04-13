@@ -87,6 +87,9 @@ local instance : DecidableEq (Except Error Ast) := decEq
 #guard parseAst "\\z" = .error (.unexpectedEscapedChar 'z')
 #guard parseAst "\\g" = .error (.unexpectedEscapedChar 'g')
 
+-- '}' is not a special character
+#guard parseAst "}" = .ok (.char '}')
+
 -- syntax errors and error messages
 #guard parseAst "a{1,|bx" = .error (.unexpectedChar '|')
 #guard parseAst "(" = .error .unexpectedEof

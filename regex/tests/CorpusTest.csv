@@ -474,7 +474,7 @@ regression/reverse-inner-short,ok,
 regression/prefilter-with-aho-corasick-standard-semantics,unsupported,
 regression/non-prefix-literal-quit-state,unsupported,
 regression/hir-optimization-out-of-order-class,error,"expected '^[[:alnum:]./-]+$' to compile, but it did not: expected EOF"
-regression/improper-reverse-suffix-optimization,error,"expected '(\\N\{[^}]+})|([{}])' to compile, but it did not: unexpected character: }"
+regression/improper-reverse-suffix-optimization,ok,
 set/basic10,unsupported,
 set/basic10-leftmost-first,unsupported,
 set/basic20,unsupported,
