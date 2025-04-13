@@ -35,7 +35,7 @@ def test {ε} (c : Char) : Parser.LE ε Bool :=
 def charOrElse {ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char → ε) : Parser.LT ε Char
   | it =>
     anyCharOrElse unexpectedEof it |>.guard fun c' =>
-      if c = c' then .ok c else .error (unexpectedChar c)
+      if c = c' then .ok c else .error (unexpectedChar c')
 
 def foldl {ε α β} (init : β) (f : β → α → β) (p : Parser.LT ε α) : Parser.LE ε β :=
   fun it =>

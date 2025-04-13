@@ -50,69 +50,40 @@ local instance : DecidableEq (Except Error Ast) := decEq
 #guard parseAst "a*b*c*" = .ok (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
 #guard parseAst "a?" = .ok (.alternate (.char 'a') .epsilon)
 
-#eval parseAst "a{1,|bx"
-#guard parseAst "a{1,|bx" = .error .expectedEof
-#eval parseAst "("
-#guard parseAst "(" = .error .expectedEof
-#eval parseAst ")"
+#guard parseAst "a{1,|bx" = .error (.unexpectedChar '|')
+#guard parseAst "(" = .error .unexpectedEof
 #guard parseAst ")" = .error .expectedEof
-#eval parseAst "(abc"
-#guard parseAst "(abc" = .error .expectedEof
-#eval parseAst "abc)"
+#guard parseAst "(abc" = .error .unexpectedEof
 #guard parseAst "abc)" = .error .expectedEof
-#eval parseAst "[abc"
-#guard parseAst "[abc" = .error .expectedEof
-#eval parseAst "abc]"
+#guard parseAst "[abc" = .error .unexpectedEof
 #guard parseAst "abc]" = .error .expectedEof
-#eval parseAst "a{}"
-#guard parseAst "a{}" = .error .expectedEof
-#eval parseAst "a{,}"
-#guard parseAst "a{,}" = .error .expectedEof
-#eval parseAst "a{,5}"
-#guard parseAst "a{,5}" = .error .expectedEof
-#eval parseAst "a{-1}"
-#guard parseAst "a{-1}" = .error .expectedEof
-#eval parseAst "a{-1,5}"
-#guard parseAst "a{-1,5}" = .error .expectedEof
-#eval parseAst "a{10,5}"
-#guard parseAst "a{10,5}" = .error .expectedEof
-#eval parseAst "*a"
+#guard parseAst "a{}" = .error (.unexpectedChar '}')
+#guard parseAst "a{,}" = .error (.unexpectedChar ',')
+#guard parseAst "a{,5}" = .error (.unexpectedChar ',')
+#guard parseAst "a{-1}" = .error (.unexpectedChar '-')
+#guard parseAst "a{-1,5}" = .error (.unexpectedChar '-')
+#guard parseAst "a{10,5}" = .error .(.invalidRepetition 10 5)
 #guard parseAst "*a" = .error .expectedEof
-#eval parseAst "+a"
 #guard parseAst "+a" = .error .expectedEof
-#eval parseAst "?a"
 #guard parseAst "?a" = .error .expectedEof
-#eval parseAst "|*"
 #guard parseAst "|*" = .error .expectedEof
-#eval parseAst "\\x"
-#guard parseAst "\\x" = .error .expectedEof
-#eval parseAst "\\u"
-#guard parseAst "\\u" = .error .expectedEof
-#eval parseAst "\\u12"
-#guard parseAst "\\u12" = .error .expectedEof
-#eval parseAst "\\u{}"
-#guard parseAst "\\u{}" = .error .expectedEof
-#eval parseAst "\\u{xyz}"
-#guard parseAst "\\u{xyz}" = .error .expectedEof
-#eval parseAst "[]"
-#guard parseAst "[]" = .error .expectedEof
-#eval parseAst "[^]"
-#guard parseAst "[^]" = .error .expectedEof
-#eval parseAst "a{1"
-#guard parseAst "a{1" = .error .expectedEof
-#eval parseAst "a{1,"
-#guard parseAst "a{1," = .error .expectedEof
-#eval parseAst "a{1,2"
-#guard parseAst "a{1,2" = .error .expectedEof
-#eval parseAst "a{,"
-#guard parseAst "a{," = .error .expectedEof
-#eval parseAst "a)"
+#guard parseAst "\\x" = .error .unexpectedEof
+#guard parseAst "\\u" = .error .unexpectedEof
+#guard parseAst "\\u12" = .error .unexpectedEof
+#guard parseAst "\\u{}" = .error (.unexpectedChar '{')
+#guard parseAst "\\u{xyz}" = .error (.unexpectedChar '{')
+#guard parseAst "[]" = .error (.unexpectedChar ']')
+#guard parseAst "[^]" = .error (.unexpectedChar ']')
+#guard parseAst "a{1" = .error .unexpectedEof
+#guard parseAst "a{1," = .error .unexpectedEof
+#guard parseAst "a{1,2" = .error .unexpectedEof
+#guard parseAst "a{," = .error (.unexpectedChar ',')
 #guard parseAst "a)" = .error .expectedEof
-#eval parseAst "(?:"
-#guard parseAst "(?:" = .error .expectedEof
-#eval parseAst "(?:a"
-#guard parseAst "(?:a" = .error .expectedEof
-#eval parseAst "(?:"
-#guard parseAst "(?:" = .error .expectedEof
+#guard parseAst "(?:" = .error .unexpectedEof
+#guard parseAst "(?:a" = .error .unexpectedEof
+#guard parseAst "(?:" = .error .unexpectedEof
+
+-- We do not support \u{...} yet.
+#guard parseAst "\\u{1234}" = .error (.unexpectedChar '{')
 
 end Regex.Syntax.Parser.Test
