@@ -36,6 +36,8 @@ def hexDigit : Parser.LT Error Nat :=
 def hexNumberN (n : Nat) [NeZero n] : Parser.LT Error Nat :=
   foldlPos 0 (fun n d => 16 * n + d) hexDigit n
 
+def specialCharacters := "[](){}*+?|^$.\\"
+
 def escapedChar : Parser.LT Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
     ((Sum.inl <$> (simple <|> hex2 <|> hex4)) <|> (Sum.inr <$> perlClass)).commit
@@ -52,8 +54,11 @@ where
       | 'v' => pure '\x0b'
       | '0' => pure '\x00'
       | '-' => pure '-'
-      | '\\' => pure '\\'
-      | _ => throw (.unexpectedEscapedChar c)
+      | c =>
+        if specialCharacters.contains c then
+          pure c
+        else
+          throw (.unexpectedEscapedChar c)
   hex2 : Parser.LT Error Char :=
     charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit
   -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
@@ -75,8 +80,6 @@ def escapedCharToAst (c : Char ⊕ PerlClass) : Ast :=
   match c with
   | .inl c => .char c
   | .inr cls => .perl cls
-
-def specialCharacters := "[](){}*+?|^$.\\"
 
 def plainChar : Parser.LT Error Char :=
   anyCharOrError.guard fun c =>

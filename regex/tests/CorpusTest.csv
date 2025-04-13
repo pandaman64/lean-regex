@@ -41,14 +41,14 @@ crazy/nothing-empty,unsupported,
 crazy/nothing-something,unsupported,
 crazy/ranges,unsupported,
 crazy/ranges-not,unsupported,
-crazy/float1,error,"expected '[-+]?[0-9]*\.?[0-9]+' to compile, but it did not: unexpected escaped character: ."
-crazy/float2,error,"expected '[-+]?[0-9]*\.?[0-9]+' to compile, but it did not: unexpected escaped character: ."
-crazy/float3,error,"expected '[-+]?[0-9]*\.?[0-9]+' to compile, but it did not: unexpected escaped character: ."
-crazy/float4,error,"expected '[-+]?[0-9]*\.?[0-9]+' to compile, but it did not: unexpected escaped character: ."
-crazy/float5,error,"expected '^[-+]?[0-9]*\.?[0-9]+$' to compile, but it did not: unexpected escaped character: ."
+crazy/float1,ok,
+crazy/float2,ok,
+crazy/float3,ok,
+crazy/float4,ok,
+crazy/float5,ok,
 crazy/email,unsupported,
 crazy/email-not,unsupported,
-crazy/email-big,error,"expected '[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?' to compile, but it did not: unexpected escaped character: ."
+crazy/email-big,ok,
 crazy/date1,unsupported,
 crazy/date2,unsupported,
 crazy/date3,unsupported,
@@ -474,7 +474,7 @@ regression/reverse-inner-short,ok,
 regression/prefilter-with-aho-corasick-standard-semantics,unsupported,
 regression/non-prefix-literal-quit-state,unsupported,
 regression/hir-optimization-out-of-order-class,error,"expected '^[[:alnum:]./-]+$' to compile, but it did not: expected EOF"
-regression/improper-reverse-suffix-optimization,error,"expected '(\\N\{[^}]+})|([{}])' to compile, but it did not: unexpected escaped character: {"
+regression/improper-reverse-suffix-optimization,error,"expected '(\\N\{[^}]+})|([{}])' to compile, but it did not: unexpected character: }"
 set/basic10,unsupported,
 set/basic10-leftmost-first,unsupported,
 set/basic20,unsupported,

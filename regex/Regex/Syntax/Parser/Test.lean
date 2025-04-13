@@ -50,6 +50,44 @@ local instance : DecidableEq (Except Error Ast) := decEq
 #guard parseAst "a*b*c*" = .ok (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
 #guard parseAst "a?" = .ok (.alternate (.char 'a') .epsilon)
 
+-- escaping rules for special characters
+#guard parseAst "\\n" = .ok (.char '\n')
+#guard parseAst "\\t" = .ok (.char '\t')
+#guard parseAst "\\r" = .ok (.char '\r')
+#guard parseAst "\\a" = .ok (.char '\x07')
+#guard parseAst "\\f" = .ok (.char '\x0c')
+#guard parseAst "\\v" = .ok (.char '\x0b')
+#guard parseAst "\\0" = .ok (.char '\x00')
+#guard parseAst "\\-" = .ok (.char '-')
+#guard parseAst "\\[" = .ok (.char '[')
+#guard parseAst "\\]" = .ok (.char ']')
+#guard parseAst "\\(" = .ok (.char '(')
+#guard parseAst "\\)" = .ok (.char ')')
+#guard parseAst "\\{" = .ok (.char '{')
+#guard parseAst "\\}" = .ok (.char '}')
+#guard parseAst "\\*" = .ok (.char '*')
+#guard parseAst "\\+" = .ok (.char '+')
+#guard parseAst "\\?" = .ok (.char '?')
+#guard parseAst "\\|" = .ok (.char '|')
+#guard parseAst "\\^" = .ok (.char '^')
+#guard parseAst "\\$" = .ok (.char '$')
+#guard parseAst "\\." = .ok (.char '.')
+#guard parseAst "\\\\" = .ok (.char '\\')
+
+#guard parseAst "\\xab" = .ok (.char '\xab')
+#guard parseAst "\\u1234" = .ok (.char '\u1234')
+
+#guard parseAst "\\d" = .ok (.perl ⟨false, .digit⟩)
+#guard parseAst "\\D" = .ok (.perl ⟨true, .digit⟩)
+#guard parseAst "\\s" = .ok (.perl ⟨false, .space⟩)
+#guard parseAst "\\S" = .ok (.perl ⟨true, .space⟩)
+#guard parseAst "\\w" = .ok (.perl ⟨false, .word⟩)
+#guard parseAst "\\W" = .ok (.perl ⟨true, .word⟩)
+
+#guard parseAst "\\z" = .error (.unexpectedEscapedChar 'z')
+#guard parseAst "\\g" = .error (.unexpectedEscapedChar 'g')
+
+-- syntax errors and error messages
 #guard parseAst "a{1,|bx" = .error (.unexpectedChar '|')
 #guard parseAst "(" = .error .unexpectedEof
 #guard parseAst ")" = .error .expectedEof
