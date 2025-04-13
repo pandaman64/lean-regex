@@ -51,6 +51,7 @@ def debug {s ε α} [ToString α] (name : String) (p : Parser s ε α) : Parser 
 @[inline]
 def commit {s ε α} : Parser s ε α → Parser s ε α
   | p, it => (p it).commit
+
 @[inline]
 def map {s ε α β} (f : α → β) : Parser s ε α → Parser s ε β
   | p, it => (p it).map f
