@@ -36,9 +36,11 @@ def hexDigit : Parser.LT Error Nat :=
 def hexNumberN (n : Nat) [NeZero n] : Parser.LT Error Nat :=
   foldlPos 0 (fun n d => 16 * n + d) hexDigit n
 
+def specialCharacters := "[](){*+?|^$.\\"
+
 def escapedChar : Parser.LT Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
-    ((.inl <$> (simple <|> hex2 <|> hex4)) <|> (.inr <$> perlClass))
+    ((Sum.inl <$> (simple <|> hex2 <|> hex4)) <|> (Sum.inr <$> perlClass)).commit
 where
   simple : Parser.LT Error Char :=
     anyCharOrError
@@ -52,13 +54,17 @@ where
       | 'v' => pure '\x0b'
       | '0' => pure '\x00'
       | '-' => pure '-'
-      | '\\' => pure '\\'
-      | _ => throw (.unexpectedEscapedChar c)
+      | '}' => pure '}'
+      | c =>
+        if specialCharacters.contains c then
+          pure c
+        else
+          throw (.unexpectedEscapedChar c)
   hex2 : Parser.LT Error Char :=
-    charOrError 'x' *> (Char.ofNat <$> hexNumberN 2)
+    charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit
   -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
   hex4 : Parser.LT Error Char :=
-    charOrError 'u' *> (Char.ofNat <$> hexNumberN 4)
+    charOrError 'u' *> (Char.ofNat <$> hexNumberN 4).commit
   perlClass : Parser.LT Error PerlClass :=
     anyCharOrError
     |>.guard fun c =>
@@ -75,8 +81,6 @@ def escapedCharToAst (c : Char ⊕ PerlClass) : Ast :=
   match c with
   | .inl c => .char c
   | .inr cls => .perl cls
-
-def specialCharacters := "[](){}*+?|^$.\\"
 
 def plainChar : Parser.LT Error Char :=
   anyCharOrError.guard fun c =>
@@ -120,17 +124,17 @@ where
     | .inr cls => .perl cls
 
 def classes : Parser.LT Error Ast :=
-  betweenOr (charOrError '[') (charOrError ']') (do
+  betweenOr (charOrError '[') (charOrError ']').commit (.commit do
     let negated ← test '^'
     let classes ← (many1 singleClass).weaken
-    pure (.classes ⟨negated, classes⟩)
+    pure (Ast.classes ⟨negated, classes⟩)
   )
 
 def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
   (charOrError '*' |>.mapConst (0, .none))
   <|> (charOrError '+' |>.mapConst (1, .none))
   <|> (charOrError '?' |>.mapConst (0, .some 1))
-  <|> (betweenOr (charOrError '{') (charOrError '}') do
+  <|> (betweenOr (charOrError '{') (charOrError '}').commit (.commit do
     let min ← number.weaken
     let comma ← test ','
     if comma then
@@ -143,7 +147,7 @@ def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
       | .none => pure (min, .none) -- {N,} represents N or more repetitions
     else
       pure (min, .some min) -- {N} represents N repetitions
-  )
+  ))
 
 def repeatConcat (ast : Ast) (n : Nat) : Ast :=
   go ast (n - 1)
@@ -190,13 +194,13 @@ mutual
 def group (it : Iterator) : Result.LT it Error Ast :=
   (charOrError '(' it)
   |>.bind' fun _ it' h =>
-    nonCapturing.opt it'
+    (nonCapturing.opt it'
     |>.bind' fun nonCapturing it'' h' =>
       have : Rel.LT it'' it := Trans.trans h' h
       regex it''
       |>.bind' fun ast it''' _ =>
         let ast := if nonCapturing.isSome then ast else .group ast
-        Functor.mapConst ast (charOrError ')' it''')
+        Functor.mapConst ast (charOrError ')' it''')).commit
 termination_by (it.remainingBytes, 0)
 
 def primary (it : Iterator) : Result.LT it Error Ast :=

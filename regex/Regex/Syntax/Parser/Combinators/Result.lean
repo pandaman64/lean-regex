@@ -67,6 +67,12 @@ def complete {s it ε α} (expectedEof : ε) : Result s it ε α → Result s it
   | .fatal e => .fatal e
 
 @[inline]
+def commit {s it ε α} : Result s it ε α → Result s it ε α
+  | .ok a it' h => .ok a it' h
+  | .error e => .fatal e
+  | .fatal e => .fatal e
+
+@[inline]
 def guard {s it ε α β} (f : α → Except ε β) : Result s it ε α → Result s it ε β
   | .ok a it' h =>
     match f a with
