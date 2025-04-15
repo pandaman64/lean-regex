@@ -1,6 +1,7 @@
 import Regex.Syntax.Parser
 import Regex.NFA
 import Regex.VM
+import Regex.Backtracker
 
 structure Regex where
   nfa : Regex.NFA
