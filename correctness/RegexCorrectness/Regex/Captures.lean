@@ -92,7 +92,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
         simp [hcaptured 0]
         have h₁ := (eqv 0).1 (by omega)
         have h₂ := (eqv 0).2 (by omega)
-        simp [VM.BufferStrategy] at eq₁ eq₂
+        simp [BufferStrategy] at eq₁ eq₂
         simp [eq₁] at h₁
         simp [eq₂] at h₂
         have ⟨_, eq₁⟩ := h₁

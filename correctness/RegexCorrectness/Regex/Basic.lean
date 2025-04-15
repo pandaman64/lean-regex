@@ -54,7 +54,7 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
   apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
   simp [expr, Expr.tags]
 
-theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext (VM.BufferStrategy bufferSize) re.nfa re.wf it = .some matched)
+theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext (BufferStrategy bufferSize) re.nfa re.wf it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
   ∃ l m r groups,
     it.toString = ⟨l ++ m ++ r⟩ ∧
@@ -90,7 +90,7 @@ theorem searchNext_some {re it first last} (h : VM.searchNext re.nfa re.wf it = 
   | none => simp at h
   | some matched =>
     have ⟨l, m, r, groups, eqstring, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
-    simp [VM.BufferStrategy] at eq₁ eq₂
+    simp [BufferStrategy] at eq₁ eq₂
     simp [eq₁, eq₂] at h
     exact ⟨l, m, r, groups, eqstring, c, by simp [←h]⟩
 

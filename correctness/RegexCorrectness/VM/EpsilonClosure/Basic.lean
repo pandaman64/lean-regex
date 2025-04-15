@@ -1,7 +1,6 @@
 import Regex.Data.SparseSet
 import Regex.NFA.Basic
 import Regex.VM
-import Regex.VM.Strategy
 import RegexCorrectness.VM.Path
 
 set_option autoImplicit false

@@ -1,12 +1,10 @@
-import Regex.Data.SparseSet
 import Regex.NFA
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet)
 open String (Pos)
 
-namespace Regex.VM
+namespace Regex
 
 structure Strategy where
   Update : Type
@@ -16,12 +14,6 @@ structure Strategy where
 abbrev Buffer (size : Nat) := Vector (Option Pos) size
 
 def Buffer.empty {size : Nat} : Buffer size := Vector.mkVector size none
-
-structure SearchState (σ : Strategy) (nfa : NFA) where
-  states : SparseSet nfa.nodes.size
-  updates : Vector σ.Update nfa.nodes.size
-
-abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
 
 def BufferStrategy (size : Nat) : Strategy where
   Update := Buffer size
@@ -38,11 +30,11 @@ instance {size} : GetElem (BufferStrategy size).Update Nat (Option Pos) (fun _ i
   inferInstanceAs (GetElem (Vector (Option Pos) size) Nat (Option Pos) _)
 
 /--
-This strategy is used only for proofs and inefficient.
+This strategy is inefficient and used only for proofs.
 -/
 def HistoryStrategy : Strategy where
   Update := List (Nat × Pos)
   empty := []
   write update offset pos := update ++ [(offset, pos)]
 
-end Regex.VM
+end Regex
