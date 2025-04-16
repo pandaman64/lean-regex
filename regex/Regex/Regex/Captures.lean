@@ -6,7 +6,7 @@ namespace Regex
 
 structure CapturedGroups where
   buffer : Array (Option Pos)
-deriving Repr
+deriving Repr, DecidableEq
 
 def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option (Pos × Pos) := do
   let start ← (← self.buffer[2 * index]?)
