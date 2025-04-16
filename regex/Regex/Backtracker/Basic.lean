@@ -3,7 +3,7 @@ import Regex.NFA
 import Regex.Strategy
 import Regex.Backtracker.BitMatrix
 
-open String (Iterator)
+open String (Iterator Pos)
 
 set_option autoImplicit false
 
@@ -120,5 +120,9 @@ where
 def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
   let _ := BufferStrategy bufferSize
   captureNext (BufferStrategy bufferSize) nfa wf it
+
+def searchNext (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option (Pos × Pos) := do
+  let slots ← captureNextBuf nfa wf 2 it
+  pure (← slots[0], ← slots[1])
 
 end Regex.Backtracker
