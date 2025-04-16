@@ -76,7 +76,7 @@ instance : ToExpr Regex where
     let wfInstance := Expr.app (mkConst ``NFA.decWellFormed) nfa
     let wf := mkDecidableProof wfType wfInstance
     let maxTag := toExpr re.maxTag
-    mkApp3 (mkConst ``Regex.mk) nfa wf maxTag
+    mkApp4 (mkConst ``Regex.mk) nfa wf maxTag (mkConst ``false)
 
 elab "re!" lit:str : term => do
   match Regex.parse lit.getString with
