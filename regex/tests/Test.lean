@@ -69,7 +69,7 @@ def complex_pattern := Regex.parse! r##"(a|b)*c"##
 #guard Regex.Backtracker.captureNextBuf complex_pattern.nfa complex_pattern.wf 2 "c".mkIterator = .some #v[.some ⟨0⟩, .some ⟨1⟩]
 #guard Regex.Backtracker.captureNextBuf complex_pattern.nfa complex_pattern.wf 2 "ac".mkIterator = .some #v[.some ⟨0⟩, .some ⟨2⟩]
 #guard Regex.Backtracker.captureNextBuf complex_pattern.nfa complex_pattern.wf 2 "bc".mkIterator = .some #v[.some ⟨0⟩, .some ⟨2⟩]
-#guard Regex.Backtracker.captureNextBuf complex_pattern.nfa complex_pattern.wf 2 "aabbczy".mkIterator = .some #v[.some ⟨0⟩, .some ⟨5⟩]
+#guard Regex.Backtracker.captureNextBuf complex_pattern.nfa complex_pattern.wf 2 "xyzaabbczy".mkIterator = .some #v[.some ⟨3⟩, .some ⟨8⟩]
 #guard Regex.Backtracker.captureNextBuf complex_pattern.nfa complex_pattern.wf 2 "d".mkIterator = .none
 
 def nested_groups := Regex.parse! r##"(a(b(c)))"##

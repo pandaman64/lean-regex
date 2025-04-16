@@ -132,6 +132,11 @@ theorem lt_next (it : Iterator) : it.pos < it.next.pos := by
   simp [pos, next]
   exact String.lt_next _ _
 
+theorem next_le_four (it : Iterator) : it.next.pos ≤ it.pos + ⟨4⟩ := by
+  simp [pos, next, String.next]
+  show it.pos.byteIdx + Char.utf8Size (it.toString.get it.pos) ≤ it.pos.byteIdx + 4
+  simp [Char.utf8Size_le_four]
+
 @[simp]
 theorem next'_remainingBytes_lt {it : Iterator} {h : it.hasNext} : (it.next' h).remainingBytes < it.remainingBytes := by
   simp [hasNext] at h

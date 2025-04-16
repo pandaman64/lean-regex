@@ -98,12 +98,24 @@ termination_by (nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited.popcount,
 
 def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
   let startIdx := it.pos.byteIdx
-  let maxIdx := it.toString.endPos.byteIdx
+  (go startIdx it (Nat.le_refl _) (BitMatrix.zero _ _)).1
+where
+  go (startIdx : Nat) (it : Iterator) (ge : startIdx ≤ it.pos.byteIdx) (visited : BitMatrix nfa.nodes.size (it.toString.endPos.byteIdx + 1 - startIdx)) :
+  Option σ.Update × BitMatrix nfa.nodes.size (it.toString.endPos.byteIdx + 1 - startIdx) :=
   if le : it.pos ≤ it.toString.endPos then
-    let bit : BoundedIterator startIdx := ⟨it, by omega, le⟩
-    (captureNextAux σ nfa wf startIdx maxIdx (BitMatrix.zero _ _) [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩]).1
+    let bit : BoundedIterator startIdx := ⟨it, ge, le⟩
+    match captureNextAux σ nfa wf startIdx it.toString.endPos.byteIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] with
+    | (.some update, visited') => (.some update, visited')
+    | (.none, visited') =>
+      have : it.next.pos.byteIdx ≤ it.toString.endPos.byteIdx + 4 := Nat.le_trans it.next_le_four (by simpa [le])
+      have : it.next.toString.endPos.byteIdx + 4 - it.next.pos.byteIdx < it.toString.endPos.byteIdx + 4 - it.pos.byteIdx := by
+        rw [it.next_toString]
+        have : it.pos.byteIdx < it.next.pos.byteIdx := it.lt_next
+        omega
+      go startIdx it.next (Nat.le_of_lt (Nat.lt_of_le_of_lt ge it.lt_next)) visited'
   else
-    .none
+    (.none, visited)
+  termination_by it.toString.endPos.byteIdx + 4 - it.pos.byteIdx
 
 def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
   let _ := BufferStrategy bufferSize
