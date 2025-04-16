@@ -78,7 +78,6 @@ def simple_star := Regex.parse! r##"a*"##
 #guard simple_star.bt.capture "aa" = .some ⟨#[.some ⟨0⟩, .some ⟨2⟩]⟩
 
 def complex_pattern := Regex.parse! r##"(a|b)*c"##
-#eval complex_pattern.capture "c"
 #guard complex_pattern.capture "c" = .some ⟨#[.some ⟨0⟩, .some ⟨1⟩, .none, .none]⟩
 #guard complex_pattern.capture "ac" = .some ⟨#[.some ⟨0⟩, .some ⟨2⟩, .some ⟨0⟩, .some ⟨1⟩]⟩
 #guard complex_pattern.capture "bc" = .some ⟨#[.some ⟨0⟩, .some ⟨2⟩, .some ⟨0⟩, .some ⟨1⟩]⟩
@@ -129,7 +128,6 @@ def complex_character_classes := Regex.parse! r##"[a-zA-Z0-9_]+@[a-zA-Z0-9]+\.[a
 #guard complex_character_classes.bt.capture "test@.com" = .none
 
 def nested_quantifiers := Regex.parse! r##"(a+)*b"##
-#eval nested_quantifiers.capture "aaab"
 #guard nested_quantifiers.capture "b" = .some ⟨#[.some ⟨0⟩, .some ⟨1⟩, .none, .none]⟩
 #guard nested_quantifiers.capture "ab" = .some ⟨#[.some ⟨0⟩, .some ⟨2⟩, .some ⟨0⟩, .some ⟨1⟩]⟩
 #guard nested_quantifiers.capture "aaab" = .some ⟨#[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨3⟩]⟩
@@ -140,5 +138,9 @@ def nested_quantifiers := Regex.parse! r##"(a+)*b"##
 #guard nested_quantifiers.bt.capture "aaab" = .some ⟨#[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨3⟩]⟩
 #guard nested_quantifiers.bt.capture "a" = .none
 #guard nested_quantifiers.bt.capture "ba" = .some ⟨#[.some ⟨0⟩, .some ⟨1⟩, .none, .none]⟩
+
+def alt_in_alt_100 := re! r##"ab?|$"##
+#eval alt_in_alt_100.captureAll "az"
+#eval alt_in_alt_100.bt.captureAll "az"
 
 end Comparison
