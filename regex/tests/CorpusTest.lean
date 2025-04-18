@@ -208,7 +208,7 @@ def supported (test : RegexTest) : Bool :=
   && !test.unescape && test.unicode && test.utf8
   && test.lineTerminator = "\n" && test.matchKind = .leftmostFirst && test.searchKind = .leftmost
 
-def RegexTest.run (test : RegexTest) : Except String TestResult := do
+def RegexTest.run (test : RegexTest) (backtracker : Bool) : Except String TestResult := do
   if not (supported test) then
     return .unsupported
   let regex ←
@@ -218,7 +218,11 @@ def RegexTest.run (test : RegexTest) : Except String TestResult := do
         return .unsupported
       else
         match Regex.parse s, test.compiles with
-        | .ok regex, true => pure regex
+        | .ok regex, true =>
+          if backtracker then
+            pure { regex with useBacktracker := true }
+          else
+            pure regex
         | .ok _, false => throw s!"expected '{s}' to not compile, but it did"
         | .error e, true => throw s!"expected '{s}' to compile, but it did not: {e}"
         | .error _, false => return .ok
@@ -266,6 +270,8 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
   IO.ofExcept (decodeRegexTests group toml)
 
 def main (args : List String) : IO UInt32 := do
+  let backtracker := args.contains "--backtracker"
+  let outputName := if backtracker then "CorpusTest-backtracker.csv" else "CorpusTest.csv"
   let files ← System.FilePath.readDir "tests/testdata"
   let tomlFiles := files
     |>.map (·.path)
@@ -273,7 +279,7 @@ def main (args : List String) : IO UInt32 := do
     |>.qsort (fun a b => a.toString < b.toString)
 
   let tests ← tomlFiles.flatMapM (loadTestCases ·)
-  let results := tests.map fun test => (test.fullName, test.run)
+  let results := tests.map fun test => (test.fullName, test.run backtracker)
 
   -- Write results to CSV
   let mut csv := "test_name,result,error\n"
@@ -285,13 +291,13 @@ def main (args : List String) : IO UInt32 := do
     csv := csv ++ row
 
   if args.contains "--verify" then
-    let actual ← IO.FS.readFile "tests/CorpusTest.csv"
+    let actual ← IO.FS.readFile s!"tests/{outputName}"
     if actual = csv then
       return 0
     else
-      IO.eprintln s!"CorpusTest.csv doesn't match. Expected:\n{csv}\n\nActual:\n{actual}"
+      IO.eprintln s!"{outputName} doesn't match. Expected:\n{csv}\n\nActual:\n{actual}"
       return 1
   else
-    IO.println "Writing CorpusTest.csv"
-    IO.FS.writeFile "tests/CorpusTest.csv" csv
+    IO.println s!"Writing {outputName}"
+    IO.FS.writeFile s!"tests/{outputName}" csv
     return 0

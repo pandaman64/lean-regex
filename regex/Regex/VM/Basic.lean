@@ -1,6 +1,6 @@
 import Regex.Data.SparseSet
 import Regex.NFA.Basic
-import Regex.VM.Strategy
+import Regex.Strategy
 
 set_option autoImplicit false
 
@@ -13,6 +13,12 @@ open String (Pos Iterator)
   https://github.com/rust-lang/regex/tree/master/regex-lite
 -/
 namespace Regex.VM
+
+structure SearchState (σ : Strategy) (nfa : NFA) where
+  states : SparseSet nfa.nodes.size
+  updates : Vector σ.Update nfa.nodes.size
+
+abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
 
 -- https://github.com/leanprover/lean4/issues/7826
 set_option wf.preprocess false in

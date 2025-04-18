@@ -26,12 +26,13 @@ def Valid (self : Matches) : Prop :=
   self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
 
 theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self'))
-  (v : self.Valid) :
+  (v : self.Valid) (bt : ¬self.regex.useBacktracker) :
   self'.Valid ∧ Spec v.1 self.haystack positions := by
   unfold next? at h
   split at h
   next le =>
     have pos_valid := v.2.valid_of_le le
+    simp [Regex.searchNext, bt] at h
     generalize h' : VM.searchNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩ = matched at h
     match matched with
     | none => simp at h
@@ -54,11 +55,12 @@ theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next
         exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
   next => simp at h
 
-theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
+theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) (bt : ¬self.regex.useBacktracker) :
   self'.regex = self.regex := by
   unfold next? at h
   split at h
   next =>
+    simp [Regex.searchNext, bt] at h
     set matched := VM.searchNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩
     match h' : matched with
     | none => simp at h
@@ -67,11 +69,12 @@ theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next
       split at h <;> simp at h <;> simp [←h]
   next => simp at h
 
-theorem haystack_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
+theorem haystack_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) (bt : ¬self.regex.useBacktracker) :
   self'.haystack = self.haystack := by
   unfold next? at h
   split at h
   next =>
+    simp [Regex.searchNext, bt] at h
     set matched := VM.searchNext self.regex.nfa self.regex.wf ⟨self.haystack, self.currentPos⟩
     match h' : matched with
     | none => simp at h

@@ -6,7 +6,7 @@ namespace Regex
 
 structure CapturedGroups where
   buffer : Array (Option Pos)
-deriving Repr
+deriving Repr, DecidableEq
 
 def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option (Pos × Pos) := do
   let start ← (← self.buffer[2 * index]?)
@@ -30,7 +30,7 @@ deriving Repr
 
 def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
   if self.currentPos ≤ self.haystack.endPos then
-    let buffer ← VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
+    let buffer ← self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
     let groups := CapturedGroups.mk buffer.toArray
     let pos ← groups.get 0
     if self.currentPos < pos.2 then

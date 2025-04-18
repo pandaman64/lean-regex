@@ -1,5 +1,5 @@
 import Regex.Data.SparseSet
-import Regex.VM.Strategy
+import Regex.VM
 import RegexCorrectness.VM.Path.EpsilonClosure
 import RegexCorrectness.VM.Path.CharStep
 
