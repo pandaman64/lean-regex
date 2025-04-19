@@ -25,6 +25,9 @@ def index {startIdx : Nat} (bit : BoundedIterator startIdx) : Fin (bit.maxIdx + 
     exact Nat.sub_lt_sub_right bit.ge (Nat.lt_of_le_of_lt bit.le (Nat.lt_succ_self _))
   ⟨bit.it.pos.byteIdx - startIdx, lt⟩
 
+def index' {startIdx maxIdx : Nat} (bit : BoundedIterator startIdx) (h : bit.maxIdx = maxIdx) : Fin (maxIdx + 1 - startIdx) :=
+  bit.index.cast (by simp [h])
+
 def hasNext {startIdx : Nat} (bit : BoundedIterator startIdx) : Bool := bit.it.hasNext
 
 def next {startIdx : Nat} (bit : BoundedIterator startIdx) (h : bit.hasNext) : BoundedIterator startIdx :=
@@ -51,12 +54,12 @@ def captureNextAux (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx m
   match stack with
   | [] => (.none, visited)
   | ⟨update, state, it, eq⟩ :: stack' =>
-    if h : visited.get state (it.index.cast (by simp [eq])) then
+    if h : visited.get state (it.index' eq) then
       captureNextAux σ nfa wf startIdx maxIdx visited stack'
     else
-      let visited' := visited.set state (it.index.cast (by simp [eq]))
+      let visited' := visited.set state (it.index' eq)
       have : nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited'.popcount < nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited.popcount :=
-        BitMatrix.popcount_decreasing visited state (it.index.cast (by simp [eq])) h
+        BitMatrix.popcount_decreasing visited state (it.index' eq) h
       match hn : nfa[state] with
       | .done => (.some update, visited')
       | .fail => (.none, visited')
@@ -79,7 +82,7 @@ def captureNextAux (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx m
       | .char c state' =>
         have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
         if h : it.hasNext then
-          if c = it.curr h then
+          if it.curr h = c then
             captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state', isLt⟩, it.next h, eq ▸ it.next_maxIdx h⟩ :: stack')
           else
             captureNextAux σ nfa wf startIdx maxIdx visited' stack'

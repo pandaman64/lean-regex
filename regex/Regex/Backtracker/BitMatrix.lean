@@ -21,10 +21,58 @@ def index {w h : Nat} (x : Fin w) (y : Fin h) : Fin (w * h) :=
       _ = w * h := Nat.mul_comm _ _
   ⟨y.val * w + x.val, this⟩
 
+theorem index_ne_of_ne_x {w h : Nat} (x x' : Fin w) (y y' : Fin h) (hx : x ≠ x') : index x y ≠ index x' y' := by
+  simp [index]
+  intro eq
+  have : (y * w + x) % w = (y' * w + x') % w := by rw [eq]
+  simp [Nat.add_mod, Nat.mod_eq_of_lt] at this
+  exact (Fin.val_ne_of_ne hx) this
+
+theorem index_ne_of_ne_y {w h : Nat} (x x' : Fin w) (y y' : Fin h) (hy : y ≠ y') : index x y ≠ index x' y' := by
+  simp [index]
+  intro eq
+  cases Nat.lt_or_gt_of_ne (Fin.val_ne_of_ne hy) with
+  | inl lt =>
+    have : y.val * w + x.val < y'.val * w + x'.val := by
+      calc y.val * w + x.val
+        _ < y.val * w + w := by omega
+        _ = (y.val + 1) * w := by rw [Nat.succ_mul]
+        _ ≤ y'.val * w := by exact Nat.mul_le_mul_right w lt
+        _ ≤ y'.val * w + x'.val := by omega
+    omega
+  | inr gt =>
+    have : y.val * w + x.val > y'.val * w + x'.val := by
+      calc y'.val * w + x'.val
+        _ < y'.val * w + w := by omega
+        _ = (y'.val + 1) * w := by rw [Nat.succ_mul]
+        _ ≤ y.val * w := by exact Nat.mul_le_mul_right w gt
+        _ ≤ y.val * w + x.val := by omega
+    omega
+
+theorem index_ne_of_ne {w h : Nat} (x x' : Fin w) (y y' : Fin h) (hne : x ≠ x' ∨ y ≠ y') : index x y ≠ index x' y' := by
+  cases hne with
+  | inl hx => exact index_ne_of_ne_x x x' y y' hx
+  | inr hy => exact index_ne_of_ne_y x x' y y' hy
+
 def get (m : BitMatrix w h) (x : Fin w) (y : Fin h) : Bool := m.bv[index x y]
 
 def set (m : BitMatrix w h) (x : Fin w) (y : Fin h) : BitMatrix w h :=
   ⟨m.bv.set (index x y)⟩
+
+theorem get_set_eq {m : BitMatrix w h} (x : Fin w) (y : Fin h) : (m.set x y).get x y := by
+  show (m.bv.set (index x y).val)[(index x y).val]
+  rw [BitVec.getElem_set_eq]
+
+theorem get_set_ne {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) (hne : x ≠ x' ∨ y ≠ y') : (m.set x y).get x' y' = m.get x' y' := by
+  show (m.bv.set (index x y).val)[(index x' y').val] = m.bv[(index x' y').val]
+  have : (index x y).val ≠ (index x' y').val := Fin.val_ne_of_ne (index_ne_of_ne x x' y y' hne)
+  rw [BitVec.getElem_set_ne m.bv _ _ (index x y).isLt (index x' y').isLt this]
+
+theorem get_set {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) : (m.set x y).get x' y' = ((x = x' ∧ y = y') ∨ m.get x' y') := by
+  if h : x = x' ∧ y = y' then
+    simp [h, get_set_eq]
+  else
+    simp [h, get_set_ne x x' y y' (by omega)]
 
 def popcount (m : BitMatrix w h) : Nat := m.bv.popcount
 
