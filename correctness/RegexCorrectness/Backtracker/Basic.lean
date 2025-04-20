@@ -2,9 +2,10 @@ import Regex.Backtracker
 
 set_option autoImplicit false
 
+open Regex.Data (BoundedIterator)
+
 namespace Regex.Backtracker
 
-set_option linter.unusedVariables false in
 theorem captureNextAux.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx maxIdx : Nat)
   (motive : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) → List (StackEntry σ nfa startIdx maxIdx) → Prop)
   (base : ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)), motive visited [])
@@ -190,12 +191,10 @@ section
 
 variable {σ nfa wf startIdx maxIdx visited}
 
-@[simp]
 theorem captureNextAux_base :
   captureNextAux σ nfa wf startIdx maxIdx visited [] = (.none, visited) := by
   simp [captureNextAux]
 
-@[simp]
 theorem captureNextAux_visited {update state it eq stack'} (mem : visited.get state (it.index' eq)) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') = captureNextAux σ nfa wf startIdx maxIdx visited stack' := by
   conv =>
@@ -203,7 +202,6 @@ theorem captureNextAux_visited {update state it eq stack'} (mem : visited.get st
     unfold captureNextAux
     simp [mem]
 
-@[simp]
 theorem captureNextAux_done {update state it eq stack'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .done) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') = (.some update, visited.set state (it.index' eq)) := by
   simp at hn
@@ -213,7 +211,6 @@ theorem captureNextAux_done {update state it eq stack'} (mem : ¬visited.get sta
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_fail {update state it eq stack'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .fail) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') = (.none, visited.set state (it.index' eq)) := by
   conv =>
@@ -222,7 +219,6 @@ theorem captureNextAux_fail {update state it eq stack'} (mem : ¬visited.get sta
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_epsilon {update state it eq stack' state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .epsilon state') :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) (⟨update, state', it, eq⟩ :: stack') := by
@@ -232,7 +228,6 @@ theorem captureNextAux_epsilon {update state it eq stack' state'} (mem : ¬visit
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_split {update state it eq stack' state₁ state₂} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .split state₁ state₂) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) (⟨update, state₁, it, eq⟩ :: ⟨update, state₂, it, eq⟩ :: stack') := by
@@ -242,7 +237,6 @@ theorem captureNextAux_split {update state it eq stack' state₁ state₂} (mem 
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_save {update state it eq stack' offset state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .save offset state') :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) (⟨σ.write update offset it.pos, state', it, eq⟩ :: stack') := by
@@ -252,7 +246,6 @@ theorem captureNextAux_save {update state it eq stack' offset state'} (mem : ¬v
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_anchor_pos {update state it eq stack' a state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .anchor a state') (h : Data.Anchor.test it.it a) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) (⟨update, state', it, eq⟩ :: stack') := by
@@ -262,7 +255,6 @@ theorem captureNextAux_anchor_pos {update state it eq stack' a state'} (mem : ¬
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_anchor_neg {update state it eq stack' a state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .anchor a state') (h : ¬Data.Anchor.test it.it a) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) stack' := by
@@ -272,7 +264,6 @@ theorem captureNextAux_anchor_neg {update state it eq stack' a state'} (mem : ¬
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_char_pos {update state it eq stack' c state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .char c state') (h : it.hasNext) (hc : it.curr h = c) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) (⟨update, state', it.next h, eq⟩ :: stack') := by
@@ -282,7 +273,6 @@ theorem captureNextAux_char_pos {update state it eq stack' c state'} (mem : ¬vi
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_char_neg {update state it eq stack' c state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .char c state') (h : it.hasNext) (hc : ¬it.curr h = c) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) stack' := by
@@ -292,7 +282,6 @@ theorem captureNextAux_char_neg {update state it eq stack' c state'} (mem : ¬vi
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_char_end {update state it eq stack' c state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .char c state') (h : ¬it.hasNext) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) stack' := by
@@ -302,7 +291,6 @@ theorem captureNextAux_char_end {update state it eq stack' c state'} (mem : ¬vi
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_sparse_pos {update state it eq stack' cs state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .sparse cs state') (h : it.hasNext) (hc : it.curr h ∈ cs) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) (⟨update, state', it.next h, eq⟩ :: stack') := by
@@ -312,7 +300,6 @@ theorem captureNextAux_sparse_pos {update state it eq stack' cs state'} (mem : �
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_sparse_neg {update state it eq stack' cs state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .sparse cs state') (h : it.hasNext) (hc : ¬it.curr h ∈ cs) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) stack' := by
@@ -322,7 +309,6 @@ theorem captureNextAux_sparse_neg {update state it eq stack' cs state'} (mem : �
     simp [mem]
   split <;> simp_all
 
-@[simp]
 theorem captureNextAux_sparse_end {update state it eq stack' cs state'} (mem : ¬visited.get state (it.index' eq)) (hn : nfa[state] = .sparse cs state') (h : ¬it.hasNext) :
   captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it, eq⟩ :: stack') =
   captureNextAux σ nfa wf startIdx maxIdx (visited.set state (it.index' eq)) stack' := by
@@ -331,6 +317,71 @@ theorem captureNextAux_sparse_end {update state it eq stack' cs state'} (mem : �
     unfold captureNextAux
     simp [mem]
   split <;> simp_all
+
+end
+
+theorem captureNext.go.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx : Nat)
+  (motive : (bit : BoundedIterator startIdx) → BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx) → Prop)
+  (found : ∀ (bit : BoundedIterator startIdx) (visited : BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx)) (update : σ.Update) (visited' : BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx)),
+    captureNextAux σ nfa wf startIdx bit.maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] = (.some update, visited') →
+    motive bit visited)
+  (not_found_next : ∀ (bit : BoundedIterator startIdx) (visited visited' : BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx)),
+    captureNextAux σ nfa wf startIdx bit.maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] = (.none, visited') →
+    (h : bit.hasNext) →
+    (ih : motive (bit.next h) visited') →
+    motive bit visited)
+  (not_found_end : ∀ (bit : BoundedIterator startIdx) (visited visited' : BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx)),
+    captureNextAux σ nfa wf startIdx bit.maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] = (.none, visited') →
+    ¬bit.hasNext →
+    motive bit visited)
+  (bit : BoundedIterator startIdx) (visited : BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx)) :
+  motive bit visited :=
+  captureNext.go.induct σ nfa wf startIdx motive
+    found
+    (fun bit visited visited' hres h _ ih => not_found_next bit visited visited' hres h ih)
+    not_found_end
+    bit visited
+
+/-
+Simplification lemmas for `captureNext.go`.
+-/
+section
+
+variable {σ nfa wf startIdx bit visited}
+
+theorem captureNext.go_found {update visited'} (h : captureNextAux σ nfa wf startIdx bit.maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] = (.some update, visited')) :
+  captureNext.go σ nfa wf startIdx bit visited = (.some update, visited') := by
+  unfold captureNext.go
+  split <;> simp_all
+
+theorem captureNext.go_not_found_next {visited'} (h : captureNextAux σ nfa wf startIdx bit.maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] = (.none, visited')) (h' : bit.hasNext) :
+  captureNext.go σ nfa wf startIdx bit visited = captureNext.go σ nfa wf startIdx (bit.next h') visited' := by
+  conv =>
+    lhs
+    unfold captureNext.go
+  split <;> simp_all
+
+theorem captureNext.go_not_found_end {visited'} (h : captureNextAux σ nfa wf startIdx bit.maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] = (.none, visited')) (h' : ¬bit.hasNext) :
+  captureNext.go σ nfa wf startIdx bit visited = (.none, visited') := by
+  unfold captureNext.go
+  split <;> simp_all
+
+end
+
+/-
+Simplification lemmas for `captureNext`.
+-/
+section
+
+variable {σ nfa wf it}
+
+theorem captureNext_le (le : it.pos ≤ it.toString.endPos) :
+  captureNext σ nfa wf it = (captureNext.go σ nfa wf it.pos.byteIdx ⟨it, Nat.le_refl _, le⟩ (BitMatrix.zero _ _)).1 := by
+  simp [captureNext, le]
+
+theorem captureNext_not_le (h : ¬it.pos ≤ it.toString.endPos) :
+  captureNext σ nfa wf it = .none := by
+  simp [captureNext, h]
 
 end
 

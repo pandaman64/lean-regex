@@ -44,6 +44,12 @@ theorem validFor (s : Span) : ValidFor (s.m ++ s.l.reverse) s.r s.iterator := by
 theorem exists_cons_of_not_atEnd {s : Span} (h : ¬s.iterator.atEnd) : ∃ r', s.r = s.iterator.curr :: r' :=
   s.validFor.exists_cons_of_not_atEnd h
 
+theorem exists_cons_of_curr' {s : Span} {c} (h : s.iterator.hasNext) (eq : s.iterator.curr' h = c) : ∃ r', s.r = c :: r' := by
+  have ⟨r', eqr⟩ := s.exists_cons_of_not_atEnd (by simpa [Iterator.atEnd, Iterator.hasNext] using h)
+  have eq' : s.iterator.curr' h = s.iterator.curr := rfl
+  rw [←eq', eq] at eqr
+  exact ⟨r', eqr⟩
+
 theorem curr_eq_pos {s : Span} : s.curr = s.iterator.pos := rfl
 
 theorem next_curr_eq_next_pos {s : Span} {c r'} (h : s.r = c :: r') : s.next.curr = s.iterator.next.pos := by
