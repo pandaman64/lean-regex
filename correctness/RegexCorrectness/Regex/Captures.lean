@@ -28,15 +28,13 @@ def Valid (self : Captures) : Prop :=
   self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
 
 theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self'))
-  (v : self.Valid) (bt : ¬self.regex.useBacktracker) :
+  (v : self.Valid) :
   self'.Valid ∧ captured.Spec v.1 self.haystack := by
   unfold next? at h
   split at h
   next le =>
-    simp [Regex.captureNextBuf, bt] at h
-    generalize h' : VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ = matched at h
-    match matched with
-    | none => simp at h
+    match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
+    | none => simp [h'] at h
     | some matched =>
       have pos_valid := v.2.valid_of_le le
       have : 1 ≤ self.regex.maxTag := v.1.le_maxTag
@@ -44,7 +42,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
         v.1.captures_of_captureNext h' pos_valid (by omega)
       simp at eqstring
 
-      simp at h
+      simp [h'] at h
       set captured' := CapturedGroups.mk matched.toArray
       have hcaptured (i : Nat) : captured'.get i = materializeRegexGroups groups i := by
         have eqsize : matched.toArray.size = self.regex.maxTag + 1 :=
@@ -116,17 +114,15 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
         exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
   next => simp at h
 
-theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) (bt : ¬self.regex.useBacktracker) :
+theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :
   self'.regex = self.regex := by
   unfold next? at h
   split at h
   next =>
-    simp [Regex.captureNextBuf, bt] at h
-    set captured' := VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
-    match h' : captured' with
-    | none => simp at h
+    match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
+    | none => simp [h'] at h
     | some buffer =>
-      simp at h
+      simp [h'] at h
       match h'' : CapturedGroups.get ⟨buffer.toArray⟩ 0 with
       | none => simp [h''] at h
       | some _ =>
@@ -140,17 +136,15 @@ theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next
           simp [←h]
   next => simp at h
 
-theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) (bt : ¬self.regex.useBacktracker) :
+theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :
   self'.haystack = self.haystack := by
   unfold next? at h
   split at h
   next =>
-    simp [Regex.captureNextBuf, bt] at h
-    set captured' := VM.captureNextBuf self.regex.nfa self.regex.wf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
-    match h' : captured' with
-    | none => simp at h
+    match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
+    | none => simp [h'] at h
     | some buffer =>
-      simp at h
+      simp [h'] at h
       match h'' : CapturedGroups.get ⟨buffer.toArray⟩ 0 with
       | none => simp [h''] at h
       | some _ =>
