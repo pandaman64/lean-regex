@@ -32,6 +32,8 @@ jobs:
             cd regex
             time lake exe CorpusTest --verify
             time lake exe CorpusTest --verify --backtracker
+            time lake exe CorpusTest --verify --backtracker
+            time lake exe CorpusTest --verify
         - name: Build RegexCorrectness
           uses: leanprover/lean-action@v1
           with:
