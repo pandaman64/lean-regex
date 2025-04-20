@@ -1,12 +1,11 @@
 import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
-import RegexCorrectness.NFA.Semantics.Equivalence
 
 set_option autoImplicit false
 
 open Regex.Data (CaptureGroups)
 open String (Pos)
 
-namespace Regex.NFA
+namespace Regex.Strategy
 
 /--
 `materializeRegexGroups groups` constructs a mapping that associates each capture group's tag
@@ -41,4 +40,4 @@ def EquivMaterializedUpdate {n} (groups : Nat → Option (Pos × Pos)) (updates 
     ((h₁ : 2 * tag < n) → ((groups tag).map (·.1) = updates[2 * tag])) ∧
     ((h₂ : 2 * tag + 1 < n) → ((groups tag).map (·.2) = updates[2 * tag + 1]))
 
-end Regex.NFA
+end Regex.Strategy

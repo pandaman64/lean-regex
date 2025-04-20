@@ -8,7 +8,7 @@ set_option autoImplicit false
 
 open Regex.Data (Expr Span)
 open String (Pos Iterator)
-open Regex.NFA (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
+open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
 namespace Regex
 

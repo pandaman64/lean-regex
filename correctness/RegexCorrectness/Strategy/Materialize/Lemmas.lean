@@ -1,4 +1,4 @@
-import RegexCorrectness.VM.Correspondence.Materialize.Basic
+import RegexCorrectness.Strategy.Materialize.Basic
 import RegexCorrectness.Data.Expr.Semantics
 import Init.Data.Vector.Lemmas
 
@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open String (Pos)
 
-namespace Regex.NFA
+namespace Regex.Strategy
 
 @[simp]
 theorem materializeRegexGroups_empty : materializeRegexGroups .empty = fun _ => .none := rfl
@@ -146,4 +146,4 @@ theorem materializeUpdates_append_getElem {n updates₁ updates₂} {offset : Na
     rw [materializeUpdatesAux_getElem h]
   rfl
 
-end Regex.NFA
+end Regex.Strategy

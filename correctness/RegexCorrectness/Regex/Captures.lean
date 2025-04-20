@@ -4,6 +4,7 @@ import RegexCorrectness.Regex.Basic
 set_option autoImplicit false
 
 open String (Pos)
+open Regex.Strategy (materializeRegexGroups)
 
 /--
 `CapturedGroups` conforms to the spec if and only if:
@@ -19,7 +20,7 @@ def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : St
     haystack = ⟨l ++ m ++ r⟩ ∧
     s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
     self.get 0 = .some (⟨String.utf8Len l⟩, ⟨String.utf8Len l + String.utf8Len m⟩) ∧
-    ∀ i, self.get i = NFA.materializeRegexGroups groups i
+    ∀ i, self.get i = materializeRegexGroups groups i
 
 namespace Regex.Captures
 
@@ -45,7 +46,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
 
       simp at h
       set captured' := CapturedGroups.mk matched.toArray
-      have hcaptured (i : Nat) : captured'.get i = NFA.materializeRegexGroups groups i := by
+      have hcaptured (i : Nat) : captured'.get i = materializeRegexGroups groups i := by
         have eqsize : matched.toArray.size = self.regex.maxTag + 1 :=
           matched.size_toArray
         if h₁ : 2 * i + 1 < self.regex.maxTag + 1 then
@@ -78,14 +79,14 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
                 eq₂ ▸ getElem?_pos matched.toArray (2 * i + 1) (by omega)
               simp [CapturedGroups.get, eq₁', eq₂', hgroup₁, hgroup₂, captured']
         else
-          match h₂ : NFA.materializeRegexGroups groups i with
+          match h₂ : materializeRegexGroups groups i with
           | none =>
             have : matched.toArray[2 * i + 1]? = .none :=
               getElem?_neg matched.toArray (2 * i + 1) (by omega)
             simp [CapturedGroups.get, this, captured']
           | some _ =>
-            have : (NFA.materializeRegexGroups groups i).isSome := by simp [h₂]
-            have := NFA.mem_tags_of_materializeRegexGroups_some c this
+            have : (materializeRegexGroups groups i).isSome := by simp [h₂]
+            have := Strategy.mem_tags_of_materializeRegexGroups_some c this
             have := v.1.maxTag_eq ▸ NFA.lt_of_mem_tags_compile v.1.nfa_eq.symm this
             simp at h₁
             omega

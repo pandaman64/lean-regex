@@ -1,3 +1,2 @@
-import RegexCorrectness.VM.Correspondence.Materialize
 import RegexCorrectness.VM.Correspondence.Refinement
 import RegexCorrectness.VM.Correspondence.Correctness
