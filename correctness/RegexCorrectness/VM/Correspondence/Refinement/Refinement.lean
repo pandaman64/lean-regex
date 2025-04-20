@@ -46,8 +46,8 @@ theorem εStack.refines_cons {update state' tail' stack} :
     exact eq ▸ .cons h₁ h₂ rest
 
 theorem εClosure.refines {result result'}
-  (h : @εClosure (BufferStrategy bufferSize) nfa wf it matched next stack = result)
-  (h' : @εClosure HistoryStrategy nfa wf it matched' next' stack' = result')
+  (h : εClosure (BufferStrategy bufferSize) nfa wf it matched next stack = result)
+  (h' : εClosure HistoryStrategy nfa wf it matched' next' stack' = result')
   (refMatched : refineUpdateOpt matched' matched)
   (refState : next'.refines next)
   (refStack : stack'.refines stack) :
