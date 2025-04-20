@@ -1,3 +1,4 @@
+-- FIXME: many of the theorems are no longer needed as we moved to a simpler termination argument for Backtracker.captureNext.go.
 namespace Char
 
 theorem default_utf8Size : (default : Char).utf8Size = 1 := rfl
