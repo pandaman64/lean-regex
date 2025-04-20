@@ -2,13 +2,14 @@ import Regex.Regex
 import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.NFA.Compile
 import RegexCorrectness.Syntax.Ast
+import RegexCorrectness.Backtracker
 import RegexCorrectness.VM
 
 set_option autoImplicit false
 
 open Regex.Data (Expr Span)
 open String (Pos Iterator)
-open Regex.NFA (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
+open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
 namespace Regex
 
@@ -54,7 +55,20 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
   apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
   simp [expr, Expr.tags]
 
-theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext (BufferStrategy bufferSize) re.nfa re.wf it = .some matched)
+theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
+  (s : IsSearchRegex re) (v : it.Valid) :
+  ∃ l m r groups,
+    it.toString = ⟨l ++ m ++ r⟩ ∧
+    s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
+    EquivMaterializedUpdate (materializeRegexGroups groups) matched := by
+  if bt : re.useBacktracker then
+    simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
+    exact Backtracker.captureNext_correct s.disj h v
+  else
+    simp [Regex.captureNextBuf, bt] at h
+    exact VM.captureNext_correct s.nfa_eq.symm s.disj h v rfl
+
+theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
   ∃ l m r groups,
     it.toString = ⟨l ++ m ++ r⟩ ∧
@@ -62,8 +76,7 @@ theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext (
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
     matched[0] = .some ⟨String.utf8Len l⟩ ∧
     matched[1] = .some ⟨String.utf8Len l + String.utf8Len m⟩ := by
-  have ⟨l, m, r, groups, eqstring, c, eqv⟩ := VM.captureNext_correct s.nfa_eq.symm s.disj h v rfl
-  simp at eqv
+  have ⟨l, m, r, groups, eqstring, c, eqv⟩ := captures_of_captureNext' h s v
   refine ⟨l, m, r, groups, eqstring, c, eqv, ?_⟩
 
   generalize hspan : (⟨l, [], m ++ r⟩ : Span) = span at c
@@ -77,21 +90,19 @@ theorem captures_of_captureNext {re bufferSize it matched} (h : VM.captureNext (
     simp [←hspan, ←hspan', Span.curr, h₁, h₂] at eqv
     exact ⟨eqv.1.symm, eqv.2.symm⟩
 
-theorem searchNext_some {re it first last} (h : VM.searchNext re.nfa re.wf it = .some (first, last))
+theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first, last))
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ l m r groups,
     it.toString = ⟨l ++ m ++ r⟩ ∧
     s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
     first = ⟨String.utf8Len l⟩ ∧
     last = ⟨String.utf8Len l + String.utf8Len m⟩ := by
-  simp [VM.searchNext] at h
-  generalize h' : VM.captureNextBuf re.nfa re.wf 2 it = matched at h
-  cases matched with
-  | none => simp at h
-  | some matched =>
+  simp [Regex.searchNext, s.nfa_eq] at h
+  match h' : re.captureNextBuf 2 it with
+  | .none => simp [h'] at h
+  | .some matched =>
     have ⟨l, m, r, groups, eqstring, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
-    simp [BufferStrategy] at eq₁ eq₂
-    simp [eq₁, eq₂] at h
+    simp [h', eq₁, eq₂] at h
     exact ⟨l, m, r, groups, eqstring, c, by simp [←h]⟩
 
 end IsSearchRegex

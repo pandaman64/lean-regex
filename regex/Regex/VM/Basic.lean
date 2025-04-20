@@ -147,11 +147,6 @@ where
           go it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩
 
 def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
-  let _ := BufferStrategy bufferSize
   captureNext (BufferStrategy bufferSize) nfa wf it
-
-def searchNext (nfa : NFA) (wf : nfa.WellFormed) (it : String.Iterator) : Option (Pos × Pos) := do
-  let slots ← captureNextBuf nfa wf 2 it
-  pure (← slots[0], ← slots[1])
 
 end Regex.VM

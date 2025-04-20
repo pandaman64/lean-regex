@@ -1,10 +1,11 @@
 import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.NFA.Semantics.Equivalence
-import RegexCorrectness.VM.Correspondence.Materialize.Lemmas
+import RegexCorrectness.Strategy.Materialize.Lemmas
 
 set_option autoImplicit false
 
 open Regex.Data (Expr)
+open Regex.Strategy
 open String (Pos)
 
 namespace Regex.NFA
@@ -111,6 +112,5 @@ where
         have := (eqv₂ tag).2 h₂
         simp [h] at this
         simp [←this, (eqv₁ tag).2 h₂]
-
 
 end Regex.NFA

@@ -1,12 +1,11 @@
 import RegexCorrectness.VM.Search
-import RegexCorrectness.VM.Correspondence.Materialize
 import RegexCorrectness.VM.Correspondence.Refinement
 
 set_option autoImplicit false
 
 open Regex.Data (Span)
 open Regex (NFA)
-open Regex.NFA (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
+open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates refineUpdateOpt)
 
 namespace Regex.VM
 

@@ -20,11 +20,9 @@ def captureNextBuf (self : Regex) (bufferSize : Nat) (it : Iterator) : Option (B
   else
     VM.captureNextBuf self.nfa self.wf bufferSize it
 
-def searchNext (self : Regex) (it : Iterator) : Option (Pos × Pos) := do
-  if self.useBacktracker then
-    Backtracker.searchNext self.nfa self.wf it
-  else
-    VM.searchNext self.nfa self.wf it
+def searchNext (self : Regex) (it : Iterator) : Option (Pos × Pos) :=  do
+  let slots ← captureNextBuf self 2 it
+  pure (← slots[0], ← slots[1])
 
 def parse (s : String) : Except Regex.Syntax.Parser.Error Regex := do
   let expr ← Regex.Syntax.Parser.parse s

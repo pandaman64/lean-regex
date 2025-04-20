@@ -1,6 +1,47 @@
 import Batteries.Data.String
 import Mathlib.Tactic.Common
 
+namespace String.Pos
+
+theorem valid_of_isValidAux (cs : List Char) (p i : Pos) (h : isValid.go p cs i) :
+  ∃ cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ p = i + ⟨utf8Len cs₁⟩ := by
+  induction cs generalizing i with
+  | nil =>
+    simp [isValid.go] at h
+    exact ⟨[], [], rfl, by simp [h, Pos.ext_iff]⟩
+  | cons c cs ih =>
+    simp [isValid.go] at h
+    cases h with
+    | inl eq => exact ⟨[], c :: cs, rfl, by simp [eq, Pos.ext_iff]⟩
+    | inr h =>
+      have ⟨cs₁, cs₂, eqs, eq⟩ := ih (i + c) h
+      exact ⟨c :: cs₁, cs₂, by simp [eqs], by simp [eq, Pos.ext_iff]; omega⟩
+
+theorem valid_of_isValid {s : String} {p : Pos} (v : p.isValid s) : p.Valid s := by
+  unfold isValid at v
+  have ⟨cs₁, cs₂, eqs, eq⟩ := valid_of_isValidAux s.data p 0 v
+  simp [Pos.ext_iff] at eq
+  have v := Valid.mk cs₁ cs₂
+  simpa [←eqs, ←eq] using v
+
+theorem isValid_of_validAux (cs₁ cs₂ : List Char) (p i : Pos) (hp : p = i + ⟨utf8Len cs₁⟩) :
+  isValid.go p (cs₁ ++ cs₂) i :=
+  match cs₁, cs₂ with
+  | [], [] => by
+    simp [Pos.ext_iff] at hp
+    simp [isValid.go, Pos.ext_iff, hp]
+  | [], c :: cs₂ => by
+    simp [Pos.ext_iff] at hp
+    simp [isValid.go, Pos.ext_iff, hp]
+  | c :: cs₁, cs₂ => by
+    simp [isValid.go]
+    exact .inr (isValid_of_validAux cs₁ cs₂ p (i + c) (by simp [Pos.ext_iff, hp]; omega))
+
+theorem isValid_of_valid (cs₁ cs₂ : List Char) (p : Pos) (hp : p = ⟨utf8Len cs₁⟩) : isValid ⟨cs₁ ++ cs₂⟩ p :=
+  isValid_of_validAux cs₁ cs₂ p 0 (by simp [Pos.ext_iff, hp])
+
+end String.Pos
+
 namespace String.Iterator
 
 theorem ext {it₁ it₂ : Iterator} (hs : it₁.s = it₂.s) (hi : it₁.i = it₂.i) : it₁ = it₂ :=
@@ -21,6 +62,15 @@ theorem next' {it : Iterator} (v : it.Valid) (h : ¬it.atEnd) : it.next.Valid :=
   apply v.next
   simp [hasNext, atEnd] at *
   exact h
+
+theorem of_isValid {it : Iterator} (v : it.pos.isValid it.toString) : it.Valid := it.pos.valid_of_isValid v
+
+theorem isValid {it : Iterator} (v : it.Valid) : it.pos.isValid it.toString := by
+  have ⟨l, r, vf⟩ := v.validFor
+  have eqs : it.toString = ⟨l.reverse ++ r⟩ := by
+    simp [Iterator.toString, vf.toString]
+  have := it.pos.isValid_of_valid l.reverse r (by simp [vf.pos])
+  exact eqs ▸ this
 
 end String.Iterator.Valid
 
@@ -57,6 +107,9 @@ theorem eq {it : Iterator} {l₁ r₁ l₂ r₂} (v₁ : it.ValidFor l₁ r₁) 
   have := String.eq_of_append_utf8Len o₂.1 (by simp [o₂.2])
   simp at this
   exact this
+
+theorem eq_it {it₁ it₂ : Iterator} {l r} (v₁ : it₁.ValidFor l r) (v₂ : it₂.ValidFor l r) : it₁ = it₂ := by
+  simp [Iterator.ext_iff, v₁.toString, v₂.toString, v₁.pos, v₂.pos]
 
 theorem exists_cons_of_not_atEnd {it : Iterator} (v : it.ValidFor l r) (h : ¬it.atEnd) :
   ∃ r', r = it.curr :: r' := by
