@@ -52,6 +52,18 @@ theorem le_pos (step : nfa.Step lb i it j it' update) : it.pos ≤ it'.pos := by
     simp [eq, String.Iterator.next, String.next]
     exact Nat.le_add_right _ _
 
+theorem validL (step : nfa.Step lb i it j it' update) : it.Valid := by
+  cases step
+  case char _ _ _ vf _ => exact vf.valid
+  case sparse _ _ _ vf _ => exact vf.valid
+  all_goals assumption
+
+theorem validR (step : nfa.Step lb i it j it' update) : it'.Valid := by
+  cases step
+  case char _ _ _ vf _ => exact vf.next.valid
+  case sparse _ _ _ vf _ => exact vf.next.valid
+  all_goals assumption
+
 theorem cast (step : nfa.Step lb i it j it' update)
   {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
   nfa'.Step lb i it j it' update := by
@@ -210,6 +222,16 @@ theorem le_pos (path : nfa.Path lb i it j it' updates) : it.pos ≤ it'.pos := b
   induction path with
   | last step => exact step.le_pos
   | more step _ ih => exact Nat.le_trans step.le_pos ih
+
+theorem validL (path : nfa.Path lb i it j it' updates) : it.Valid := by
+  cases path with
+  | last step => exact step.validL
+  | more step => exact step.validL
+
+theorem validR (path : nfa.Path lb i it j it' updates) : it'.Valid := by
+  induction path with
+  | last step => exact step.validR
+  | more _ _ ih => exact ih
 
 /--
 A simpler casting procedure where the equality can be proven easily, e.g., when casting to a larger NFA.
