@@ -18,7 +18,7 @@ def Disjoint : Expr → Prop
 | .concat e₁ e₂ => e₁.tags ∩ e₂.tags = ∅ ∧ e₁.Disjoint ∧ e₂.Disjoint
 | .star e => e.Disjoint
 
-theorem Captures.mem_tags_of_mem_groups {e : Expr} {span span' groups} (c : e.Captures span span' groups) :
+theorem Captures.mem_tags_of_mem_groups {e : Expr} {it it' groups} (c : e.Captures it it' groups) :
   ∀ tag first last, (tag, first, last) ∈ groups → tag ∈ e.tags := by
   intro tag first last mem
   induction c with
