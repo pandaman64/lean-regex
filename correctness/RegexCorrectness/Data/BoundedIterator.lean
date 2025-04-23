@@ -33,6 +33,23 @@ theorem next' {startIdx l r} {bit : BoundedIterator startIdx} (h : bit.hasNext) 
   | [] => simp [vf.hasNext] at h
   | c :: r' => exact ⟨c, r', vf.next⟩
 
+theorem curr {startIdx l c r} {bit : BoundedIterator startIdx} (vf : ValidFor l (c :: r) bit) : bit.curr (by simp [vf.hasNext]) = c := by
+  simp [BoundedIterator.curr, bit.it.curr'_eq_curr, String.Iterator.ValidFor.curr vf]
+
 end ValidFor
+
+namespace Valid
+
+theorem validFor {startIdx} {bit : BoundedIterator startIdx} (v : bit.Valid) : ∃ l r, ValidFor l r bit :=
+  (bit.valid_of_valid v).validFor
+
+theorem validFor_of_hasNext {startIdx} {bit : BoundedIterator startIdx} (h : bit.hasNext) (v : bit.Valid) :
+  ∃ l r, ValidFor l (bit.curr h :: r) bit := by
+  have ⟨l, r, vf⟩ := validFor v
+  match h' : r with
+  | [] => simp [vf.hasNext] at h
+  | c :: r' => exact ⟨l, r', by simpa [vf.curr] using vf⟩
+
+end Valid
 
 end Regex.Data.BoundedIterator

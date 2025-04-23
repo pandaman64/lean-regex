@@ -64,6 +64,12 @@ theorem validR (step : nfa.Step lb i it j it' update) : it'.Valid := by
   case sparse _ _ _ vf _ => exact vf.next.valid
   all_goals assumption
 
+theorem toString_eq {nfa : NFA} {lb i it j it' update} (step : nfa.Step lb i it j it' update) :
+  it'.toString = it.toString := by
+  cases step.it_eq_or_next with
+  | inl eq => simp [eq]
+  | inr eq => simp [eq, String.Iterator.next, String.next]
+
 theorem cast (step : nfa.Step lb i it j it' update)
   {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
   nfa'.Step lb i it j it' update := by
