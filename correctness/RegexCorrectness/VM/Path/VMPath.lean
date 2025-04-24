@@ -44,7 +44,7 @@ theorem eq_or_nfaPath {nfa : NFA} {wf it it' i update} (path : nfa.VMPath wf it 
     | .inr path₁ => exact .inr (path₁.trans path₂)
 
 theorem nfaPath_of_ne {nfa : NFA} {wf it it' i update} (path : nfa.VMPath wf it it' i update)
-  (ne : it' ≠ it):
+  (ne : i.val ≠ nfa.start):
   nfa.Path 0 nfa.start it i it' update := by
   simpa [ne] using eq_or_nfaPath path
 
