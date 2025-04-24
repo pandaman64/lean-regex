@@ -3,7 +3,6 @@ import RegexCorrectness.Backtracker.Refinement
 
 set_option autoImplicit false
 
-open Regex.Data (Span)
 open Regex (NFA)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates refineUpdateOpt refineUpdate)
 

@@ -1,5 +1,6 @@
 import Regex.Data.Expr
 import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
+import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 

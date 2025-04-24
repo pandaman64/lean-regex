@@ -14,15 +14,15 @@ namespace Regex.NFA
 Under suitable conditions, the equivalence between capture groups and NFA buffer updates can be
 naturally transformed into a materialized version.
 -/
-theorem EquivUpdate.materialize {e : Expr} {n span span' groups updates}
-  (c : e.Captures span span' groups) (disj : e.Disjoint)
+theorem EquivUpdate.materialize {e : Expr} {n it it' groups updates}
+  (c : e.Captures it it' groups) (disj : e.Disjoint)
   (eqv : EquivUpdate groups updates) :
   EquivMaterializedUpdate (materializeRegexGroups groups) (materializeUpdates n updates) := by
   induction c generalizing updates with
   | char | sparse | epsilon | anchor | starEpsilon =>
     cases eqv with
     | empty => simp [EquivMaterializedUpdate]
-  | @group span span' groups tag e c ih =>
+  | @group it it' groups tag e c ih =>
     simp [Expr.Disjoint] at disj
     cases eqv with
     | @group groups updates _ _ _ eqv =>

@@ -63,8 +63,8 @@ def WriteUpdate {nfa : NFA} (i : Fin nfa.nodes.size) : Prop :=
   | _ => False
 
 /--
-All states in `next.state` have a corresponding path from `nfa.start` to the state where the span
-ends at `it`, and their updates are written to `next.updates` when necessary.
+All states in `next.state` have a corresponding path from `nfa.start` to the state ending at `it`,
+and their updates are written to `next.updates` when necessary.
 -/
 def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SearchState HistoryStrategy nfa) : Prop :=
   ∀ i ∈ next.states,

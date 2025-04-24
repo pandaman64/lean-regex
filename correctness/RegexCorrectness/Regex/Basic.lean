@@ -7,7 +7,7 @@ import RegexCorrectness.VM
 
 set_option autoImplicit false
 
-open Regex.Data (Expr Span)
+open Regex.Data (Expr)
 open String (Pos Iterator)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
