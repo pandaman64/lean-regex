@@ -4,7 +4,7 @@ import RegexCorrectness.VM.CharStep.Basic
 
 set_option autoImplicit false
 
-open Regex.Data (SparseSet Span)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (εStep' εClosure' CharStep)
 open String (Pos Iterator)
@@ -83,68 +83,66 @@ theorem stepChar.done_of_matched_some (h : stepChar HistoryStrategy nfa wf it cu
     simp at h
     simp [←h.1] at isSome'
 
-theorem mem_next_of_stepChar {l m r i j k update}
+theorem mem_next_of_stepChar {i j k update}
   (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
   (lb : εClosure.LowerBound it.next next.states)
-  (step : nfa.CharStep l m it.curr r i j) (cls : nfa.εClosure' ⟨l, it.curr :: m, r⟩ j k update) (eqit : Span.iterator ⟨l, m, it.curr :: r⟩ = it) :
+  (step : nfa.CharStep it i j) (cls : nfa.εClosure' it.next j k update) :
   k ∈ next'.states := by
   simp [stepChar] at h
   split at h
   next c' j' hn =>
     rw [CharStep.char hn] at step
-    simp [←step] at h
-    generalize hspan : (⟨l, m, it.curr :: r⟩ : Span) = span at eqit
-    have eqit_next : span.next.iterator = it.next := by
-      simp [←eqit]
-      exact Span.next_iterator' hspan.symm
-    simp [Span.next_eq' hspan.symm] at eqit_next
-    exact mem_next_of_εClosure h lb cls eqit_next
+    have ⟨l, r, eqj, vf⟩ := step
+    simp [vf.curr] at h
+    exact mem_next_of_εClosure h lb (by simpa [←eqj] using cls)
   next cs j' hn =>
     rw [CharStep.sparse hn] at step
-    simp [step.1, ←step.2] at h
-    generalize hspan : (⟨l, m, it.curr :: r⟩ : Span) = span at eqit
-    have eqit_next : span.next.iterator = it.next := by
-      simp [←eqit]
-      exact Span.next_iterator' hspan.symm
-    simp [Span.next_eq' hspan.symm] at eqit_next
-    exact mem_next_of_εClosure h lb cls eqit_next
+    have ⟨l, c, r, eqj, vf, hc⟩ := step
+    simp [vf.curr, hc] at h
+    exact mem_next_of_εClosure h lb (by simpa [←eqj] using cls)
   next ne₁ ne₂ =>
     have := step.char_or_sparse
     simp_all
 
-theorem stepChar.write_updates_of_mem_next {i k} (span : Span) (hspan : span.iterator = it)
+theorem stepChar.write_updates_of_mem_next {i k}
   (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
-  (notEnd : ¬it.atEnd) (mem : k ∈ next'.states) :
-  k ∈ next.states ∨ ∃ r' j update',
-    span.r = it.curr :: r' ∧
-    nfa.CharStep span.l span.m it.curr r' i j ∧
-    nfa.εClosure' span.next j k update' ∧
+  (v : it.Valid) (notEnd : ¬it.atEnd) (mem : k ∈ next'.states) :
+  k ∈ next.states ∨ ∃ j update',
+    nfa.CharStep it i j ∧
+    nfa.εClosure' it.next j k update' ∧
     (WriteUpdate k → next'.updates[k] = currentUpdates.get i ++ update') := by
   simp [stepChar] at h
   split at h
   next c j hn =>
     split at h
     next eqc =>
-      subst it c
-      have ⟨r', eqr⟩ := span.exists_cons_of_not_atEnd notEnd
-      have := εClosure.write_updates_of_mem_next span.next (span.next_iterator eqr) h mem
-      match this with
-      | .inl mem => exact .inl mem
-      | .inr ⟨update', cls, write⟩ =>
-        have isLt := wf.inBounds' i hn
-        exact .inr ⟨r', ⟨j, isLt⟩, update', eqr, NFA.Step.char (Nat.zero_le _) i.isLt hn, cls, write⟩
+      subst c
+      have ⟨l, r, vf⟩ := v.validFor
+      match r with
+      | [] => simp [vf.atEnd] at notEnd
+      | c :: r =>
+        have curr : it.curr = c := vf.curr
+        have := εClosure.write_updates_of_mem_next h (v.next (it.hasNext_of_not_atEnd notEnd)) mem
+        match this with
+        | .inl mem => exact .inl mem
+        | .inr ⟨update', cls, write⟩ =>
+          have isLt := wf.inBounds' i hn
+          exact .inr ⟨⟨j, isLt⟩, update', NFA.Step.char (Nat.zero_le _) i.isLt hn (curr ▸ vf), cls, write⟩
     next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
   next cs j hn =>
     split at h
-    next cmem =>
-      subst it
-      have ⟨r', eqr⟩ := span.exists_cons_of_not_atEnd notEnd
-      have := εClosure.write_updates_of_mem_next span.next (span.next_iterator eqr) h mem
-      match this with
-      | .inl mem => exact .inl mem
-      | .inr ⟨update', cls, write⟩ =>
-        have isLt := wf.inBounds' i hn
-        exact .inr ⟨r', ⟨j, isLt⟩, update', eqr, NFA.Step.sparse (Nat.zero_le _) i.isLt hn cmem, cls, write⟩
+    next hc =>
+      have ⟨l, r, vf⟩ := v.validFor
+      match r with
+      | [] => simp [vf.atEnd] at notEnd
+      | c :: r =>
+        have curr : it.curr = c := vf.curr
+        have := εClosure.write_updates_of_mem_next h (v.next (it.hasNext_of_not_atEnd notEnd)) mem
+        match this with
+        | .inl mem => exact .inl mem
+        | .inr ⟨update', cls, write⟩ =>
+          have isLt := wf.inBounds' i hn
+          exact .inr ⟨⟨j, isLt⟩, update', NFA.Step.sparse (Nat.zero_le _) i.isLt hn (curr ▸ vf) hc, cls, write⟩
     next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
   next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
 
@@ -188,26 +186,26 @@ theorem eachStepChar.done_of_matched_some (h : eachStepChar HistoryStrategy nfa 
 
 theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
   (h : stepChar HistoryStrategy nfa wf it current.updates next current.states[idx] = (matched', next'))
-  (notEnd : ¬it.atEnd)
+  (v : it.Valid) (notEnd : ¬it.atEnd)
   (inv_curr : current.Inv nfa wf it)
   (inv_next : next.Inv nfa wf it.next) :
   next'.Inv nfa wf it.next := by
-  have ⟨span, update, eqit, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
+  have ⟨update, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
 
   intro k mem
-  have := stepChar.write_updates_of_mem_next span eqit h (by simp [notEnd]) mem
+  have := stepChar.write_updates_of_mem_next h v (by simp [notEnd]) mem
   match this with
   | .inl mem =>
     have inv := inv_next k mem
     have equ := stepChar.eq_updates_of_mem_next h mem
     exact equ ▸ inv
-  | .inr ⟨r', j, update', eqr, step, cls, write'⟩ =>
+  | .inr ⟨j, update', step, cls, write'⟩ =>
     simp [step.write_update] at write
     have write'' : WriteUpdate k → next'.updates[k] = update ++ update' := write ▸ write'
-    exact ⟨span.next, update ++ update', by rw [Span.next_iterator eqr, eqit], .more path eqr step cls, write''⟩
+    exact ⟨update ++ update', .more path step cls, write''⟩
 
 theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
-  (notEnd : ¬it.atEnd)
+  (v : it.Valid) (notEnd : ¬it.atEnd)
   (inv_curr : current.Inv nfa wf it)
   (inv_next : next.Inv nfa wf it.next) :
   next'.Inv nfa wf it.next := by
@@ -217,18 +215,18 @@ theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa w
   | found idx hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
     simp_all
-    exact eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
+    exact eachStepChar.inv_of_stepChar hlt h' v (by simp [notEnd]) inv_curr inv_next
   | not_found idx hlt next hn matched next'' h' not_found ih =>
     rw [eachStepChar.go_not_found hlt hn h' not_found] at h
     have inv' : next''.Inv nfa wf it.next :=
-      eachStepChar.inv_of_stepChar hlt h' (by simp [notEnd]) inv_curr inv_next
+      eachStepChar.inv_of_stepChar hlt h' v (by simp [notEnd]) inv_curr inv_next
     apply ih h inv'
 
 theorem eachStepChar.inv_of_inv {next next'} (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
-  (notEnd : ¬it.atEnd) (empty : next.states.isEmpty)
+  (v : it.Valid) (notEnd : ¬it.atEnd) (empty : next.states.isEmpty)
   (inv : current.Inv nfa wf it) :
   next'.Inv nfa wf it.next := by
   simp [eachStepChar] at h
-  exact eachStepChar.go.inv h notEnd inv (.of_empty empty)
+  exact eachStepChar.go.inv h v notEnd inv (.of_empty empty)
 
 end Regex.VM

@@ -5,66 +5,48 @@ import RegexCorrectness.VM.Path.CharStep
 
 set_option autoImplicit false
 
-open Regex.Data (Span SparseSet)
+open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos Iterator)
 
 namespace Regex.NFA
 
-inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) : Span → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
-  | init {l r i update} (cls : nfa.εClosure' ⟨l, [], r⟩ ⟨nfa.start, wf.start_lt⟩ i update) :
-    VMPath nfa wf ⟨l, [], r⟩  i update
-  | more {i j k span c r' update₁ update₂} (prev : VMPath nfa wf span i update₁) (h : span.r = c :: r')
-    (step : nfa.CharStep span.l span.m c r' i j) (cls : nfa.εClosure' span.next j k update₂) :
-    VMPath nfa wf span.next k (update₁ ++ update₂)
+inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) : Iterator → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
+  | init {it i update} (cls : nfa.εClosure' it ⟨nfa.start, wf.start_lt⟩ i update) :
+    VMPath nfa wf it i update
+  | more {i j k it update₁ update₂} (prev : VMPath nfa wf it i update₁) (step : nfa.CharStep it i j) (cls : nfa.εClosure' it.next j k update₂) :
+    VMPath nfa wf it.next k (update₁ ++ update₂)
 
 namespace VMPath
 
-theorem eq_or_nfaPath {nfa : NFA} {wf span i update} (path : nfa.VMPath wf span i update) :
-  ∃ l r,
-    (span = ⟨l, [], r⟩ ∧ i.val = nfa.start ∧ update = []) ∨
-    nfa.Path 0 nfa.start ⟨l, [], r⟩ i span update := by
+theorem eq_or_nfaPath {nfa : NFA} {wf it i update} (path : nfa.VMPath wf it i update) :
+  (i.val = nfa.start ∧ update = []) ∨
+  ∃ it₀, nfa.Path 0 nfa.start it₀ i it update := by
   induction path with
-  | @init l r i update cls =>
+  | @init it i update cls =>
     simp [εClosure'_iff_path nfa wf] at cls
-    exists l, r
     cases cls with
     | inl h => simp [←h.1, h.2]
-    | inr cls => simp [cls]
-  | @more i j k span c r' update₁ update₂ prev h step cls ih =>
-    have path₂ : nfa.Path 0 i ⟨span.l, span.m, c :: r'⟩ k ⟨span.l, c :: span.m, r'⟩ update₂ := by
-      simp [CharStep] at step
+    | inr cls => exact .inr ⟨it, cls⟩
+  | @more i j k it update₁ update₂ prev step cls ih =>
+    have path₂ : nfa.Path 0 i it k it.next update₂ := by
       simp [εClosure'_iff_path nfa wf] at cls
       match cls with
-      | .inl ⟨eqk, equpdate⟩ =>
-        subst k update₂
+      | .inl ⟨eqk, equpdate, v⟩ =>
+        rw [←eqk, equpdate]
         exact .last step
-      | .inr path =>
-        simp [Span.next_eq h] at path
-        exact Path.more step path
+      | .inr path => exact .more step path
 
-    have ⟨l, r, h'⟩ := ih
-    match h' with
-    | .inl ⟨eqspan, eqi, equpdate⟩ =>
-      simp [Span.next_eq h]
-      simp [eqspan, eqi] at path₂ h
-      simp [eqspan, equpdate]
-      refine ⟨l, c :: r', path₂⟩
-    | .inr path₁ =>
-      have : span = ⟨span.l, span.m, c :: r'⟩ :=
-        calc
-          _ = (⟨span.l, span.m, span.r⟩ : Span) := rfl
-          _ = _ := by simp [h]
-      rw [this] at path₁
-      simp [Span.next_eq h]
-      exact ⟨l, r, path₁.trans path₂⟩
+    match ih with
+    | .inl ⟨eqi, equpdate⟩ =>
+      simp [←eqi, equpdate]
+      exact .inr ⟨it, path₂⟩
+    | .inr ⟨it₀, path₁⟩ => exact .inr ⟨it₀, path₁.trans path₂⟩
 
-theorem nfaPath_of_ne {nfa : NFA} {wf span i update} (path : nfa.VMPath wf span i update)
+theorem nfaPath_of_ne {nfa : NFA} {wf it i update} (path : nfa.VMPath wf it i update)
   (ne : i.val ≠ nfa.start):
-  ∃ l r, nfa.Path 0 nfa.start ⟨l, [], r⟩ i span update := by
-  have ⟨l, r, h⟩ := eq_or_nfaPath path
-  simp [ne] at h
-  exact ⟨l, r, h⟩
+  ∃ it₀, nfa.Path 0 nfa.start it₀ i it update := by
+  simpa [ne] using eq_or_nfaPath path
 
 end VMPath
 
@@ -81,14 +63,13 @@ def WriteUpdate {nfa : NFA} (i : Fin nfa.nodes.size) : Prop :=
   | _ => False
 
 /--
-All states in `next.state` have a corresponding path from `nfa.start` to the state where the span
-ends at `it`, and their updates are written to `next.updates` when necessary.
+All states in `next.state` have a corresponding path from `nfa.start` to the state ending at `it`,
+and their updates are written to `next.updates` when necessary.
 -/
 def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (next : SearchState HistoryStrategy nfa) : Prop :=
   ∀ i ∈ next.states,
-    ∃ span update,
-      span.iterator = it ∧
-      nfa.VMPath wf span i update ∧
+    ∃ update,
+      nfa.VMPath wf it i update ∧
       (WriteUpdate i → next.updates[i] = update)
 
 theorem SearchState.Inv.of_empty {nfa wf it} {next : SearchState HistoryStrategy nfa} (h : next.states.isEmpty) :
@@ -98,6 +79,12 @@ theorem SearchState.Inv.of_empty {nfa wf it} {next : SearchState HistoryStrategy
 
 end Regex.VM
 
-theorem Regex.NFA.CharStep.write_update {nfa : NFA} {l m c r i j}
-  (step : nfa.CharStep l m c r i j) : Regex.VM.WriteUpdate i := by
-  cases step <;> simp_all [VM.WriteUpdate]
+theorem Regex.NFA.CharStep.write_update {nfa : NFA} {it i j}
+  (step : nfa.CharStep it i j) : Regex.VM.WriteUpdate i := by
+  match hn : nfa[i] with
+  | .char c next => simp [hn, VM.WriteUpdate]
+  | .sparse cs next => simp [hn, VM.WriteUpdate]
+  | .done | .fail | .epsilon _ => simp_all
+  | .anchor _ _ => simp [anchor hn] at step
+  | .split _ _ => simp [split hn] at step
+  | .save _ _ => simp [save hn] at step

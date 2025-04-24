@@ -130,7 +130,6 @@ theorem εClosure_visited {update state stack'} (hmem : state ∈ next.states) :
     unfold εClosure
     simp [hmem]
 
-@[simp]
 theorem εClosure_epsilon {update state stack' state'} (hmem : state ∉ next.states) (hn : nfa[state] = .epsilon state') :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, state') :: stack') := by
@@ -140,7 +139,6 @@ theorem εClosure_epsilon {update state stack' state'} (hmem : state ∉ next.st
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_anchor_pos {update state stack' anchor state'} (hmem : state ∉ next.states) (hn : nfa[state] = .anchor anchor state') (h : anchor.test it) :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, state') :: stack') := by
@@ -150,7 +148,6 @@ theorem εClosure_anchor_pos {update state stack' anchor state'} (hmem : state �
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_anchor_neg {update state stack' anchor state'} (hmem : state ∉ next.states) (hn : nfa[state] = .anchor anchor state') (h : ¬anchor.test it) :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates⟩ stack' := by
@@ -160,7 +157,6 @@ theorem εClosure_anchor_neg {update state stack' anchor state'} (hmem : state �
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_split {update state stack' state₁ state₂} (hmem : state ∉ next.states) (hn : nfa[state] = .split state₁ state₂) :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((update, state₁) :: (update, state₂) :: stack') := by
@@ -170,7 +166,6 @@ theorem εClosure_split {update state stack' state₁ state₂} (hmem : state �
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_save {update state stack' offset state'} (hmem : state ∉ next.states) (hn : nfa[state] = .save offset state') :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates⟩ ((σ.write update offset it.pos, state') :: stack') := by
@@ -180,7 +175,6 @@ theorem εClosure_save {update state stack' offset state'} (hmem : state ∉ nex
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_done {update state stack'} (hmem : state ∉ next.states) (hn : nfa[state] = .done) :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it (matched <|> .some update) ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
@@ -190,7 +184,6 @@ theorem εClosure_done {update state stack'} (hmem : state ∉ next.states) (hn 
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_char {update state stack' c state'} (hmem : state ∉ next.states) (hn : nfa[state] = .char c state') :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
@@ -200,7 +193,6 @@ theorem εClosure_char {update state stack' c state'} (hmem : state ∉ next.sta
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_sparse {update state stack' cs state'} (hmem : state ∉ next.states) (hn : nfa[state] = .sparse cs state') :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates.set state update⟩ stack' := by
@@ -210,7 +202,6 @@ theorem εClosure_sparse {update state stack' cs state'} (hmem : state ∉ next.
     simp [hmem]
   split <;> simp_all
 
-@[simp]
 theorem εClosure_fail {update state stack'} (hmem : state ∉ next.states) (hn : nfa[state] = .fail) :
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched ⟨next.states.insert state, next.updates⟩ stack' := by

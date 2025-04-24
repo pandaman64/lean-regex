@@ -1,5 +1,4 @@
 import Regex.Data.Expr
-import RegexCorrectness.Data.Span
 
 set_option autoImplicit false
 

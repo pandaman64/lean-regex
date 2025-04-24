@@ -5,8 +5,8 @@ set_option autoImplicit false
 namespace Regex.NFA
 
 open Compile.ProofData in
-theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
-  (step : (nfa.pushRegex next e).Step nfa.nodes.size i span j span' update) :
+theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i it j it' update}
+  (step : (nfa.pushRegex next e).Step nfa.nodes.size i it j it' update) :
   j = next ∨ nfa.nodes.size ≤ j := by
   induction e generalizing nfa next with
   | empty =>
@@ -36,7 +36,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
     have lt := step.lt
     simp [pushRegex] at lt
     have : i = nfa'.start := Nat.eq_of_le_of_lt_succ step.ge lt
-    have ⟨_, eq⟩ := Char.step_start_iff.mp (this ▸ step)
+    have ⟨_, _, eq⟩ := Char.step_start_iff.mp (this ▸ step)
     simp [eq]
     exact .inl rfl
   | classes cs =>
@@ -44,12 +44,12 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
     have lt := step.lt
     simp [pushRegex] at lt
     have : i = nfa'.start := Nat.eq_of_le_of_lt_succ step.ge lt
-    have ⟨_, _, eq⟩ := Classes.step_start_iff.mp (this ▸ step)
+    have ⟨_, _, _, eq⟩ := Classes.step_start_iff.mp (this ▸ step)
     simp [eq]
     exact .inl rfl
   | group tag e ih =>
     let pd := Group.intro' nfa next tag e
-    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
+    have step : (pd.nfa').Step nfa.nodes.size i it j it' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -60,7 +60,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
       simp [step]
       exact .inl rfl
     next ne lt =>
-      have step : Group.nfaExpr.Step Group.nfaClose.nodes.size i span j span' update :=
+      have step : Group.nfaExpr.Step Group.nfaClose.nodes.size i it j it' update :=
         (step.cast get).liftBound' (by simp [Group.nfaClose]; omega)
       have := ih step
       cases this with
@@ -74,7 +74,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
       exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaClose_property) (ge_pushRegex_start rfl))
   | alternate e₁ e₂ ih₁ ih₂ =>
     let pd := Alternate.intro' nfa next e₁ e₂
-    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
+    have step : (pd.nfa').Step nfa.nodes.size i it j it' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -95,7 +95,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
         exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₁_property) (eq₂ ▸ this))
   | concat e₁ e₂ ih₁ ih₂ =>
     let pd := Concat.intro' nfa next e₁ e₂
-    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
+    have step : (pd.nfa').Step nfa.nodes.size i it j it' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -108,7 +108,7 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
       | inr le => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₂_property) le)
   | star e ih =>
     let pd := Star.intro' nfa next e
-    have step : (pd.nfa').Step nfa.nodes.size i span j span' update := step
+    have step : (pd.nfa').Step nfa.nodes.size i it j it' update := step
 
     have get := pd.get i step.lt
     have nlt : ¬i < pd.nfa.nodes.size := Nat.not_lt_of_ge step.ge
@@ -129,38 +129,38 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i span j span' update}
       | inl eq => exact .inr (eq ▸ Nat.le_refl _)
       | inr le => exact .inr (Nat.le_of_lt le)
 
-theorem Path.eq_or_path_next {nfa : NFA} {next e result lb i span j span' update} (eq : nfa.pushRegex next e = result)
+theorem Path.eq_or_path_next {nfa : NFA} {next e result lb i it j it' update} (eq : nfa.pushRegex next e = result)
   (jlt : j < nfa.nodes.size) (ige : i ≥ nfa.nodes.size)
-  (path : result.Path lb i span j span' update) :
+  (path : result.Path lb i it j it' update) :
   j = next ∨
-  ∃ spanm update₁ update₂,
+  ∃ itm update₁ update₂,
     update = update₁ ++ update₂ ∧
-    result.Path nfa.nodes.size i span next spanm update₁ ∧
-    result.Path lb next spanm j span' update₂ := by
+    result.Path nfa.nodes.size i it next itm update₁ ∧
+    result.Path lb next itm j it' update₂ := by
   induction path with
-  | @last i span j span' update step =>
+  | @last i it j it' update step =>
     have step := eq ▸ step.liftBound' ige
     have := step.eq_or_ge_of_pushRegex
     omega
-  | @more i span j span' k span'' update updates step rest ih =>
+  | @more i it j it' k it'' update updates step rest ih =>
     have step := step.liftBound' ige
     cases (eq ▸ step).eq_or_ge_of_pushRegex with
     | inl jeq =>
       simp [jeq] at *
-      exact .inr ⟨span', List.ofOption update, updates, by simp, .last step, rest⟩
+      exact .inr ⟨it', List.ofOption update, updates, by simp, .last step, rest⟩
     | inr jge =>
       match ih jlt jge with
       | .inl keq => exact .inl keq
-      | .inr ⟨spanm, update₁, update₂, equ, path₁, path₂⟩ =>
-        exact .inr ⟨spanm, update ::ₒ update₁, update₂, by simp [equ], .more step path₁, path₂⟩
+      | .inr ⟨itm, update₁, update₂, equ, path₁, path₂⟩ =>
+        exact .inr ⟨itm, update ::ₒ update₁, update₂, by simp [equ], .more step path₁, path₂⟩
 
-theorem Path.path_next_of_ne {nfa : NFA} {next e result lb i span j span' update} (eq : nfa.pushRegex next e = result)
+theorem Path.path_next_of_ne {nfa : NFA} {next e result lb i it j it' update} (eq : nfa.pushRegex next e = result)
   (jlt : j < nfa.nodes.size) (ige : i ≥ nfa.nodes.size) (ne : j ≠ next)
-  (path : result.Path lb i span j span' update) :
-  ∃ spanm update₁ update₂,
+  (path : result.Path lb i it j it' update) :
+  ∃ itm update₁ update₂,
     update = update₁ ++ update₂ ∧
-    result.Path nfa.nodes.size i span next spanm update₁ ∧
-    result.Path lb next spanm j span' update₂ := by
+    result.Path nfa.nodes.size i it next itm update₁ ∧
+    result.Path lb next itm j it' update₂ := by
   have := path.eq_or_path_next eq jlt ige
   cases this with
   | inl eq => contradiction

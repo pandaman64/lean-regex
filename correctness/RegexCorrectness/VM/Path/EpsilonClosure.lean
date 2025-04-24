@@ -1,124 +1,114 @@
 import RegexCorrectness.NFA.Semantics.Path
+import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
-open Regex.Data (Span)
-open String (Pos)
+open String (Pos Iterator)
 
 -- Transition relations specialized for ε-closure traversal.
 namespace Regex.NFA
 
-def εStep' (nfa : NFA) (span : Span) (i j : Fin nfa.nodes.size) (update : Option (Nat × Pos)) : Prop :=
-  nfa.Step 0 i span j span update
+def εStep' (nfa : NFA) (it : Iterator) (i j : Fin nfa.nodes.size) (update : Option (Nat × Pos)) : Prop :=
+  nfa.Step 0 i it j it update
 
 section
 
-variable {nfa : NFA} {span i j update}
+variable {nfa : NFA} {it i j update}
 
 @[simp]
 theorem εStep'.done (hn : nfa[i] = .done) :
-  nfa.εStep' span i j update ↔ False := by
+  nfa.εStep' it i j update ↔ False := by
   apply Step.iff_done hn
 
 @[simp]
 theorem εStep'.fail (hn : nfa[i] = .fail) :
-  nfa.εStep' span i j update ↔ False := by
+  nfa.εStep' it i j update ↔ False := by
   apply Step.iff_fail hn
 
 @[simp]
 theorem εStep'.epsilon {next} (hn : nfa[i] = .epsilon next) :
-  nfa.εStep' span i j update ↔ j = next ∧ update = .none := by
+  nfa.εStep' it i j update ↔ j = next ∧ update = .none ∧ it.Valid := by
   simp [εStep', Step.iff_epsilon hn]
   omega
 
 @[simp]
 theorem εStep'.anchor {anchor next} (hn : nfa[i] = .anchor anchor next) :
-  nfa.εStep' span i j update ↔ j = next ∧ update = .none ∧ anchor.test span.iterator := by
+  nfa.εStep' it i j update ↔ j = next ∧ update = .none ∧ it.Valid ∧ anchor.test it := by
   simp [εStep', Step.iff_anchor hn]
   omega
 
 @[simp]
 theorem εStep'.split {next₁ next₂} (hn : nfa[i] = .split next₁ next₂) :
-  nfa.εStep' span i j update ↔ (j = next₁ ∨ j = next₂) ∧ update = .none := by
+  nfa.εStep' it i j update ↔ (j = next₁ ∨ j = next₂) ∧ update = .none ∧ it.Valid := by
   simp [εStep', Step.iff_split hn]
   omega
 
 @[simp]
 theorem εStep'.save {offset next} (hn : nfa[i] = .save offset next) :
-  nfa.εStep' span i j update ↔ j = next ∧ update = .some (offset, span.curr) := by
+  nfa.εStep' it i j update ↔ j = next ∧ update = .some (offset, it.pos) ∧ it.Valid := by
   simp [εStep', Step.iff_save hn]
   omega
 
 @[simp]
 theorem εStep'.char {c next} (hn : nfa[i] = .char c next) :
-  nfa.εStep' span i j update ↔ False := by
-  rw [εStep']
-  apply Iff.intro
-  . intro step
-    cases step <;> simp_all
-  . exact fun f => False.elim f
+  nfa.εStep' it i j update ↔ False := by
+  simp [εStep', Step.iff_char hn]
 
 @[simp]
 theorem εStep'.sparse {cs next} (hn : nfa[i] = .sparse cs next) :
-  nfa.εStep' span i j update ↔ False := by
-  rw [εStep']
-  apply Iff.intro
-  . intro step
-    cases step <;> simp_all
-  . exact fun f => False.elim f
+  nfa.εStep' it i j update ↔ False := by
+  simp [εStep', Step.iff_sparse hn]
+
+theorem εStep'.valid (step : nfa.εStep' it i j update) : it.Valid := step.validL
 
 end
 
-inductive εClosure' (nfa : NFA) (span : Span) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
-  | base {i} : εClosure' nfa span i i []
-  | step {i j k update₁ update₂} (step : nfa.εStep' span i j update₁) (rest : εClosure' nfa span j k update₂) :
-    εClosure' nfa span i k (update₁ ::ₒ update₂)
+inductive εClosure' (nfa : NFA) (it : Iterator) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
+  | base {i} (v : it.Valid) : εClosure' nfa it i i []
+  | step {i j k update₁ update₂} (step : nfa.εStep' it i j update₁) (rest : εClosure' nfa it j k update₂) :
+    εClosure' nfa it i k (update₁ ::ₒ update₂)
 
-theorem εClosure'.single {nfa : NFA} {span i j update} (step : nfa.εStep' span i j update) :
-  εClosure' nfa span i j (List.ofOption update) := by
-  have := εClosure'.step step εClosure'.base
-  simp at this
-  exact this
+theorem εClosure'.single {nfa : NFA} {it i j update} (step : nfa.εStep' it i j update) :
+  εClosure' nfa it i j (List.ofOption update) := by
+  simpa using εClosure'.step step (εClosure'.base step.valid)
 
-theorem εClosure'.trans {nfa : NFA} {span i j k update₁ update₂}
-  (cls₁ : εClosure' nfa span i j update₁) (cls₂ : εClosure' nfa span j k update₂) :
-  εClosure' nfa span i k (update₁ ++ update₂) := by
+theorem εClosure'.trans {nfa : NFA} {it i j k update₁ update₂}
+  (cls₁ : εClosure' nfa it i j update₁) (cls₂ : εClosure' nfa it j k update₂) :
+  εClosure' nfa it i k (update₁ ++ update₂) := by
   induction cls₁ with
   | base => exact cls₂
   | step step rest ih =>
     simp
     exact .step step (ih cls₂)
 
-theorem εClosure'.snoc {nfa : NFA} {span i j k update₁ update₂}
-  (cls : εClosure' nfa span i j update₁) (step : nfa.εStep' span j k update₂) :
-  εClosure' nfa span i k (update₁ ++ List.ofOption update₂) :=
+theorem εClosure'.snoc {nfa : NFA} {it i j k update₁ update₂}
+  (cls : εClosure' nfa it i j update₁) (step : nfa.εStep' it j k update₂) :
+  εClosure' nfa it i k (update₁ ++ List.ofOption update₂) :=
   cls.trans (εClosure'.single step)
 
-theorem εClosure'_of_path {nfa : NFA} {i j span span' updates} (wf : nfa.WellFormed) (hspan : span = span')
-  (path : nfa.Path 0 i span j span' updates) :
-  nfa.εClosure' span ⟨i, path.lt⟩ ⟨j, path.lt_right wf⟩ updates := by
+theorem εClosure'_of_path {nfa : NFA} {i j it it' updates} (wf : nfa.WellFormed) (hit : it = it')
+  (path : nfa.Path 0 i it j it' updates) :
+  nfa.εClosure' it ⟨i, path.lt⟩ ⟨j, path.lt_right wf⟩ updates := by
   induction path with
   | last step =>
-    subst hspan
+    subst hit
     exact εClosure'.single step
-  | @more i span j span' k span'' update₁ update₂ step rest ih =>
-    match step.span_eq_or_next with
-    | .inl hspan' =>
-      subst hspan hspan'
+  | @more i it j it' k it'' update₁ update₂ step rest ih =>
+    match step.it_eq_or_next with
+    | .inl hit' =>
+      subst hit hit'
       simp at ih
       exact .step (by simp [εStep', step]) ih
-    | .inr ⟨c, r, _, hspan'⟩ =>
-      subst hspan hspan'
-      have := rest.le_length
-      simp at this
-      omega
+    | .inr hit' =>
+      subst hit hit'
+      exact ((Nat.not_le_of_lt it.lt_next) rest.le_pos).elim
 
-theorem εClosure'_iff_path (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (span : Span) (updates : List (Nat × Pos)) :
-  nfa.εClosure' span i j updates ↔ (i = j ∧ updates = []) ∨ nfa.Path 0 i span j span updates := by
+theorem εClosure'_iff_path (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (it : Iterator) (updates : List (Nat × Pos)) :
+  nfa.εClosure' it i j updates ↔ (i = j ∧ updates = [] ∧ it.Valid) ∨ nfa.Path 0 i it j it updates := by
   apply Iff.intro
   . intro cls
     induction cls with
-    | base => simp
+    | base v => simp [v]
     | step step rest ih =>
       match ih with
       | .inl ⟨eqj, equ⟩ =>
@@ -129,5 +119,10 @@ theorem εClosure'_iff_path (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nod
     cases path with
     | inl eq => simp [eq, εClosure'.base]
     | inr path => exact εClosure'_of_path wf rfl path
+
+theorem εClosure'.valid {nfa : NFA} {it i j updates} (cls : nfa.εClosure' it i j updates) : it.Valid := by
+  cases cls with
+  | base v => exact v
+  | step step rest => exact step.valid
 
 end Regex.NFA

@@ -16,10 +16,10 @@ open Regex.Strategy (materializeRegexGroups)
   - the last match of wins in case the same group is captured multiple times
 -/
 def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (self : CapturedGroups) : Prop :=
-  ∃ l m r groups,
-    haystack = ⟨l ++ m ++ r⟩ ∧
-    s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
-    self.get 0 = .some (⟨String.utf8Len l⟩, ⟨String.utf8Len l + String.utf8Len m⟩) ∧
+  ∃ it it' groups,
+    it.toString = haystack ∧
+    s.expr.Captures it it' groups ∧
+    self.get 0 = .some (it.pos, it'.pos) ∧
     ∀ i, self.get i = materializeRegexGroups groups i
 
 namespace Regex.Captures
@@ -38,7 +38,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
     | some matched =>
       have pos_valid := v.2.valid_of_le le
       have : 1 ≤ self.regex.maxTag := v.1.le_maxTag
-      have ⟨l, m, r, groups, eqstring, c, eqv, eq₁, eq₂⟩ :=
+      have ⟨it, it', groups, eqstring, c, eqv, eq₁, eq₂⟩ :=
         v.1.captures_of_captureNext h' pos_valid (by omega)
       simp at eqstring
 
@@ -88,7 +88,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
             have := v.1.maxTag_eq ▸ NFA.lt_of_mem_tags_compile v.1.nfa_eq.symm this
             simp at h₁
             omega
-      have captured₀ : captured'.get 0 = .some (⟨String.utf8Len l⟩, ⟨String.utf8Len l + String.utf8Len m⟩) := by
+      have captured₀ : captured'.get 0 = .some (it.pos, it'.pos) := by
         simp [hcaptured 0]
         have h₁ := (eqv 0).1 (by omega)
         have h₂ := (eqv 0).2 (by omega)
@@ -104,14 +104,11 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       next =>
         simp at h
         simp [←h, Valid]
-        have pos_valid' : Pos.Valid self.haystack ⟨String.utf8Len l + String.utf8Len m⟩ := by
-          refine ⟨l ++ m, r, ?_, by simp⟩
-          simp [eqstring]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_valid pos_valid'⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
+        exact ⟨⟨v.1, eqstring ▸ c.validR.validPlus⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, captured₀, hcaptured⟩
       next nlt =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, l, m, r, groups, by simp [eqstring], c, captured₀, hcaptured⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, captured₀, hcaptured⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :
@@ -160,6 +157,6 @@ theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.n
 
 theorem valid_captures {re : Regex} (haystack : String) (s : re.IsSearchRegex) :
   (re.captures haystack).Valid :=
-  ⟨s, String.Pos.validPlus_of_valid haystack.valid_mkIterator⟩
+  ⟨s, haystack.valid_mkIterator.validPlus⟩
 
 end Regex.Captures

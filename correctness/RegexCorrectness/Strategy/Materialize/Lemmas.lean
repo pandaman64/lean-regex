@@ -22,8 +22,8 @@ theorem materializeRegexGroups_concat {g₁ g₂} :
   fun tag => materializeRegexGroups g₂ tag <|> materializeRegexGroups g₁ tag := rfl
 
 open Regex.Data Expr in
-theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {span span' groups tag}
-  (c : e.Captures span span' groups) (isSome : (materializeRegexGroups groups tag).isSome) :
+theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {it it' groups tag}
+  (c : e.Captures it it' groups) (isSome : (materializeRegexGroups groups tag).isSome) :
   tag ∈ e.tags := by
   induction c with
   | char | sparse | epsilon | anchor h | starEpsilon => simp at isSome

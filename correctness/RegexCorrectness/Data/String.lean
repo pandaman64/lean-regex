@@ -1,5 +1,6 @@
 import Batteries.Data.String
 import Mathlib.Tactic.Common
+import Regex.Data.String
 
 namespace String.Pos
 
@@ -53,6 +54,14 @@ theorem ext_iff {it₁ it₂ : Iterator} : it₁ = it₂ ↔ it₁.s = it₂.s �
 theorem hasNext_of_not_atEnd {it : Iterator} (h : ¬it.atEnd) : it.hasNext := by
   simp [hasNext, atEnd] at *
   exact h
+
+@[simp]
+theorem ne_next (it : Iterator) : it ≠ it.next := by
+  simp [ext_iff, next, Pos.ext_iff]
+  exact Nat.ne_of_lt (lt_next it)
+
+@[simp]
+theorem next_ne (it : Iterator) : it.next ≠ it := it.ne_next.symm
 
 end String.Iterator
 
@@ -133,7 +142,7 @@ a search at the end of the string.
 def ValidPlus (s : String) (p : Pos) :=
   p.Valid s ∨ p = s.endPos + ⟨1⟩
 
-theorem validPlus_of_valid {s : String} {p : Pos} : p.Valid s → p.ValidPlus s := .inl
+theorem Valid.validPlus {s : String} {p : Pos} : p.Valid s → p.ValidPlus s := .inl
 
 theorem next_endPos {s : String} : (s.next s.endPos) = s.endPos + ⟨1⟩ := by
   have next_eq := next_of_valid' s.data []
