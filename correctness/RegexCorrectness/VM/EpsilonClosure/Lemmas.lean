@@ -576,8 +576,8 @@ structure εClosure.UpperInv (states₀ : SparseSet nfa.nodes.size) (it₀ : Ite
 All new states in `next'` are reachable from the starting state `i₀` and have corresponding updates in `next'.updates`.
 -/
 theorem εClosure.upper_boundAux (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Pos))
-  (v : it₀.Valid)
   (h : εClosure HistoryStrategy nfa wf it₀ matched next stack = (matched', next'))
+  (v : it₀.Valid)
   (inv₀ : εClosure.UpperInv states₀ it₀ i₀ update₀ next stack) :
   εClosure.UpperInv states₀ it₀ i₀ update₀ next' []  := by
   induction matched, next, stack using εClosure.induct' HistoryStrategy nfa wf it₀ with
@@ -784,11 +784,12 @@ theorem εClosure.UpperInv.intro {i₀ update₀} (it₀ : Iterator) (v : it₀.
     intro j mem
     exact .inl mem
 
-theorem εClosure.upper_bound {i} {update : List (Nat × Pos)} (v : it.Valid)
-  (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next')) :
+theorem εClosure.upper_bound {i} {update : List (Nat × Pos)}
+  (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next'))
+  (v : it.Valid) :
   ∀ j ∈ next'.states, j ∈ next.states ∨
     ∃ update', nfa.εClosure' it i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') := by
-  have := εClosure.upper_boundAux next.states it i update v h (εClosure.UpperInv.intro it v)
+  have := εClosure.upper_boundAux next.states it i update h v (εClosure.UpperInv.intro it v)
   exact this.mem_next
 
 /--
@@ -806,11 +807,11 @@ theorem mem_next_of_εClosure {i update}
 All states in `next'.states` are already in `next.states` or they are reachable from `i` with the
 updates written to `next'.updates`.
 -/
-theorem εClosure.write_updates_of_mem_next {i j} {update : List (Nat × Pos)} (v : it.Valid)
+theorem εClosure.write_updates_of_mem_next {i j} {update : List (Nat × Pos)}
   (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next'))
-  (mem : j ∈ next'.states) :
+  (v : it.Valid) (mem : j ∈ next'.states) :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' it i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
-  εClosure.upper_bound v h j mem
+  εClosure.upper_bound h v j mem
 
 /--
 For all states in the ε-closure of `i`, it's already in `next.states` or there is a path from `i`
@@ -821,13 +822,13 @@ theorem write_updates_of_εClosure {i j} {update update' : List (Nat × Pos)} (v
   (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next'))
   (lb : εClosure.LowerBound it next.states) (cls : nfa.εClosure' it i j update') :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' it i j update' ∧ (WriteUpdate j → next'.updates[j] = update ++ update') :=
-  εClosure.write_updates_of_mem_next v h (mem_next_of_εClosure h lb cls)
+  εClosure.write_updates_of_mem_next h v (mem_next_of_εClosure h lb cls)
 
 theorem εClosure.inv_of_inv (h : εClosure HistoryStrategy nfa wf it matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
   (v : it.Valid) (inv : next.Inv nfa wf it) :
   next'.Inv nfa wf it := by
   intro i mem
-  have := εClosure.write_updates_of_mem_next v h mem
+  have := εClosure.write_updates_of_mem_next h v mem
   match this with
   | .inl mem =>
     have equ := εClosure.eq_updates_of_mem_next h mem
