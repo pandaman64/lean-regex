@@ -190,7 +190,7 @@ theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
   (inv_curr : current.Inv nfa wf it)
   (inv_next : next.Inv nfa wf it.next) :
   next'.Inv nfa wf it.next := by
-  have ⟨it₀, update, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
+  have ⟨update, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
 
   intro k mem
   have := stepChar.write_updates_of_mem_next h v (by simp [notEnd]) mem
@@ -202,7 +202,7 @@ theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
   | .inr ⟨j, update', step, cls, write'⟩ =>
     simp [step.write_update] at write
     have write'' : WriteUpdate k → next'.updates[k] = update ++ update' := write ▸ write'
-    exact ⟨it₀, update ++ update', .more path step cls, write''⟩
+    exact ⟨update ++ update', .more path step cls, write''⟩
 
 theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
   (v : it.Valid) (notEnd : ¬it.atEnd)

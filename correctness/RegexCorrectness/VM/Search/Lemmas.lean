@@ -8,13 +8,13 @@ open String (Pos Iterator)
 
 namespace Regex.VM
 
--- TODO: state that span is before the current iterator position
+-- TODO: state that the path starts at a position between `it₀` and `it`.
 def MatchedInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) (matched : Option (List (Nat × Pos))) : Prop :=
   (isSome : matched.isSome) →
-    ∃ state it it',
-      it'.toString = it₀.toString ∧
+    ∃ state it,
+      it.toString = it₀.toString ∧
       nfa[state] = .done ∧
-      nfa.VMPath wf it it' state (matched.get isSome)
+      nfa.VMPath wf it state (matched.get isSome)
 
 theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
   (h : captureNext.go HistoryStrategy nfa wf it matched current next = matched')
@@ -34,11 +34,11 @@ theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
     have matched''_inv : MatchedInv nfa wf it₀ matched'' := by
       intro isSome''
       have ⟨state', mem', hn, hupdate⟩ := eachStepChar.done_of_matched_some h₂ isSome''
-      have ⟨it₁, update, path, write⟩ := next'_inv state' mem'
+      have ⟨update, path, write⟩ := next'_inv state' mem'
       simp [WriteUpdate, hn] at write
       simp at hupdate
       simp [←write, hupdate] at path
-      exact ⟨state', it₁, it.next, by rw [it.next_toString, string_eq], hn, path⟩
+      exact ⟨state', it.next, by rw [it.next_toString, string_eq], hn, path⟩
     exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) string_eq next'_inv (by simp) matched''_inv
   | ind_found it matched current next matched'' next' atEnd empty' isSome h' ih =>
     rw [captureNext.go_ind_found atEnd empty' isSome h'] at h
@@ -49,12 +49,12 @@ theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
       | some matched'' =>
         simp
         have ⟨state', mem', hn, hupdate⟩ := eachStepChar.done_of_matched_some h' (by simp)
-        have ⟨it₁, update, path, write⟩ := next'_inv state' mem'
+        have ⟨update, path, write⟩ := next'_inv state' mem'
         simp [WriteUpdate, hn] at write
         simp at hupdate
         simp [←write, hupdate] at path
         intro _
-        exact ⟨state', it₁, it.next, by rw [it.next_toString, string_eq], hn, path⟩
+        exact ⟨state', it.next, by rw [it.next_toString, string_eq], hn, path⟩
     exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) string_eq next'_inv (by simp) matched''_inv
 
 /--
@@ -63,10 +63,10 @@ If `captureNext` returns `some`, the returned list corresponds to the updates of
 -/
 theorem captureNext.path_done_of_matched {nfa wf it₀ matched'}
   (h : captureNext HistoryStrategy nfa wf it₀ = matched') (v : it₀.Valid) (isSome' : matched'.isSome) :
-  ∃ state it it',
-    it'.toString = it₀.toString ∧
+  ∃ state it,
+    it.toString = it₀.toString ∧
     nfa[state] = .done ∧
-    nfa.VMPath wf it it' state (matched'.get isSome') := by
+    nfa.VMPath wf it state (matched'.get isSome') := by
   simp [captureNext] at h
 
   set result := εClosure HistoryStrategy nfa wf it₀ .none ⟨.empty, Vector.mkVector nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
@@ -77,9 +77,9 @@ theorem captureNext.path_done_of_matched {nfa wf it₀ matched'}
   have matched_inv : MatchedInv nfa wf it₀ matched := by
     intro isSome
     have ⟨state, mem, hn, hupdate⟩ := εClosure.matched_inv h' (by simp) isSome
-    have ⟨it₁, update, path, write⟩ := curr_inv state mem
+    have ⟨update, path, write⟩ := curr_inv state mem
     simp [WriteUpdate, hn, hupdate] at write
-    exact ⟨state, it₁, it₀, rfl, hn, write ▸ path⟩
+    exact ⟨state, it₀, rfl, hn, write ▸ path⟩
 
   exact captureNext.go.inv h v rfl curr_inv (by simp) matched_inv isSome'
 

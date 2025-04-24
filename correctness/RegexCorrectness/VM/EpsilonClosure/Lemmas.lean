@@ -835,7 +835,7 @@ theorem εClosure.inv_of_inv (h : εClosure HistoryStrategy nfa wf it matched ne
     exact equ ▸ inv i mem
   | .inr ⟨update, cls, write⟩ =>
     simp at write
-    exact ⟨it, update, .init cls, write⟩
+    exact ⟨update, .init cls, write⟩
 
 end
 
