@@ -57,9 +57,9 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
 
 theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) :
-  ∃ l m r groups,
-    it.toString = ⟨l ++ m ++ r⟩ ∧
-    s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
+  ∃ it' it'' groups,
+    it''.toString = it.toString ∧
+    s.expr.Captures it' it'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched := by
   if bt : re.useBacktracker then
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
@@ -70,40 +70,38 @@ theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextB
 
 theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
-  ∃ l m r groups,
-    it.toString = ⟨l ++ m ++ r⟩ ∧
-    s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
+  ∃ it' it'' groups,
+    it''.toString = it.toString ∧
+    s.expr.Captures it' it'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
-    matched[0] = .some ⟨String.utf8Len l⟩ ∧
-    matched[1] = .some ⟨String.utf8Len l + String.utf8Len m⟩ := by
-  have ⟨l, m, r, groups, eqstring, c, eqv⟩ := captures_of_captureNext' h s v
-  refine ⟨l, m, r, groups, eqstring, c, eqv, ?_⟩
+    matched[0] = .some it'.pos ∧
+    matched[1] = .some it''.pos := by
+  have ⟨it', it'', groups, eqstring, c, eqv⟩ := captures_of_captureNext' h s v
+  refine ⟨it', it'', groups, eqstring, c, eqv, ?_⟩
 
-  generalize hspan : (⟨l, [], m ++ r⟩ : Span) = span at c
-  generalize hspan' : (⟨l, m.reverse, r⟩ : Span) = span' at c
   cases c with
   | @group _ _ groups' _ _ c' =>
     simp [materializeRegexGroups, EquivMaterializedUpdate] at eqv
     have eqv := eqv 0
     have h₁ : 0 < bufferSize := Nat.lt_of_lt_of_le (by decide) le
     have h₂ : 1 < bufferSize := Nat.lt_of_lt_of_le (by decide) le
-    simp [←hspan, ←hspan', Span.curr, h₁, h₂] at eqv
+    simp [h₁, h₂] at eqv
     exact ⟨eqv.1.symm, eqv.2.symm⟩
 
 theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first, last))
   (s : IsSearchRegex re) (v : it.Valid) :
-  ∃ l m r groups,
-    it.toString = ⟨l ++ m ++ r⟩ ∧
-    s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
-    first = ⟨String.utf8Len l⟩ ∧
-    last = ⟨String.utf8Len l + String.utf8Len m⟩ := by
+  ∃ it' it'' groups,
+    it''.toString = it.toString ∧
+    s.expr.Captures it' it'' groups ∧
+    first = it'.pos ∧
+    last = it''.pos := by
   simp [Regex.searchNext, s.nfa_eq] at h
   match h' : re.captureNextBuf 2 it with
   | .none => simp [h'] at h
   | .some matched =>
-    have ⟨l, m, r, groups, eqstring, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
+    have ⟨it', it'', groups, eqstring, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
     simp [h', eq₁, eq₂] at h
-    exact ⟨l, m, r, groups, eqstring, c, by simp [←h]⟩
+    exact ⟨it', it'', groups, eqstring, c, by simp [←h]⟩
 
 end IsSearchRegex
 

@@ -142,7 +142,7 @@ a search at the end of the string.
 def ValidPlus (s : String) (p : Pos) :=
   p.Valid s ∨ p = s.endPos + ⟨1⟩
 
-theorem validPlus_of_valid {s : String} {p : Pos} : p.Valid s → p.ValidPlus s := .inl
+theorem Valid.validPlus {s : String} {p : Pos} : p.Valid s → p.ValidPlus s := .inl
 
 theorem next_endPos {s : String} : (s.next s.endPos) = s.endPos + ⟨1⟩ := by
   have next_eq := next_of_valid' s.data []

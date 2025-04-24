@@ -16,11 +16,11 @@ The pair of positions returned by `Matches` functions conforms to the spec if an
 - the second position corresponds to the end of the matched substring `m`
 -/
 def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (positions : Pos × Pos) : Prop :=
-  ∃ l m r groups,
-    haystack = ⟨l ++ m ++ r⟩ ∧
-    s.expr.Captures ⟨l, [], m ++ r⟩ ⟨l, m.reverse, r⟩ groups ∧
-    positions.1 = ⟨String.utf8Len l⟩ ∧
-    positions.2 = ⟨String.utf8Len l + String.utf8Len m⟩
+  ∃ it it' groups,
+    it.toString = haystack ∧
+    s.expr.Captures it it' groups ∧
+    positions.1 = it.pos ∧
+    positions.2 = it'.pos
 
 def Valid (self : Matches) : Prop :=
   self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
@@ -36,21 +36,17 @@ theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next
     | none => simp [h'] at h
     | some matched =>
       simp [h'] at h
-      have ⟨l, m, r, groups, eqstring, c, eq₁, eq₂⟩ := v.1.searchNext_some h' pos_valid
+      have ⟨it, it', groups, eqstring, c, eq₁, eq₂⟩ := v.1.searchNext_some h' pos_valid
       simp at eqstring
       split at h
       next =>
         simp at h
         simp [←h, Valid]
-        have pos_valid' : Pos.Valid self.haystack matched.2 := by
-          simp [eq₂]
-          refine ⟨l ++ m, r, ?_, by simp⟩
-          simp [eqstring]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_valid pos_valid'⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
+        exact ⟨⟨v.1, eqstring ▸ eq₂ ▸ c.validR.validPlus⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, eq₁, eq₂⟩
       next =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, l, m, r, groups, by simp [eqstring], c, eq₁, eq₂⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, eq₁, eq₂⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
@@ -79,6 +75,6 @@ theorem haystack_eq_of_next?_some {self self' : Matches} {positions} (h : self.n
 
 theorem vaild_matches {re : Regex} (haystack : String) (s : re.IsSearchRegex) :
   (re.matches haystack).Valid :=
-  ⟨s, String.Pos.validPlus_of_valid haystack.valid_mkIterator⟩
+  ⟨s, haystack.valid_mkIterator.validPlus⟩
 
 end Regex.Matches
