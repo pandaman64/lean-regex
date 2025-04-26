@@ -1,12 +1,16 @@
 import Regex.Data.BitVec
 
-namespace Regex.Backtracker
+set_option autoImplicit false
+
+namespace Regex.Data
 
 structure BitMatrix (w h : Nat) where
   bv : BitVec (w * h)
 deriving Repr
 
 namespace BitMatrix
+
+variable {w h : Nat}
 
 instance : ToString (BitMatrix w h) := ⟨fun m => toString m.bv⟩
 
@@ -74,6 +78,9 @@ theorem get_set {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) : (m.set x y).
   else
     simp [h, get_set_ne x x' y y' (by omega)]
 
+theorem get_set_of_get {m : BitMatrix w h} {x x' : Fin w} {y y' : Fin h} (h : m.get x y) : (m.set x' y').get x y := by
+  simp [get_set, h]
+
 def popcount (m : BitMatrix w h) : Nat := m.bv.popcount
 
 theorem popcount_le {m : BitMatrix w h} : popcount m ≤ w * h := BitVec.popcount_le m.bv
@@ -83,4 +90,4 @@ theorem popcount_decreasing (m : BitMatrix w h) (x : Fin w) (y : Fin h) (hget : 
 
 end BitMatrix
 
-end Regex.Backtracker
+end Regex.Data
