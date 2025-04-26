@@ -5,8 +5,8 @@ import RegexCorrectness.Backtracker.Path
 
 set_option autoImplicit false
 
-open Regex.Data (BoundedIterator)
-open String (Iterator)
+open Regex.Data (BitMatrix BoundedIterator)
+open String (Pos Iterator)
 
 namespace Regex.Backtracker.captureNextAux
 

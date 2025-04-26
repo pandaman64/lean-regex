@@ -1,10 +1,10 @@
+import Regex.Data.BitMatrix
 import Regex.Data.BoundedIterator
 import Regex.NFA
 import Regex.Strategy
-import Regex.Backtracker.BitMatrix
 
 open String (Iterator Pos)
-open Regex.Data (BoundedIterator)
+open Regex.Data (BitMatrix BoundedIterator)
 
 set_option autoImplicit false
 

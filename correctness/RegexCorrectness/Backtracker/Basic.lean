@@ -2,7 +2,7 @@ import Regex.Backtracker
 
 set_option autoImplicit false
 
-open Regex.Data (BoundedIterator)
+open Regex.Data (BitMatrix BoundedIterator)
 
 namespace Regex.Backtracker
 
