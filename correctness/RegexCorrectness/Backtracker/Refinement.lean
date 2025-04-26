@@ -14,18 +14,18 @@ variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx bufferSize : Nat}
 def StackEntry.Refines (entryH : StackEntry HistoryStrategy nfa startIdx maxIdx) (entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx) : Prop :=
   refineUpdate entryH.update entryB.update ∧ entryH.state = entryB.state ∧ entryH.it = entryB.it
 
-theorem StackEntry.Refines.simpL {update state it eq} {entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx} (ref : StackEntry.Refines ⟨update, state, it, eq⟩ entryB) :
-  entryB = ⟨entryB.update, state, it, eq⟩ := by
+theorem StackEntry.Refines.simpL {update state it} {entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx} (ref : StackEntry.Refines ⟨update, state, it⟩ entryB) :
+  entryB = ⟨entryB.update, state, it⟩ := by
   unfold StackEntry.Refines at ref
   simp_all
 
-theorem StackEntry.Refines.mk {update} {state state' : Fin nfa.nodes.size} {it it' : BoundedIterator startIdx} {eq : it.maxIdx = maxIdx} {eq' : it'.maxIdx = maxIdx} {entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx}
-  (ref : StackEntry.Refines ⟨update, state, it, eq⟩ entryB) :
-  StackEntry.Refines ⟨update, state', it', eq'⟩ ⟨entryB.update, state', it', eq'⟩ := by
+theorem StackEntry.Refines.mk {update} {state state' : Fin nfa.nodes.size} {it it' : BoundedIterator startIdx maxIdx} {entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx}
+  (ref : StackEntry.Refines ⟨update, state, it⟩ entryB) :
+  StackEntry.Refines ⟨update, state', it'⟩ ⟨entryB.update, state', it'⟩ := by
   simp [Refines] at ref
   simp [Refines, ref]
 
-theorem StackEntry.Refines.empty {state : Fin nfa.nodes.size} {it : BoundedIterator startIdx} {eq : it.maxIdx = maxIdx} : StackEntry.Refines ⟨HistoryStrategy.empty, state, it, eq⟩ ⟨(BufferStrategy bufferSize).empty, state, it, eq⟩ := by
+theorem StackEntry.Refines.empty {state : Fin nfa.nodes.size} {it : BoundedIterator startIdx maxIdx} : StackEntry.Refines ⟨HistoryStrategy.empty, state, it⟩ ⟨(BufferStrategy bufferSize).empty, state, it⟩ := by
   simp [Refines]
 
 inductive RefineStack : List (StackEntry HistoryStrategy nfa startIdx maxIdx) → List (StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx) → Prop where
@@ -41,37 +41,37 @@ theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stac
   | base visited =>
     cases refStack with
     | nil => simp [captureNextAux_base, Refines, refineUpdateOpt]
-  | visited visited update state' it eq stackH mem ih =>
+  | visited visited update state' it stackH mem ih =>
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_visited mem]
       exact ih refStack
-  | done visited update state' it eq stackH mem hn =>
+  | done visited update state' it stackH mem hn =>
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_done mem hn, Refines, refineUpdateOpt, refEntry.1]
-  | fail visited update state' it eq stackH mem hn =>
+  | fail visited update state' it stackH mem hn =>
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_fail mem hn, Refines, refineUpdateOpt]
-  | epsilon visited update state it eq stackH mem visited' state' hn =>
+  | epsilon visited update state it stackH mem visited' state' hn =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_epsilon mem hn]
       exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | split visited update state it eq stackH mem visited' state₁ state₂ hn =>
+  | split visited update state it stackH mem visited' state₁ state₂ hn =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_split mem hn]
       exact ih (.cons _ _ _ _ refEntry.mk (.cons _ _ _ _ refEntry.mk refStack))
-  | save visited update state it eq stackH mem visited' offset state' hn update' =>
+  | save visited update state it stackH mem visited' offset state' hn update' =>
     -- This is the only interesting case, where we update the history/buffer
     rename_i ih
     cases refStack with
@@ -81,56 +81,56 @@ theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stac
       refine ih (.cons _ _ _ _ ?_ refStack)
       simp [StackEntry.Refines, refineUpdate] at refEntry
       simp [StackEntry.Refines, update', refineUpdate, HistoryStrategy, BufferStrategy, refEntry.1]
-  | anchor_pos visited update state it eq stackH mem visited' a state' hn ht =>
+  | anchor_pos visited update state it stackH mem visited' a state' hn ht =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_anchor_pos mem hn ht]
       exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | anchor_neg visited update state it eq stackH mem visited' a state' hn ht =>
+  | anchor_neg visited update state it stackH mem visited' a state' hn ht =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_anchor_neg mem hn ht]
       exact ih refStack
-  | char_pos visited update state it eq stackH mem visited' c state' hn hnext hc =>
+  | char_pos visited update state it stackH mem visited' c state' hn hnext hc =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_char_pos mem hn hnext hc]
       exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | char_neg visited update state it eq stackH mem visited' c state' hn hnext hc =>
+  | char_neg visited update state it stackH mem visited' c state' hn hnext hc =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_char_neg mem hn hnext hc]
       exact ih refStack
-  | char_end visited update state it eq stackH mem visited' c state' hn hnext =>
+  | char_end visited update state it stackH mem visited' c state' hn hnext =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_char_end mem hn hnext]
       exact ih refStack
-  | sparse_pos visited update state it eq stackH mem visited' cs state' hn hnext hc =>
+  | sparse_pos visited update state it stackH mem visited' cs state' hn hnext hc =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_sparse_pos mem hn hnext hc]
       exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | sparse_neg visited update state it eq stackH mem visited' cs state' hn hnext hc =>
+  | sparse_neg visited update state it stackH mem visited' cs state' hn hnext hc =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_sparse_neg mem hn hnext hc]
       exact ih refStack
-  | sparse_end visited update state it eq stackH mem visited' cs state' hn hnext =>
+  | sparse_end visited update state it stackH mem visited' cs state' hn hnext =>
     rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
@@ -139,35 +139,35 @@ theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stac
       exact ih refStack
 
 theorem captureNext.go.refines (nfa wf startIdx bufferSize bit visited) :
-  Refines (captureNext.go HistoryStrategy nfa wf startIdx bit visited) (captureNext.go (BufferStrategy bufferSize) nfa wf startIdx bit visited) := by
-  induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx with
+  Refines (captureNext.go HistoryStrategy nfa wf startIdx maxIdx bit visited) (captureNext.go (BufferStrategy bufferSize) nfa wf startIdx maxIdx bit visited) := by
+  induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx maxIdx with
   | found bit visited updateH visitedH hauxH =>
-    let entryH : StackEntry HistoryStrategy nfa startIdx bit.maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩
-    let entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx bit.maxIdx := ⟨(BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩
+    let entryH : StackEntry HistoryStrategy nfa startIdx maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
+    let entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx := ⟨(BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
     have refStack : RefineStack [entryH] [entryB] := .cons entryH entryB [] [] .empty .nil
-    have refResult := captureNextAux.refines nfa wf startIdx bit.maxIdx bufferSize visited refStack
-    match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx bit.maxIdx visited [entryB] with
+    have refResult := captureNextAux.refines nfa wf startIdx maxIdx bufferSize visited refStack
+    match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx maxIdx visited [entryB] with
     | (.some updateB, visitedB) =>
       simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
       simp [captureNext.go_found hauxH, captureNext.go_found hauxB, Refines, refineUpdateOpt, refResult]
     | (.none, _) => simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
   | not_found_next bit visited visitedH hauxH hnext ih =>
-    let entryH : StackEntry HistoryStrategy nfa startIdx bit.maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩
-    let entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx bit.maxIdx := ⟨(BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩
+    let entryH : StackEntry HistoryStrategy nfa startIdx maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
+    let entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx := ⟨(BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
     have refStack : RefineStack [entryH] [entryB] := .cons entryH entryB [] [] .empty .nil
-    have refResult := captureNextAux.refines nfa wf startIdx bit.maxIdx bufferSize visited refStack
-    match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx bit.maxIdx visited [entryB] with
+    have refResult := captureNextAux.refines nfa wf startIdx maxIdx bufferSize visited refStack
+    match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx maxIdx visited [entryB] with
     | (.some _, _) => simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
     | (.none, visitedB) =>
       simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
       simp [captureNext.go_not_found_next hauxH hnext, captureNext.go_not_found_next hauxB hnext]
       exact refResult ▸ ih
   | not_found_end bit visited visitedH hauxH hnext =>
-    let entryH : StackEntry HistoryStrategy nfa startIdx bit.maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩
-    let entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx bit.maxIdx := ⟨(BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩
+    let entryH : StackEntry HistoryStrategy nfa startIdx maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
+    let entryB : StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx := ⟨(BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
     have refStack : RefineStack [entryH] [entryB] := .cons entryH entryB [] [] .empty .nil
-    have refResult := captureNextAux.refines nfa wf startIdx bit.maxIdx bufferSize visited refStack
-    match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx bit.maxIdx visited [entryB] with
+    have refResult := captureNextAux.refines nfa wf startIdx maxIdx bufferSize visited refStack
+    match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx maxIdx visited [entryB] with
     | (.some _, _) => simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
     | (.none, visitedB) =>
       simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
@@ -177,7 +177,7 @@ theorem captureNext.refines (nfa wf bufferSize it) :
   refineUpdateOpt (captureNext HistoryStrategy nfa wf it) (captureNext (BufferStrategy bufferSize) nfa wf it) := by
   if le : it.pos ≤ it.toString.endPos then
     simp [captureNext_le le]
-    exact (captureNext.go.refines nfa wf it.pos.byteIdx bufferSize ⟨it, Nat.le_refl _, le⟩ (BitMatrix.zero _ _)).1
+    exact (captureNext.go.refines nfa wf it.pos.byteIdx bufferSize ⟨it, Nat.le_refl _, le, rfl⟩ (BitMatrix.zero _ _)).1
   else
     simp [captureNext_not_le le, refineUpdateOpt]
 

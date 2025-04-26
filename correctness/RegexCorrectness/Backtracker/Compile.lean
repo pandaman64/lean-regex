@@ -10,15 +10,15 @@ open Regex.Data (BoundedIterator)
 
 namespace Regex.Backtracker
 
-theorem captureNext.go.path_done_of_some {nfa wf startIdx bit update} {visited visited' : BitMatrix nfa.nodes.size (bit.maxIdx + 1 - startIdx)}
-  (v : bit.Valid) (hres : captureNext.go HistoryStrategy nfa wf startIdx bit visited = (.some update, visited')) :
+theorem captureNext.go.path_done_of_some {nfa wf startIdx maxIdx bit update} {visited visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)}
+  (v : bit.Valid) (hres : captureNext.go HistoryStrategy nfa wf startIdx maxIdx bit visited = (.some update, visited')) :
   ∃ state it it', it'.toString = bit.it.toString ∧ nfa[state] = .done ∧ Path nfa wf it it' state update := by
   induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx with
   | found bit visited update' visited' haux =>
     simp [captureNext.go_found haux] at hres
     simp [hres] at haux
     have ⟨l, r, vf⟩ := (bit.valid_of_valid v).validFor
-    have inv₀ : captureNextAux.UpperInv wf bit.it [⟨[], ⟨nfa.start, wf.start_lt⟩, bit, rfl⟩] := by
+    have inv₀ : captureNextAux.UpperInv wf bit.it [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
       refine ⟨?_⟩
       simp
       exact .init (bit.valid_of_valid v)
@@ -33,10 +33,10 @@ theorem captureNext.path_done_of_some {nfa wf it update} (hres : captureNext His
   ∃ state it' it'', it''.toString = it.toString ∧ nfa[state] = .done ∧ Path nfa wf it' it'' state update := by
   if le : it.pos ≤ it.toString.endPos then
     simp [captureNext_le le] at hres
-    let result := go HistoryStrategy nfa wf it.pos.byteIdx ⟨it, (Nat.le_refl _), le⟩ (BitMatrix.zero _ _)
+    let result := go HistoryStrategy nfa wf it.pos.byteIdx it.toString.endPos.byteIdx ⟨it, (Nat.le_refl _), le, rfl⟩ (BitMatrix.zero _ _)
     change result.1 = .some update at hres
     have : result = (.some update, result.2) := by simp [Prod.ext_iff, hres]
-    exact captureNext.go.path_done_of_some (BoundedIterator.valid_of_it_valid _ v) this
+    exact captureNext.go.path_done_of_some (BoundedIterator.valid_of_it_valid v) this
   else
     simp [captureNext_not_le le] at hres
 
