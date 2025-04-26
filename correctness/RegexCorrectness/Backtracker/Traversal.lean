@@ -591,4 +591,75 @@ theorem path_closure {s} {result} (hres : captureNextAux HistoryStrategy nfa wf 
 
 end
 
+section
+
+variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
+
+def NotDoneInv (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
+  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx),
+    visited.get state bit.index →
+    nfa[state] ≠ .done
+
+theorem NotDoneInv.preserves {state} {bit : BoundedIterator startIdx maxIdx} (inv : NotDoneInv visited)
+  (h : nfa[state] ≠ .done):
+  NotDoneInv (visited.set state bit.index) := by
+  intro state' bit' hmem
+  simp [visited.get_set] at hmem
+  match hmem with
+  | .inl ⟨eqstate, eqindex⟩ => simpa [←eqstate] using h
+  | .inr hmem => exact inv state' bit' hmem
+
+theorem not_done_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
+  (isNone : result.1 = .none)
+  (inv : NotDoneInv visited) :
+  NotDoneInv result.2 := by
+  induction visited, stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx maxIdx with
+  | base visited =>
+    simp [captureNextAux_base] at hres
+    simp [←hres, inv]
+  | visited visited update state it stack' mem ih =>
+    simp [captureNextAux_visited mem] at hres
+    exact ih hres inv
+  | done visited update state it stack' mem hn =>
+    simp [captureNextAux_done mem hn] at hres
+    simp [←hres] at isNone
+  | fail visited update state it stack' mem visited' hn ih =>
+    rw [captureNextAux_fail mem hn] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | epsilon visited update state it stack' mem visited' state' hn ih =>
+    rw [captureNextAux_epsilon mem hn] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | split visited update state it stack' mem visited' state₁ state₂ hn ih =>
+    rw [captureNextAux_split mem hn] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | save visited update state it stack' mem visited' offset state' hn update' ih =>
+    rw [captureNextAux_save mem hn] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | anchor_pos visited update state it stack' mem visited' a state' hn ht ih =>
+    rw [captureNextAux_anchor_pos mem hn ht] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | anchor_neg visited update state it stack' mem visited' a state' hn ht ih =>
+    rw [captureNextAux_anchor_neg mem hn ht] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | char_pos visited update state it stack' mem visited' c state' hn hnext hc ih =>
+    rw [captureNextAux_char_pos mem hn hnext hc] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | char_neg visited update state it stack' mem visited' c state' hn hnext hc ih =>
+    rw [captureNextAux_char_neg mem hn hnext hc] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | char_end visited update state it stack' mem visited' c state' hn hnext ih =>
+    rw [captureNextAux_char_end mem hn hnext] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | sparse_pos visited update state it stack' mem visited' cs state' hn hnext hc ih =>
+    rw [captureNextAux_sparse_pos mem hn hnext hc] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | sparse_neg visited update state it stack' mem visited' cs state' hn hnext hc ih =>
+    rw [captureNextAux_sparse_neg mem hn hnext hc] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+  | sparse_end visited update state it stack' mem visited' cs state' hn hnext ih =>
+    rw [captureNextAux_sparse_end mem hn hnext] at hres
+    exact ih hres (inv.preserves (by simp [hn]))
+
+end
+
 end Regex.Backtracker.captureNextAux
