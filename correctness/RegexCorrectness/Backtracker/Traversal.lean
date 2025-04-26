@@ -143,20 +143,20 @@ section
 variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat}
 {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)} {update' visited'}
 
-structure UpperInv (wf : nfa.WellFormed) (it₀ : Iterator) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) where
-  reachable : ∀ entry ∈ stack, Path nfa wf it₀ entry.it.it entry.state entry.update
+structure UpperInv (wf : nfa.WellFormed) (visited₀ : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (bit₀ : BoundedIterator startIdx maxIdx) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) where
+  reachable : ∀ entry ∈ stack, Path nfa wf bit₀.it entry.it.it entry.state entry.update
 
 namespace UpperInv
 
-theorem path {it₀} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
-  (inv : UpperInv wf it₀ (entry :: stack')) :
-  Path nfa wf it₀ entry.it.it entry.state entry.update :=
+theorem path {visited₀ bit₀} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
+  (inv : UpperInv wf visited₀ bit₀ (entry :: stack')) :
+  Path nfa wf bit₀.it entry.it.it entry.state entry.update :=
   inv.reachable entry (by simp)
 
-theorem preserves {it₀ entry stack'} (inv : UpperInv wf it₀ (entry :: stack')) (nextEntries) (hstack : stack = nextEntries ++ stack')
+theorem preserves {visited₀ bit₀ entry stack'} (inv : UpperInv wf visited₀ bit₀ (entry :: stack')) (nextEntries) (hstack : stack = nextEntries ++ stack')
   (hnext : ∀ entry' ∈ nextEntries,
     ∃ update, nfa.Step 0 entry.state entry.it.it entry'.state entry'.it.it update ∧ entry'.update = List.append entry.update (List.ofOption update)) :
-  UpperInv wf it₀ stack := by
+  UpperInv wf visited₀ bit₀ stack := by
   simp [hstack]
   refine ⟨?_⟩
   intro entry' mem'
@@ -170,14 +170,14 @@ theorem preserves {it₀ entry stack'} (inv : UpperInv wf it₀ (entry :: stack'
 
 end UpperInv
 
-theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = (.some update', visited'))
-  (inv : UpperInv wf it₀ stack) :
-  ∃ state it', nfa[state] = .done ∧ Path nfa wf it₀ it' state update' := by
+theorem path_done_of_some {visited₀ bit₀} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = (.some update', visited'))
+  (inv : UpperInv wf visited₀ bit₀ stack) :
+  ∃ state it', nfa[state] = .done ∧ Path nfa wf bit₀.it it' state update' := by
   induction visited, stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx with
   | base visited => simp [captureNextAux_base] at hres
   | visited visited update state it stack' mem ih =>
     simp [captureNextAux_visited mem] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | done visited update state it stack' mem hn =>
     simp [captureNextAux_done mem hn] at hres
@@ -185,18 +185,18 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
     exact ⟨state, it.it, hn, hres.1 ▸ path⟩
   | fail visited update state it stack' mem visited' hn ih =>
     rw [captureNextAux_fail mem hn] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | epsilon visited update state it stack' mem visited' state' hn ih =>
     rw [captureNextAux_epsilon mem hn] at hres
-    have inv' : UpperInv wf it₀ (⟨update, state', it⟩ :: stack') := by
+    have inv' : UpperInv wf visited₀ bit₀ (⟨update, state', it⟩ :: stack') := by
       apply inv.preserves [⟨update, state', it⟩] (by simp)
       simp
       exact ⟨.none, .epsilon (Nat.zero_le _) state.isLt hn inv.path.validR, by simp⟩
     exact ih hres inv'
   | split visited update state it stack' mem visited' state₁ state₂ hn ih =>
     rw [captureNextAux_split mem hn] at hres
-    have inv' : UpperInv wf it₀ (⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack') := by
+    have inv' : UpperInv wf visited₀ bit₀ (⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack') := by
       apply inv.preserves [⟨update, state₁, it⟩, ⟨update, state₂, it⟩] (by simp)
       simp
       exact ⟨
@@ -206,25 +206,25 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
     exact ih hres inv'
   | save visited update state it stack' mem visited' offset state' hn update' ih =>
     rw [captureNextAux_save mem hn] at hres
-    have inv' : UpperInv wf it₀ (⟨update', state', it⟩ :: stack') := by
+    have inv' : UpperInv wf visited₀ bit₀ (⟨update', state', it⟩ :: stack') := by
       apply inv.preserves [⟨update', state', it⟩] (by simp)
       simp
       exact ⟨.some (offset, it.pos), .save (Nat.zero_le _) state.isLt hn inv.path.validR, by simp [update', HistoryStrategy]⟩
     exact ih hres inv'
   | anchor_pos visited update state it stack' mem visited' a state' hn ht ih =>
     rw [captureNextAux_anchor_pos mem hn ht] at hres
-    have inv' : UpperInv wf it₀ (⟨update, state', it⟩ :: stack') := by
+    have inv' : UpperInv wf visited₀ bit₀ (⟨update, state', it⟩ :: stack') := by
       apply inv.preserves [⟨update, state', it⟩] (by simp)
       simp
       exact ⟨.none, .anchor (Nat.zero_le _) state.isLt hn inv.path.validR ht, by simp⟩
     exact ih hres inv'
   | anchor_neg visited update state it stack' mem visited' a state' hn ht ih =>
     rw [captureNextAux_anchor_neg mem hn ht] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | char_pos visited update state it stack' mem visited' c state' hn hnext hc ih =>
     rw [captureNextAux_char_pos mem hn hnext hc] at hres
-    have inv' : UpperInv wf it₀ (⟨update, state', it.next hnext⟩ :: stack') := by
+    have inv' : UpperInv wf visited₀ bit₀ (⟨update, state', it.next hnext⟩ :: stack') := by
       apply inv.preserves [⟨update, state', it.next hnext⟩] (by simp)
       simp
       have ⟨l, r, vf⟩ := (it.valid_of_it_valid inv.path.validR).validFor_of_hasNext hnext
@@ -232,15 +232,15 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
     exact ih hres inv'
   | char_neg visited update state it stack' mem visited' c state' hn hnext hc ih =>
     rw [captureNextAux_char_neg mem hn hnext hc] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | char_end visited update state it stack' mem visited' c state' hn hnext ih =>
     rw [captureNextAux_char_end mem hn hnext] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | sparse_pos visited update state it stack' mem visited' cs state' hn hnext hc ih =>
     rw [captureNextAux_sparse_pos mem hn hnext hc] at hres
-    have inv' : UpperInv wf it₀ (⟨update, state', it.next hnext⟩ :: stack') := by
+    have inv' : UpperInv wf visited₀ bit₀ (⟨update, state', it.next hnext⟩ :: stack') := by
       apply inv.preserves [⟨update, state', it.next hnext⟩] (by simp)
       simp
       have ⟨l, r, vf⟩ := (it.valid_of_it_valid inv.path.validR).validFor_of_hasNext hnext
@@ -248,11 +248,11 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
     exact ih hres inv'
   | sparse_neg visited update state it stack' mem visited' cs state' hn hnext hc ih =>
     rw [captureNextAux_sparse_neg mem hn hnext hc] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | sparse_end visited update state it stack' mem visited' cs state' hn hnext ih =>
     rw [captureNextAux_sparse_end mem hn hnext] at hres
-    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
+    have inv' : UpperInv wf visited₀ bit₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
 
 end

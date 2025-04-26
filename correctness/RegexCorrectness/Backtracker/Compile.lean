@@ -18,7 +18,7 @@ theorem captureNext.go.path_done_of_some {nfa wf startIdx maxIdx bit update} {vi
     simp [captureNext.go_found haux] at hres
     simp [hres] at haux
     have ⟨l, r, vf⟩ := (bit.valid_of_valid v).validFor
-    have inv₀ : captureNextAux.UpperInv wf bit.it [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
+    have inv₀ : captureNextAux.UpperInv wf (BitMatrix.zero _ _) bit [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
       refine ⟨?_⟩
       simp
       exact .init (bit.valid_of_valid v)
