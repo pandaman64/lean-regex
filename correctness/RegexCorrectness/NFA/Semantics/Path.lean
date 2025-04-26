@@ -64,11 +64,14 @@ theorem validR (step : nfa.Step lb i it j it' update) : it'.Valid := by
   case sparse _ _ _ vf _ => exact vf.next.valid
   all_goals assumption
 
-theorem toString_eq {nfa : NFA} {lb i it j it' update} (step : nfa.Step lb i it j it' update) :
+theorem toString_eq (step : nfa.Step lb i it j it' update) :
   it'.toString = it.toString := by
   cases step.it_eq_or_next with
   | inl eq => simp [eq]
   | inr eq => simp [eq, String.Iterator.next, String.next]
+
+theorem le_endPos (step : nfa.Step lb i it j it' update) : it'.pos ≤ it.toString.endPos :=
+  step.toString_eq ▸ step.validR.le_endPos
 
 theorem cast (step : nfa.Step lb i it j it' update)
   {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
@@ -296,6 +299,16 @@ theorem compile_liftBound {e nfa} (eq : compile e = nfa) (path : nfa.Path 0 i it
   induction path with
   | last step => exact .last (step.compile_liftBound eq)
   | more step _ ih => exact .more (step.compile_liftBound eq) ih
+
+/--
+If a property is closed under a single step, then it is closed under a path.
+-/
+theorem of_step_closure {lb} (motive : Nat → Iterator → Prop) (closure : ∀ i it j it' update, motive i it → nfa.Step lb i it j it' update → motive j it')
+  {i it j it' update} (base : motive i it) (path : nfa.Path lb i it j it' update) :
+  motive j it' := by
+  induction path with
+  | @last i it j it' update step => exact closure i it j it' update base step
+  | @more i it j it' k it'' update₁ _ step _ ih => exact ih (closure i it j it' update₁ base step)
 
 end Path
 

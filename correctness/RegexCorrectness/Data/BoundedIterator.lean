@@ -9,6 +9,23 @@ namespace Regex.Data.BoundedIterator
 
 variable {startIdx maxIdx : Nat}
 
+@[ext]
+theorem ext_pos {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h₁ : bit₁.toString = bit₂.toString) (h₂ : bit₁.pos = bit₂.pos) : bit₁ = bit₂ := by
+  simp [BoundedIterator.ext_iff, Iterator.ext_iff]
+  exact ⟨h₁, h₂⟩
+
+@[ext]
+theorem ext_index {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h₁ : bit₁.toString = bit₂.toString) (h₂ : bit₁.index = bit₂.index) : bit₁ = bit₂ := by
+  simp [BoundedIterator.ext_pos_iff, h₁]
+  simp [index, String.Pos.ext_iff] at h₂
+  simp [String.Pos.ext_iff]
+  calc bit₁.pos.byteIdx
+    _ = bit₂.pos.byteIdx - startIdx + startIdx := Nat.eq_add_of_sub_eq bit₁.ge h₂
+    _ = bit₂.pos.byteIdx := Nat.sub_add_cancel bit₂.ge
+
+theorem next_toString {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) : (bit.next h).toString = bit.toString := by
+  simp [next, Iterator.next', BoundedIterator.toString]
+
 theorem valid_of_it_valid {bit : BoundedIterator startIdx maxIdx} (v : bit.it.Valid) : bit.Valid := v.isValid
 
 theorem valid_of_valid {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : bit.it.Valid := Iterator.Valid.of_isValid v

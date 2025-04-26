@@ -6,6 +6,7 @@ open String (Iterator)
 
 namespace Regex.Data
 
+@[ext]
 structure BoundedIterator (startIdx maxIdx : Nat) where
   it : Iterator
   ge : startIdx ≤ it.pos.byteIdx
@@ -15,6 +16,8 @@ structure BoundedIterator (startIdx maxIdx : Nat) where
 namespace BoundedIterator
 
 variable {startIdx maxIdx : Nat}
+
+def toString (bit : BoundedIterator startIdx maxIdx) : String := bit.it.toString
 
 def pos (bit : BoundedIterator startIdx maxIdx) : String.Pos := bit.it.pos
 
