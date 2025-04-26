@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open String (Pos)
 open Regex.NFA (EquivUpdate)
-open Regex.Data (BoundedIterator)
+open Regex.Data (BitMatrix BoundedIterator)
 
 namespace Regex.Backtracker
 

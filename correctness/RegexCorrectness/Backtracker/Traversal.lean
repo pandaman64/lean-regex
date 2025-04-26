@@ -20,7 +20,9 @@ theorem mem_of_mem_visited {s i} (hmem : visited.get s i) :
   | base visited => simp [captureNextAux_base, hmem]
   | visited visited update state it stack' mem ih => simp [captureNextAux_visited mem, ih hmem]
   | done visited update state it stack' mem hn => simp [captureNextAux_done mem hn, BitMatrix.get_set, hmem]
-  | fail visited update state it stack' mem hn => simp [captureNextAux_fail mem hn, BitMatrix.get_set, hmem]
+  | fail visited update state it stack' mem visited' hn ih =>
+    rw [captureNextAux_fail mem hn]
+    exact ih (by simp [visited', BitMatrix.get_set, hmem])
   | epsilon visited update state it stack' mem visited' state' hn ih =>
     rw [captureNextAux_epsilon mem hn]
     exact ih (by simp [visited', BitMatrix.get_set, hmem])
@@ -67,10 +69,10 @@ theorem mem_of_mem_top_stack {entry stack'} (hstack : entry :: stack' = stack) :
     simp [captureNextAux_done mem hn]
     simp at hstack
     simp [hstack, BitMatrix.get_set]
-  | fail visited update state it stack' mem hn =>
-    simp [captureNextAux_fail mem hn]
+  | fail visited update state it stack' mem visited' hn ih =>
+    rw [captureNextAux_fail mem hn]
     simp at hstack
-    simp [hstack, BitMatrix.get_set]
+    exact mem_of_mem_visited (by simp [BitMatrix.get_set, hstack, mem])
   | epsilon visited update state it stack'' mem visited' state' hn ih =>
     rw [captureNextAux_epsilon mem hn]
     simp at hstack
@@ -158,7 +160,13 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
     simp [captureNextAux_done mem hn] at hres
     have path := inv.reachable ⟨update, state, it⟩ (by simp)
     exact ⟨state, it.it, hn, hres.1 ▸ path⟩
-  | fail visited update state it stack' mem hn => simp [captureNextAux_fail mem hn] at hres
+  | fail visited update state it stack' mem visited' hn ih =>
+    rw [captureNextAux_fail mem hn] at hres
+    have inv' : UpperInv wf it₀ stack' := by
+      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
+        inv.reachable entry (by simp [mem])
+      exact ⟨reachable⟩
+    exact ih hres inv'
   | epsilon visited update state it stack' mem visited' state' hn ih =>
     rw [captureNextAux_epsilon mem hn] at hres
     have inv' : UpperInv wf it₀ (⟨update, state', it⟩ :: stack') := by

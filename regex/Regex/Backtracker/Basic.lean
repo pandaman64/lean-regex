@@ -29,7 +29,7 @@ def captureNextAux (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx m
         BitMatrix.popcount_decreasing visited state it.index h
       match hn : nfa[state] with
       | .done => (.some update, visited')
-      | .fail => (.none, visited')
+      | .fail => captureNextAux σ nfa wf startIdx maxIdx visited' stack'
       | .epsilon state' =>
         have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
         captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state', isLt⟩, it⟩ :: stack')

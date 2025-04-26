@@ -28,7 +28,9 @@ theorem captureNextAux.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed)
       (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx)
       (stack' : List (StackEntry σ nfa startIdx maxIdx)),
     ¬visited.get state it.index →
+    let visited' := visited.set state it.index;
     nfa[state] = NFA.Node.fail →
+    motive visited' stack' →
     motive visited (⟨update, state, it⟩ :: stack'))
   (epsilon :
     ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (update : σ.Update)
@@ -158,8 +160,8 @@ theorem captureNextAux.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed)
   captureNextAux.induct σ nfa wf startIdx maxIdx motive base visited
     (fun visited update state it stack' mem _ hn =>
       done visited update state it stack' mem hn)
-    (fun visited update state it stack' mem _ hn =>
-      fail visited update state it stack' mem hn)
+    (fun visited update state it stack' mem _ hn ih =>
+      fail visited update state it stack' mem hn ih)
     (fun visited update state it stack' mem _ state' hn isLt ih =>
       epsilon visited update state it stack' mem ⟨state', isLt⟩ hn ih)
     (fun visited update state it stack' mem _ state₁ state₂ hn isLt ih =>
@@ -212,7 +214,7 @@ theorem captureNextAux_done {update state it stack'} (mem : ¬visited.get state 
   split <;> simp_all
 
 theorem captureNextAux_fail {update state it stack'} (mem : ¬visited.get state it.index) (hn : nfa[state] = .fail) :
-  captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it⟩ :: stack') = (.none, visited.set state it.index) := by
+  captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it⟩ :: stack') = captureNextAux σ nfa wf startIdx maxIdx (visited.set state it.index) stack' := by
   conv =>
     lhs
     unfold captureNextAux

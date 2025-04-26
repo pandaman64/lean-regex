@@ -4,7 +4,7 @@ import RegexCorrectness.Strategy
 set_option autoImplicit false
 
 open Regex (NFA)
-open Regex.Data (BoundedIterator)
+open Regex.Data (BitMatrix BoundedIterator)
 open Regex.Strategy (refineUpdate refineUpdateOpt refineUpdates materializeUpdates)
 open String (Pos)
 namespace Regex.Backtracker
@@ -52,11 +52,13 @@ theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stac
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_done mem hn, Refines, refineUpdateOpt, refEntry.1]
-  | fail visited update state' it stackH mem hn =>
+  | fail visited update state' it stackH mem visited' hn =>
+    rename_i ih
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
-      simp [captureNextAux_fail mem hn, Refines, refineUpdateOpt]
+      simp [captureNextAux_fail mem hn]
+      exact ih refStack
   | epsilon visited update state it stackH mem visited' state' hn =>
     rename_i ih
     cases refStack with
