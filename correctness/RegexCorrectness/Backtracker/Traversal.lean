@@ -140,10 +140,35 @@ Current candidates are:
 -/
 section
 
-variable {nfa wf startIdx maxIdx visited stack update' visited'}
+variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat}
+{visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)} {update' visited'}
 
 structure UpperInv (wf : nfa.WellFormed) (it₀ : Iterator) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) where
   reachable : ∀ entry ∈ stack, Path nfa wf it₀ entry.it.it entry.state entry.update
+
+namespace UpperInv
+
+theorem path {it₀} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
+  (inv : UpperInv wf it₀ (entry :: stack')) :
+  Path nfa wf it₀ entry.it.it entry.state entry.update :=
+  inv.reachable entry (by simp)
+
+theorem preserves {it₀ entry stack'} (inv : UpperInv wf it₀ (entry :: stack')) (nextEntries) (hstack : stack = nextEntries ++ stack')
+  (hnext : ∀ entry' ∈ nextEntries,
+    ∃ update, nfa.Step 0 entry.state entry.it.it entry'.state entry'.it.it update ∧ entry'.update = List.append entry.update (List.ofOption update)) :
+  UpperInv wf it₀ stack := by
+  simp [hstack]
+  refine ⟨?_⟩
+  intro entry' mem'
+  simp at mem'
+  cases mem' with
+  | inl mem' =>
+    have path := inv.reachable entry (by simp)
+    have ⟨update, step, hupdate⟩ := hnext entry' mem'
+    exact path.more step hupdate
+  | inr mem' => exact inv.reachable entry' (by simp [mem'])
+
+end UpperInv
 
 theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = (.some update', visited'))
   (inv : UpperInv wf it₀ stack) :
@@ -152,10 +177,7 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
   | base visited => simp [captureNextAux_base] at hres
   | visited visited update state it stack' mem ih =>
     simp [captureNextAux_visited mem] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | done visited update state it stack' mem hn =>
     simp [captureNextAux_done mem hn] at hres
@@ -163,139 +185,74 @@ theorem path_done_of_some {it₀} (hres : captureNextAux HistoryStrategy nfa wf 
     exact ⟨state, it.it, hn, hres.1 ▸ path⟩
   | fail visited update state it stack' mem visited' hn ih =>
     rw [captureNextAux_fail mem hn] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | epsilon visited update state it stack' mem visited' state' hn ih =>
     rw [captureNextAux_epsilon mem hn] at hres
     have inv' : UpperInv wf it₀ (⟨update, state', it⟩ :: stack') := by
-      have reachable entry (mem : entry ∈ ⟨update, state', it⟩ :: stack') : Path nfa wf it₀ entry.it.it entry.state entry.update := by
-        simp at mem
-        cases mem with
-        | inl eq' =>
-          simp [eq']
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          exact path.more (.epsilon (Nat.zero_le _) state.isLt hn path.validR) (by simp)
-        | inr mem => exact inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+      apply inv.preserves [⟨update, state', it⟩] (by simp)
+      simp
+      exact ⟨.none, .epsilon (Nat.zero_le _) state.isLt hn inv.path.validR, by simp⟩
     exact ih hres inv'
   | split visited update state it stack' mem visited' state₁ state₂ hn ih =>
     rw [captureNextAux_split mem hn] at hres
-    let stack'' := ⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack'
-    have inv' : UpperInv wf it₀ stack'' := by
-      have reachable entry (mem : entry ∈ stack'') : Path nfa wf it₀ entry.it.it entry.state entry.update := by
-        simp [stack''] at mem
-        match mem with
-        | .inl eq₁ =>
-          simp [eq₁]
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          exact path.more (.splitLeft (Nat.zero_le _) state.isLt hn path.validR) (by simp)
-        | .inr (.inl eq₂) =>
-          simp [eq₂]
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          exact path.more (.splitRight (Nat.zero_le _) state.isLt hn path.validR) (by simp)
-        | .inr (.inr mem) => exact inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ (⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack') := by
+      apply inv.preserves [⟨update, state₁, it⟩, ⟨update, state₂, it⟩] (by simp)
+      simp
+      exact ⟨
+        ⟨.none, .splitLeft (Nat.zero_le _) state.isLt hn inv.path.validR, by simp⟩,
+        ⟨.none, .splitRight (Nat.zero_le _) state.isLt hn inv.path.validR, by simp⟩
+      ⟩
     exact ih hres inv'
   | save visited update state it stack' mem visited' offset state' hn update' ih =>
     rw [captureNextAux_save mem hn] at hres
     have inv' : UpperInv wf it₀ (⟨update', state', it⟩ :: stack') := by
-      have reachable entry (mem : entry ∈ ⟨update', state', it⟩ :: stack') : Path nfa wf it₀ entry.it.it entry.state entry.update := by
-        simp at mem
-        cases mem with
-        | inl eq' =>
-          simp [eq']
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          exact path.more (.save (Nat.zero_le _) state.isLt hn path.validR) (by simp [update', HistoryStrategy, BoundedIterator.pos])
-        | inr mem => exact inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+      apply inv.preserves [⟨update', state', it⟩] (by simp)
+      simp
+      exact ⟨.some (offset, it.pos), .save (Nat.zero_le _) state.isLt hn inv.path.validR, by simp [update', HistoryStrategy]⟩
     exact ih hres inv'
   | anchor_pos visited update state it stack' mem visited' a state' hn ht ih =>
     rw [captureNextAux_anchor_pos mem hn ht] at hres
     have inv' : UpperInv wf it₀ (⟨update, state', it⟩ :: stack') := by
-      have reachable entry (mem : entry ∈ ⟨update, state', it⟩ :: stack') : Path nfa wf it₀ entry.it.it entry.state entry.update := by
-        simp at mem
-        cases mem with
-        | inl eq' =>
-          simp [eq']
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          exact path.more (.anchor (Nat.zero_le _) state.isLt hn path.validR ht) (by simp)
-        | inr mem => exact inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+      apply inv.preserves [⟨update, state', it⟩] (by simp)
+      simp
+      exact ⟨.none, .anchor (Nat.zero_le _) state.isLt hn inv.path.validR ht, by simp⟩
     exact ih hres inv'
   | anchor_neg visited update state it stack' mem visited' a state' hn ht ih =>
     rw [captureNextAux_anchor_neg mem hn ht] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | char_pos visited update state it stack' mem visited' c state' hn hnext hc ih =>
     rw [captureNextAux_char_pos mem hn hnext hc] at hres
     have inv' : UpperInv wf it₀ (⟨update, state', it.next hnext⟩ :: stack') := by
-      have reachable entry (mem : entry ∈ ⟨update, state', it.next hnext⟩ :: stack') : Path nfa wf it₀ entry.it.it entry.state entry.update := by
-        simp at mem
-        cases mem with
-        | inl eq' =>
-          simp [eq']
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          have v : it.Valid := it.valid_of_it_valid path.validR
-          have ⟨l, r, vf⟩ := v.validFor_of_hasNext hnext
-          exact path.more (.char (Nat.zero_le _) state.isLt hn (hc ▸ vf)) (by simp)
-        | inr mem => exact inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+      apply inv.preserves [⟨update, state', it.next hnext⟩] (by simp)
+      simp
+      have ⟨l, r, vf⟩ := (it.valid_of_it_valid inv.path.validR).validFor_of_hasNext hnext
+      exact ⟨.none, .char (Nat.zero_le _) state.isLt hn (hc ▸ vf), by simp⟩
     exact ih hres inv'
   | char_neg visited update state it stack' mem visited' c state' hn hnext hc ih =>
     rw [captureNextAux_char_neg mem hn hnext hc] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | char_end visited update state it stack' mem visited' c state' hn hnext ih =>
     rw [captureNextAux_char_end mem hn hnext] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | sparse_pos visited update state it stack' mem visited' cs state' hn hnext hc ih =>
     rw [captureNextAux_sparse_pos mem hn hnext hc] at hres
     have inv' : UpperInv wf it₀ (⟨update, state', it.next hnext⟩ :: stack') := by
-      have reachable entry (mem : entry ∈ ⟨update, state', it.next hnext⟩ :: stack') : Path nfa wf it₀ entry.it.it entry.state entry.update := by
-        simp at mem
-        cases mem with
-        | inl eq' =>
-          simp [eq']
-          have path := inv.reachable ⟨update, state, it⟩ (by simp)
-          simp at path
-          have v : it.Valid := it.valid_of_it_valid path.validR
-          have ⟨l, r, vf⟩ := v.validFor_of_hasNext hnext
-          exact path.more (.sparse (Nat.zero_le _) state.isLt hn vf hc) (by simp)
-        | inr mem => exact inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+      apply inv.preserves [⟨update, state', it.next hnext⟩] (by simp)
+      simp
+      have ⟨l, r, vf⟩ := (it.valid_of_it_valid inv.path.validR).validFor_of_hasNext hnext
+      exact ⟨.none, .sparse (Nat.zero_le _) state.isLt hn vf hc, by simp⟩
     exact ih hres inv'
   | sparse_neg visited update state it stack' mem visited' cs state' hn hnext hc ih =>
     rw [captureNextAux_sparse_neg mem hn hnext hc] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
   | sparse_end visited update state it stack' mem visited' cs state' hn hnext ih =>
     rw [captureNextAux_sparse_end mem hn hnext] at hres
-    have inv' : UpperInv wf it₀ stack' := by
-      have reachable entry (mem : entry ∈ stack') : Path nfa wf it₀ entry.it.it entry.state entry.update :=
-        inv.reachable entry (by simp [mem])
-      exact ⟨reachable⟩
+    have inv' : UpperInv wf it₀ stack' := inv.preserves [] (by simp) (by simp)
     exact ih hres inv'
 
 end
@@ -337,6 +294,7 @@ structure ClosureInv (s : String) (visited : BitMatrix nfa.nodes.size (maxIdx + 
 
 namespace ClosureInv
 
+-- Preservation of the non-visited cases
 theorem preserves {entry stack'} (inv : ClosureInv s visited (entry :: stack)) (hstring : entry.it.toString = s)
   (nextEntries : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) (hstack : stack' = nextEntries ++ stack)
   (hnext : ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
