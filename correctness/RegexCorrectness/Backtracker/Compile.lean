@@ -18,10 +18,15 @@ theorem captureNext.go.path_done_of_some {nfa wf startIdx maxIdx bit update} {vi
     simp [captureNext.go_found haux] at hres
     simp [hres] at haux
     have ⟨l, r, vf⟩ := (bit.valid_of_valid v).validFor
-    have inv₀ : captureNextAux.UpperInv wf (BitMatrix.zero _ _) bit [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
-      refine ⟨?_⟩
-      simp
-      exact .init (bit.valid_of_valid v)
+    have inv₀ : captureNextAux.UpperInv wf (BitMatrix.zero _ _) bit visited [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
+      refine ⟨?reachable, ?mem⟩
+      case reachable =>
+        simp
+        exact .init (bit.valid_of_valid v)
+      case mem =>
+        simp
+        -- Do we need to 
+        sorry
     have ⟨state, it, hn, path⟩ := captureNextAux.path_done_of_some haux inv₀
     exact ⟨state, bit.it, it, by rw [path.toString_eq], hn, path⟩
   | not_found_next bit visited visited' haux hnext ih =>
