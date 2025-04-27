@@ -546,6 +546,89 @@ end
 
 section
 
+variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit₀ : BoundedIterator startIdx maxIdx}
+  {visited₀ visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
+
+def VisitedInv (wf : nfa.WellFormed) (bit₀ : BoundedIterator startIdx maxIdx) (visited₀ visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
+  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx),
+    bit₀.toString = bit.toString →
+    visited.get state bit.index →
+    visited₀.get state bit₀.index ∨ ∃ update, Path nfa wf bit₀.it bit.it state update
+
+theorem VisitedInv.preserves {bit : BoundedIterator startIdx maxIdx} {state : Fin nfa.nodes.size}
+  (inv : VisitedInv wf bit₀ visited₀ visited)
+  (eqs₀ : bit₀.toString = bit.toString)
+  (update : List (Nat × Pos)) (path : Path nfa wf bit₀.it bit.it state update) :
+  VisitedInv wf bit₀ visited₀ (visited.set state bit.index) := by
+  intro state' bit' eqs hmem
+  simp [visited.get_set] at hmem
+  match hmem with
+  | .inl ⟨eqstate, eqindex⟩ =>
+    have eqit : bit' = bit := by
+      simp [BoundedIterator.ext_index_iff, eqindex, ←eqs₀, ←eqs]
+    simp [eqit, ←eqstate]
+    exact .inr ⟨update, path⟩
+  | .inr hmem =>
+    have inv' := inv state' bit' eqs hmem
+    simpa [visited.get_set] using inv'
+
+theorem path_of_visited_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
+  (isNone : result.1 = .none)
+  (vinv : VisitedInv wf bit₀ visited₀ visited) (sinv : StringInv bit₀.toString stack) (stinv : StackInv wf bit₀ stack) :
+  VisitedInv wf bit₀ visited₀ result.2 := by
+  induction visited, stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx maxIdx with
+  | base visited =>
+    simp [captureNextAux_base] at hres
+    simp [←hres, vinv]
+  | visited visited update state it stack' mem ih =>
+    simp [captureNextAux_visited mem] at hres
+    exact ih hres vinv sinv.drop (stinv.preserves [] (by simp) (by simp))
+  | done visited update state it stack' mem hn =>
+    simp [captureNextAux_done mem hn] at hres
+    simp [←hres] at isNone
+  | fail visited update state it stack' mem visited' hn ih =>
+    rw [captureNextAux_fail mem hn] at hres
+    have := stinv.path
+    have vinv' : VisitedInv wf bit₀ visited₀ visited' := vinv.preserves (sinv ⟨update, state, it⟩ (by simp)).symm update this
+    sorry
+  | epsilon visited update state it stack' mem visited' state' hn ih =>
+    rw [captureNextAux_epsilon mem hn] at hres
+    sorry
+  | split visited update state it stack' mem visited' state₁ state₂ hn ih =>
+    rw [captureNextAux_split mem hn] at hres
+    sorry
+  | save visited update state it stack' mem visited' offset state' hn update' ih =>
+    rw [captureNextAux_save mem hn] at hres
+    sorry
+  | anchor_pos visited update state it stack' mem visited' a state' hn ht ih =>
+    rw [captureNextAux_anchor_pos mem hn ht] at hres
+    sorry
+  | anchor_neg visited update state it stack' mem visited' a state' hn ht ih =>
+    rw [captureNextAux_anchor_neg mem hn ht] at hres
+    sorry
+  | char_pos visited update state it stack' mem visited' c state' hn hnext hc ih =>
+    rw [captureNextAux_char_pos mem hn hnext hc] at hres
+    sorry
+  | char_neg visited update state it stack' mem visited' c state' hn hnext hc ih =>
+    rw [captureNextAux_char_neg mem hn hnext hc] at hres
+    sorry
+  | char_end visited update state it stack' mem visited' c state' hn hnext ih =>
+    rw [captureNextAux_char_end mem hn hnext] at hres
+    sorry
+  | sparse_pos visited update state it stack' mem visited' cs state' hn hnext hc ih =>
+    rw [captureNextAux_sparse_pos mem hn hnext hc] at hres
+    sorry
+  | sparse_neg visited update state it stack' mem visited' cs state' hn hnext hc ih =>
+    rw [captureNextAux_sparse_neg mem hn hnext hc] at hres
+    sorry
+  | sparse_end visited update state it stack' mem visited' cs state' hn hnext ih =>
+    rw [captureNextAux_sparse_end mem hn hnext] at hres
+    sorry
+
+end
+
+section
+
 variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
 
 def NotDoneInv (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
