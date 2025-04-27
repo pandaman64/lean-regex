@@ -71,8 +71,13 @@ theorem eq_of_get_eq {m m' : BitMatrix w h} (eq : ∀ x y, m.get x y = m'.get x 
   ext i lt
   let x := i % w
   let y := i / w
-  have : i = y * w + x := by sorry
-  simp [this, eq ⟨x, sorry⟩ ⟨y, sorry⟩]
+  have eq' : i = y * w + x := by
+    rw [Nat.mul_comm, Nat.div_add_mod i w]
+  have lt' : 0 < w := by
+    apply Nat.pos_of_ne_zero
+    intro eqw
+    simp [eqw] at lt
+  simp [eq', eq ⟨x, Nat.mod_lt i lt'⟩ ⟨y, Nat.div_lt_of_lt_mul lt⟩]
 
 def set (m : BitMatrix w h) (x : Fin w) (y : Fin h) : BitMatrix w h :=
   ⟨m.bv.set (index x y)⟩
