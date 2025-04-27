@@ -282,8 +282,8 @@ theorem cons_iff {entry} : StringInv s (entry :: stack) ↔ entry.it.toString = 
 
 end StringInv
 
-structure ClosureInv (s : String) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) where
-  step : ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
+def ClosureInv (s : String) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) : Prop :=
+  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
     bit.toString = s →
     visited.get state bit.index →
     nfa.Step 0 state bit.it state' bit'.it update →
@@ -298,7 +298,6 @@ theorem preserves {entry stack'} (inv : ClosureInv s visited (entry :: stack)) (
     nfa.Step 0 entry.state entry.it.it state' bit'.it update →
     ∃ entry' ∈ nextEntries, entry'.state = state' ∧ entry'.it = bit') :
   ClosureInv s (visited.set entry.state entry.it.index) stack' := by
-  refine ⟨?_⟩
   intro state bit state' bit' update' eqs hmem step
   simp [visited.get_set] at hmem
   match hmem with
@@ -310,7 +309,7 @@ theorem preserves {entry stack'} (inv : ClosureInv s visited (entry :: stack)) (
     exact .inr ⟨entry', by simp [hstack, hmem'], eqstate', eqit'⟩
   | .inr hmem =>
     -- There is a step from the entry below the stack top.
-    match inv.step state bit state' bit' update' eqs hmem step with
+    match inv state bit state' bit' update' eqs hmem step with
     | .inl hmem' => exact .inl (visited.get_set_of_get hmem')
     | .inr ⟨entry', hmem', eqstate, eqit⟩ =>
       simp at hmem'
@@ -338,9 +337,8 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | visited visited update state it stack' mem ih =>
     simp [captureNextAux_visited mem] at hres
     have cinv' : ClosureInv s visited stack' := by
-      refine ⟨?_⟩
       intro state₁ bit state₂ bit' update' eqs hmem step
-      match cinv.step state₁ bit state₂ bit' update' eqs hmem step with
+      match cinv state₁ bit state₂ bit' update' eqs hmem step with
       | .inl hmem' => exact .inl hmem'
       | .inr ⟨entry, hmem', eqstate, eqit⟩ =>
         simp at hmem'
@@ -540,7 +538,7 @@ theorem path_closure {s} {result} (hres : captureNextAux HistoryStrategy nfa wf 
   have cinv' : ClosureInv s result.2 [] := step_closure hres isNone cinv sinv
   have step_closure : StepClosure s result.2 := by
     intro state bit state' bit' update eqs hmem step
-    have := cinv'.step state bit state' bit' update eqs hmem step
+    have := cinv' state bit state' bit' update eqs hmem step
     simpa
   exact PathClosure.of_step_closure wf step_closure
 
