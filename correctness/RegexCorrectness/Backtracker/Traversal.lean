@@ -258,25 +258,25 @@ section
 
 variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
 
-structure StringInv (s : String) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) where
-  eq : ∀ entry ∈ stack, entry.it.toString = s
+def StringInv (s : String) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) : Prop :=
+  ∀ entry ∈ stack, entry.it.toString = s
 
 namespace StringInv
 
 theorem drop {entry} (inv : StringInv s (entry :: stack)) : StringInv s stack :=
-  ⟨fun entry' mem' => inv.eq entry' (by simp [mem'])⟩
+  fun entry' mem' => inv entry' (by simp [mem'])
 
 theorem cons {entry} (inv : StringInv s stack) (h : entry.it.toString = s) : StringInv s (entry :: stack) := by
-  refine ⟨fun entry' mem' => ?_⟩
+  intro entry' mem'
   simp at mem'
   cases mem' with
   | inl eq => rw [eq, h]
-  | inr mem' => exact inv.eq entry' mem'
+  | inr mem' => exact inv entry' mem'
 
 theorem cons_iff {entry} : StringInv s (entry :: stack) ↔ entry.it.toString = s ∧ StringInv s stack := by
   apply Iff.intro
   . intro inv
-    exact ⟨inv.eq entry (by simp), inv.drop⟩
+    exact ⟨inv entry (by simp), inv.drop⟩
   . intro ⟨h, inv⟩
     exact inv.cons h
 
@@ -352,7 +352,7 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | fail visited update state it stack' mem visited' hn ih =>
     rw [captureNextAux_fail mem hn] at hres
     have cinv' : ClosureInv s visited' stack' := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [] (by simp)
       intro state' bit' update' step
       rw [Step.iff_fail hn] at step
       exact step.elim
@@ -360,19 +360,19 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | epsilon visited update state it stack' mem visited' state' hn ih =>
     rw [captureNextAux_epsilon mem hn] at hres
     have cinv' : ClosureInv s visited' (⟨update, state', it⟩ :: stack') := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [⟨update, state', it⟩] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [⟨update, state', it⟩] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_epsilon hn] at step
       have ⟨_, eqstate'', eqit'', _⟩ := step
       simp [Fin.eq_of_val_eq eqstate'', BoundedIterator.ext_iff, eqit'']
     have sinv' : StringInv s (⟨update, state', it⟩ :: stack') := by
       simp [StringInv.cons_iff, sinv.drop]
-      exact sinv.eq ⟨update, state, it⟩ (by simp)
+      exact sinv ⟨update, state, it⟩ (by simp)
     exact ih hres cinv' sinv'
   | split visited update state it stack' mem visited' state₁ state₂ hn ih =>
     rw [captureNextAux_split mem hn] at hres
     have cinv' : ClosureInv s visited' (⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack') := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [⟨update, state₁, it⟩, ⟨update, state₂, it⟩] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [⟨update, state₁, it⟩, ⟨update, state₂, it⟩] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_split hn] at step
       have ⟨_, eqstate'', eqit'', _⟩ := step
@@ -382,36 +382,36 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
       | inr eq₂ => simp [Fin.eq_of_val_eq eq₂]
     have sinv' : StringInv s (⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack') := by
       simp [StringInv.cons_iff, sinv.drop]
-      exact sinv.eq ⟨update, state, it⟩ (by simp)
+      exact sinv ⟨update, state, it⟩ (by simp)
     exact ih hres cinv' sinv'
   | save visited update state it stack' mem visited' offset state' hn update' ih =>
     rw [captureNextAux_save mem hn] at hres
     have cinv' : ClosureInv s visited' (⟨update', state', it⟩ :: stack') := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [⟨update', state', it⟩] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [⟨update', state', it⟩] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_save hn] at step
       have ⟨_, eqstate'', eqit'', _⟩ := step
       simp [Fin.eq_of_val_eq eqstate'', BoundedIterator.ext_iff, eqit'']
     have sinv' : StringInv s (⟨update', state', it⟩ :: stack') := by
       simp [StringInv.cons_iff, sinv.drop]
-      exact sinv.eq ⟨update, state, it⟩ (by simp)
+      exact sinv ⟨update, state, it⟩ (by simp)
     exact ih hres cinv' sinv'
   | anchor_pos visited update state it stack' mem visited' a state' hn ht ih =>
     rw [captureNextAux_anchor_pos mem hn ht] at hres
     have cinv' : ClosureInv s visited' (⟨update, state', it⟩ :: stack') := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [⟨update, state', it⟩] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [⟨update, state', it⟩] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_anchor hn] at step
       have ⟨_, eqstate'', eqit'', _⟩ := step
       simp [Fin.eq_of_val_eq eqstate'', BoundedIterator.ext_iff, eqit'']
     have sinv' : StringInv s (⟨update, state', it⟩ :: stack') := by
       simp [StringInv.cons_iff, sinv.drop]
-      exact sinv.eq ⟨update, state, it⟩ (by simp)
+      exact sinv ⟨update, state, it⟩ (by simp)
     exact ih hres cinv' sinv'
   | anchor_neg visited update state it stack' mem visited' a state' hn ht ih =>
     rw [captureNextAux_anchor_neg mem hn ht] at hres
     have cinv' : ClosureInv s visited' stack' := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [] (by simp)
       intro state'' bit'' update' step
       simp [Step.iff_anchor hn] at step
       simp [step] at ht
@@ -419,19 +419,19 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | char_pos visited update state it stack' mem visited' c state' hn hnext hc ih =>
     rw [captureNextAux_char_pos mem hn hnext hc] at hres
     have cinv' : ClosureInv s visited' (⟨update, state', it.next hnext⟩ :: stack') := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [⟨update, state', it.next hnext⟩] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [⟨update, state', it.next hnext⟩] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_char hn] at step
       have ⟨l, r, _, eqstate'', eqit'', _, _⟩ := step
       simp [Fin.eq_of_val_eq eqstate'', BoundedIterator.ext_iff, eqit'', BoundedIterator.next, Iterator.next'_eq_next]
     have sinv' : StringInv s (⟨update, state', it.next hnext⟩ :: stack') := by
       simp [StringInv.cons_iff, BoundedIterator.next_toString, sinv.drop]
-      exact sinv.eq ⟨update, state, it⟩ (by simp)
+      exact sinv ⟨update, state, it⟩ (by simp)
     exact ih hres cinv' sinv'
   | char_neg visited update state it stack' mem visited' c state' hn hnext hc ih =>
     rw [captureNextAux_char_neg mem hn hnext hc] at hres
     have cinv' : ClosureInv s visited' stack' := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_char hn] at step
       have ⟨l, r, _, _, _, _, vf⟩ := step
@@ -441,7 +441,7 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | char_end visited update state it stack' mem visited' c state' hn hnext ih =>
     rw [captureNextAux_char_end mem hn hnext] at hres
     have cinv' : ClosureInv s visited' stack' := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_char hn] at step
       have ⟨l, r, _, _, _, _, vf⟩ := step
@@ -451,19 +451,19 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | sparse_pos visited update state it stack' mem visited' cs state' hn hnext hc ih =>
     rw [captureNextAux_sparse_pos mem hn hnext hc] at hres
     have cinv' : ClosureInv s visited' (⟨update, state', it.next hnext⟩ :: stack') := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [⟨update, state', it.next hnext⟩] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [⟨update, state', it.next hnext⟩] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_sparse hn] at step
       have ⟨l, c, r, _, eqstate'', eqit'', _, vf, hc'⟩ := step
       simp [Fin.eq_of_val_eq eqstate'', BoundedIterator.ext_iff, eqit'', BoundedIterator.next, Iterator.next'_eq_next]
     have sinv' : StringInv s (⟨update, state', it.next hnext⟩ :: stack') := by
       simp [StringInv.cons_iff, BoundedIterator.next_toString, sinv.drop]
-      exact sinv.eq ⟨update, state, it⟩ (by simp)
+      exact sinv ⟨update, state, it⟩ (by simp)
     exact ih hres cinv' sinv'
   | sparse_neg visited update state it stack' mem visited' cs state' hn hnext hc ih =>
     rw [captureNextAux_sparse_neg mem hn hnext hc] at hres
     have cinv' : ClosureInv s visited' stack' := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_sparse hn] at step
       have ⟨l, c, r, _, _, _, _, vf, hc'⟩ := step
@@ -474,7 +474,7 @@ theorem step_closure {s : String} {result} (hres : captureNextAux HistoryStrateg
   | sparse_end visited update state it stack' mem visited' cs state' hn hnext ih =>
     rw [captureNextAux_sparse_end mem hn hnext] at hres
     have cinv' : ClosureInv s visited' stack' := by
-      apply cinv.preserves (sinv.eq _ (by simp)) [] (by simp)
+      apply cinv.preserves (sinv _ (by simp)) [] (by simp)
       intro state'' bit'' update' step
       rw [Step.iff_sparse hn] at step
       have ⟨l, c, r, _, _, _, _, vf, _⟩ := step
