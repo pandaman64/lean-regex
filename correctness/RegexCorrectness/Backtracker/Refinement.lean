@@ -35,6 +35,37 @@ inductive RefineStack : List (StackEntry HistoryStrategy nfa startIdx maxIdx) �
 def Refines (resultH : Option (List (Nat × Pos)) × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (resultB : Option (Buffer bufferSize) × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
   refineUpdateOpt resultH.1 resultB.1 ∧ resultH.2 = resultB.2
 
+theorem captureNextAux.pushNext.refines {nfa wf startIdx maxIdx bufferSize stackH stackB updateH updateB state it}
+  (refEntry : StackEntry.Refines ⟨updateH, state, it⟩ ⟨updateB, state, it⟩) (refStack : RefineStack stackH stackB) :
+  RefineStack (captureNextAux.pushNext HistoryStrategy nfa wf startIdx maxIdx stackH updateH state it) (captureNextAux.pushNext (BufferStrategy bufferSize) nfa wf startIdx maxIdx stackB updateB state it) := by
+  cases stackH, updateH, state, it using captureNextAux.pushNext.fun_cases' HistoryStrategy nfa wf startIdx maxIdx with
+  | done stackH updateH state it hn => simp [pushNext.done hn, refStack]
+  | fail stackH updateH state it hn => simp [pushNext.fail hn, refStack]
+  | epsilon stackH updateH state it state' hn =>
+    simp [pushNext.epsilon hn]
+    exact .cons _ _ _ _ refEntry.mk refStack
+  | split stackH updateH state it state₁ state₂ hn =>
+    simp [pushNext.split hn]
+    exact .cons _ _ _ _ refEntry.mk (.cons _ _ _ _ refEntry.mk refStack)
+  | save stackH updateH state it offset state' hn =>
+    -- This is the only interesting case, where we update the history/buffer
+    simp [pushNext.save hn]
+    refine .cons _ _ _ _ ?_ refStack
+    simp [StackEntry.Refines, refineUpdate] at refEntry
+    simp [StackEntry.Refines, refineUpdate, HistoryStrategy, BufferStrategy, refEntry]
+  | anchor_pos stackH updateH state it a state' hn ht =>
+    simp [pushNext.anchor_pos hn ht]
+    exact .cons _ _ _ _ refEntry.mk refStack
+  | anchor_neg stackH updateH state it a state' hn ht => simp [pushNext.anchor_neg hn ht, refStack]
+  | char_pos stackH updateH state it c state' hn hnext hc =>
+    simp [pushNext.char_pos hn hnext hc]
+    exact .cons _ _ _ _ refEntry.mk refStack
+  | char_neg stackH updateH state it c state' hn h => simp [pushNext.char_neg hn h, refStack]
+  | sparse_pos stackH updateH state it cs state' hn hnext hc =>
+    simp [pushNext.sparse_pos hn hnext hc]
+    exact .cons _ _ _ _ refEntry.mk refStack
+  | sparse_neg stackH updateH state it cs state' hn h => simp [pushNext.sparse_neg hn h, refStack]
+
 theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stackH stackB} (refStack : RefineStack stackH stackB) :
   Refines (captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stackH) (captureNextAux (BufferStrategy bufferSize) nfa wf startIdx maxIdx visited stackB) := by
   induction visited, stackH using captureNextAux.induct' HistoryStrategy nfa wf startIdx maxIdx generalizing stackB with
@@ -52,93 +83,12 @@ theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stac
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
       simp [captureNextAux_done mem hn, Refines, refineUpdateOpt, refEntry.1]
-  | fail visited update state' it stackH mem visited' hn =>
-    rename_i ih
+  | next visited update state' it stackH mem hn ih =>
     cases refStack with
     | cons entryH entryB stackH stackB refEntry refStack =>
       rw [refEntry.simpL]
-      simp [captureNextAux_fail mem hn]
-      exact ih refStack
-  | epsilon visited update state it stackH mem visited' state' hn =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_epsilon mem hn]
-      exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | split visited update state it stackH mem visited' state₁ state₂ hn =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_split mem hn]
-      exact ih (.cons _ _ _ _ refEntry.mk (.cons _ _ _ _ refEntry.mk refStack))
-  | save visited update state it stackH mem visited' offset state' hn update' =>
-    -- This is the only interesting case, where we update the history/buffer
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_save mem hn]
-      refine ih (.cons _ _ _ _ ?_ refStack)
-      simp [StackEntry.Refines, refineUpdate] at refEntry
-      simp [StackEntry.Refines, update', refineUpdate, HistoryStrategy, BufferStrategy, refEntry.1]
-  | anchor_pos visited update state it stackH mem visited' a state' hn ht =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_anchor_pos mem hn ht]
-      exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | anchor_neg visited update state it stackH mem visited' a state' hn ht =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_anchor_neg mem hn ht]
-      exact ih refStack
-  | char_pos visited update state it stackH mem visited' c state' hn hnext hc =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_char_pos mem hn hnext hc]
-      exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | char_neg visited update state it stackH mem visited' c state' hn hnext hc =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_char_neg mem hn hnext hc]
-      exact ih refStack
-  | char_end visited update state it stackH mem visited' c state' hn hnext =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_char_end mem hn hnext]
-      exact ih refStack
-  | sparse_pos visited update state it stackH mem visited' cs state' hn hnext hc =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_sparse_pos mem hn hnext hc]
-      exact ih (.cons _ _ _ _ refEntry.mk refStack)
-  | sparse_neg visited update state it stackH mem visited' cs state' hn hnext hc =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_sparse_neg mem hn hnext hc]
-      exact ih refStack
-  | sparse_end visited update state it stackH mem visited' cs state' hn hnext =>
-    rename_i ih
-    cases refStack with
-    | cons entryH entryB stackH stackB refEntry refStack =>
-      rw [refEntry.simpL]
-      simp [captureNextAux_sparse_end mem hn hnext]
-      exact ih refStack
+      simp [captureNextAux_next mem hn]
+      exact ih (pushNext.refines (refEntry.simpL ▸ refEntry) refStack)
 
 theorem captureNext.go.refines (nfa wf startIdx bufferSize bit visited) :
   Refines (captureNext.go HistoryStrategy nfa wf startIdx maxIdx bit visited) (captureNext.go (BufferStrategy bufferSize) nfa wf startIdx maxIdx bit visited) := by
