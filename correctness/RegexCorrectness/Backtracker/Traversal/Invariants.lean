@@ -25,7 +25,7 @@ theorem mem_of_mem_visited {s i} (hmem : visited.get s i) :
     rw [captureNextAux_next mem hn]
     exact ih (by simp [visited.get_set, hmem])
 
-theorem mem_of_mem_top_stack {entry stack'} (hstack : entry :: stack' = stack) :
+theorem mem_stack_top (entry stack') (hstack : entry :: stack' = stack) :
   (captureNextAux σ nfa wf startIdx maxIdx visited stack).2.get entry.state entry.it.index := by
   induction visited, stack using captureNextAux.induct' σ nfa wf startIdx maxIdx with
   | base visited => simp at hstack
@@ -70,6 +70,10 @@ def StackInv (wf : nfa.WellFormed) (bit₀ : BoundedIterator startIdx maxIdx) (s
   ∀ entry ∈ stack, Path nfa wf bit₀.it entry.it.it entry.state entry.update
 
 namespace StackInv
+
+theorem intro {bit₀ : BoundedIterator startIdx maxIdx} (v : bit₀.Valid) : StackInv wf bit₀ [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit₀⟩] := by
+  simp [StackInv, HistoryStrategy]
+  exact .init (BoundedIterator.valid_of_valid v)
 
 theorem path {bit₀} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
   (inv : StackInv wf bit₀ (entry :: stack')) :
@@ -403,9 +407,13 @@ def VisitedInv (wf : nfa.WellFormed) (bit₀ : BoundedIterator startIdx maxIdx) 
   ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx),
     bit.IsNextNOf bit₀ →
     visited.get state bit.index →
-    visited₀.get state bit₀.index ∨ ∃ update, Path nfa wf bit₀.it bit.it state update
+    visited₀.get state bit.index ∨ ∃ update, Path nfa wf bit₀.it bit.it state update
 
 namespace VisitedInv
+
+theorem rfl {wf : nfa.WellFormed} {bit₀ : BoundedIterator startIdx maxIdx} : VisitedInv wf bit₀ visited₀ visited₀ := by
+  intro state bit isNextN hmem
+  exact .inl hmem
 
 theorem preserves {bit : BoundedIterator startIdx maxIdx} {state : Fin nfa.nodes.size}
   (inv : VisitedInv wf bit₀ visited₀ visited)
@@ -426,7 +434,8 @@ theorem preserves {bit : BoundedIterator startIdx maxIdx} {state : Fin nfa.nodes
 
 end VisitedInv
 
-theorem mem_or_path_of_visited_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
+-- mem_or_path_of_mem_of_none should be used for the starting stack.
+theorem visited_inv_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
   (isNone : result.1 = .none)
   (vinv : VisitedInv wf bit₀ visited₀ visited) (stinv : StackInv wf bit₀ stack) :
   VisitedInv wf bit₀ visited₀ result.2 := by
