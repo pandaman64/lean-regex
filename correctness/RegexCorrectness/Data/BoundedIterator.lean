@@ -98,6 +98,21 @@ theorem nextn_next_eq_next_nextn {bit : BoundedIterator startIdx maxIdx} {n : Na
 theorem nextn_next {bit : BoundedIterator startIdx maxIdx} {n : Nat} (hnext : (bit.nextn n).hasNext) : (bit.nextn n).next hnext = bit.nextn (n + 1) := by
   rw [nextn_next_eq_next_nextn hnext, next_nextn]
 
+theorem nextn_not_hasNext {bit : BoundedIterator startIdx maxIdx} {n : Nat} (hnext : ¬bit.hasNext) : (bit.nextn n) = bit := by
+  cases n with
+  | zero => simp [nextn]
+  | succ n => simp [nextn, hnext]
+
+theorem nextn_add (bit : BoundedIterator startIdx maxIdx) (n₁ n₂ : Nat) : bit.nextn (n₁ + n₂) = (bit.nextn n₁).nextn n₂ := by
+  induction n₁ generalizing bit with
+  | zero => simp [nextn]
+  | succ n₁ ih =>
+    have : n₁ + 1 + n₂ = (n₁ + n₂) + 1 := by omega
+    if hnext : bit.hasNext then
+      simpa [nextn, this, hnext] using ih (bit.next hnext)
+    else
+      simp [nextn, this, hnext, nextn_not_hasNext hnext]
+
 namespace IsNextNOf
 
 @[simp]
@@ -126,6 +141,11 @@ theorem valid {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf 
   have ⟨n, eq⟩ := h
   rw [eq]
   exact nextn_valid v₀
+
+theorem trans {bit₀ bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h₀ : bit₁.IsNextNOf bit₀) (h₁ : bit₂.IsNextNOf bit₁) : bit₂.IsNextNOf bit₀ := by
+  have ⟨n₀, eq₀⟩ := h₀
+  have ⟨n₁, eq₁⟩ := h₁
+  exact ⟨n₀ + n₁, by simp [eq₀, eq₁, nextn_add]⟩
 
 end IsNextNOf
 

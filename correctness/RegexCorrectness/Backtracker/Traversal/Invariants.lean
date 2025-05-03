@@ -66,26 +66,26 @@ section
 variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat}
 {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)} {update' visited'}
 
-def StackInv (wf : nfa.WellFormed) (bit₀ : BoundedIterator startIdx maxIdx) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) : Prop :=
-  ∀ entry ∈ stack, Path nfa wf bit₀.it entry.it.it entry.state entry.update
+def StackInv (wf : nfa.WellFormed) (bit : BoundedIterator startIdx maxIdx) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) : Prop :=
+  ∀ entry ∈ stack, Path nfa wf bit.it entry.it.it entry.state entry.update
 
 namespace StackInv
 
-theorem intro {bit₀ : BoundedIterator startIdx maxIdx} (v : bit₀.Valid) : StackInv wf bit₀ [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit₀⟩] := by
+theorem intro {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : StackInv wf bit [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
   simp [StackInv, HistoryStrategy]
   exact .init (BoundedIterator.valid_of_valid v)
 
-theorem path {bit₀} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
-  (inv : StackInv wf bit₀ (entry :: stack')) :
-  Path nfa wf bit₀.it entry.it.it entry.state entry.update := inv entry (by simp)
+theorem path {bit : BoundedIterator startIdx maxIdx} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
+  (inv : StackInv wf bit (entry :: stack')) :
+  Path nfa wf bit.it entry.it.it entry.state entry.update := inv entry (by simp)
 
-theorem isNextN {bit₀ : BoundedIterator startIdx maxIdx} {entry stack} (inv : StackInv wf bit₀ (entry :: stack)) : entry.it.IsNextNOf bit₀ :=
+theorem isNextN {bit : BoundedIterator startIdx maxIdx} {entry stack} (inv : StackInv wf bit (entry :: stack)) : entry.it.IsNextNOf bit :=
   (inv entry (by simp)).isNextNOf rfl
 
-theorem preserves' {bit₀ entry stack'} (inv : StackInv wf bit₀ (entry :: stack')) (nextEntries) (hstack : stack = nextEntries ++ stack')
+theorem preserves' {bit entry stack'} (inv : StackInv wf bit (entry :: stack')) (nextEntries) (hstack : stack = nextEntries ++ stack')
   (hnext : ∀ entry' ∈ nextEntries,
     ∃ update, nfa.Step 0 entry.state entry.it.it entry'.state entry'.it.it update ∧ entry'.update = List.append entry.update (List.ofOption update)) :
-  StackInv wf bit₀ stack := by
+  StackInv wf bit stack := by
   simp [hstack]
   intro entry' mem'
   simp at mem'
@@ -96,8 +96,8 @@ theorem preserves' {bit₀ entry stack'} (inv : StackInv wf bit₀ (entry :: sta
     exact path.more step hupdate
   | inr mem' => exact inv entry' (by simp [mem'])
 
-theorem preserves {bit₀ stack' update state it} (inv : StackInv wf bit₀ (⟨update, state, it⟩ :: stack')) :
-  StackInv wf bit₀ (pushNext HistoryStrategy nfa wf startIdx maxIdx stack' update state it) := by
+theorem preserves {bit stack' update state it} (inv : StackInv wf bit (⟨update, state, it⟩ :: stack')) :
+  StackInv wf bit (pushNext HistoryStrategy nfa wf startIdx maxIdx stack' update state it) := by
   cases stack', update, state, it using pushNext.fun_cases' HistoryStrategy nfa wf startIdx maxIdx with
   | done stack' update state it hn =>
     rw [pushNext.done hn]
@@ -153,14 +153,14 @@ theorem preserves {bit₀ stack' update state it} (inv : StackInv wf bit₀ (⟨
 
 end StackInv
 
-theorem path_done_of_some {bit₀} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = (.some update', visited'))
-  (inv : StackInv wf bit₀ stack) :
-  ∃ state it', nfa[state] = .done ∧ Path nfa wf bit₀.it it' state update' := by
+theorem path_done_of_some {bit} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = (.some update', visited'))
+  (inv : StackInv wf bit stack) :
+  ∃ state it', nfa[state] = .done ∧ Path nfa wf bit.it it' state update' := by
   induction visited, stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx with
   | base visited => simp [captureNextAux_base] at hres
   | visited visited update state it stack' mem ih =>
     simp [captureNextAux_visited mem] at hres
-    have inv' : StackInv wf bit₀ stack' := inv.preserves' [] (by simp) (by simp)
+    have inv' : StackInv wf bit stack' := inv.preserves' [] (by simp) (by simp)
     exact ih hres inv'
   | done visited update state it stack' mem hn =>
     simp [captureNextAux_done mem hn] at hres
@@ -299,9 +299,9 @@ end ClosureInv
 /--
 When the backtracker returns `.none`, it explores all reachable states and thus the visited set satisfies the closure property under the step relation.
 -/
-theorem step_closure {bit₀ : BoundedIterator startIdx maxIdx} {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
-  (isNone : result.1 = .none)
-  (cinv : ClosureInv bit₀ visited stack) (stinv : StackInv wf bit₀ stack) :
+theorem step_closure {bit₀ bit : BoundedIterator startIdx maxIdx} {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
+  (isNone : result.1 = .none) (isNextN : bit.IsNextNOf bit₀)
+  (cinv : ClosureInv bit₀ visited stack) (stinv : StackInv wf bit stack) :
   ClosureInv bit₀ result.2 [] := by
   induction visited, stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx maxIdx with
   | base visited =>
@@ -324,7 +324,7 @@ theorem step_closure {bit₀ : BoundedIterator startIdx maxIdx} {result} (hres :
     simp [←hres] at isNone
   | next visited update state it stack' mem hn ih =>
     simp [captureNextAux_next mem hn] at hres
-    exact ih hres (cinv.preserves stinv.isNextN hn) stinv.preserves
+    exact ih hres (cinv.preserves (isNextN.trans stinv.isNextN) hn) stinv.preserves
 
 def StepClosure (bit₀ : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
   ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
@@ -385,11 +385,11 @@ The closure property of the visited set can be lifted to paths.
 Note: `nfa.Path` requires at least one step, so this is a transitive closure. However, the existence in the visited set
 is obviously reflexive.
 -/
-theorem path_closure {bit₀ : BoundedIterator startIdx maxIdx} {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
-  (isNone : result.1 = .none)
-  (cinv : ClosureInv bit₀ visited stack) (stinv : StackInv wf bit₀ stack) :
+theorem path_closure {bit₀ bit : BoundedIterator startIdx maxIdx} {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
+  (isNone : result.1 = .none) (isNextN : bit.IsNextNOf bit₀)
+  (cinv : ClosureInv bit₀ visited stack) (stinv : StackInv wf bit stack) :
   PathClosure bit₀ result.2 := by
-  have cinv' : ClosureInv bit₀ result.2 [] := step_closure hres isNone cinv stinv
+  have cinv' : ClosureInv bit₀ result.2 [] := step_closure hres isNone isNextN cinv stinv
   have step_closure : StepClosure bit₀ result.2 := by
     intro state bit state' bit' update isNextN hmem step
     have := cinv' state bit state' bit' update isNextN hmem step
