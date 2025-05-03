@@ -38,6 +38,17 @@ def next (bit : BoundedIterator startIdx maxIdx) (h : bit.hasNext) : BoundedIter
   have le' : it'.pos.byteIdx ≤ maxIdx := eq' ▸ bit.it.next_le_endPos h
   ⟨it', ge', le', eq'⟩
 
+def nextn (bit : BoundedIterator startIdx maxIdx) (n : Nat) : BoundedIterator startIdx maxIdx :=
+  match n with
+  | 0 => bit
+  | n + 1 =>
+    if h : bit.hasNext then
+      nextn (bit.next h) n
+    else
+      bit
+
+def IsNextNOf (bit bit₀ : BoundedIterator startIdx maxIdx) : Prop := ∃ n, bit = bit₀.nextn n
+
 def curr (bit : BoundedIterator startIdx maxIdx) (h : bit.hasNext) : Char := bit.it.curr' h
 
 def remainingBytes (bit : BoundedIterator startIdx maxIdx) : Nat := bit.it.remainingBytes

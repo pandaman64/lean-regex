@@ -42,8 +42,11 @@ theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i it j it' update) : 
   have inBounds := wf.inBounds ⟨i, step.lt⟩
   cases step <;> simp_all [Node.inBounds]
 
-theorem it_eq_or_next (step : nfa.Step lb i it j it' update) : it' = it ∨ it' = it.next := by
-  cases step <;> simp_all
+theorem it_eq_or_next (step : nfa.Step lb i it j it' update) : it' = it ∨ (it.hasNext ∧ it' = it.next) := by
+  cases step
+  case char _ _ _ vf _ => simp [vf.hasNext]
+  case sparse _ _ _ vf _ => simp [vf.hasNext]
+  all_goals simp
 
 theorem le_pos (step : nfa.Step lb i it j it' update) : it.pos ≤ it'.pos := by
   cases step.it_eq_or_next with
@@ -168,10 +171,6 @@ theorem iff_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next)
     simp_all
     exact .char ge lt eq vf
 
--- theorem ne_it_of_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next)
---   (step : nfa.Step lb i it j it' update) : it ≠ it' := by
---   cases step <;> simp_all
-
 theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next) :
   nfa.Step lb i it j it' update ↔ ∃ l c r, lb ≤ i ∧ j = next ∧ it' = it.next ∧ update = .none ∧ it.ValidFor l (c :: r) ∧ c ∈ cs := by
   apply Iff.intro
@@ -184,10 +183,6 @@ theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs
   . intro ⟨l, c, r, ge, hj, hit, hupdate, vf, mem⟩
     simp_all
     exact .sparse ge lt eq vf mem
-
--- theorem ne_it_of_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next)
---   (step : nfa.Step lb i it j it' update) : it ≠ it' := by
---   cases step <;> simp_all
 
 theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i it j it' update) :
   nfa.Step 1 i it j it' update := by

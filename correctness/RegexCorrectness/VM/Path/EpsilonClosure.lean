@@ -99,7 +99,7 @@ theorem εClosure'_of_path {nfa : NFA} {i j it it' updates} (wf : nfa.WellFormed
       subst hit hit'
       simp at ih
       exact .step (by simp [εStep', step]) ih
-    | .inr hit' =>
+    | .inr ⟨_, hit'⟩ =>
       subst hit hit'
       exact ((Nat.not_le_of_lt it.lt_next) rest.le_pos).elim
 
