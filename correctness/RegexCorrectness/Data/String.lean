@@ -63,6 +63,11 @@ theorem ne_next (it : Iterator) : it ≠ it.next := by
 @[simp]
 theorem next_ne (it : Iterator) : it.next ≠ it := it.ne_next.symm
 
+theorem nextn_next_eq_next_nextn (it : Iterator) (n : Nat) : (it.nextn n).next = it.next.nextn n := by
+  induction n generalizing it with
+  | zero => simp [nextn]
+  | succ n ih => simp [nextn, ih it.next]
+
 end String.Iterator
 
 namespace String.Iterator.Valid

@@ -98,11 +98,16 @@ theorem nextn_next_eq_next_nextn {bit : BoundedIterator startIdx maxIdx} {n : Na
 theorem nextn_next {bit : BoundedIterator startIdx maxIdx} {n : Nat} (hnext : (bit.nextn n).hasNext) : (bit.nextn n).next hnext = bit.nextn (n + 1) := by
   rw [nextn_next_eq_next_nextn hnext, next_nextn]
 
-theorem IsNextNOf.toString {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) : bit.toString = bit₀.toString := by
+namespace IsNextNOf
+
+@[simp]
+theorem rfl {bit : BoundedIterator startIdx maxIdx} : bit.IsNextNOf bit := ⟨0, by simp [nextn]⟩
+
+theorem toString {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) : bit.toString = bit₀.toString := by
   have ⟨n, eq⟩ := h
   simp [eq, nextn_toString]
 
-theorem IsNextNOf.hasNext_of_hasNext {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) (hnext : bit.hasNext) : bit₀.hasNext := by
+theorem hasNext_of_hasNext {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) (hnext : bit.hasNext) : bit₀.hasNext := by
   have ⟨n, eq⟩ := h
   cases n with
   | zero => simpa [eq] using hnext
@@ -113,9 +118,16 @@ theorem IsNextNOf.hasNext_of_hasNext {bit bit₀ : BoundedIterator startIdx maxI
       simp [nextn, hnext₀] at eq
       simpa [eq] using hnext
 
-theorem IsNextNOf.next {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) (hnext : bit.hasNext) : (bit.next hnext).IsNextNOf bit₀ := by
+theorem next {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) (hnext : bit.hasNext) : (bit.next hnext).IsNextNOf bit₀ := by
   have ⟨n, eq⟩ := h
   exact ⟨n + 1, by simp [eq, nextn_next]⟩
+
+theorem valid {bit bit₀ : BoundedIterator startIdx maxIdx} (h : bit.IsNextNOf bit₀) (v₀ : bit₀.Valid) : bit.Valid := by
+  have ⟨n, eq⟩ := h
+  rw [eq]
+  exact nextn_valid v₀
+
+end IsNextNOf
 
 def ValidFor (l r : List Char) (bit : BoundedIterator startIdx maxIdx) : Prop := bit.it.ValidFor l r
 
