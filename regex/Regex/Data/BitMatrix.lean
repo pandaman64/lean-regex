@@ -4,6 +4,7 @@ set_option autoImplicit false
 
 namespace Regex.Data
 
+@[ext]
 structure BitMatrix (w h : Nat) where
   bv : BitVec (w * h)
 deriving Repr
@@ -60,6 +61,24 @@ theorem index_ne_of_ne {w h : Nat} (x x' : Fin w) (y y' : Fin h) (hne : x ≠ x'
 
 def get (m : BitMatrix w h) (x : Fin w) (y : Fin h) : Bool := m.bv[index x y]
 
+@[simp]
+theorem get_zero {w h : Nat} (x : Fin w) (y : Fin h) : (zero w h).get x y = false := by
+  simp [zero, get]
+
+@[ext]
+theorem eq_of_get_eq {m m' : BitMatrix w h} (eq : ∀ x y, m.get x y = m'.get x y) : m = m' := by
+  simp [get, index] at eq
+  ext i lt
+  let x := i % w
+  let y := i / w
+  have eq' : i = y * w + x := by
+    rw [Nat.mul_comm, Nat.div_add_mod i w]
+  have lt' : 0 < w := by
+    apply Nat.pos_of_ne_zero
+    intro eqw
+    simp [eqw] at lt
+  simp [eq', eq ⟨x, Nat.mod_lt i lt'⟩ ⟨y, Nat.div_lt_of_lt_mul lt⟩]
+
 def set (m : BitMatrix w h) (x : Fin w) (y : Fin h) : BitMatrix w h :=
   ⟨m.bv.set (index x y)⟩
 
@@ -72,7 +91,7 @@ theorem get_set_ne {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) (hne : x �
   have : (index x y).val ≠ (index x' y').val := Fin.val_ne_of_ne (index_ne_of_ne x x' y y' hne)
   rw [BitVec.getElem_set_ne m.bv _ _ (index x y).isLt (index x' y').isLt this]
 
-theorem get_set {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) : (m.set x y).get x' y' = ((x = x' ∧ y = y') ∨ m.get x' y') := by
+theorem get_set {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) : (m.set x y).get x' y' = decide ((x = x' ∧ y = y') ∨ m.get x' y') := by
   if h : x = x' ∧ y = y' then
     simp [h, get_set_eq]
   else
@@ -80,6 +99,12 @@ theorem get_set {m : BitMatrix w h} (x x' : Fin w) (y y' : Fin h) : (m.set x y).
 
 theorem get_set_of_get {m : BitMatrix w h} {x x' : Fin w} {y y' : Fin h} (h : m.get x y) : (m.set x' y').get x y := by
   simp [get_set, h]
+
+theorem eq_set_of_get {m : BitMatrix w h} {x : Fin w} {y : Fin h} (h : m.get x y) : m.set x y = m := by
+  ext x' y'
+  simp [get_set]
+  intro eq₁ eq₂
+  exact eq₁ ▸ eq₂ ▸ h
 
 def popcount (m : BitMatrix w h) : Nat := m.bv.popcount
 

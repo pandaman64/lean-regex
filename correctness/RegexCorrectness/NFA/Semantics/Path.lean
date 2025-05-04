@@ -42,8 +42,11 @@ theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i it j it' update) : 
   have inBounds := wf.inBounds ⟨i, step.lt⟩
   cases step <;> simp_all [Node.inBounds]
 
-theorem it_eq_or_next (step : nfa.Step lb i it j it' update) : it' = it ∨ it' = it.next := by
-  cases step <;> simp_all
+theorem it_eq_or_next (step : nfa.Step lb i it j it' update) : it' = it ∨ (it.hasNext ∧ it' = it.next) := by
+  cases step
+  case char _ _ _ vf _ => simp [vf.hasNext]
+  case sparse _ _ _ vf _ => simp [vf.hasNext]
+  all_goals simp
 
 theorem le_pos (step : nfa.Step lb i it j it' update) : it.pos ≤ it'.pos := by
   cases step.it_eq_or_next with
@@ -64,11 +67,14 @@ theorem validR (step : nfa.Step lb i it j it' update) : it'.Valid := by
   case sparse _ _ _ vf _ => exact vf.next.valid
   all_goals assumption
 
-theorem toString_eq {nfa : NFA} {lb i it j it' update} (step : nfa.Step lb i it j it' update) :
+theorem toString_eq (step : nfa.Step lb i it j it' update) :
   it'.toString = it.toString := by
   cases step.it_eq_or_next with
   | inl eq => simp [eq]
   | inr eq => simp [eq, String.Iterator.next, String.next]
+
+theorem le_endPos (step : nfa.Step lb i it j it' update) : it'.pos ≤ it.toString.endPos :=
+  step.toString_eq ▸ step.validR.le_endPos
 
 theorem cast (step : nfa.Step lb i it j it' update)
   {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
@@ -165,10 +171,6 @@ theorem iff_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next)
     simp_all
     exact .char ge lt eq vf
 
--- theorem ne_it_of_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next)
---   (step : nfa.Step lb i it j it' update) : it ≠ it' := by
---   cases step <;> simp_all
-
 theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next) :
   nfa.Step lb i it j it' update ↔ ∃ l c r, lb ≤ i ∧ j = next ∧ it' = it.next ∧ update = .none ∧ it.ValidFor l (c :: r) ∧ c ∈ cs := by
   apply Iff.intro
@@ -181,10 +183,6 @@ theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs
   . intro ⟨l, c, r, ge, hj, hit, hupdate, vf, mem⟩
     simp_all
     exact .sparse ge lt eq vf mem
-
--- theorem ne_it_of_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next)
---   (step : nfa.Step lb i it j it' update) : it ≠ it' := by
---   cases step <;> simp_all
 
 theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i it j it' update) :
   nfa.Step 1 i it j it' update := by
@@ -296,6 +294,16 @@ theorem compile_liftBound {e nfa} (eq : compile e = nfa) (path : nfa.Path 0 i it
   induction path with
   | last step => exact .last (step.compile_liftBound eq)
   | more step _ ih => exact .more (step.compile_liftBound eq) ih
+
+/--
+If a property is closed under a single step, then it is closed under a path.
+-/
+theorem of_step_closure {lb} (motive : Nat → Iterator → Prop) (closure : ∀ i it j it' update, motive i it → nfa.Step lb i it j it' update → motive j it')
+  {i it j it' update} (base : motive i it) (path : nfa.Path lb i it j it' update) :
+  motive j it' := by
+  induction path with
+  | @last i it j it' update step => exact closure i it j it' update base step
+  | @more i it j it' k it'' update₁ _ step _ ih => exact ih (closure i it j it' update₁ base step)
 
 end Path
 

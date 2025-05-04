@@ -6,6 +6,7 @@ open String (Iterator)
 
 namespace Regex.Data
 
+@[ext]
 structure BoundedIterator (startIdx maxIdx : Nat) where
   it : Iterator
   ge : startIdx ≤ it.pos.byteIdx
@@ -15,6 +16,8 @@ structure BoundedIterator (startIdx maxIdx : Nat) where
 namespace BoundedIterator
 
 variable {startIdx maxIdx : Nat}
+
+def toString (bit : BoundedIterator startIdx maxIdx) : String := bit.it.toString
 
 def pos (bit : BoundedIterator startIdx maxIdx) : String.Pos := bit.it.pos
 
@@ -34,6 +37,23 @@ def next (bit : BoundedIterator startIdx maxIdx) (h : bit.hasNext) : BoundedIter
       _ = it'.toString.endPos.byteIdx := by simp [it', Iterator.next', Iterator.toString]
   have le' : it'.pos.byteIdx ≤ maxIdx := eq' ▸ bit.it.next_le_endPos h
   ⟨it', ge', le', eq'⟩
+
+def nextn (bit : BoundedIterator startIdx maxIdx) (n : Nat) : BoundedIterator startIdx maxIdx :=
+  match n with
+  | 0 => bit
+  | n + 1 =>
+    if h : bit.hasNext then
+      nextn (bit.next h) n
+    else
+      bit
+
+def toEnd (bit : BoundedIterator startIdx maxIdx) : BoundedIterator startIdx maxIdx :=
+  have ge : startIdx ≤ bit.toString.endPos.byteIdx :=
+    calc startIdx
+      _ ≤ bit.it.pos.byteIdx := bit.ge
+      _ ≤ maxIdx := bit.le
+      _ = bit.toString.endPos.byteIdx := bit.eq
+  ⟨bit.it.toEnd, ge, bit.eq ▸ Nat.le_refl _, bit.eq⟩
 
 def curr (bit : BoundedIterator startIdx maxIdx) (h : bit.hasNext) : Char := bit.it.curr' h
 

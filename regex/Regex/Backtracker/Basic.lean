@@ -15,6 +15,41 @@ structure StackEntry (σ : Strategy) (nfa : NFA) (startIdx maxIdx : Nat) where
   state : Fin nfa.nodes.size
   it : BoundedIterator startIdx maxIdx
 
+def captureNextAux.pushNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx maxIdx : Nat) (stack : List (StackEntry σ nfa startIdx maxIdx))
+  (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) :
+  List (StackEntry σ nfa startIdx maxIdx) :=
+  match hn : nfa[state] with
+  | .done => stack
+  | .fail => stack
+  | .epsilon state' =>
+    have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+    ⟨update, ⟨state', isLt⟩, it⟩ :: stack
+  | .split state₁ state₂ =>
+    have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
+    ⟨update, ⟨state₁, isLt.1⟩, it⟩ :: ⟨update, ⟨state₂, isLt.2⟩, it⟩ :: stack
+  | .save offset state' =>
+    have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+    let update' := σ.write update offset it.pos
+    ⟨update', ⟨state', isLt⟩, it⟩ :: stack
+  | .anchor a state' =>
+    have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+    if a.test it.it then
+      ⟨update, ⟨state', isLt⟩, it⟩ :: stack
+    else
+      stack
+  | .char c state' =>
+    have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+    if h : ∃ hnext : it.hasNext, it.curr hnext = c then
+      ⟨update, ⟨state', isLt⟩, it.next h.1⟩ :: stack
+    else
+      stack
+  | .sparse cs state' =>
+    have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
+    if h : ∃ hnext : it.hasNext, it.curr hnext ∈ cs then
+      ⟨update, ⟨state', isLt⟩, it.next h.1⟩ :: stack
+    else
+      stack
+
 def captureNextAux (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx maxIdx : Nat)
   (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (stack : List (StackEntry σ nfa startIdx maxIdx)) :
   (Option σ.Update × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) :=
@@ -27,43 +62,11 @@ def captureNextAux (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx m
       let visited' := visited.set state it.index
       have : nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited'.popcount < nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited.popcount :=
         BitMatrix.popcount_decreasing visited state it.index h
-      match hn : nfa[state] with
-      | .done => (.some update, visited')
-      | .fail => captureNextAux σ nfa wf startIdx maxIdx visited' stack'
-      | .epsilon state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state', isLt⟩, it⟩ :: stack')
-      | .split state₁ state₂ =>
-        have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
-        captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state₁, isLt.1⟩, it⟩ :: ⟨update, ⟨state₂, isLt.2⟩, it⟩ :: stack')
-      | .save offset state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        let update' := σ.write update offset it.pos
-        captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update', ⟨state', isLt⟩, it⟩ :: stack')
-      | .anchor a state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        if a.test it.it then
-          captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state', isLt⟩, it⟩ :: stack')
-        else
-          captureNextAux σ nfa wf startIdx maxIdx visited' stack'
-      | .char c state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        if h : it.hasNext then
-          if it.curr h = c then
-            captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state', isLt⟩, it.next h⟩ :: stack')
-          else
-            captureNextAux σ nfa wf startIdx maxIdx visited' stack'
-        else
-          captureNextAux σ nfa wf startIdx maxIdx visited' stack'
-      | .sparse cs state' =>
-        have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-        if h : it.hasNext then
-          if it.curr h ∈ cs then
-            captureNextAux σ nfa wf startIdx maxIdx visited' (⟨update, ⟨state', isLt⟩, it.next h⟩ :: stack')
-          else
-            captureNextAux σ nfa wf startIdx maxIdx visited' stack'
-        else
-          captureNextAux σ nfa wf startIdx maxIdx visited' stack'
+      if nfa[state] = .done then
+        (.some update, visited')
+      else
+        let stack'' := captureNextAux.pushNext σ nfa wf startIdx maxIdx stack' update state it
+        captureNextAux σ nfa wf startIdx maxIdx visited' stack''
 termination_by (nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited.popcount, stack)
 
 def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
@@ -71,20 +74,20 @@ def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator
   let maxIdx := it.toString.endPos.byteIdx
   if le : it.pos ≤ it.toString.endPos then
     let bit : BoundedIterator startIdx maxIdx := ⟨it, Nat.le_refl _, le, rfl⟩
-    (go startIdx maxIdx bit (BitMatrix.zero _ _)).1
+    go startIdx maxIdx bit (BitMatrix.zero _ _)
   else
     .none
 where
   go (startIdx maxIdx : Nat) (bit : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) :
-  Option σ.Update × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) :=
+  Option σ.Update :=
   match captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] with
-  | (.some update, visited') => (.some update, visited')
+  | (.some update, _) => .some update
   | (.none, visited') =>
     if h : bit.hasNext then
       have : (bit.next h).remainingBytes < bit.remainingBytes := bit.next_remainingBytes_lt h
       go startIdx maxIdx (bit.next h) visited'
     else
-      (.none, visited')
+      .none
   termination_by bit.remainingBytes
 
 def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
