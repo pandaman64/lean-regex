@@ -74,22 +74,20 @@ def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator
   let maxIdx := it.toString.endPos.byteIdx
   if le : it.pos ≤ it.toString.endPos then
     let bit : BoundedIterator startIdx maxIdx := ⟨it, Nat.le_refl _, le, rfl⟩
-    (go startIdx maxIdx bit (BitMatrix.zero _ _)).1
+    go startIdx maxIdx bit (BitMatrix.zero _ _)
   else
     .none
 where
-  -- TODO: we don't need to return the visited matrix, but we need to restate the theorems to directly derive the result
-  -- rather than describing the returned visited matrix.
   go (startIdx maxIdx : Nat) (bit : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) :
-  Option σ.Update × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) :=
+  Option σ.Update :=
   match captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] with
-  | (.some update, visited') => (.some update, visited')
+  | (.some update, _) => .some update
   | (.none, visited') =>
     if h : bit.hasNext then
       have : (bit.next h).remainingBytes < bit.remainingBytes := bit.next_remainingBytes_lt h
       go startIdx maxIdx (bit.next h) visited'
     else
-      (.none, visited')
+      .none
   termination_by bit.remainingBytes
 
 def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=

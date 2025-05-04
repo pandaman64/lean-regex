@@ -91,7 +91,7 @@ theorem captureNextAux.refines (nfa wf startIdx maxIdx bufferSize visited) {stac
       exact ih (pushNext.refines (refEntry.simpL ▸ refEntry) refStack)
 
 theorem captureNext.go.refines (nfa wf startIdx bufferSize bit visited) :
-  Refines (captureNext.go HistoryStrategy nfa wf startIdx maxIdx bit visited) (captureNext.go (BufferStrategy bufferSize) nfa wf startIdx maxIdx bit visited) := by
+  refineUpdateOpt (captureNext.go HistoryStrategy nfa wf startIdx maxIdx bit visited) (captureNext.go (BufferStrategy bufferSize) nfa wf startIdx maxIdx bit visited) := by
   induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx maxIdx with
   | found bit visited updateH visitedH hauxH =>
     let entryH : StackEntry HistoryStrategy nfa startIdx maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
@@ -129,7 +129,7 @@ theorem captureNext.refines (nfa wf bufferSize it) :
   refineUpdateOpt (captureNext HistoryStrategy nfa wf it) (captureNext (BufferStrategy bufferSize) nfa wf it) := by
   if le : it.pos ≤ it.toString.endPos then
     simp [captureNext_le le]
-    exact (captureNext.go.refines nfa wf it.pos.byteIdx bufferSize ⟨it, Nat.le_refl _, le, rfl⟩ (BitMatrix.zero _ _)).1
+    exact (captureNext.go.refines nfa wf it.pos.byteIdx bufferSize ⟨it, Nat.le_refl _, le, rfl⟩ (BitMatrix.zero _ _))
   else
     simp [captureNext_not_le le, refineUpdateOpt]
 

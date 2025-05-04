@@ -283,7 +283,7 @@ section
 variable {σ nfa wf startIdx maxIdx bit visited}
 
 theorem captureNext.go_found {update visited'} (h : captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.some update, visited')) :
-  captureNext.go σ nfa wf startIdx maxIdx bit visited = (.some update, visited') := by
+  captureNext.go σ nfa wf startIdx maxIdx bit visited = .some update := by
   unfold captureNext.go
   split <;> simp_all
 
@@ -295,7 +295,7 @@ theorem captureNext.go_not_found_next {visited'} (h : captureNextAux σ nfa wf s
   split <;> simp_all
 
 theorem captureNext.go_not_found_end {visited'} (h : captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.none, visited')) (h' : ¬bit.hasNext) :
-  captureNext.go σ nfa wf startIdx maxIdx bit visited = (.none, visited') := by
+  captureNext.go σ nfa wf startIdx maxIdx bit visited = .none := by
   unfold captureNext.go
   split <;> simp_all
 
@@ -309,7 +309,7 @@ section
 variable {σ nfa wf it}
 
 theorem captureNext_le (le : it.pos ≤ it.toString.endPos) :
-  captureNext σ nfa wf it = (captureNext.go σ nfa wf it.pos.byteIdx it.toString.endPos.byteIdx ⟨it, Nat.le_refl _, le, rfl⟩ (BitMatrix.zero _ _)).1 := by
+  captureNext σ nfa wf it = (captureNext.go σ nfa wf it.pos.byteIdx it.toString.endPos.byteIdx ⟨it, Nat.le_refl _, le, rfl⟩ (BitMatrix.zero _ _)) := by
   simp [captureNext, le]
 
 theorem captureNext_not_le (h : ¬it.pos ≤ it.toString.endPos) :

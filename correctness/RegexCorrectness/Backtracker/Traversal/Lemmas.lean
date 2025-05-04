@@ -107,8 +107,8 @@ theorem mem_iff_path_of_aux_none_of_not_hasNext {result} (haux : captureNextAux 
 
 end Inv
 
-theorem ne_done_of_path_of_none {result} (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = result)
-  (isNone : result.1 = .none) (reaches : bit₀.Reaches bit)
+theorem ne_done_of_path_of_none (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = .none)
+  (reaches : bit₀.Reaches bit)
   (inv : Inv wf bit₀ bit visited) (ndinv : NotDoneInv visited) :
   ∀ (bit' bit'' : BoundedIterator startIdx maxIdx) (state : Fin nfa.nodes.size) (update : List (Nat × Pos)),
     bit₀.Reaches bit' →
@@ -116,8 +116,7 @@ theorem ne_done_of_path_of_none {result} (hres : go HistoryStrategy nfa wf start
     nfa[state] ≠ .done := by
   induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx maxIdx with
   | found bit visited update visited' haux =>
-    rw [captureNext.go_found haux] at hres
-    simp [←hres] at isNone
+    simp [captureNext.go_found haux] at hres
   | not_found_next bit visited visited' haux hnext ih =>
     rw [captureNext.go_not_found_next haux hnext] at hres
     have inv' : Inv wf bit₀ (bit.next hnext) visited' := inv.preservesAux haux rfl hnext reaches
@@ -132,6 +131,24 @@ theorem ne_done_of_path_of_none {result} (hres : go HistoryStrategy nfa wf start
 
     have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
     exact ndinv' state bit'' mem hn
+
+theorem path_done_of_some {nfa wf startIdx maxIdx bit update} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)}
+  (v : bit.Valid) (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = .some update) :
+  ∃ state it it', it'.toString = bit.it.toString ∧ nfa[state] = .done ∧ Path nfa wf it it' state update := by
+  induction bit, visited using go.induct' HistoryStrategy nfa wf startIdx with
+  | found bit visited update' visited' haux =>
+    simp [captureNext.go_found haux] at hres
+    simp [hres] at haux
+    have ⟨l, r, vf⟩ := (bit.valid_of_valid v).validFor
+    have inv₀ : StackInv wf bit [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
+      simp [StackInv]
+      exact .init (bit.valid_of_valid v)
+    have ⟨state, it, hn, path⟩ := captureNextAux.path_done_of_some haux inv₀
+    exact ⟨state, bit.it, it, by rw [path.toString_eq], hn, path⟩
+  | not_found_next bit visited visited' haux hnext ih =>
+    simp [captureNext.go_not_found_next haux hnext] at hres
+    exact ih (bit.next_valid hnext v) hres
+  | not_found_end bit visited visited' haux hnext => simp [captureNext.go_not_found_end haux hnext] at hres
 
 end captureNext.go
 
