@@ -66,6 +66,8 @@ structure Inv (wf : nfa.WellFormed) (bit₀ bit : BoundedIterator startIdx maxId
 
 namespace Inv
 
+theorem zero : Inv wf bit₀ bit₀ (BitMatrix.zero nfa.nodes.size (maxIdx + 1 - startIdx)) := ⟨PathClosure.zero, by simp⟩
+
 theorem mem_iff_of_aux_none {result} (haux : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = result)
   (isNone : result.1 = .none) (reaches : bit₀.Reaches bit) (inv : Inv wf bit₀ bit visited)
   (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (reaches' : bit₀.Reaches bit') :

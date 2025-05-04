@@ -340,7 +340,13 @@ def PathClosure (bit₀ : BoundedIterator startIdx maxIdx) (visited : BitMatrix 
     nfa.Path 0 state bit.it state' bit'.it update →
     visited.get state' bit'.index
 
-theorem PathClosure.of_step_closure {bit₀ : BoundedIterator startIdx maxIdx} (wf : nfa.WellFormed) (h : StepClosure bit₀ visited) : PathClosure bit₀ visited := by
+namespace PathClosure
+
+theorem zero : PathClosure bit₀ (BitMatrix.zero nfa.nodes.size (maxIdx + 1 - startIdx)) := by
+  intro state bit state' bit' update reaches hmem path
+  simp at hmem
+
+theorem of_step_closure {bit₀ : BoundedIterator startIdx maxIdx} (wf : nfa.WellFormed) (h : StepClosure bit₀ visited) : PathClosure bit₀ visited := by
   let motive (i : Nat) (it : Iterator) : Prop :=
     ∃ (isLt : i < nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx), bit₀.Reaches bit ∧ it = bit.it ∧ visited.get ⟨i, isLt⟩ bit.index
   have cls i it j it' update (base : motive i it) (step : nfa.Step 0 i it j it' update) : motive j it' := by
@@ -378,6 +384,8 @@ theorem PathClosure.of_step_closure {bit₀ : BoundedIterator startIdx maxIdx} (
   intro state bit state' bit' update reaches hmem path
   have ⟨_, _, _, eqit, hmem'⟩ := path.of_step_closure motive cls ⟨state.isLt, bit, reaches, rfl, hmem⟩
   exact (BoundedIterator.ext eqit) ▸ hmem'
+
+end PathClosure
 
 /--
 The closure property of the visited set can be lifted to paths.
@@ -464,7 +472,13 @@ def NotDoneInv (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Pr
     visited.get state bit.index →
     nfa[state] ≠ .done
 
-theorem NotDoneInv.preserves {state} {bit : BoundedIterator startIdx maxIdx} (inv : NotDoneInv visited)
+namespace NotDoneInv
+
+theorem zero : NotDoneInv (BitMatrix.zero nfa.nodes.size (maxIdx + 1 - startIdx)) := by
+  intro state bit hmem
+  simp at hmem
+
+theorem preserves {state} {bit : BoundedIterator startIdx maxIdx} (inv : NotDoneInv visited)
   (h : nfa[state] ≠ .done):
   NotDoneInv (visited.set state bit.index) := by
   intro state' bit' hmem
@@ -472,6 +486,8 @@ theorem NotDoneInv.preserves {state} {bit : BoundedIterator startIdx maxIdx} (in
   match hmem with
   | .inl ⟨eqstate, eqindex⟩ => simpa [←eqstate] using h
   | .inr hmem => exact inv state' bit' hmem
+
+end NotDoneInv
 
 theorem not_done_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = result)
   (isNone : result.1 = .none)

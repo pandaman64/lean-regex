@@ -166,6 +166,10 @@ theorem toString {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l 
   simp [ValidFor] at vf
   simpa [toString] using vf.toString
 
+theorem pos {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit) : bit.pos = ⟨String.utf8Len l⟩ := by
+  simp [ValidFor] at vf
+  simpa [pos] using vf.pos
+
 theorem valid {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit) : bit.Valid := by
   simp [ValidFor] at vf
   exact valid_of_it_valid vf.valid
@@ -295,6 +299,15 @@ theorem validFor (h : Reaches bit₁ bit₂) : ∃ (l m r : List Char), ValidFor
 theorem iff_validFor : Reaches bit₁ bit₂ ↔ ∃ (l m r : List Char), ValidFor l.reverse (m ++ r) bit₁ ∧ ValidFor (m.reverse ++ l.reverse) r bit₂ :=
   ⟨validFor, fun ⟨l, m, r, vf₁, vf₂⟩ => of_validFor (l := l) (m := m) (r := r) vf₁ vf₂⟩
 
+theorem iff_valid_le_pos : Reaches bit₁ bit₂ ↔ bit₁.Valid ∧ bit₂.Valid ∧ bit₁.toString = bit₂.toString ∧ bit₁.pos ≤ bit₂.pos := by
+  apply Iff.intro
+  . intro h
+    have ⟨l, m, r, vf₁, vf₂⟩ := h.validFor
+    exact ⟨vf₁.valid, vf₂.valid, by simp [vf₁.toString, vf₂.toString] , by simp [vf₁.pos, vf₂.pos]⟩
+  . intro ⟨v₁, v₂, eq, le⟩
+    have ⟨l, m, r, vf₁, vf₂⟩ := Iterator.Valid.validFor_of_valid_pos_le (valid_of_valid v₁) (valid_of_valid v₂) eq le
+    exact of_validFor (l := l) (m := m) (r := r) vf₁ vf₂
+
 theorem _root_.Regex.Data.BoundedIterator.reaches_toEnd {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : bit.Reaches bit.toEnd := by
   have ⟨lrev, m, vf⟩ := v.validFor
   rw [Reaches.iff_validFor]
@@ -368,6 +381,11 @@ theorem next_iffI (v : be.Valid) (hnext : be.hasNext) : bit.BetweenE bs (be.next
 @[simp]
 theorem next_iff (v : be.Valid) (hnext : be.hasNext) : bit.BetweenE bs (be.next hnext) ↔ bit.BetweenE bs be ∨ (bs.Reaches bit ∧ bit = be) := by
   simp [next_iffI v hnext, BetweenI.iffE]
+
+@[simp]
+theorem not_self {bit₁ bit₂ : BoundedIterator startIdx maxIdx} : ¬bit₁.BetweenE bit₂ bit₂ := by
+  intro ⟨lt, h⟩
+  exact Nat.not_lt_of_le (h.1.le_pos) lt
 
 end BetweenE
 
