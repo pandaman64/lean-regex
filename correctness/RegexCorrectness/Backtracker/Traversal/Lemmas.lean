@@ -58,23 +58,6 @@ open captureNextAux (StackInv NotDoneInv PathClosure)
 
 variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit₀ bit : BoundedIterator startIdx maxIdx} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)}
 
-theorem not_done_of_none {result} (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = result)
-  (isNone : result.1 = .none)
-  (ndinv : NotDoneInv visited) :
-  NotDoneInv result.2 := by
-  induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx maxIdx with
-  | found bit visited update visited' haux =>
-    rw [captureNext.go_found haux] at hres
-    simp [←hres] at isNone
-  | not_found_next bit visited visited' haux hnext ih =>
-    rw [captureNext.go_not_found_next haux hnext] at hres
-    have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
-    exact ih hres ndinv'
-  | not_found_end bit visited visited' haux hnext =>
-    rw [captureNext.go_not_found_end haux hnext] at hres
-    have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
-    simpa [←hres] using ndinv'
-
 structure Inv (wf : nfa.WellFormed) (bit₀ bit : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop where
   closure : PathClosure bit₀ visited
   mem_iff_path : ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx),
@@ -102,42 +85,53 @@ theorem preservesAux {result} (haux : captureNextAux HistoryStrategy nfa wf star
   simp only [exists_and_left, BoundedIterator.BetweenE.next_iff reaches.validR hnext, or_and_right,
     exists_or, existsAndEq, reaches, and_self, true_and]
 
+theorem mem_iff_path_of_aux_none_of_not_hasNext {result} (haux : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = result)
+  (isNone : result.1 = .none) (reaches : bit₀.Reaches bit) (hnext : ¬bit.hasNext) (inv : Inv wf bit₀ bit visited)
+  (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (reaches' : bit₀.Reaches bit') :
+  result.2.get state' bit'.index ↔ ∃ (bit : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos)), bit₀.Reaches bit ∧ Path nfa wf bit.it bit'.it state' update := by
+  rw [inv.mem_iff_of_aux_none haux isNone reaches state' bit' reaches']
+  apply Iff.intro
+  . intro h
+    match h with
+    | .inl ⟨bitPrev, update, between, path⟩ => exact ⟨bitPrev, update, between.2.1, path⟩
+    | .inr ⟨update, path⟩ => exact ⟨bit, update, reaches, path⟩
+  . have eq : bit = bit₀.toEnd := by
+      simp [BoundedIterator.ext_pos_iff, reaches.toString.symm, bit₀.toEnd_pos, bit.pos_eq_of_not_hasNext hnext]
+    subst bit
+    intro ⟨bit, update, reaches, path⟩
+    have between : bit.BetweenI bit₀ bit₀.toEnd := ⟨reaches, reaches.reaches_toEnd_of_reaches⟩
+    simp [BoundedIterator.BetweenI.iffE] at between
+    match between with
+    | .inl between => exact .inl ⟨bit, update, between, path⟩
+    | .inr ⟨_, eq⟩ => exact .inr ⟨update, eq ▸ path⟩
+
 end Inv
 
-def MemIffPath (wf : nfa.WellFormed) (bit₀ : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
-  ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx),
+theorem ne_done_of_path_of_none {result} (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = result)
+  (isNone : result.1 = .none) (reaches : bit₀.Reaches bit)
+  (inv : Inv wf bit₀ bit visited) (ndinv : NotDoneInv visited) :
+  ∀ (bit' bit'' : BoundedIterator startIdx maxIdx) (state : Fin nfa.nodes.size) (update : List (Nat × Pos)),
     bit₀.Reaches bit' →
-    (visited.get state' bit'.index ↔ ∃ (bit : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos)), bit₀.Reaches bit ∧ Path nfa wf bit.it bit'.it state' update)
-
-theorem mem_iff_path_of_none {result} (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = result)
-  (isNone : result.1 = .none) (reaches : bit₀.Reaches bit) (inv : Inv wf bit₀ bit visited) :
-  MemIffPath wf bit₀ result.2 := by
+    Path nfa wf bit'.it bit''.it state update →
+    nfa[state] ≠ .done := by
   induction bit, visited using captureNext.go.induct' HistoryStrategy nfa wf startIdx maxIdx with
   | found bit visited update visited' haux =>
     rw [captureNext.go_found haux] at hres
     simp [←hres] at isNone
   | not_found_next bit visited visited' haux hnext ih =>
     rw [captureNext.go_not_found_next haux hnext] at hres
-    exact ih hres (reaches.next' hnext) (inv.preservesAux haux rfl hnext reaches)
+    have inv' : Inv wf bit₀ (bit.next hnext) visited' := inv.preservesAux haux rfl hnext reaches
+    have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
+    exact ih hres (reaches.next' hnext) inv' ndinv'
   | not_found_end bit visited visited' haux hnext =>
     rw [captureNext.go_not_found_end haux hnext] at hres
 
-    intro state' bit' reaches'
-    rw [←hres, inv.mem_iff_of_aux_none haux rfl reaches state' bit' reaches']
-    apply Iff.intro
-    . intro h
-      match h with
-      | .inl ⟨bitPrev, update, between, path⟩ => exact ⟨bitPrev, update, between.2.1, path⟩
-      | .inr ⟨update, path⟩ => exact ⟨bit, update, reaches, path⟩
-    . have eq : bit = bit₀.toEnd := by
-        simp [BoundedIterator.ext_pos_iff, reaches.toString.symm, bit₀.toEnd_pos, bit.pos_eq_of_not_hasNext hnext]
-      subst bit
-      intro ⟨bit, update, reaches, path⟩
-      have between : bit.BetweenI bit₀ bit₀.toEnd := ⟨reaches, reaches.reaches_toEnd_of_reaches⟩
-      simp [BoundedIterator.BetweenI.iffE] at between
-      match between with
-      | .inl between => exact .inl ⟨bit, update, between, path⟩
-      | .inr ⟨_, eq⟩ => exact .inr ⟨update, eq ▸ path⟩
+    intro bit' bit'' state update reaches' path hn
+    have reaches'' : bit₀.Reaches bit'' := reaches'.trans (path.reaches rfl)
+    have mem : visited'.get state bit''.index := (inv.mem_iff_path_of_aux_none_of_not_hasNext haux rfl reaches hnext state bit'' reaches'').mpr ⟨bit', update, reaches', path⟩
+
+    have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
+    exact ndinv' state bit'' mem hn
 
 end captureNext.go
 
