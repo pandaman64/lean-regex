@@ -65,25 +65,23 @@ def bit' {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit : Bounde
   have lem : it'.pos.byteIdx ≤ maxIdx := eqm ▸ path.validR.le_endPos
   ⟨it', gem, lem, eqm⟩
 
-theorem isNextNOf {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit bit' : BoundedIterator startIdx maxIdx} {it' i update}
+theorem reaches {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit bit' : BoundedIterator startIdx maxIdx} {it' i update}
   (eqit' : bit'.it = it') (path : Path nfa wf bit.it it' i update) :
-  bit'.IsNextNOf bit := by
+  bit.Reaches bit' := by
   induction path generalizing bit' with
   | init v =>
-    have eq : bit' = bit := by
-      simp [BoundedIterator.ext_iff, eqit']
-    exact ⟨0, by simp [eq, BoundedIterator.nextn]⟩
+    have eq : bit' = bit := BoundedIterator.ext eqit'
+    rw [eq]
+    exact .refl (BoundedIterator.valid_of_it_valid v)
   | @more i j itm it' update₁ update₂ update₃ prev step equpdate ih =>
-    have isNextN := @ih prev.bit' rfl
     match step.it_eq_or_next with
-    | .inl eq =>
-      have eq' : bit' = prev.bit' := by
-        simp [BoundedIterator.ext_iff, eqit', eq, Path.bit']
-      simpa [eq'] using isNextN
+    | .inl eq => exact ih (by simp [eq, eqit'])
     | .inr ⟨hnext, eq⟩ =>
-      have eq' : bit' = prev.bit'.next hnext := by
-        simp [BoundedIterator.ext_iff, eqit', eq, Path.bit', BoundedIterator.next, Iterator.next'_eq_next]
-      simpa [eq'] using isNextN.next hnext
+      have reaches : bit.Reaches prev.bit' := ih rfl
+      have hnext' : prev.bit'.hasNext := by simpa [Path.bit'] using hnext
+      have eq' : bit' = prev.bit'.next hnext' := by
+        simp [BoundedIterator.ext_iff, eqit', Path.bit', BoundedIterator.next, Iterator.next'_eq_next, eq]
+      exact eq' ▸ reaches.next hnext'
 
 end Path
 

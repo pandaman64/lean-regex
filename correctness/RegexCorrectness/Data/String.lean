@@ -119,8 +119,7 @@ theorem eq {it : Iterator} {l₁ r₁ l₂ r₂} (v₁ : it.ValidFor l₁ r₁) 
   have o₂ := v₂.out'
   simp [o₁, String.ext_iff, Pos.ext_iff] at o₂
   have := String.eq_of_append_utf8Len o₂.1 (by simp [o₂.2])
-  simp at this
-  exact this
+  simpa
 
 theorem eq_it {it₁ it₂ : Iterator} {l r} (v₁ : it₁.ValidFor l r) (v₂ : it₂.ValidFor l r) : it₁ = it₂ := by
   simp [Iterator.ext_iff, v₁.toString, v₂.toString, v₁.pos, v₂.pos]

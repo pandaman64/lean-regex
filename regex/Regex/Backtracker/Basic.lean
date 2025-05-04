@@ -78,6 +78,8 @@ def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator
   else
     .none
 where
+  -- TODO: we don't need to return the visited matrix, but we need to restate the theorems to directly derive the result
+  -- rather than describing the returned visited matrix.
   go (startIdx maxIdx : Nat) (bit : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) :
   Option σ.Update × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) :=
   match captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] with
