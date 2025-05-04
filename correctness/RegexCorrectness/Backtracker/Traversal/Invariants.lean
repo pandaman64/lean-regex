@@ -155,7 +155,8 @@ end StackInv
 
 theorem path_done_of_some {bit} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited stack = (.some update', visited'))
   (inv : StackInv wf bit stack) :
-  ∃ state it', nfa[state] = .done ∧ Path nfa wf bit.it it' state update' := by
+  ∃ (state : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx),
+    nfa[state] = .done ∧ bit.Reaches bit' ∧ Path nfa wf bit.it bit'.it state update' := by
   induction visited, stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx with
   | base visited => simp [captureNextAux_base] at hres
   | visited visited update state it stack' mem ih =>
@@ -164,7 +165,7 @@ theorem path_done_of_some {bit} (hres : captureNextAux HistoryStrategy nfa wf st
     exact ih hres inv'
   | done visited update state it stack' mem hn =>
     simp [captureNextAux_done mem hn] at hres
-    exact ⟨state, it.it, hn, hres.1 ▸ inv.path⟩
+    exact ⟨state, it, hn, inv.reaches, hres.1 ▸ inv.path⟩
   | next visited update state it stack' mem hn ih =>
     simp [captureNextAux_next mem hn] at hres
     exact ih hres inv.preserves

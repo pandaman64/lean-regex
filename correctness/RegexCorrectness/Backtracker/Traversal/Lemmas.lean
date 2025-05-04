@@ -136,7 +136,8 @@ theorem ne_done_of_path_of_none (hres : go HistoryStrategy nfa wf startIdx maxId
 
 theorem path_done_of_some {nfa wf startIdx maxIdx bit update} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)}
   (v : bit.Valid) (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = .some update) :
-  ∃ state it it', it'.toString = bit.it.toString ∧ nfa[state] = .done ∧ Path nfa wf it it' state update := by
+  ∃ (state : Fin nfa.nodes.size) (bit' bit'' : BoundedIterator startIdx maxIdx),
+    nfa[state] = .done ∧ bit.Reaches bit' ∧ Path nfa wf bit'.it bit''.it state update := by
   induction bit, visited using go.induct' HistoryStrategy nfa wf startIdx with
   | found bit visited update' visited' haux =>
     simp [captureNext.go_found haux] at hres
@@ -145,11 +146,12 @@ theorem path_done_of_some {nfa wf startIdx maxIdx bit update} {visited : BitMatr
     have inv₀ : StackInv wf bit [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
       simp [StackInv]
       exact .init (bit.valid_of_valid v)
-    have ⟨state, it, hn, path⟩ := captureNextAux.path_done_of_some haux inv₀
-    exact ⟨state, bit.it, it, by rw [path.toString_eq], hn, path⟩
+    have ⟨state, bit', hn, reaches, path⟩ := captureNextAux.path_done_of_some haux inv₀
+    exact ⟨state, bit, bit', hn, .refl v, path⟩
   | not_found_next bit visited visited' haux hnext ih =>
     simp [captureNext.go_not_found_next haux hnext] at hres
-    exact ih (bit.next_valid hnext v) hres
+    have ⟨state, bit', bit'', hn, reaches, path⟩ := ih (bit.next_valid hnext v) hres
+    exact ⟨state, bit', bit'', hn, reaches.next v hnext, path⟩
   | not_found_end bit visited visited' haux hnext => simp [captureNext.go_not_found_end haux hnext] at hres
 
 end captureNext.go

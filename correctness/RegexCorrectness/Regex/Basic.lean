@@ -55,6 +55,7 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
   apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
   simp [expr, Expr.tags]
 
+-- TODO: update VM soundness to state le
 theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ it' it'' groups,
@@ -63,7 +64,8 @@ theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextB
     EquivMaterializedUpdate (materializeRegexGroups groups) matched := by
   if bt : re.useBacktracker then
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
-    exact Backtracker.captureNext_correct s.disj h v
+    have ⟨it', it'', groups, eqs, le, c, eqv⟩ := Backtracker.captureNext_soundness s.disj h v
+    exact ⟨it', it'', groups, by rw [c.toString_eq, eqs], c, eqv⟩
   else
     simp [Regex.captureNextBuf, bt] at h
     exact VM.captureNext_correct s.nfa_eq.symm s.disj h v rfl

@@ -13,21 +13,26 @@ namespace Regex.Backtracker
 namespace captureNext
 
 theorem path_done_of_some {nfa wf it update} (hres : captureNext HistoryStrategy nfa wf it = .some update) (v : it.Valid) :
-  ∃ state it' it'', it''.toString = it.toString ∧ nfa[state] = .done ∧ Path nfa wf it' it'' state update := by
+  ∃ state it' it'', nfa[state] = .done ∧ it'.toString = it.toString ∧ it.pos ≤ it'.pos ∧ Path nfa wf it' it'' state update := by
   simp [captureNext_le v.le_endPos] at hres
-  exact go.path_done_of_some (BoundedIterator.valid_of_it_valid v) hres
+  have ⟨state, bit', bit'', hn, reaches, path⟩ := go.path_done_of_some (BoundedIterator.valid_of_it_valid v) hres
+  have ⟨_, _, eqs, le⟩ := BoundedIterator.Reaches.iff_valid_le_pos.mp reaches
+  simp [BoundedIterator.toString] at eqs
+  simp [BoundedIterator.pos] at le
+  exact ⟨state, bit'.it, bit''.it, hn, eqs.symm, le, path⟩
 
 theorem capture_of_some_compile {e it update} (hres : captureNext HistoryStrategy (NFA.compile e) NFA.compile_wf it = .some update) (v : it.Valid) :
   ∃ it' it'' groups,
-    it''.toString = it.toString ∧
+    it'.toString = it.toString ∧
+    it.pos ≤ it'.pos ∧
     e.Captures it' it'' groups ∧
     EquivUpdate groups update := by
-  have ⟨state, it, it', eqstring, hn, path⟩ := path_done_of_some hres v
+  have ⟨state, it', it'', hn, eqs, le, path⟩ := path_done_of_some hres v
   have eq_zero := (NFA.done_iff_zero_compile rfl state).mp hn
   have ne : state.val ≠ (NFA.compile e).start := eq_zero ▸ Nat.ne_of_lt (NFA.lt_zero_start_compile rfl)
   have path := path.nfaPath_of_ne ne
   have ⟨groups, eqv, c⟩ := NFA.captures_of_path_compile rfl (eq_zero ▸ path.compile_liftBound rfl)
-  exact ⟨it, it', groups, eqstring, c, eqv⟩
+  exact ⟨it', it'', groups, eqs, le, c, eqv⟩
 
 theorem ne_done_of_path_of_none {nfa wf it} (hres : captureNext HistoryStrategy nfa wf it = .none) (v : it.Valid) :
   ∀ (it' it'' : Iterator) (state : Fin nfa.nodes.size) (update : List (Nat × Pos)),
