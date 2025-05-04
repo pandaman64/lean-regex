@@ -47,13 +47,13 @@ def nextn (bit : BoundedIterator startIdx maxIdx) (n : Nat) : BoundedIterator st
     else
       bit
 
-def last (bit : BoundedIterator startIdx maxIdx) : BoundedIterator startIdx maxIdx :=
+def toEnd (bit : BoundedIterator startIdx maxIdx) : BoundedIterator startIdx maxIdx :=
   have ge : startIdx ≤ bit.toString.endPos.byteIdx :=
     calc startIdx
       _ ≤ bit.it.pos.byteIdx := bit.ge
       _ ≤ maxIdx := bit.le
       _ = bit.toString.endPos.byteIdx := bit.eq
-  ⟨⟨bit.toString, bit.toString.endPos⟩, ge, bit.eq ▸ Nat.le_refl _, bit.eq⟩
+  ⟨bit.it.toEnd, ge, bit.eq ▸ Nat.le_refl _, bit.eq⟩
 
 def curr (bit : BoundedIterator startIdx maxIdx) (h : bit.hasNext) : Char := bit.it.curr' h
 

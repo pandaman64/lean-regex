@@ -81,7 +81,7 @@ theorem reaches {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit b
       have hnext' : prev.bit'.hasNext := by simpa [Path.bit'] using hnext
       have eq' : bit' = prev.bit'.next hnext' := by
         simp [BoundedIterator.ext_iff, eqit', Path.bit', BoundedIterator.next, Iterator.next'_eq_next, eq]
-      exact eq' ▸ reaches.next hnext'
+      exact eq' ▸ reaches.next' hnext'
 
 end Path
 

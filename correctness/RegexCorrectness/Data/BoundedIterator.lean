@@ -32,6 +32,11 @@ theorem byteIdx_lt_next_byteIdx {bit : BoundedIterator startIdx maxIdx} (h : bit
 
 theorem pos_lt_next_pos {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) : bit.pos < (bit.next h).pos := byteIdx_lt_next_byteIdx h
 
+theorem pos_eq_of_not_hasNext {bit : BoundedIterator startIdx maxIdx} (hnext : ¬bit.hasNext) : bit.pos = bit.toString.endPos := by
+  simp [hasNext, Iterator.hasNext] at hnext
+  simp [pos, toString, String.Pos.ext_iff]
+  exact Nat.le_antisymm (bit.eq ▸ bit.le) hnext
+
 theorem valid_of_it_valid {bit : BoundedIterator startIdx maxIdx} (v : bit.it.Valid) : bit.Valid := v.isValid
 
 theorem valid_of_valid {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : bit.it.Valid := Iterator.Valid.of_isValid v
@@ -40,6 +45,28 @@ theorem next_valid {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) (v 
   apply valid_of_it_valid
   simp [next, String.Iterator.next'_eq_next]
   exact (bit.valid_of_valid v).next h
+
+@[simp]
+theorem toEnd_toString (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.toString = bit.toString := by
+  simp [toEnd, Iterator.toEnd, toString]
+
+theorem toEnd_pos (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.pos = bit.toString.endPos := by
+  simp [toEnd, Iterator.toEnd, toString, pos]
+
+theorem toEnd_valid (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.Valid := valid_of_it_valid (String.Iterator.Valid.toEnd bit.it)
+
+theorem pos_le_toEnd_pos (bit : BoundedIterator startIdx maxIdx) : bit.pos ≤ bit.toEnd.pos := by
+  simp [toEnd, Iterator.toEnd, pos]
+  show bit.it.pos.byteIdx ≤ bit.toString.endPos.byteIdx
+  exact bit.eq ▸ bit.le
+
+theorem toEnd_not_hasNext (bit : BoundedIterator startIdx maxIdx) : ¬bit.toEnd.hasNext := by
+  intro hnext
+  simp [hasNext, Iterator.hasNext, toEnd, Iterator.toEnd] at hnext
+
+@[simp]
+theorem next_toEnd {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) : (bit.next h).toEnd = bit.toEnd := by
+  simp [toEnd, Iterator.toEnd, next, Iterator.next']
 
 theorem nextn_valid {bit : BoundedIterator startIdx maxIdx} {n : Nat} (v : bit.Valid) : (bit.nextn n).Valid := by
   induction n generalizing bit with
@@ -169,6 +196,14 @@ exact vf.next.valid
 
 end Valid
 
+theorem toEnd_validFor (bit : BoundedIterator startIdx maxIdx) : ValidFor bit.toString.data.reverse [] bit.toEnd := by
+  have ⟨l, r, vf⟩ := bit.toEnd_valid.validFor
+  have eqr := vf.hasNext.not.mp bit.toEnd_not_hasNext
+  simp at eqr
+  rw [eqr] at vf
+  have eq := bit.toEnd_toString ▸ vf.toString
+  simpa [eq] using vf
+
 theorem eq_of_valid_of_next_eq {bit bit' : BoundedIterator startIdx maxIdx} (v : bit.Valid) (v' : bit'.Valid) (hnext : bit.hasNext) (hnext' : bit'.hasNext) (eq : bit.next hnext = bit'.next hnext') : bit = bit' := by
   have ⟨l, r, vf⟩ := v.validFor_of_hasNext hnext
   have vfn := vf.next
@@ -181,53 +216,94 @@ theorem eq_of_valid_of_next_eq {bit bit' : BoundedIterator startIdx maxIdx} (v :
 
   exact vf.eq_it vf'
 
-inductive Reaches (bit : BoundedIterator startIdx maxIdx) : BoundedIterator startIdx maxIdx → Prop
-| refl (v : bit.Valid) : Reaches bit bit
-| next {bit' : BoundedIterator startIdx maxIdx} (h : bit.Reaches bit') (hnext : bit'.hasNext) : Reaches bit (bit'.next hnext)
+inductive Reaches : BoundedIterator startIdx maxIdx → BoundedIterator startIdx maxIdx → Prop
+| refl {bit} (v : bit.Valid) : Reaches bit bit
+| next {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (v : bit₁.Valid) (hnext : bit₁.hasNext) (rest : (bit₁.next hnext).Reaches bit₂) : Reaches bit₁ bit₂
 
 namespace Reaches
 
+variable {bit₁ bit₂ : BoundedIterator startIdx maxIdx}
+
 theorem trans {bit₁ bit₂ bit₃ : BoundedIterator startIdx maxIdx} (h₁ : Reaches bit₁ bit₂) (h₂ : Reaches bit₂ bit₃) : Reaches bit₁ bit₃ := by
-  induction h₂ with
-  | refl => exact h₁
-  | @next bit' _ hnext ih => exact ih.next hnext
+  induction h₁ with
+  | refl v => exact h₂
+  | next v hnext rest ih => exact .next v hnext (ih h₂)
 
-theorem validL {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h : Reaches bit₁ bit₂) : bit₁.Valid := by
+theorem validL (h : Reaches bit₁ bit₂) : bit₁.Valid := by
+  cases h with
+  | refl v => exact v
+  | next v _ _ => exact v
+
+theorem validR (h : Reaches bit₁ bit₂) : bit₂.Valid := by
   induction h with
   | refl v => exact v
-  | next _ _ ih => exact ih
+  | next _ _ _ ih => exact ih
 
-theorem validR {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h : Reaches bit₁ bit₂) : bit₂.Valid := by
+theorem toString (h : Reaches bit₁ bit₂) : bit₂.toString = bit₁.toString := by
   induction h with
-  | refl v => exact v
-  | next _ hnext ih => exact ih.next hnext
+  | refl v => rfl
+  | next v _ _ ih => simp [next_toString, ih]
 
-theorem toString {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h : Reaches bit₁ bit₂) : bit₂.toString = bit₁.toString := by
-  induction h with
-  | refl => rfl
-  | next _ _ ih => simp [next_toString, ih]
-
-theorem le_pos {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h : Reaches bit₁ bit₂) : bit₁.pos ≤ bit₂.pos := by
+theorem le_pos (h : Reaches bit₁ bit₂) : bit₁.pos ≤ bit₂.pos := by
   induction h with
   | refl v => exact Nat.le_refl _
-  | next _ hnext ih => exact Nat.le_of_lt (Nat.lt_of_le_of_lt ih (byteIdx_lt_next_byteIdx hnext))
+  | next _ hnext _ ih => exact Nat.le_of_lt (Nat.lt_of_lt_of_le (byteIdx_lt_next_byteIdx hnext) ih)
 
-theorem next_iff' {bit₁ bit₂ bit₂' : BoundedIterator startIdx maxIdx} (v : bit₂.Valid) (hnext : bit₂.hasNext) (eq : bit₂' = bit₂.next hnext) : bit₁.Reaches bit₂' ↔ bit₁.Reaches bit₂ ∨ (bit₁.Valid ∧ bit₁ = bit₂') := by
+theorem next' (hnext₂ : bit₂.hasNext) (h : Reaches bit₁ bit₂) : Reaches bit₁ (bit₂.next hnext₂) := by
+  induction h with
+  | refl v => exact .next v hnext₂ (.refl (v.next hnext₂))
+  | @next bit₁ bit₂ v hnext₁ _ ih => exact .next v hnext₁ (ih hnext₂)
+
+theorem next'_iff' {bit₂'} (v₂ : bit₂.Valid) (hnext₂ : bit₂.hasNext) (eq : bit₂.next hnext₂ = bit₂') : Reaches bit₁ bit₂' ↔ Reaches bit₁ bit₂ ∨ (bit₁.Valid ∧ bit₁ = bit₂') := by
   apply Iff.intro
   . intro h
-    cases h with
+    induction h with
     | refl v => exact .inr ⟨v, rfl⟩
-    | @next bit₂' h hnext' =>
-      have eq : bit₂' = bit₂ := eq_of_valid_of_next_eq h.validR v hnext' hnext eq
-      exact .inl (eq ▸ h)
+    | @next bit₁ bit₂' v₁ hnext₁ rest ih =>
+      match ih eq with
+      | .inl h => exact .inl (.next v₁ hnext₁ h)
+      | .inr ⟨v', eq'⟩ =>
+        have eq₁₂ : bit₁ = bit₂ := eq_of_valid_of_next_eq v₁ v₂ hnext₁ hnext₂ (eq ▸ eq')
+        exact .inl (eq₁₂ ▸ .refl v₁)
   . intro h
     match h with
-    | .inl h => exact eq ▸ h.next hnext
-    | .inr ⟨v, eq'⟩ => exact eq' ▸ .refl v
+    | .inl h => exact eq ▸ h.next' hnext₂
+    | .inr ⟨v, eq⟩ => exact eq ▸ .refl v
 
 @[simp]
-theorem next_iff {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (v : bit₂.Valid) (hnext : bit₂.hasNext) : bit₁.Reaches (bit₂.next hnext) ↔ bit₁.Reaches bit₂ ∨ (bit₁.Valid ∧ bit₁ = bit₂.next hnext) :=
-  next_iff' v hnext rfl
+theorem next'_iff (v₂ : bit₂.Valid) (hnext₂ : bit₂.hasNext) : Reaches bit₁ (bit₂.next hnext₂) ↔ Reaches bit₁ bit₂ ∨ (bit₁.Valid ∧ bit₁ = bit₂.next hnext₂) :=
+  next'_iff' v₂ hnext₂ rfl
+
+theorem of_validFor {l m r : List Char} (vf₁ : ValidFor l.reverse (m ++ r) bit₁) (vf₂ : ValidFor (m.reverse ++ l.reverse) r bit₂) : Reaches bit₁ bit₂ := by
+  induction m generalizing l bit₁ with
+  | nil =>
+    simp at vf₁ vf₂
+    have eq := vf₁.eq_it vf₂
+    exact eq ▸ .refl vf₁.valid
+  | cons c m ih =>
+    have hnext₁ := vf₁.hasNext
+    simp at hnext₁
+
+    have vf₁' := vf₁.next
+    simp at vf₁' vf₂
+    have h : (bit₁.next hnext₁).Reaches bit₂ := ih (l := l ++ [c]) (bit₁ := bit₁.next hnext₁) (by simpa using vf₁') (by simpa using vf₂)
+    exact .next vf₁.valid hnext₁ h
+
+theorem validFor (h : Reaches bit₁ bit₂) : ∃ (l m r : List Char), ValidFor l.reverse (m ++ r) bit₁ ∧ ValidFor (m.reverse ++ l.reverse) r bit₂ :=
+  String.Iterator.Valid.validFor_of_valid_pos_le (BoundedIterator.valid_of_valid h.validL) (BoundedIterator.valid_of_valid h.validR) h.toString.symm (h.le_pos)
+
+theorem iff_validFor : Reaches bit₁ bit₂ ↔ ∃ (l m r : List Char), ValidFor l.reverse (m ++ r) bit₁ ∧ ValidFor (m.reverse ++ l.reverse) r bit₂ :=
+  ⟨validFor, fun ⟨l, m, r, vf₁, vf₂⟩ => of_validFor (l := l) (m := m) (r := r) vf₁ vf₂⟩
+
+theorem _root_.Regex.Data.BoundedIterator.reaches_toEnd {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : bit.Reaches bit.toEnd := by
+  have ⟨lrev, m, vf⟩ := v.validFor
+  rw [Reaches.iff_validFor]
+  exact ⟨lrev.reverse, m, [], by simpa using vf, by simpa [vf.toString] using bit.toEnd_validFor⟩
+
+theorem reaches_toEnd_of_reaches (h : bit₁.Reaches bit₂) : bit₂.Reaches bit₁.toEnd := by
+  induction h with
+  | @refl bit v => exact bit.reaches_toEnd v
+  | @next bit₁ bit₂ _ _ _ ih => simpa using ih
 
 end Reaches
 

@@ -70,24 +70,6 @@ theorem nextn_next_eq_next_nextn (it : Iterator) (n : Nat) : (it.nextn n).next =
 
 end String.Iterator
 
-namespace String.Iterator.Valid
-
-theorem next' {it : Iterator} (v : it.Valid) (h : ¬it.atEnd) : it.next.Valid := by
-  apply v.next
-  simp [hasNext, atEnd] at *
-  exact h
-
-theorem of_isValid {it : Iterator} (v : it.pos.isValid it.toString) : it.Valid := it.pos.valid_of_isValid v
-
-theorem isValid {it : Iterator} (v : it.Valid) : it.pos.isValid it.toString := by
-  have ⟨l, r, vf⟩ := v.validFor
-  have eqs : it.toString = ⟨l.reverse ++ r⟩ := by
-    simp [Iterator.toString, vf.toString]
-  have := it.pos.isValid_of_valid l.reverse r (by simp [vf.pos])
-  exact eqs ▸ this
-
-end String.Iterator.Valid
-
 namespace String
 
 theorem eq_of_append_utf8Len {cs₁ cs₂ cs₃ cs₄ : List Char}
@@ -109,7 +91,67 @@ theorem eq_of_append_utf8Len {cs₁ cs₂ cs₃ cs₄ : List Char}
       have := ih h₁.2 h₂
       simp [h₁, this]
 
+theorem eq_of_append_eq (l mr lm r : List Char) (le : utf8Len l ≤ utf8Len lm) (eq : l ++ mr = lm ++ r) :
+  ∃ m, mr = m ++ r ∧ lm = l ++ m := by
+  induction l generalizing lm with
+  | nil => exact ⟨lm, by simpa using eq, by simp⟩
+  | cons c l ih =>
+    match lm with
+    | [] =>
+      simp at le
+      have : c.utf8Size > 0 := Char.utf8Size_pos c
+      omega
+    | c' :: lm =>
+      simp at eq
+      simp [eq] at le
+      have ⟨m, eq₁, eq₂⟩ := ih lm le eq.2
+      exact ⟨m, eq₁, by simp [eq, eq₂]⟩
+
 end String
+
+namespace String.Iterator.Valid
+
+theorem next' {it : Iterator} (v : it.Valid) (h : ¬it.atEnd) : it.next.Valid := by
+  apply v.next
+  simp [hasNext, atEnd] at *
+  exact h
+
+theorem of_isValid {it : Iterator} (v : it.pos.isValid it.toString) : it.Valid := it.pos.valid_of_isValid v
+
+theorem isValid {it : Iterator} (v : it.Valid) : it.pos.isValid it.toString := by
+  have ⟨l, r, vf⟩ := v.validFor
+  have eqs : it.toString = ⟨l.reverse ++ r⟩ := by
+    simp [Iterator.toString, vf.toString]
+  have := it.pos.isValid_of_valid l.reverse r (by simp [vf.pos])
+  exact eqs ▸ this
+
+theorem validFor_of_valid_pos_le {it it' : Iterator} (v : it.Valid) (v' : it'.Valid) (eqs : it.toString = it'.toString) (le : it.pos ≤ it'.pos) :
+  ∃ (l m r : List Char), it.ValidFor l.reverse (m ++ r) ∧ it'.ValidFor (m.reverse ++ l.reverse) r := by
+  have ⟨lrev, mr, vf⟩ := v.validFor
+  have ⟨lmrev, r, vf'⟩ := v'.validFor
+
+  have hstring : it.toString = ⟨lrev.reverse ++ mr⟩ := by simpa using vf.toString
+  have hstring' : it'.toString = ⟨lmrev.reverse ++ r⟩ := by simpa using vf'.toString
+  have eq : lrev.reverse ++ mr = lmrev.reverse ++ r := by
+    rw [hstring, hstring'] at eqs
+    simpa using eqs
+
+  have hpos : it.pos = ⟨utf8Len lrev⟩ := vf.pos
+  have hpos' : it'.pos = ⟨utf8Len lmrev⟩ := vf'.pos
+  have le' : utf8Len lrev.reverse ≤ utf8Len lmrev.reverse := by
+    rw [hpos, hpos'] at le
+    simpa using le
+
+  have ⟨m, eq₁, eq₂⟩ := String.eq_of_append_eq lrev.reverse mr lmrev.reverse r le' eq
+  have eq₂ : lmrev = m.reverse ++ lrev :=
+    calc lmrev
+      _ = lmrev.reverse.reverse := by simp
+      _ = (lrev.reverse ++ m).reverse := by rw [eq₂]
+      _ = m.reverse ++ lrev := by simp
+
+  exact ⟨lrev.reverse, m, r, by simpa [←eq₁] using vf, by simpa [←eq₂] using vf'⟩
+
+end String.Iterator.Valid
 
 namespace String.Iterator.ValidFor
 
@@ -124,7 +166,7 @@ theorem eq {it : Iterator} {l₁ r₁ l₂ r₂} (v₁ : it.ValidFor l₁ r₁) 
 theorem eq_it {it₁ it₂ : Iterator} {l r} (v₁ : it₁.ValidFor l r) (v₂ : it₂.ValidFor l r) : it₁ = it₂ := by
   simp [Iterator.ext_iff, v₁.toString, v₂.toString, v₁.pos, v₂.pos]
 
-theorem exists_cons_of_not_atEnd {it : Iterator} (v : it.ValidFor l r) (h : ¬it.atEnd) :
+theorem exists_cons_of_not_atEnd {l r} {it : Iterator} (v : it.ValidFor l r) (h : ¬it.atEnd) :
   ∃ r', r = it.curr :: r' := by
   have := v.atEnd
   simp [h] at this

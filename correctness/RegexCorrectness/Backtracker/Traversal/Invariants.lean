@@ -371,7 +371,7 @@ theorem PathClosure.of_step_closure {bit₀ : BoundedIterator startIdx maxIdx} (
         have eq : bit' = bit.next hnext := by
           simp [BoundedIterator.ext_iff, bit', eq, BoundedIterator.next, Iterator.next'_eq_next]
         rw [eq]
-        exact reaches.next hnext
+        exact reaches.next' hnext
     have visited' := h ⟨i, step.lt⟩ bit ⟨j, step.lt_right wf⟩ bit' update reaches hmem (by simp [←eqit, bit', step])
     exact ⟨step.lt_right wf, bit', reaches', rfl, visited'⟩
 
@@ -400,27 +400,26 @@ end
 
 section
 
-variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit : BoundedIterator startIdx maxIdx}
+variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit₀ bit : BoundedIterator startIdx maxIdx} {reaches₀ : bit₀.Reaches bit}
   {visited visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
 
--- Idea: take bit₀ and bit₀.Reaches bit to align with the other invariants?
-def VisitedInv (wf : nfa.WellFormed) (bit : BoundedIterator startIdx maxIdx) (visited visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
+def VisitedInv (wf : nfa.WellFormed) (bit₀ bit : BoundedIterator startIdx maxIdx) (_ : bit₀.Reaches bit) (visited visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
   ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx),
-    bit.Reaches bit' →
+    bit₀.Reaches bit' →
     visited'.get state' bit'.index →
     visited.get state' bit'.index ∨ ∃ update, Path nfa wf bit.it bit'.it state' update
 
 namespace VisitedInv
 
-theorem rfl {wf : nfa.WellFormed} {bit₀ : BoundedIterator startIdx maxIdx} : VisitedInv wf bit₀ visited visited := by
+theorem rfl {wf : nfa.WellFormed} {bit₀ bit : BoundedIterator startIdx maxIdx} (reaches₀ : bit₀.Reaches bit) : VisitedInv wf bit₀ bit reaches₀ visited visited := by
   intro state bit _ hmem
   exact .inl hmem
 
 theorem preserves {bit' : BoundedIterator startIdx maxIdx} {state : Fin nfa.nodes.size}
-  (inv : VisitedInv wf bit visited visited')
-  (reaches : bit.Reaches bit')
+  (inv : VisitedInv wf bit₀ bit reaches₀ visited visited')
+  (reaches : bit₀.Reaches bit')
   (update : List (Nat × Pos)) (path : Path nfa wf bit.it bit'.it state update) :
-  VisitedInv wf bit visited (visited'.set state bit'.index) := by
+  VisitedInv wf bit₀ bit reaches₀ visited (visited'.set state bit'.index) := by
   intro state' bit'' reaches' hmem
   simp [visited'.get_set] at hmem
   match hmem with
@@ -437,8 +436,8 @@ end VisitedInv
 
 theorem visited_inv_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited' stack = result)
   (isNone : result.1 = .none)
-  (vinv : VisitedInv wf bit visited visited') (stinv : StackInv wf bit stack) :
-  VisitedInv wf bit visited result.2 := by
+  (vinv : VisitedInv wf bit₀ bit reaches₀ visited visited') (stinv : StackInv wf bit stack) :
+  VisitedInv wf bit₀ bit reaches₀ visited result.2 := by
   induction visited', stack using captureNextAux.induct' HistoryStrategy nfa wf startIdx maxIdx with
   | base visited =>
     simp [captureNextAux_base] at hres
@@ -452,7 +451,7 @@ theorem visited_inv_of_none {result} (hres : captureNextAux HistoryStrategy nfa 
   | next visited update state it stack' mem hn ih =>
     simp [captureNextAux_next mem hn] at hres
     have path := stinv ⟨update, state, it⟩ (by simp)
-    exact ih hres (vinv.preserves stinv.reaches update path) stinv.preserves
+    exact ih hres (vinv.preserves (reaches₀.trans stinv.reaches) update path) stinv.preserves
 
 end
 
