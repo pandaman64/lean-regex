@@ -20,15 +20,38 @@ structure SearchState (σ : Strategy) (nfa : NFA) where
 
 abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
 
--- https://github.com/leanprover/lean4/issues/7826
-set_option wf.preprocess false in
+namespace εClosure
+
+@[inline]
+def writeUpdate (node : NFA.Node) : Bool :=
+  match node with
+  | .done | .char _ _ | .sparse _ _ => true
+  | _ => false
+
+@[inline]
+def pushNext (σ : Strategy) (nfa : NFA) (it : Iterator) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
+  match node with
+  | .epsilon state' => (update, ⟨state', inBounds⟩) :: stack
+  | .split state₁ state₂ => (update, ⟨state₁, inBounds.1⟩) :: (update, ⟨state₂, inBounds.2⟩) :: stack
+  | .save offset state' => (σ.write update offset it.pos, ⟨state', inBounds⟩) :: stack
+  | .anchor a state' =>
+    if a.test it then
+      (update, ⟨state', inBounds⟩) :: stack
+    else
+      stack
+  | .done => stack
+  | .fail => stack
+  | .char _ _ => stack
+  | .sparse _ _ => stack
+
+end εClosure
+
 /--
 Visit all ε-transitions from the states in the stack, updating `next.states` when the new state is
 `.done`, `.char`, or `.sparse`. Returns `.some updates` if a `.done` state is reached, meaning a
 match is found.
 -/
--- We confirmed that `(σ : Strategy)` does not introduce non-negligible overhead. Once we have the
--- new compiler, we may want to test specialization again by `@[specialize σ]`.
+-- Once we have the new compiler, we may want to test specialization by `@[specialize σ]`.
 def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa) :
   Option σ.Update × SearchState σ nfa :=
@@ -40,36 +63,16 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
     else
       match h : next with
       | ⟨states, updates⟩ =>
+        let node := nfa[state]
+        let matched' := if node = .done then matched <|> update else matched
         let states' := states.insert state
-        match hn : nfa[state] with
-        | .epsilon state' =>
-          have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-          εClosure σ nfa wf it matched ⟨states', updates⟩ ((update, ⟨state', isLt⟩) :: stack')
-        | .anchor a state' =>
-          have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-          if a.test it then
-            εClosure σ nfa wf it matched ⟨states', updates⟩ ((update, ⟨state', isLt⟩) :: stack')
+        let updates' :=
+          if εClosure.writeUpdate node then
+            updates.set state update
           else
-            εClosure σ nfa wf it matched ⟨states', updates⟩ stack'
-        | .split state₁ state₂ =>
-          have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
-          εClosure σ nfa wf it matched ⟨states', updates⟩ ((update, ⟨state₁, isLt.1⟩) :: (update, ⟨state₂, isLt.2⟩):: stack')
-        | .save offset state' =>
-          have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-          -- Write the position only when `offset` is in bounds.
-          let update' := σ.write update offset it.pos
-          εClosure σ nfa wf it matched ⟨states', updates⟩ ((update', ⟨state', isLt⟩) :: stack')
-        | .done =>
-          let matched' := matched <|> update
-          let updates' := updates.set state update
-          εClosure σ nfa wf it matched' ⟨states', updates'⟩ stack'
-        | .char c state' =>
-          let updates' := updates.set state update
-          εClosure σ nfa wf it matched ⟨states', updates'⟩ stack'
-        | .sparse cs state' =>
-          let updates' := updates.set state update
-          εClosure σ nfa wf it matched ⟨states', updates'⟩ stack'
-        | .fail => εClosure σ nfa wf it matched ⟨states', updates⟩ stack'
+            updates
+        let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
+        εClosure σ nfa wf it matched' ⟨states', updates'⟩ stack''
 termination_by (next.states.measure, stack)
 
 /--
