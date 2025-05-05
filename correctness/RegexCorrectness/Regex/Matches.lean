@@ -3,7 +3,7 @@ import RegexCorrectness.Regex.Basic
 
 set_option autoImplicit false
 
-open String (Pos)
+open String (Pos Iterator)
 
 namespace Regex.Matches
 
@@ -11,23 +11,24 @@ namespace Regex.Matches
 The pair of positions returned by `Matches` functions conforms to the spec if and only if:
 
 - the haystack can be split into `l`, `m`, and `r` such that `haystack = l ++ m ++ r`
+- `m` starts after `startPos`.
 - there is a regex match starting at `l`, matching the substring `m`, and ending at `r`
 - the first position corresponds to the start of the matched substring `m`
 - the second position corresponds to the end of the matched substring `m`
 -/
-def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (positions : Pos × Pos) : Prop :=
+def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (positions : Pos × Pos) : Prop :=
   ∃ it it' groups,
     it.toString = haystack ∧
+    startPos ≤ it.pos ∧
     s.expr.Captures it it' groups ∧
-    positions.1 = it.pos ∧
-    positions.2 = it'.pos
+    positions = (it.pos, it'.pos)
 
 def Valid (self : Matches) : Prop :=
   self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
 
 theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self'))
   (v : self.Valid) :
-  self'.Valid ∧ Spec v.1 self.haystack positions := by
+  self'.Valid ∧ Spec v.1 self.haystack self.currentPos positions := by
   unfold next? at h
   split at h
   next le =>
@@ -36,17 +37,18 @@ theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next
     | none => simp [h'] at h
     | some matched =>
       simp [h'] at h
-      have ⟨it, it', groups, eqstring, c, eq₁, eq₂⟩ := v.1.searchNext_some h' pos_valid
-      simp at eqstring
+      have ⟨it, it', groups, eqs, le, c, eq₁, eq₂⟩ := v.1.searchNext_some h' pos_valid
+      simp at eqs
       split at h
       next =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, eqstring ▸ eq₂ ▸ c.validR.validPlus⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, eq₁, eq₂⟩
+        have vp : Pos.ValidPlus it.toString matched.2 := c.toString_eq ▸ eq₂ ▸ c.validR.validPlus
+        exact ⟨⟨v.1, eqs ▸ vp⟩, it, it', groups, eqs, le, c, by simp [Prod.ext_iff, eq₁, eq₂]⟩
       next =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, eq₁, eq₂⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, eqs, le, c, by simp [Prod.ext_iff, eq₁, eq₂]⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
