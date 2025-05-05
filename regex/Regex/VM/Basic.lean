@@ -22,6 +22,9 @@ abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.s
 
 namespace εClosure
 
+/--
+As an optimization, we write the updates to the buffer only when the state is done, a character, or a sparse state.
+-/
 @[inline]
 def writeUpdate (node : NFA.Node) : Bool :=
   match node with
@@ -66,11 +69,7 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
         let node := nfa[state]
         let matched' := if node = .done then matched <|> update else matched
         let states' := states.insert state
-        let updates' :=
-          if εClosure.writeUpdate node then
-            updates.set state update
-          else
-            updates
+        let updates' := if εClosure.writeUpdate node then updates.set state update else updates
         let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
         εClosure σ nfa wf it matched' ⟨states', updates'⟩ stack''
 termination_by (next.states.measure, stack)
