@@ -15,47 +15,35 @@ section
 
 variable {nfa : NFA} {it i j update}
 
-@[simp]
 theorem εStep'.done (hn : nfa[i] = .done) :
   nfa.εStep' it i j update ↔ False := by
   apply Step.iff_done hn
 
-@[simp]
 theorem εStep'.fail (hn : nfa[i] = .fail) :
   nfa.εStep' it i j update ↔ False := by
   apply Step.iff_fail hn
 
-@[simp]
-theorem εStep'.epsilon {next} (hn : nfa[i] = .epsilon next) :
+theorem εStep'.epsilon {next : Nat} (hn : nfa[i] = .epsilon next) :
   nfa.εStep' it i j update ↔ j = next ∧ update = .none ∧ it.Valid := by
   simp [εStep', Step.iff_epsilon hn]
-  omega
 
-@[simp]
-theorem εStep'.anchor {anchor next} (hn : nfa[i] = .anchor anchor next) :
+theorem εStep'.anchor {anchor} {next : Nat} (hn : nfa[i] = .anchor anchor next) :
   nfa.εStep' it i j update ↔ j = next ∧ update = .none ∧ it.Valid ∧ anchor.test it := by
   simp [εStep', Step.iff_anchor hn]
-  omega
 
-@[simp]
-theorem εStep'.split {next₁ next₂} (hn : nfa[i] = .split next₁ next₂) :
+theorem εStep'.split {next₁ next₂ : Nat} (hn : nfa[i] = .split next₁ next₂) :
   nfa.εStep' it i j update ↔ (j = next₁ ∨ j = next₂) ∧ update = .none ∧ it.Valid := by
   simp [εStep', Step.iff_split hn]
-  omega
 
-@[simp]
-theorem εStep'.save {offset next} (hn : nfa[i] = .save offset next) :
+theorem εStep'.save {offset} {next : Nat} (hn : nfa[i] = .save offset next) :
   nfa.εStep' it i j update ↔ j = next ∧ update = .some (offset, it.pos) ∧ it.Valid := by
   simp [εStep', Step.iff_save hn]
-  omega
 
-@[simp]
-theorem εStep'.char {c next} (hn : nfa[i] = .char c next) :
+theorem εStep'.char {c} {next : Nat} (hn : nfa[i] = .char c next) :
   nfa.εStep' it i j update ↔ False := by
   simp [εStep', Step.iff_char hn]
 
-@[simp]
-theorem εStep'.sparse {cs next} (hn : nfa[i] = .sparse cs next) :
+theorem εStep'.sparse {cs} {next : Nat} (hn : nfa[i] = .sparse cs next) :
   nfa.εStep' it i j update ↔ False := by
   simp [εStep', Step.iff_sparse hn]
 

@@ -45,6 +45,24 @@ theorem εStack.refines_cons {update state' tail' stack} :
   . intro ⟨buffer, state, tail, eq, h₁, h₂, rest⟩
     exact eq ▸ .cons h₁ h₂ rest
 
+theorem εClosure.pushNext.refines {state : Fin nfa.nodes.size} {update} {buffer} (wf : nfa.WellFormed)
+  (h₁ : materializeUpdates bufferSize update = buffer) (h₂ : εStack.refines stack' stack) :
+  εStack.refines
+    (pushNext HistoryStrategy nfa it nfa[state] (wf.inBounds' state rfl) update stack')
+    (pushNext (BufferStrategy bufferSize) nfa it nfa[state] (wf.inBounds' state rfl) buffer stack) := by
+  cases nfa[state], wf.inBounds' state rfl, update, stack' using pushNext.fun_cases' HistoryStrategy nfa it with
+  | epsilon _ _ state' inBounds => simp [pushNext.epsilon rfl, h₁, h₂]
+  | split _ _ state₁ state₂ inBounds => simp [pushNext.split rfl, h₁, h₂]
+  | save _ _ offset state' inBounds =>
+    simp [pushNext.save rfl, h₂]
+    simp [HistoryStrategy, BufferStrategy, h₁]
+  | anchor_pos _ _ a state' inBounds ht => simp [pushNext.anchor_pos rfl ht, h₁, h₂]
+  | anchor_neg _ _ a state' inBounds ht => simp [pushNext.anchor_neg rfl ht, h₁, h₂]
+  | done => simp [pushNext.done, h₁, h₂]
+  | fail => simp [pushNext.fail, h₁, h₂]
+  | char => simp [pushNext.char rfl, h₁, h₂]
+  | sparse => simp [pushNext.sparse rfl, h₁, h₂]
+
 theorem εClosure.refines {result result'}
   (h : εClosure (BufferStrategy bufferSize) nfa wf it matched next stack = result)
   (h' : εClosure HistoryStrategy nfa wf it matched' next' stack' = result')
@@ -56,128 +74,35 @@ theorem εClosure.refines {result result'}
   | base matched' next' =>
     simp at refStack
     subst stack
-    simp at h' h
+    simp [εClosure.base] at h' h
     simp [←h', ←h, refMatched, refState]
   | visited matched' next' update state' stack' mem ih =>
     cases refStack with
     | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_visited (σ := HistoryStrategy) mem] at h'
-      rw [εClosure_visited (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem)] at h
+      rw [εClosure.visited (σ := HistoryStrategy) mem] at h'
+      rw [εClosure.visited (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem)] at h
       exact ih h h' refMatched refState rest
-  | epsilon matched' next' update state' stack' state mem hn next'' =>
-    -- TODO: cannot introduce `ih` directly for some reason
-    rename_i ih
+  | not_visited matched' next' update state' stack' mem node =>
+    rename_i matched'' states'' updates'' ih
     cases refStack with
     | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_epsilon (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_epsilon (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        exact refState.2
-      exact ih h h' refMatched this (.cons h₁ rfl rest)
-  | anchor_pos matched' next' update state stack' anchor state' mem hn next'' test =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_anchor_pos (σ := HistoryStrategy) mem hn test] at h'
-      rw [εClosure_anchor_pos (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn) test] at h
-      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        exact refState.2
-      exact ih h h' refMatched this (.cons h₁ rfl rest)
-  | anchor_neg matched' next' update state stack' anchor state' mem hn next'' test =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_anchor_neg (σ := HistoryStrategy) mem hn test] at h'
-      rw [εClosure_anchor_neg (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn) test] at h
-      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        exact refState.2
-      exact ih h h' refMatched this rest
-  | split matched' next' update state stack' state₁ state₂ mem hn next'' =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_split (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_split (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        exact refState.2
-      exact ih h h' refMatched this (.cons h₁ rfl (.cons h₁ rfl rest))
-  | save matched' next' update state stack' offset state' mem hn next'' =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_save (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_save (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        exact refState.2
-      exact ih h h' refMatched this (.cons (by simp [h₁, HistoryStrategy, BufferStrategy]) rfl rest)
-  | done matched' next' update state stack' mem hn next'' =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_done (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_done (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have refMatched' : refineUpdateOpt (matched' <|> some update) (matched <|> some buffer) :=
-        refineUpdateOpt.orElse refMatched h₁
-      have : next''.refines ⟨next.states.insert state, next.updates.set state buffer⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        intro i
-        if h : state = i then
-          simp [h]
-          exact h₁
+      rw [εClosure.not_visited (σ := HistoryStrategy) mem] at h'
+      rw [εClosure.not_visited (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem)] at h
+      refine ih h h' ?_ ?_ ?_
+      . simp [matched'', node, h₂]
+        if eq : nfa[state.val] = .done then
+          simp [eq]
+          exact refMatched.orElse h₁
         else
-          have : state.val ≠ i := Fin.val_ne_of_ne h
-          simp [this]
-          exact refState.2 i
-      exact ih h h' refMatched' this rest
-  | char matched' next' update state stack' c state' mem hn next'' =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_char (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_char (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates.set state buffer⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        intro i
-        if h : state = i then
-          simp [h]
-          exact h₁
+          simpa [eq] using refMatched
+      . simp [SearchState.refines, states'', updates'', node, h₂, refState.1]
+        if write : writeUpdate nfa[state.val] then
+          simp [write]
+          exact refineUpdates.set_set refState.2 h₁
         else
-          have : state.val ≠ i := Fin.val_ne_of_ne h
-          simp [this]
-          exact refState.2 i
-      exact ih h h' refMatched this rest
-  | sparse matched' next' update state stack' cs state' mem hn next'' =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_sparse (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_sparse (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates.set state buffer⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        intro i
-        if h : state = i then
-          simp [h]
-          exact h₁
-        else
-          have : state.val ≠ i := Fin.val_ne_of_ne h
-          simp [this]
-          exact refState.2 i
-      exact ih h h' refMatched this rest
-  | fail matched' next' update state stack' mem hn next'' =>
-    rename_i ih
-    cases refStack with
-    | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
-      rw [εClosure_fail (σ := HistoryStrategy) mem hn] at h'
-      rw [εClosure_fail (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem) (h₂ ▸ hn)] at h
-      have : next''.refines ⟨next.states.insert state, next.updates⟩ := by
-        simp [SearchState.refines, h₂, refState.1, next'']
-        exact refState.2
-      exact ih h h' refMatched this rest
+          simpa [write] using refState.2
+      . simp [node, h₂]
+        exact pushNext.refines wf h₁ rest
 
 theorem stepChar.refines {currentUpdates currentUpdates' state result result'}
   (h : stepChar (BufferStrategy bufferSize) nfa wf it currentUpdates next state = result)
