@@ -44,23 +44,6 @@ theorem mem_stack_top (entry stack') (hstack : entry :: stack' = stack) :
 
 end
 
-/-
-Here, we consider a minimal invariant enough to prove the "soundness" of the backtracker; a capture group found by the backtracker indeed corresponds to a match by the regex.
-Therefore, we are only concenred about that the states in the stack are reachable from the start node starting from a particular position.
-
-NOTE: if we want to show that the backtracker is complete (i.e., if the regex matches a string, then the backtracker will find a capture group), we need new invariants
-about the visited set so that we can reason about the case the backtracker returns `.none`.
-
-Current candidates are:
-
-1. Closure under transition: ∀ (state, pos) ∈ visited, nfa.Step 0 state pos state' pos' → (state', pos') ∈ visited ∨ ∃ entry ∈ stack, entry.state = state' ∧ entry.it.poss = pos'
-  * At the end of the traversal, we can use this invariant to show that the visited set is a reflexive-transitive closure of the step relation.
-2. Upper bound of the visited set: ∀ (state, pos) ∈ visited, (state, pos) ∈ visisted₀ ∨ ∃ it, Path nfa wf it₀ it state update
-  * We'll strengthen `UpperInv` to give an upper bound of the visited set.
-  * Combined with the closure property, we can show that the traversal adds just the states reachable from the starting node at a particular position.
-3. The visited set doesn't contain the `.done` state.
-  * This implies that if the traversal returns `.none`, then there is no match starting from the particular position.
--/
 section
 
 variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat}

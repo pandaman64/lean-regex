@@ -45,4 +45,14 @@ theorem refineUpdateOpt.orElse {update₁ update₂ : Option (List (Nat × Pos))
 def refineUpdates (updates : Vector (List (Nat × Pos)) nfa.nodes.size) (buffers : Vector (Buffer bufferSize) nfa.nodes.size) : Prop :=
   ∀ (i : Fin nfa.nodes.size), refineUpdate updates[i] buffers[i]
 
+theorem refineUpdates.set_set {updates : Vector (List (Nat × Pos)) nfa.nodes.size} {buffers : Vector (Buffer bufferSize) nfa.nodes.size}
+  {i : Fin nfa.nodes.size} {update : List (Nat × Pos)} {buffer : Buffer bufferSize}
+  (h₁ : refineUpdates updates buffers) (h₂ : refineUpdate update buffer) :
+  refineUpdates (updates.set i update) (buffers.set i buffer) := by
+  intro j
+  if h : i.val = j.val then
+    simpa [h] using h₂
+  else
+    simpa [h] using h₁ j
+
 end Regex.Strategy

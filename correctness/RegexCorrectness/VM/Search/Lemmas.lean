@@ -35,7 +35,7 @@ theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
       intro isSome''
       have ⟨state', mem', hn, hupdate⟩ := eachStepChar.done_of_matched_some h₂ isSome''
       have ⟨update, path, write⟩ := next'_inv state' mem'
-      simp [WriteUpdate, hn] at write
+      simp [εClosure.writeUpdate, hn] at write
       simp at hupdate
       simp [←write, hupdate] at path
       exact ⟨state', it.next, by rw [it.next_toString, string_eq], hn, path⟩
@@ -50,7 +50,7 @@ theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
         simp
         have ⟨state', mem', hn, hupdate⟩ := eachStepChar.done_of_matched_some h' (by simp)
         have ⟨update, path, write⟩ := next'_inv state' mem'
-        simp [WriteUpdate, hn] at write
+        simp [εClosure.writeUpdate, hn] at write
         simp at hupdate
         simp [←write, hupdate] at path
         intro _
@@ -78,7 +78,7 @@ theorem captureNext.path_done_of_matched {nfa wf it₀ matched'}
     intro isSome
     have ⟨state, mem, hn, hupdate⟩ := εClosure.matched_inv h' (by simp) isSome
     have ⟨update, path, write⟩ := curr_inv state mem
-    simp [WriteUpdate, hn, hupdate] at write
+    simp [εClosure.writeUpdate, hn, hupdate] at write
     exact ⟨state, it₀, rfl, hn, write ▸ path⟩
 
   exact captureNext.go.inv h v rfl curr_inv (by simp) matched_inv isSome'

@@ -94,12 +94,12 @@ theorem mem_next_of_stepChar {i j k update}
     rw [CharStep.char hn] at step
     have ⟨l, r, eqj, vf⟩ := step
     simp [vf.curr] at h
-    exact mem_next_of_εClosure h lb (by simpa [←eqj] using cls)
+    exact εClosure.mem_next h lb (by simpa [←eqj] using cls)
   next cs j' hn =>
     rw [CharStep.sparse hn] at step
     have ⟨l, c, r, eqj, vf, hc⟩ := step
     simp [vf.curr, hc] at h
-    exact mem_next_of_εClosure h lb (by simpa [←eqj] using cls)
+    exact εClosure.mem_next h lb (by simpa [←eqj] using cls)
   next ne₁ ne₂ =>
     have := step.char_or_sparse
     simp_all
@@ -110,7 +110,7 @@ theorem stepChar.write_updates_of_mem_next {i k}
   k ∈ next.states ∨ ∃ j update',
     nfa.CharStep it i j ∧
     nfa.εClosure' it.next j k update' ∧
-    (WriteUpdate k → next'.updates[k] = currentUpdates.get i ++ update') := by
+    (εClosure.writeUpdate nfa[k] → next'.updates[k] = currentUpdates.get i ++ update') := by
   simp [stepChar] at h
   split at h
   next c j hn =>
@@ -200,8 +200,7 @@ theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
     have equ := stepChar.eq_updates_of_mem_next h mem
     exact equ ▸ inv
   | .inr ⟨j, update', step, cls, write'⟩ =>
-    simp [step.write_update] at write
-    have write'' : WriteUpdate k → next'.updates[k] = update ++ update' := write ▸ write'
+    have write'' : εClosure.writeUpdate nfa[k] → next'.updates[k] = update ++ update' := (write step.write_update) ▸ write'
     exact ⟨update ++ update', .more path step cls, write''⟩
 
 theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
