@@ -184,12 +184,12 @@ theorem eachStepChar.done_of_matched_some (h : eachStepChar HistoryStrategy nfa 
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome'  :=
   eachStepChar.go.done_of_matched_some h isSome'
 
-theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
+theorem eachStepChar.inv_of_stepChar {it₀ idx} (hlt : idx < current.states.count)
   (h : stepChar HistoryStrategy nfa wf it current.updates next current.states[idx] = (matched', next'))
   (v : it.Valid) (notEnd : ¬it.atEnd)
-  (inv_curr : current.Inv nfa wf it)
-  (inv_next : next.Inv nfa wf it.next) :
-  next'.Inv nfa wf it.next := by
+  (inv_curr : current.Inv nfa wf it₀ it)
+  (inv_next : next.Inv nfa wf it₀ it.next) :
+  next'.Inv nfa wf it₀ it.next := by
   have ⟨update, path, write⟩ := inv_curr current.states[idx] (SparseSet.mem_get hlt)
 
   intro k mem
@@ -201,13 +201,13 @@ theorem eachStepChar.inv_of_stepChar {idx} (hlt : idx < current.states.count)
     exact equ ▸ inv
   | .inr ⟨j, update', step, cls, write'⟩ =>
     have write'' : εClosure.writeUpdate nfa[k] → next'.updates[k] = update ++ update' := (write step.write_update) ▸ write'
-    exact ⟨update ++ update', .more path step cls, write''⟩
+    exact ⟨update ++ update', .more path step cls rfl, write''⟩
 
-theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
+theorem eachStepChar.go.inv {it₀ idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next'))
   (v : it.Valid) (notEnd : ¬it.atEnd)
-  (inv_curr : current.Inv nfa wf it)
-  (inv_next : next.Inv nfa wf it.next) :
-  next'.Inv nfa wf it.next := by
+  (inv_curr : current.Inv nfa wf it₀ it)
+  (inv_next : next.Inv nfa wf it₀ it.next) :
+  next'.Inv nfa wf it₀ it.next := by
   induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
   | base next => simp_all
   | done i hlt next hn => simp_all
@@ -217,14 +217,14 @@ theorem eachStepChar.go.inv {idx hle} (h : eachStepChar.go HistoryStrategy nfa w
     exact eachStepChar.inv_of_stepChar hlt h' v (by simp [notEnd]) inv_curr inv_next
   | not_found idx hlt next hn matched next'' h' not_found ih =>
     rw [eachStepChar.go_not_found hlt hn h' not_found] at h
-    have inv' : next''.Inv nfa wf it.next :=
+    have inv' : next''.Inv nfa wf it₀ it.next :=
       eachStepChar.inv_of_stepChar hlt h' v (by simp [notEnd]) inv_curr inv_next
     apply ih h inv'
 
-theorem eachStepChar.inv_of_inv {next next'} (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
+theorem eachStepChar.inv_of_inv {it₀ next next'} (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
   (v : it.Valid) (notEnd : ¬it.atEnd) (empty : next.states.isEmpty)
-  (inv : current.Inv nfa wf it) :
-  next'.Inv nfa wf it.next := by
+  (inv : current.Inv nfa wf it₀ it) :
+  next'.Inv nfa wf it₀ it.next := by
   simp [eachStepChar] at h
   exact eachStepChar.go.inv h v notEnd inv (.of_empty empty)
 

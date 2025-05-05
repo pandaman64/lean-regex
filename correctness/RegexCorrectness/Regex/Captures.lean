@@ -10,14 +10,16 @@ open Regex.Strategy (materializeRegexGroups)
 `CapturedGroups` conforms to the spec if and only if:
 
 - the haystack can be split into `l`, `m`, and `r` such that `haystack = l ++ m ++ r`
+- `m` starts after `startPos`.
 - there is a regex match starting at `l`, matching the substring `m`, and ending at `r`
 - `CapturedGroups` contains the positions of the capture groups in the match
   - in particular, the first group corresponds to the positions of the matched substring `m`
   - the last match of wins in case the same group is captured multiple times
 -/
-def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (self : CapturedGroups) : Prop :=
+def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (self : CapturedGroups) : Prop :=
   ∃ it it' groups,
     it.toString = haystack ∧
+    startPos ≤ it.pos ∧
     s.expr.Captures it it' groups ∧
     self.get 0 = .some (it.pos, it'.pos) ∧
     ∀ i, self.get i = materializeRegexGroups groups i
@@ -29,7 +31,7 @@ def Valid (self : Captures) : Prop :=
 
 theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self'))
   (v : self.Valid) :
-  self'.Valid ∧ captured.Spec v.1 self.haystack := by
+  self'.Valid ∧ captured.Spec v.1 self.haystack self.currentPos := by
   unfold next? at h
   split at h
   next le =>
@@ -38,9 +40,9 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
     | some matched =>
       have pos_valid := v.2.valid_of_le le
       have : 1 ≤ self.regex.maxTag := v.1.le_maxTag
-      have ⟨it, it', groups, eqstring, c, eqv, eq₁, eq₂⟩ :=
+      have ⟨it, it', groups, eqs, le, c, eqv, eq₁, eq₂⟩ :=
         v.1.captures_of_captureNext h' pos_valid (by omega)
-      simp at eqstring
+      simp at eqs
 
       simp [h'] at h
       set captured' := CapturedGroups.mk matched.toArray
@@ -104,11 +106,12 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       next =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, eqstring ▸ c.validR.validPlus⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, captured₀, hcaptured⟩
+        have vp : Pos.ValidPlus it.toString it'.pos := c.toString_eq ▸ c.validR.validPlus
+        exact ⟨⟨v.1, eqs ▸ vp⟩, it, it', groups, eqs, le, c, captured₀, hcaptured⟩
       next nlt =>
         simp at h
         simp [←h, Valid]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, by simp [←eqstring]; exact c.toString_eq.symm, c, captured₀, hcaptured⟩
+        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, eqs, le, c, captured₀, hcaptured⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :

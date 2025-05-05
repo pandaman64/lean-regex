@@ -55,31 +55,31 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
   apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
   simp [expr, Expr.tags]
 
--- TODO: update VM soundness to state le
 theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ it' it'' groups,
-    it''.toString = it.toString ∧
+    it'.toString = it.toString ∧
+    it.pos ≤ it'.pos ∧
     s.expr.Captures it' it'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched := by
   if bt : re.useBacktracker then
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
-    have ⟨it', it'', groups, eqs, le, c, eqv⟩ := Backtracker.captureNext_soundness s.disj h v
-    exact ⟨it', it'', groups, by rw [c.toString_eq, eqs], c, eqv⟩
+    exact Backtracker.captureNext_soundness s.disj h v
   else
     simp [Regex.captureNextBuf, bt] at h
-    exact VM.captureNext_correct s.nfa_eq.symm s.disj h v rfl
+    exact VM.captureNext_soundness s.nfa_eq.symm s.disj h v rfl
 
 theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
   ∃ it' it'' groups,
-    it''.toString = it.toString ∧
+    it'.toString = it.toString ∧
+    it.pos ≤ it'.pos ∧
     s.expr.Captures it' it'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
     matched[0] = .some it'.pos ∧
     matched[1] = .some it''.pos := by
-  have ⟨it', it'', groups, eqstring, c, eqv⟩ := captures_of_captureNext' h s v
-  refine ⟨it', it'', groups, eqstring, c, eqv, ?_⟩
+  have ⟨it', it'', groups, eqs, le', c, eqv⟩ := captures_of_captureNext' h s v
+  refine ⟨it', it'', groups, eqs, le', c, eqv, ?_⟩
 
   cases c with
   | @group _ _ groups' _ _ c' =>
@@ -93,7 +93,8 @@ theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBu
 theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first, last))
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ it' it'' groups,
-    it''.toString = it.toString ∧
+    it'.toString = it.toString ∧
+    it.pos ≤ it'.pos ∧
     s.expr.Captures it' it'' groups ∧
     first = it'.pos ∧
     last = it''.pos := by
@@ -101,9 +102,9 @@ theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first,
   match h' : re.captureNextBuf 2 it with
   | .none => simp [h'] at h
   | .some matched =>
-    have ⟨it', it'', groups, eqstring, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
+    have ⟨it', it'', groups, eqs, le, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
     simp [h', eq₁, eq₂] at h
-    exact ⟨it', it'', groups, eqstring, c, by simp [←h]⟩
+    exact ⟨it', it'', groups, eqs, le, c, by simp [←h]⟩
 
 end IsSearchRegex
 

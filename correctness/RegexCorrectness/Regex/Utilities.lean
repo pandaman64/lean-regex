@@ -12,15 +12,15 @@ variable {re : Regex} {haystack : String}
 
 theorem captures_of_find_some {positions} (h : re.find haystack = .some positions)
   (s : re.IsSearchRegex) :
-  Matches.Spec s haystack positions := by
+  Matches.Spec s haystack ⟨0⟩ positions := by
   simp [Regex.find] at h
   have ⟨_, h⟩ := h
   have v := Captures.valid_captures haystack s
   exact (Matches.captures_of_next?_some h v).2
 
 theorem captures_of_mem_findAll.go {m : Matches} {accum : Array (Pos × Pos)}
-  (v : m.Valid) (inv : ∀ positions ∈ accum, Matches.Spec v.1 m.haystack positions) :
-  ∀ positions ∈ findAll.go m accum, Matches.Spec v.1 m.haystack positions := by
+  (v : m.Valid) (inv : ∀ positions ∈ accum, ∃ startPos, Matches.Spec v.1 m.haystack startPos positions) :
+  ∀ positions ∈ findAll.go m accum, ∃ startPos, Matches.Spec v.1 m.haystack startPos positions := by
   induction m, accum using findAll.go.induct with
   | case1 m accum positions m' next_some? ih =>
     -- next match is found
@@ -31,10 +31,10 @@ theorem captures_of_mem_findAll.go {m : Matches} {accum : Array (Pos × Pos)}
     simp [regex_eq, haystack_eq] at ih
 
     have ⟨v', spec⟩ := Matches.captures_of_next?_some next_some? v
-    have inv' (p₁ p₂ : Pos) (mem : (p₁, p₂) ∈ accum ∨ (p₁, p₂) = positions) : Matches.Spec v.1 m.haystack (p₁, p₂) := by
+    have inv' (p₁ p₂ : Pos) (mem : (p₁, p₂) ∈ accum ∨ (p₁, p₂) = positions) : ∃ startPos, Matches.Spec v.1 m.haystack startPos (p₁, p₂) := by
       cases mem with
       | inl mem => exact inv (p₁, p₂) mem
-      | inr eq => exact eq ▸ spec
+      | inr eq => exact ⟨m.currentPos, eq ▸ spec⟩
     exact ih v' inv'
   | case2 m accum next_none? =>
     -- next match is not found
@@ -44,22 +44,22 @@ theorem captures_of_mem_findAll.go {m : Matches} {accum : Array (Pos × Pos)}
 
 theorem captures_of_mem_findAll {positions} (mem : positions ∈ re.findAll haystack)
   (s : re.IsSearchRegex) :
-  Matches.Spec s haystack positions := by
+  ∃ startPos, Matches.Spec s haystack startPos positions := by
   simp [Regex.findAll] at mem
   have v := Matches.vaild_matches haystack s
   exact captures_of_mem_findAll.go v (by simp) positions mem
 
 theorem captures_of_capture_some {captured} (h : re.capture haystack = .some captured)
   (s : re.IsSearchRegex) :
-  captured.Spec s haystack := by
+  captured.Spec s haystack ⟨0⟩ := by
   simp [Regex.capture] at h
   have ⟨_, h⟩ := h
   have v := Captures.valid_captures haystack s
   exact (Captures.captures_of_next?_some h v).2
 
 theorem captures_of_mem_captureAll.go {captures : Captures} {accum : Array CapturedGroups}
-  (v : captures.Valid) (inv : ∀ captured ∈ accum, captured.Spec v.1 captures.haystack) :
-  ∀ captured ∈ captureAll.go captures accum, captured.Spec v.1 captures.haystack := by
+  (v : captures.Valid) (inv : ∀ captured ∈ accum, ∃ startPos, CapturedGroups.Spec v.1 captures.haystack startPos captured) :
+  ∀ captured ∈ captureAll.go captures accum, ∃ startPos, CapturedGroups.Spec v.1 captures.haystack startPos captured := by
   induction captures, accum using captureAll.go.induct with
   | case1 captures accum groups captures' next?_some ih =>
     -- next capture is found
@@ -70,10 +70,10 @@ theorem captures_of_mem_captureAll.go {captures : Captures} {accum : Array Captu
     simp [regex_eq, haystack_eq] at ih
 
     have ⟨v', spec⟩ := Captures.captures_of_next?_some next?_some v
-    have inv' (captured : CapturedGroups) (mem : captured ∈ accum ∨ captured = groups) : captured.Spec v.1 captures.haystack := by
+    have inv' (captured : CapturedGroups) (mem : captured ∈ accum ∨ captured = groups) : ∃ startPos, CapturedGroups.Spec v.1 captures.haystack startPos captured := by
       cases mem with
       | inl mem => exact inv captured mem
-      | inr eq => exact eq ▸ spec
+      | inr eq => exact ⟨captures.currentPos, eq ▸ spec⟩
     exact ih v' inv'
   | case2 captures accum next?_none =>
     -- next capture is not found
@@ -83,7 +83,7 @@ theorem captures_of_mem_captureAll.go {captures : Captures} {accum : Array Captu
 
 theorem captures_of_mem_captureAll {captured} (mem : captured ∈ re.captureAll haystack)
   (s : re.IsSearchRegex) :
-  captured.Spec s haystack := by
+  ∃ startPos, CapturedGroups.Spec s haystack startPos captured := by
   simp [Regex.captureAll] at mem
   have v := Captures.valid_captures haystack s
   exact captures_of_mem_captureAll.go v (by simp) captured mem

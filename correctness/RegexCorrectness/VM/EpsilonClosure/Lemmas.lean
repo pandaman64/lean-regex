@@ -293,8 +293,6 @@ variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
   {matched : Option (List (Nat × Pos))} {next : SearchState HistoryStrategy nfa} {stack : εStack HistoryStrategy nfa}
   {matched' : Option (List (Nat × Pos))} {next' : SearchState HistoryStrategy nfa}
 
--- TODO: rename it₀ to it. Also move to the leftmost
-
 /--
 Intuition: given that we reached `i₀` (from `nfa.start`) with `it₀` and `update₀`, the εClosure
 traversal first puts states reachable from `i₀` into the stack with an appropriate update list.
@@ -488,9 +486,9 @@ theorem write_updates {i j} {update update' : List (Nat × Pos)} (v : it.Valid)
   j ∈ next.states ∨ ∃ update', nfa.εClosure' it i j update' ∧ (writeUpdate nfa[j] → next'.updates[j] = update ++ update') :=
   εClosure.write_updates_of_mem_next h v (mem_next h lb cls)
 
-theorem inv_of_inv (h : εClosure HistoryStrategy nfa wf it matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
-  (v : it.Valid) (inv : next.Inv nfa wf it) :
-  next'.Inv nfa wf it := by
+theorem inv_of_inv {it₀} (h : εClosure HistoryStrategy nfa wf it matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
+  (eqs : it.toString = it₀.toString) (le : it₀.pos ≤ it.pos) (v : it.Valid) (inv : next.Inv nfa wf it₀ it) :
+  next'.Inv nfa wf it₀ it := by
   intro i mem
   have := εClosure.write_updates_of_mem_next h v mem
   match this with
@@ -499,7 +497,7 @@ theorem inv_of_inv (h : εClosure HistoryStrategy nfa wf it matched next [([], �
     exact equ ▸ inv i mem
   | .inr ⟨update, cls, write⟩ =>
     simp at write
-    exact ⟨update, .init cls, write⟩
+    exact ⟨update, .init eqs le cls, write⟩
 
 end
 
