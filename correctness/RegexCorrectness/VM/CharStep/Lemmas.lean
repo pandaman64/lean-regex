@@ -11,8 +11,6 @@ open String (Pos Iterator)
 
 namespace Regex.VM
 
-local instance : Strategy := HistoryStrategy
-
 variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
   {current : SearchState HistoryStrategy nfa} {currentUpdates : Vector (List (Nat × Pos)) nfa.nodes.size}
   {next : SearchState HistoryStrategy nfa} {state : Fin nfa.nodes.size}

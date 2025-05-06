@@ -57,6 +57,8 @@ end Regex.NFA
 namespace Regex.VM
 
 /--
+The invariant for the soundness theorem.
+
 All states in `next.state` have a corresponding path from `nfa.start` to the state ending at `it`,
 and their updates are written to `next.updates` when necessary.
 -/

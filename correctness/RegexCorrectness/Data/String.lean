@@ -177,7 +177,46 @@ theorem exists_cons_of_not_atEnd {l r} {it : Iterator} (v : it.ValidFor l r) (h 
   subst this
   exact ⟨r', rfl⟩
 
+theorem pos_atEnd {l} {it : Iterator} (v : it.ValidFor l []) : it.pos = it.toString.endPos := by
+  simp [v.out']
+
 end String.Iterator.ValidFor
+
+namespace String.Iterator
+
+theorem eq_of_valid_of_next_eq {it₁ it₂ : Iterator} (v₁ : it₁.Valid) (v₂ : it₂.Valid) (h : it₁.next = it₂.next) : it₁ = it₂ := by
+  have eqs₁₂ : it₁.toString = it₂.toString := by
+    have : it₁.next.toString = it₂.next.toString := by rw [h]
+    simpa [Iterator.next_toString] using this
+  have ⟨l₁, r₁, vf₁⟩ := v₁.validFor
+  have ⟨l₂, r₂, vf₂⟩ := v₂.validFor
+  match r₁, r₂ with
+  | [], [] =>
+    have eqs₁ : it₁.toString = ⟨l₁.reverse⟩ := vf₁.toString
+    have eqs₂ : it₂.toString = ⟨l₂.reverse⟩ := vf₂.toString
+    have eqs : l₁ = l₂ := by
+      rw [eqs₁, eqs₂] at eqs₁₂
+      simpa using eqs₁₂
+    exact vf₁.eq_it (eqs ▸ vf₂)
+  | c₁ :: r₁, c₂ :: r₂ =>
+    have vf₁' := vf₁.next
+    have vf₂' := vf₂.next
+    have eq := vf₁'.eq (h ▸ vf₂')
+    simp at eq
+    simp [eq] at vf₁
+    exact vf₁.eq_it vf₂
+  | [], c₂ :: r₂ =>
+    have pos₁ : it₁.pos = it₁.toString.endPos := vf₁.pos_atEnd
+    have pos₂ : it₂.next.pos ≤ it₂.toString.endPos := vf₂.next.valid.le_endPos
+    rw [←eqs₁₂, ←h, ←pos₁] at pos₂
+    exact ((Nat.not_le_of_lt it₁.lt_next) pos₂).elim
+  | c₁ :: r₁, [] =>
+    have pos₁ : it₁.next.pos ≤ it₁.toString.endPos := vf₁.next.valid.le_endPos
+    have pos₂ : it₂.pos = it₂.toString.endPos := vf₂.pos_atEnd
+    rw [eqs₁₂, h, ←pos₂] at pos₁
+    exact ((Nat.not_le_of_lt it₂.lt_next) pos₁).elim
+
+end String.Iterator
 
 namespace String.Pos
 

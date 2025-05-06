@@ -140,13 +140,13 @@ where
       if current.states.isEmpty && matched.isSome then
         matched
       else
-        if matched.isNone then
-          let expanded := εClosure σ nfa wf it none current [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
-          let stepped := eachStepChar σ nfa wf it expanded.2 next
-          go it.next stepped.1 stepped.2 ⟨expanded.2.states.clear, expanded.2.updates⟩
+        let stepped := eachStepChar σ nfa wf it current next
+        let matched' := stepped.1 <|> matched
+        if matched'.isNone then
+          let expanded := εClosure σ nfa wf it.next .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
+          go it.next expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩
         else
-          let stepped := eachStepChar σ nfa wf it current next
-          go it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩
+          go it.next matched' stepped.2 ⟨current.states.clear, current.updates⟩
 
 def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
   captureNext (BufferStrategy bufferSize) nfa wf it

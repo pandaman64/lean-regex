@@ -25,35 +25,32 @@ theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
   | found it matched current next atEnd empty' some =>
     rw [captureNext.go_found atEnd empty' some] at h
     simp_all
-  | ind_not_found it matched current next _ current' matched'' next' atEnd isNone h₁ h₂ ih =>
-    rw [captureNext.go_ind_not_found atEnd isNone h₁ h₂] at h
-    have curr'_inv := εClosure.inv_of_inv h₁ eqs le v curr_inv
-    have next'_inv := eachStepChar.inv_of_inv h₂ v atEnd empty curr'_inv
-    have matched''_inv : MatchedInv nfa wf it₀ matched'' := by
-      intro isSome''
-      have ⟨state', mem', hn, hupdate⟩ := eachStepChar.done_of_matched_some h₂ isSome''
-      have ⟨update, path, write⟩ := next'_inv state' mem'
-      simp [εClosure.writeUpdate, hn] at write
-      simp at hupdate
-      simp [←write, hupdate] at path
-      exact ⟨state', it.next, hn, path⟩
-    exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) eqs (Nat.le_trans le (Nat.le_of_lt it.lt_next)) next'_inv (by simp) matched''_inv
-  | ind_found it matched current next matched'' next' atEnd empty' isSome h' ih =>
-    rw [captureNext.go_ind_found atEnd empty' isSome h'] at h
-    have next'_inv := eachStepChar.inv_of_inv h' v atEnd empty curr_inv
-    have matched''_inv : MatchedInv nfa wf it₀ (matched'' <|> matched) := by
-      cases matched'' with
-      | none => simp [matched_inv]
-      | some matched'' =>
+  | ind_not_found it matched current next stepped expanded atEnd isNone₁ isNone₂ ih =>
+    rw [captureNext.go_ind_not_found stepped expanded rfl rfl atEnd isNone₁ isNone₂] at h
+    have le' : it₀.pos ≤ it.next.pos := Nat.le_trans le (Nat.le_of_lt it.lt_next)
+    have v' : it.next.Valid := v.next (it.hasNext_of_not_atEnd atEnd)
+    have next_inv : stepped.2.Inv nfa wf it₀ it.next := eachStepChar.inv_of_inv rfl v atEnd empty curr_inv
+    have curr_inv' : expanded.2.Inv nfa wf it₀ it.next := εClosure.inv_of_inv rfl eqs le' v' next_inv
+    have matched_inv' : MatchedInv nfa wf it₀ expanded.1 := by
+      intro isSome
+      have ⟨state, mem, hn, equpdate⟩ : ∃ i ∈ expanded.2.states, nfa[i] = .done ∧ expanded.2.updates[i] = expanded.1.get isSome :=
+        εClosure.matched_inv rfl (by simp) isSome
+      have ⟨update, path, write⟩ := curr_inv' state mem
+      exact ⟨state, it.next, hn, by rw [←equpdate, write (by simp [εClosure.writeUpdate, hn])]; exact path⟩
+    exact ih h v' eqs le' curr_inv' (by simp) matched_inv'
+  | ind_found it matched current next stepped atEnd hemp isSome ih =>
+    rw [captureNext.go_ind_found stepped rfl atEnd hemp isSome] at h
+    have curr_inv' : stepped.2.Inv nfa wf it₀ it.next := eachStepChar.inv_of_inv rfl v atEnd empty curr_inv
+    have matched_inv' : MatchedInv nfa wf it₀ (stepped.1 <|> matched) := by
+      match h : stepped.1 with
+      | .none => simpa using matched_inv
+      | .some matched' =>
         simp
-        have ⟨state', mem', hn, hupdate⟩ := eachStepChar.done_of_matched_some h' (by simp)
-        have ⟨update, path, write⟩ := next'_inv state' mem'
-        simp [εClosure.writeUpdate, hn] at write
-        simp at hupdate
-        simp [←write, hupdate] at path
+        have ⟨state, mem, hn, equpdate⟩ := eachStepChar.done_of_matched_some (matched' := stepped.1) (next' := stepped.2) rfl (by simp [h])
+        have ⟨update, path, write⟩ := curr_inv' state mem
         intro _
-        exact ⟨state', it.next, hn, path⟩
-    exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) eqs (Nat.le_trans le (Nat.le_of_lt it.lt_next)) next'_inv (by simp) matched''_inv
+        exact ⟨state, it.next, hn, by simpa [←h, ←equpdate, write (by simp [εClosure.writeUpdate, hn])] using path⟩
+    exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) eqs (Nat.le_trans le (Nat.le_of_lt it.lt_next)) curr_inv' (by simp) matched_inv'
 
 /--
 If `captureNext` returns `some`, the returned list corresponds to the updates of a path from
