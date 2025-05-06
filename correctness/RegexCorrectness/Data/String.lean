@@ -151,6 +151,13 @@ theorem validFor_of_valid_pos_le {it it' : Iterator} (v : it.Valid) (v' : it'.Va
 
   exact ⟨lrev.reverse, m, r, by simpa [←eq₁] using vf, by simpa [←eq₂] using vf'⟩
 
+theorem validFor_of_hasNext {it : Iterator} (h : it.hasNext) (v : it.Valid) :
+  ∃ l r, it.ValidFor l (it.curr :: r) := by
+  have ⟨l, r, vf⟩ := v.validFor
+  match r with
+  | [] => simp [vf.hasNext] at h
+  | c :: r => exact ⟨l, r, by simpa [vf.curr] using vf⟩
+
 end String.Iterator.Valid
 
 namespace String.Iterator.ValidFor

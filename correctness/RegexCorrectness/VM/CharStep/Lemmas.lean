@@ -1,6 +1,7 @@
 import RegexCorrectness.VM.Path
 import RegexCorrectness.VM.EpsilonClosure
 import RegexCorrectness.VM.CharStep.Basic
+import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
@@ -22,14 +23,7 @@ theorem subset (h : stepChar HistoryStrategy nfa wf it currentUpdates next state
   next.states ⊆ next'.states := by
   simp [stepChar] at h
   split at h
-  next c' state' hn =>
-    split at h
-    next => exact εClosure.subset h
-    next => simp_all [SparseSet.subset_self]
-  next cs state' =>
-    split at h
-    next => exact εClosure.subset h
-    next => simp_all [SparseSet.subset_self]
+  next state' hn => exact εClosure.subset h
   next => simp_all [SparseSet.subset_self]
 
 theorem lower_bound (h : stepChar HistoryStrategy nfa wf it currentUpdates next state = (matched', next'))
@@ -37,14 +31,7 @@ theorem lower_bound (h : stepChar HistoryStrategy nfa wf it currentUpdates next 
   εClosure.LowerBound it.next next'.states := by
   simp [stepChar] at h
   split at h
-  next c' state' hn =>
-    split at h
-    next => exact εClosure.lower_bound h lb
-    next => simp_all
-  next cs state' =>
-    split at h
-    next => exact εClosure.lower_bound h lb
-    next => simp_all
+  next state' hn => exact εClosure.lower_bound h lb
   next => simp_all
 
 theorem eq_updates_of_mem_next {i k} (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
@@ -52,14 +39,7 @@ theorem eq_updates_of_mem_next {i k} (h : stepChar HistoryStrategy nfa wf it cur
   next'.updates[k] = next.updates[k] := by
   simp [stepChar] at h
   split at h
-  next c' j hn =>
-    split at h
-    next => exact εClosure.eq_updates_of_mem_next h mem
-    next => simp_all
-  next cs j =>
-    split at h
-    next => exact εClosure.eq_updates_of_mem_next h mem
-    next => simp_all
+  next state' hn => exact εClosure.eq_updates_of_mem_next h mem
   next => simp_all
 
 theorem done_of_matched_some (h : stepChar HistoryStrategy nfa wf it currentUpdates next state = (matched', next'))
@@ -67,18 +47,7 @@ theorem done_of_matched_some (h : stepChar HistoryStrategy nfa wf it currentUpda
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
   simp [stepChar] at h
   split at h
-  next c' j hn =>
-    split at h
-    next => exact εClosure.matched_inv h (by simp) isSome'
-    next =>
-      simp at h
-      simp [←h.1] at isSome'
-  next cs j =>
-    split at h
-    next => exact εClosure.matched_inv h (by simp) isSome'
-    next =>
-      simp at h
-      simp [←h.1] at isSome'
+  next state' hn => exact εClosure.matched_inv h (by simp) isSome'
   next =>
     simp at h
     simp [←h.1] at isSome'
@@ -90,19 +59,32 @@ theorem mem_next_of_stepChar {i j k update}
   k ∈ next'.states := by
   simp [stepChar] at h
   split at h
-  next c' j' hn =>
-    rw [CharStep.char hn] at step
-    have ⟨l, r, eqj, vf⟩ := step
-    simp [vf.curr] at h
-    exact εClosure.mem_next h lb (by simpa [←eqj] using cls)
-  next cs j' hn =>
-    rw [CharStep.sparse hn] at step
-    have ⟨l, c, r, eqj, vf, hc⟩ := step
-    simp [vf.curr, hc] at h
-    exact εClosure.mem_next h lb (by simpa [←eqj] using cls)
-  next ne₁ ne₂ =>
-    have := step.char_or_sparse
-    simp_all
+  next state' hn =>
+    have eqj : j = state' := by
+      split at hn
+      next hn' =>
+        simp at hn
+        simp [NFA.CharStep.char hn'] at step
+        simp [Fin.ext_iff, step, ←hn.2]
+      next hn' =>
+        simp at hn
+        simp [NFA.CharStep.sparse hn'] at step
+        simp [Fin.ext_iff, step, ←hn.2]
+      next => simp at hn
+    exact εClosure.mem_next h lb (eqj ▸ cls)
+  next hn =>
+    split at hn
+    next c state' hn' =>
+      rw [NFA.CharStep.char hn'] at step
+      have ⟨_, _, _, vf⟩ := step
+      simp [vf.curr] at hn
+    next cs state' hn' =>
+      rw [NFA.CharStep.sparse hn'] at step
+      have ⟨_, c, _, _, vf, hc⟩ := step
+      simp [vf.curr, hc] at hn
+    next ne₁ ne₂ =>
+      have := step.char_or_sparse
+      simp_all only [Prod.mk.injEq, imp_false, Fin.getElem_fin, exists_const, exists_false, or_self]
 
 theorem write_updates_of_mem_next {i k}
   (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
@@ -113,38 +95,26 @@ theorem write_updates_of_mem_next {i k}
     (εClosure.writeUpdate nfa[k] → next'.updates[k] = currentUpdates.get i ++ update') := by
   simp [stepChar] at h
   split at h
-  next c j hn =>
-    split at h
-    next eqc =>
-      subst c
-      have ⟨l, r, vf⟩ := v.validFor
-      match r with
-      | [] => simp [vf.atEnd] at notEnd
-      | c :: r =>
-        have curr : it.curr = c := vf.curr
-        have := εClosure.write_updates_of_mem_next h (v.next (it.hasNext_of_not_atEnd notEnd)) mem
-        match this with
-        | .inl mem => exact .inl mem
-        | .inr ⟨update', cls, write⟩ =>
-          have isLt := wf.inBounds' i hn
-          exact .inr ⟨⟨j, isLt⟩, update', NFA.Step.char (Nat.zero_le _) i.isLt hn (curr ▸ vf), cls, write⟩
-    next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
-  next cs j hn =>
-    split at h
-    next hc =>
-      have ⟨l, r, vf⟩ := v.validFor
-      match r with
-      | [] => simp [vf.atEnd] at notEnd
-      | c :: r =>
-        have curr : it.curr = c := vf.curr
-        have := εClosure.write_updates_of_mem_next h (v.next (it.hasNext_of_not_atEnd notEnd)) mem
-        match this with
-        | .inl mem => exact .inl mem
-        | .inr ⟨update', cls, write⟩ =>
-          have isLt := wf.inBounds' i hn
-          exact .inr ⟨⟨j, isLt⟩, update', NFA.Step.sparse (Nat.zero_le _) i.isLt hn (curr ▸ vf) hc, cls, write⟩
-    next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
-  next => simp_all only [SparseSet.mem_mem, Prod.mk.injEq, exists_and_left, true_or]
+  next state' hn =>
+    have hasNext := it.hasNext_of_not_atEnd notEnd
+    have ⟨l, r, vf⟩ := v.validFor_of_hasNext hasNext
+    have v' : it.next.Valid := v.next hasNext
+    have := εClosure.write_updates_of_mem_next h v' mem
+    match this with
+    | .inl mem => exact .inl mem
+    | .inr ⟨update', cls, write⟩ =>
+      refine .inr ⟨state', update', ?_, cls, write⟩
+      split at hn
+      next c state' hn' =>
+        simp at hn
+        rw [NFA.CharStep.char hn']
+        exact ⟨l, r, by simp [←hn.2], hn.1 ▸ vf⟩
+      next cs state' hn' =>
+        simp at hn
+        rw [NFA.CharStep.sparse hn']
+        exact ⟨l, it.curr, r, by simp [←hn.2], vf, hn.1⟩
+      next => simp at hn
+  next => simp_all only [Bool.not_eq_true, SparseSet.mem_mem, Prod.mk.injEq, Fin.getElem_fin, exists_and_left, true_or]
 
 end stepChar
 

@@ -8,44 +8,6 @@ open String (Pos Iterator)
 
 namespace Regex.VM
 
-@[simp]
-theorem stepChar_char {σ nfa wf it currentUpdates next state c state'} (hn : nfa[state] = .char c state') :
-  stepChar σ nfa wf it currentUpdates next state =
-  if it.curr = c then
-    εClosure σ nfa wf it.next .none next [(currentUpdates.get state, ⟨state', by exact wf.inBounds' state hn⟩)]
-  else
-    (.none, next) := by
-  unfold stepChar
-  split <;> simp_all
-  next c' state'' hn' =>
-    simp [hn'] at hn
-    simp [hn]
-  next cs state'' hn' =>
-    simp [hn'] at hn
-
-@[simp]
-theorem stepChar_sparse {σ nfa wf it currentUpdates next state cs state'} (hn : nfa[state] = .sparse cs state') :
-  stepChar σ nfa wf it currentUpdates next state =
-  if it.curr ∈ cs then
-    εClosure σ nfa wf it.next .none next [(currentUpdates.get state, ⟨state', by exact wf.inBounds' state hn⟩)]
-  else
-    (.none, next) := by
-  unfold stepChar
-  split <;> simp_all
-  next c' state'' hn' =>
-    simp [hn'] at hn
-  next cs' state'' hn' =>
-    simp [hn'] at hn
-    simp [hn]
-
-@[simp]
-theorem stepChar_not_char_sparse {σ nfa wf it currentUpdates next state}
-  (h₁ : ∀ (c : Char) (state' : Nat), nfa[state] = NFA.Node.char c state' → False)
-  (h₂ : ∀ (cs : Data.Classes) (state' : Nat), nfa[state] = NFA.Node.sparse cs state' → False) :
-  stepChar σ nfa wf it currentUpdates next state = (.none, next) := by
-  unfold stepChar
-  split <;> simp_all
-
 set_option linter.unusedVariables false in
 theorem eachStepChar.go.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (current : SearchState σ nfa)
   (motive : (i : Nat) → i ≤ current.states.count → SearchState σ nfa → Prop)

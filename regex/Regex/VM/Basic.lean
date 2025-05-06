@@ -81,22 +81,25 @@ traverse ε-closures from the resulting state.
 def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vector σ.Update nfa.nodes.size)
   (next : SearchState σ nfa) (state : Fin nfa.nodes.size) :
   Option σ.Update × SearchState σ nfa :=
-  match hn : nfa[state] with
-  | .char c state' =>
-    if it.curr = c then
-      have isLt := wf.inBounds' state hn
-      let update := currentUpdates.get state
-      εClosure σ nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
-    else
-      (.none, next)
-  | .sparse cs state' =>
-    if it.curr ∈ cs then
-      have isLt := wf.inBounds' state hn
-      let update := currentUpdates.get state
-      εClosure σ nfa wf it.next .none next [(update, ⟨state', isLt⟩)]
-    else
-      (.none, next)
-  | _ => (.none, next)
+  let state' : Option (Fin nfa.nodes.size) :=
+    match hn : nfa[state] with
+    | .char c state' =>
+      if it.curr = c then
+        .some ⟨state', wf.inBounds' state hn⟩
+      else
+        .none
+    | .sparse cs state' =>
+      if it.curr ∈ cs then
+        .some ⟨state', wf.inBounds' state hn⟩
+      else
+        .none
+    | _ => .none
+  match state' with
+  | .some state' =>
+    let update := currentUpdates.get state
+    εClosure σ nfa wf it.next .none next [(update, state')]
+  | .none =>
+    (.none, next)
 
 /--
 For all states in `current`, make a transition on the current character of `it` and traverse
