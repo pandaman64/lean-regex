@@ -110,14 +110,14 @@ where
   go (i : Nat) (hle : i ≤ current.states.count) (next : SearchState σ nfa) :
     Option σ.Update × SearchState σ nfa :=
     if h : i = current.states.count then
-      (none, next)
+      (.none, next)
     else
       have hlt : i < current.states.count := Nat.lt_of_le_of_ne hle h
       let state := current.states[i]
       if nfa[state] = .done then
         -- Early-stop iteration when we encounter `.done` since the path to this `.done` node
         -- is prioritized over the paths through the later nodes.
-        (none, next)
+        (.none, next)
       else
         let result := stepChar σ nfa wf it current.updates next state
         if result.1.isSome then
