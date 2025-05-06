@@ -63,7 +63,7 @@ theorem εClosure.pushNext.refines {state : Fin nfa.nodes.size} {update} {buffer
   | char => simp [pushNext.char rfl, h₁, h₂]
   | sparse => simp [pushNext.sparse rfl, h₁, h₂]
 
-theorem εClosure.refines {result result'}
+theorem εClosure.refines (result result')
   (h : εClosure (BufferStrategy bufferSize) nfa wf it matched next stack = result)
   (h' : εClosure HistoryStrategy nfa wf it matched' next' stack' = result')
   (refMatched : refineUpdateOpt matched' matched)
@@ -81,14 +81,14 @@ theorem εClosure.refines {result result'}
     | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
       rw [εClosure.visited (σ := HistoryStrategy) mem] at h'
       rw [εClosure.visited (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem)] at h
-      exact ih h h' refMatched refState rest
+      exact ih result result' h h' refMatched refState rest
   | not_visited matched' next' update state' stack' mem node =>
     rename_i matched'' states'' updates'' ih
     cases refStack with
     | @cons _ _ tail' buffer state tail h₁ h₂ rest =>
       rw [εClosure.not_visited (σ := HistoryStrategy) mem] at h'
       rw [εClosure.not_visited (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem)] at h
-      refine ih h h' ?_ ?_ ?_
+      refine ih result result' h h' ?_ ?_ ?_
       . simp [matched'', node, h₂]
         if eq : nfa[state.val] = .done then
           simp [eq]
@@ -104,7 +104,7 @@ theorem εClosure.refines {result result'}
       . simp [node, h₂]
         exact pushNext.refines wf h₁ rest
 
-theorem stepChar.refines {currentUpdates currentUpdates' state result result'}
+theorem stepChar.refines {currentUpdates currentUpdates' state} (result result')
   (h : stepChar (BufferStrategy bufferSize) nfa wf it currentUpdates next state = result)
   (h' : stepChar HistoryStrategy nfa wf it currentUpdates' next' state = result')
   (refUpdates : refineUpdates currentUpdates' currentUpdates)
@@ -117,7 +117,7 @@ theorem stepChar.refines {currentUpdates currentUpdates' state result result'}
     split at h'
     next eq =>
       simp [eq] at h h'
-      exact εClosure.refines h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
+      exact εClosure.refines result result' h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
     next ne =>
       simp [ne] at h
       simp [←h', ←h, refineUpdateOpt, refState]
@@ -126,7 +126,7 @@ theorem stepChar.refines {currentUpdates currentUpdates' state result result'}
     split at h'
     next mem =>
       simp [mem] at h h'
-      exact εClosure.refines h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
+      exact εClosure.refines result result' h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
     next nmem =>
       simp [nmem] at h
       simp [←h', ←h, refineUpdateOpt, refState]
@@ -134,7 +134,7 @@ theorem stepChar.refines {currentUpdates currentUpdates' state result result'}
     rw [stepChar_not_char_sparse h₁ h₂] at h
     simp [←h', ←h, refineUpdateOpt, refState]
 
-theorem eachStepChar.go.refines {current current' i hle hle' result result'}
+theorem eachStepChar.go.refines {current current' i hle hle'} (result result')
   (h : eachStepChar.go (BufferStrategy bufferSize) nfa wf it current i hle next = result)
   (h' : eachStepChar.go HistoryStrategy nfa wf it current' i hle' next' = result')
   (refCurrent : current'.refines current)
@@ -157,7 +157,7 @@ theorem eachStepChar.go.refines {current current' i hle hle' result result'}
     have eq : current.states[i] = current'.states[i] := by
       simp [refCurrent.1]
     generalize hstep : stepChar (BufferStrategy bufferSize) nfa wf it current.updates next current.states[i] = stepped
-    have refStepChar := stepChar.refines hstep (eq ▸ hstep') refCurrent.2 refNext
+    have refStepChar := stepChar.refines stepped (matched', next'') hstep (eq ▸ hstep') refCurrent.2 refNext
     simp at refStepChar
     have isSome : stepped.1.isSome := by
       simp [refineUpdateOpt.isSome_iff refStepChar.1] at isSome'
@@ -170,22 +170,22 @@ theorem eachStepChar.go.refines {current current' i hle hle' result result'}
     have eq : current.states[i] = current'.states[i] := by
       simp [refCurrent.1]
     generalize hstep : stepChar (BufferStrategy bufferSize) nfa wf it current.updates next current.states[i] = stepped
-    have refStepChar := stepChar.refines hstep (eq ▸ hstep') refCurrent.2 refNext
+    have refStepChar := stepChar.refines stepped (matched', next'') hstep (eq ▸ hstep') refCurrent.2 refNext
     simp at refStepChar
     have isSome : ¬stepped.1.isSome := by
       rw [refineUpdateOpt.isSome_iff refStepChar.1] at isSome'
       exact isSome'
     rw [eachStepChar.go_not_found hlt' hn hstep' isSome'] at h'
     rw [eachStepChar.go_not_found hlt (eq ▸ hn) hstep isSome] at h
-    exact ih h h' refCurrent refStepChar.2
+    exact ih result result' h h' refCurrent refStepChar.2
 
-theorem eachStepChar.refines {current current' result result'}
+theorem eachStepChar.refines {current current'} (result result')
   (h : eachStepChar (BufferStrategy bufferSize) nfa wf it current next = result)
   (h' : eachStepChar HistoryStrategy nfa wf it current' next' = result')
   (refCurrent : current'.refines current)
   (refNext : next'.refines next) :
   refineUpdateOpt result'.1 result.1 ∧ result'.2.refines result.2 :=
-  eachStepChar.go.refines h h' refCurrent refNext
+  eachStepChar.go.refines result result' h h' refCurrent refNext
 
 theorem captureNext.go.refines {current current' result result'}
   (h : captureNext.go (BufferStrategy bufferSize) nfa wf it matched current next = result)
@@ -207,36 +207,36 @@ theorem captureNext.go.refines {current current' result result'}
     rw [captureNext.go_found atEnd isEmpty' isSome'] at h'
     rw [captureNext.go_found atEnd isEmpty isSome] at h
     simp [←h', ←h, refMatched]
-  | ind_not_found it matched' current' next' _ current'' matched'' next'' atEnd isNone' h₁ h₂ ih =>
-    have isNone : matched.isNone := by
-      rw [refineUpdateOpt.isNone_iff refMatched] at isNone'
-      exact isNone'
-    generalize hexpand : εClosure (BufferStrategy bufferSize) nfa wf it .none current [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
-    generalize hstep : eachStepChar (BufferStrategy bufferSize) nfa wf it expanded.2 next = stepped
-    rw [captureNext.go_ind_not_found atEnd isNone' h₁ h₂] at h'
-    rw [captureNext.go_ind_not_found atEnd isNone hexpand hstep] at h
+  | ind_not_found it matched' current' next' stepped' expanded' atEnd isNone₁' =>
+    rename_i isNone₂' ih
+    let stepped := eachStepChar (BufferStrategy bufferSize) nfa wf it current next
+    let expanded := εClosure (BufferStrategy bufferSize) nfa wf it.next .none stepped.2 [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
 
-    have refExpanded := εClosure.refines hexpand h₁ (by simp [refineUpdateOpt]) refCurrent (.cons rfl rfl .nil)
-    simp at refExpanded
-    have ⟨refMatched'', refNext''⟩ := eachStepChar.refines hstep h₂ refExpanded.2 refNext
-    simp at refMatched'' refNext''
-    exact ih h h' refMatched'' refNext'' (by simp [SearchState.refines, refExpanded.2.1, refExpanded.2.2])
-  | ind_found it matched' current' next' matched'' next'' atEnd isEmpty' isSome' h'' ih =>
-    have isEmpty : ¬current.states.isEmpty := refCurrent.1 ▸ isEmpty'
-    have isSome : matched.isSome := by
-      rw [refineUpdateOpt.isSome_iff refMatched] at isSome'
+    have refStepped := eachStepChar.refines stepped stepped' rfl rfl refCurrent refNext
+    have refExpanded := εClosure.refines expanded expanded' rfl rfl (by simp [refineUpdateOpt]) refStepped.2 (.cons rfl rfl .nil)
+    have isNone₁ : matched = .none := (refineUpdateOpt.none_iff refMatched).mp (by simp [isNone₁'])
+    have isNone₂ : stepped.1 = .none := (refineUpdateOpt.none_iff refStepped.1).mp (by simp [isNone₂'])
+
+    rw [captureNext.go_ind_not_found stepped' expanded' rfl rfl atEnd isNone₁' isNone₂'] at h'
+    rw [captureNext.go_ind_not_found stepped expanded rfl rfl atEnd isNone₁ isNone₂] at h
+    exact ih h h' refExpanded.1 refExpanded.2 (by simp [SearchState.refines, refCurrent.1, refCurrent.2])
+  | ind_found it matched' current' next' stepped' atEnd hemp' isSome' =>
+    rename_i ih
+    let stepped : (Option (Buffer bufferSize)) × SearchState (BufferStrategy bufferSize) nfa :=
+      eachStepChar (BufferStrategy bufferSize) nfa wf it current next
+
+    have refStepped := eachStepChar.refines stepped stepped' rfl rfl refCurrent refNext
+    have refMatched' : refineUpdateOpt (stepped'.1 <|> matched') (stepped.1 <|> matched) :=
+      refineUpdateOpt.orElse refStepped.1 refMatched
+    have hemp (h : matched.isSome) : ¬current.states.isEmpty :=
+      refCurrent.1 ▸ hemp' ((refineUpdateOpt.isSome_iff refMatched).mpr h)
+    have isSome : matched.isSome ∨ stepped.1.isSome := by
+      rw [←refineUpdateOpt.isSome_iff refMatched, ←refineUpdateOpt.isSome_iff refStepped.1]
       exact isSome'
-    generalize hstep : eachStepChar (BufferStrategy bufferSize) nfa wf it current next = stepped
-    simp [BufferStrategy] at stepped
-    rw [captureNext.go_ind_found atEnd isEmpty' isSome' h''] at h'
-    rw [captureNext.go_ind_found atEnd isEmpty isSome hstep] at h
 
-    have := eachStepChar.refines hstep h'' refCurrent refNext
-    simp at this
-    have ⟨refMatched'', refNext''⟩ := this
-    have : refineUpdateOpt (matched'' <|> matched') (stepped.1 <|> matched) :=
-      refineUpdateOpt.orElse refMatched'' refMatched
-    exact ih h h' this refNext'' (by simp [refCurrent.1, SearchState.refines, refCurrent.2])
+    rw [captureNext.go_ind_found stepped' rfl atEnd hemp' isSome'] at h'
+    rw [captureNext.go_ind_found stepped rfl atEnd hemp isSome] at h
+    exact ih h h' refMatched' refStepped.2 (by simp [SearchState.refines, refCurrent.1, refCurrent.2])
 
 theorem captureNext.refines :
   refineUpdateOpt (captureNext HistoryStrategy nfa wf it) (captureNext (BufferStrategy bufferSize) nfa wf it) := by
@@ -245,7 +245,7 @@ theorem captureNext.refines :
   generalize hexpand' : εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size HistoryStrategy.empty⟩ [(HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded'
   generalize hexpand : εClosure (BufferStrategy bufferSize) nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size (BufferStrategy bufferSize).empty⟩ [((BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
 
-  have ⟨refMatched, refState⟩ := εClosure.refines hexpand hexpand'
+  have ⟨refMatched, refState⟩ := εClosure.refines expanded expanded' hexpand hexpand'
     (by simp [refineUpdateOpt]) (by simp [SearchState.refines, refineUpdates]) (.cons rfl rfl .nil)
   exact captureNext.go.refines rfl rfl refMatched refState (by simp [SearchState.refines, refineUpdates])
 

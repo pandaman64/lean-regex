@@ -27,8 +27,8 @@ theorem refineUpdateOpt.isSome_iff (h : refineUpdateOpt matched' matched) :
   | .some _, .some _ => simp
   | .none, .some _ | .some _, .none => simp [refineUpdateOpt] at h
 
-theorem refineUpdateOpt.isNone_iff (h : refineUpdateOpt matched' matched) :
-  matched'.isNone ↔ matched.isNone := by
+theorem refineUpdateOpt.none_iff (h : refineUpdateOpt matched' matched) :
+  (matched' = .none) ↔ (matched = .none) := by
   match matched', matched with
   | .none, .none => simp
   | .some _, .some _ => simp
