@@ -214,6 +214,51 @@ theorem go.not_done_of_none {idx hle} (h : eachStepChar.go HistoryStrategy nfa w
     have invNext' := stepChar.not_done_of_none (notFound ▸ h') invNext
     exact ih h invNext'
 
+theorem go.subset {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (matched', next')) :
+  next.states ⊆ next'.states := by
+  induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
+  | base next =>
+    simp [eachStepChar.go_base] at h
+    exact h.2 ▸ SparseSet.subset_self
+  | done i hlt next hn =>
+    simp [eachStepChar.go_done hlt hn] at h
+    exact h.2 ▸ SparseSet.subset_self
+  | found i hlt next hn matched next'' h' found =>
+    simp [eachStepChar.go_found hlt hn h' found] at h
+    exact h.2 ▸ stepChar.subset h'
+  | not_found i hlt next hn matched next'' h' notFound ih =>
+    simp [eachStepChar.go_not_found hlt hn h' notFound] at h
+    exact SparseSet.subset_trans (stepChar.subset h') (ih h)
+
+theorem go.mem_of_step_of_none {idx hle} (h : eachStepChar.go HistoryStrategy nfa wf it current idx hle next = (.none, next'))
+  (notDone : current.NotDoneInv HistoryStrategy nfa)
+  (lb : εClosure.LowerBound it.next next.states)
+  (inv : ∀ i state' state'' update (_ : i < current.states.count), i < idx → nfa.CharStep it current.states[i] state' → nfa.εClosure' it.next state' state'' update → state'' ∈ next'.states) :
+  ∀ state state' state'' update, state ∈ current.states → nfa.CharStep it state state' → nfa.εClosure' it.next state' state'' update → state'' ∈ next'.states := by
+  induction idx, hle, next using eachStepChar.go.induct' HistoryStrategy nfa wf it current with
+  | base next =>
+    simp [eachStepChar.go_base] at h
+    intro state state' state'' update mem step cls
+    have ⟨isLt, eq⟩ := SparseSet.index_of_mem mem
+    exact h ▸ inv (current.states.index state) state' state'' update isLt isLt (by simpa [eq] using step) cls
+  | done idx hlt next hn => exact (notDone current.states[idx] (SparseSet.mem_get hlt) hn).elim
+  | found idx hlt next hn matched next'' h' found =>
+    simp [eachStepChar.go_found hlt hn h' found] at h
+    simp [h] at found
+  | not_found idx hlt next hn matched next'' h' notFound ih =>
+    rw [eachStepChar.go_not_found hlt hn h' notFound] at h
+    have lb' : εClosure.LowerBound it.next next''.states := stepChar.lower_bound h' lb
+    have inv' (i : Nat) (state' state'' update) (isLt : i < current.states.count) (hlt : i < idx + 1)
+      (step : nfa.CharStep it current.states[i] state') (cls : nfa.εClosure' it.next state' state'' update) :
+      state'' ∈ next'.states := by
+      have : i < idx ∨ i = idx := Nat.lt_succ_iff_lt_or_eq.mp hlt
+      cases this with
+      | inl hlt => exact inv i state' state'' update isLt hlt step cls
+      | inr eq =>
+        have mem'' : state'' ∈ next''.states := stepChar.mem_next_of_stepChar h' lb (eq ▸ step) cls
+        exact SparseSet.mem_of_mem_of_subset mem'' (go.subset h)
+    exact ih h lb' inv'
+
 theorem done_of_matched_some (h : eachStepChar HistoryStrategy nfa wf it current next = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' :=
@@ -231,6 +276,13 @@ theorem not_done_of_none (h : eachStepChar HistoryStrategy nfa wf it current nex
   next'.NotDoneInv HistoryStrategy nfa := by
   simp [eachStepChar] at h
   exact go.not_done_of_none h invCurrent invNext
+
+theorem mem_of_step_of_none (h : eachStepChar HistoryStrategy nfa wf it current next = (.none, next'))
+  (notDone : current.NotDoneInv HistoryStrategy nfa)
+  (lb : εClosure.LowerBound it.next next.states) :
+  ∀ state state' state'' update, state ∈ current.states → nfa.CharStep it state state' → nfa.εClosure' it.next state' state'' update → state'' ∈ next'.states := by
+  simp [eachStepChar] at h
+  exact go.mem_of_step_of_none h notDone lb (by simp only [Nat.not_lt_zero, IsEmpty.forall_iff, implies_true])
 
 end eachStepChar
 
