@@ -73,6 +73,22 @@ theorem SearchState.Inv.of_empty {nfa wf it₀ it} {next : SearchState HistorySt
   intro i mem
   exact (SparseSet.not_mem_of_isEmpty h mem).elim
 
+/--
+The invariant for the completeness theorem. The invariant holds only when returning `.none`, since we short-circuit when encountering `.done`.
+
+For all paths ending at `it`, the state must be tracked in `next.states`. We don't care about the updates for the completeness.
+-/
+def SearchState.MemOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ it : Iterator) (next : SearchState HistoryStrategy nfa) : Prop :=
+  ∀ i update, nfa.VMPath wf it₀ it i update → i ∈ next.states
+
+/--
+Invariant for the completeness theorem.
+
+The `.done` state is not in `next.states`.
+-/
+def SearchState.NotDoneInv (σ : Strategy) (nfa : NFA) (next : SearchState σ nfa) : Prop :=
+  ∀ i, i ∈ next.states → nfa[i] ≠ .done
+
 end Regex.VM
 
 theorem Regex.NFA.CharStep.write_update {nfa : NFA} {it i j}

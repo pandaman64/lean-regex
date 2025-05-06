@@ -144,6 +144,33 @@ theorem matched_inv (h : εClosure σ nfa wf it matched next stack = (matched', 
         exact ⟨state, SparseSet.mem_insert, this.1, by simp [updates', writeUpdate, this]⟩
     exact ih h inv'
 
+theorem not_done_of_none (h : εClosure σ nfa wf it matched next stack = (matched', next'))
+  (isNone : matched' = .none)
+  (inv : next.NotDoneInv σ nfa) :
+  next'.NotDoneInv σ nfa := by
+  induction matched, next, stack using εClosure.induct' σ nfa wf it with
+  | base matched next =>
+    simp [εClosure.base] at h
+    simpa [h] using inv
+  | visited matched next update state stack mem ih =>
+    rw [εClosure.visited mem] at h
+    exact ih h inv
+  | not_visited matched next update state stack mem node matched'' states' updates' ih =>
+    rw [εClosure.not_visited mem] at h
+    have inv' : SearchState.NotDoneInv σ nfa ⟨states', updates'⟩ := by
+      intro i mem
+      simp [states'] at mem
+      cases SparseSet.eq_or_mem_of_mem_insert mem with
+      | inl eq =>
+        rw [eq]
+        intro hn
+        have isSome'' : matched''.isSome := by
+          simp [matched'', node, hn, Option.isSome_iff_ne_none]
+        have eq' : matched' = matched'' := eq_matched_some h isSome''
+        simp [eq', matched'', node, hn, Option.isSome_iff_ne_none] at isNone
+      | inr mem => exact inv i mem
+    exact ih h inv'
+
 def LowerInvStep (it : Iterator) (states : SparseSet nfa.nodes.size) (stack : εStack σ nfa) : Prop :=
   ∀ i j update, i ∈ states → nfa.εStep' it i j update → j ∈ states ∨ ∃ update', (update', j) ∈ stack
 
