@@ -32,6 +32,23 @@ theorem toString {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ 
   | more _ _ _ _ eqit ih =>
     rw [eqit, Iterator.next_toString, ih]
 
+theorem le_pos {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update) :
+  it₀.pos ≤ it.pos := by
+  induction path with
+  | init _ le _ => exact le
+  | @more i j k it' it _ _ _ _ _ _ _ eqit ih =>
+    rw [eqit]
+    exact Nat.le_trans ih (Nat.le_of_lt it'.lt_next)
+
+theorem εClosure_of_eq_it {nfa : NFA} {wf it i update} (path : nfa.VMPath wf it it i update) :
+  nfa.εClosure' it ⟨nfa.start, wf.start_lt⟩ i update := by
+  cases path with
+  | init _ _ cls => exact cls
+  | @more i j k it' it _ _ _ prev step _ _ eqit =>
+    have le := prev.le_pos
+    rw [eqit] at le
+    exact (Nat.not_lt_of_ge le it'.lt_next).elim
+
 theorem eq_or_nfaPath {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update) :
   (i.val = nfa.start ∧ update = [] ∧ it.toString = it₀.toString ∧ it₀.pos ≤ it.pos) ∨
   ∃ its, its.toString = it₀.toString ∧ it₀.pos ≤ its.pos ∧ nfa.Path 0 nfa.start its i it update := by
@@ -100,6 +117,11 @@ The `.done` state is not in `next.states`.
 -/
 def SearchState.NotDoneInv (σ : Strategy) (nfa : NFA) (next : SearchState σ nfa) : Prop :=
   ∀ i, i ∈ next.states → nfa[i] ≠ .done
+
+theorem SearchState.NotDoneInv.of_empty {σ nfa} {next : SearchState σ nfa} (h : next.states.isEmpty) :
+  next.NotDoneInv σ nfa := by
+  intro i mem
+  exact (SparseSet.not_mem_of_isEmpty h mem).elim
 
 end Regex.VM
 

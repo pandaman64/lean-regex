@@ -180,6 +180,11 @@ def LowerBoundStep (it : Iterator) (states : SparseSet nfa.nodes.size) : Prop :=
 def LowerBound (it : Iterator) (states : SparseSet nfa.nodes.size) : Prop :=
   ∀ i j update, i ∈ states → nfa.εClosure' it i j update → j ∈ states
 
+theorem LowerBound.of_empty {it : Iterator} {states : SparseSet nfa.nodes.size} (h : states.isEmpty) :
+  LowerBound it states := by
+  intro i j update mem cls
+  exact (SparseSet.not_mem_of_isEmpty h mem).elim
+
 theorem LowerBound.of_step {it : Iterator} {states : SparseSet nfa.nodes.size} (h : LowerBoundStep it states) :
   εClosure.LowerBound it states := by
   intro i j update mem cls
