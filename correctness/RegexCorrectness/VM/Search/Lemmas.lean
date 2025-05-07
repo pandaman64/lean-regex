@@ -9,24 +9,6 @@ open String (Pos Iterator)
 
 namespace Regex.VM
 
-theorem MemOfPathInv.preserves {nfa wf it₀ it current next} (stepped expanded)
-  (h₁ : eachStepChar HistoryStrategy nfa wf it current next = stepped)
-  (h₂ : εClosure HistoryStrategy nfa wf it.next .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
-  (isNone₁ : stepped.1 = .none) (v : it.Valid)
-  (ndinv : current.NotDoneInv HistoryStrategy nfa) (lb : εClosure.LowerBound it.next next.states)
-  (inv : current.MemOfPathInv nfa wf it₀ it) :
-  expanded.2.MemOfPathInv nfa wf it₀ it.next := by
-  intro k update path
-  cases path with
-  | init eqs le cls => exact εClosure.mem_next h₂ (eachStepChar.lower_bound stepped h₁ lb) cls
-  | @more i j k it' _ update₁ update₂ update₃ prev step cls equpdate eqit =>
-    have : it = it' := Iterator.eq_of_valid_of_next_eq v step.validL eqit
-    subst it'
-    have mem : i ∈ current.states := inv i update₁ prev
-    have mem' : k ∈ stepped.2.states :=
-      eachStepChar.mem_of_step_of_none stepped h₁ isNone₁ ndinv lb i j k update₂ mem step cls
-    exact SparseSet.mem_of_mem_of_subset mem' (εClosure.subset h₂)
-
 def MatchedInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) (matched : Option (List (Nat × Pos))) : Prop :=
   (isSome : matched.isSome) →
     ∃ state it,
@@ -95,5 +77,56 @@ theorem captureNext.path_done_of_matched {nfa wf it₀ matched'}
     exact ⟨state, it₀, hn, write ▸ path⟩
 
   exact captureNext.go.inv h v rfl (Nat.le_refl _) curr_inv (by simp) matched_inv isSome'
+
+theorem SearchState.NotDoneInv.preserves {nfa wf it current next} (stepped expanded)
+  (h₁ : eachStepChar HistoryStrategy nfa wf it current next = stepped)
+  (h₂ : εClosure HistoryStrategy nfa wf it.next .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
+  (isNone₁ : stepped.1 = .none) (isNone₂ : expanded.1 = .none)
+  (invCurrent : current.NotDoneInv HistoryStrategy nfa) (invNext : next.NotDoneInv HistoryStrategy nfa) :
+  expanded.2.NotDoneInv HistoryStrategy nfa := by
+  have inv' := eachStepChar.not_done_of_none stepped h₁ isNone₁ invCurrent invNext
+  exact εClosure.not_done_of_none expanded h₂ isNone₂ inv'
+
+theorem SearchState.MemOfPathInv.preserves {nfa wf it₀ it current next} (stepped expanded)
+  (h₁ : eachStepChar HistoryStrategy nfa wf it current next = stepped)
+  (h₂ : εClosure HistoryStrategy nfa wf it.next .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
+  (isNone₁ : stepped.1 = .none) (v : it.Valid)
+  (ndinv : current.NotDoneInv HistoryStrategy nfa) (lb : εClosure.LowerBound it.next next.states)
+  (inv : current.MemOfPathInv nfa wf it₀ it) :
+  expanded.2.MemOfPathInv nfa wf it₀ it.next := by
+  intro k update path
+  cases path with
+  | init eqs le cls => exact εClosure.mem_next h₂ (eachStepChar.lower_bound stepped h₁ lb) cls
+  | @more i j k it' _ update₁ update₂ update₃ prev step cls equpdate eqit =>
+    have : it = it' := Iterator.eq_of_valid_of_next_eq v step.validL eqit
+    subst it'
+    have mem : i ∈ current.states := inv i update₁ prev
+    have mem' : k ∈ stepped.2.states :=
+      eachStepChar.mem_of_step_of_none stepped h₁ isNone₁ ndinv lb i j k update₂ mem step cls
+    exact SparseSet.mem_of_mem_of_subset mem' (εClosure.subset h₂)
+
+def NeDoneOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ it : Iterator) : Prop :=
+  ∀ it' state update, it'.pos ≤ it.pos → nfa.VMPath wf it₀ it' state update → nfa[state] ≠ .done
+
+theorem NeDoneOfPathInv.preserves {nfa wf it₀ it} {expanded : Option (List (Nat × Pos)) × SearchState HistoryStrategy nfa}
+  (eqs : it.toString = it₀.toString) (v : it.Valid)
+  (notDone : expanded.2.NotDoneInv HistoryStrategy nfa) (memOfPath : expanded.2.MemOfPathInv nfa wf it₀ it.next)
+  (inv : NeDoneOfPathInv nfa wf it₀ it) :
+  NeDoneOfPathInv nfa wf it₀ it.next := by
+  intro it' state update le path
+  have : it'.pos ≤ it.pos ∨ it' = it.next := by
+    have eqs' : it'.toString = it.toString := by
+      rw [eqs, path.toString]
+    have v' : it'.Valid := path.valid
+    cases v'.pos_le_or_ge_next v eqs' with
+    | inl le => exact .inl le
+    | inr ge =>
+      have eq : it'.pos = it.next.pos := by simpa [Pos.ext_iff] using Nat.le_antisymm le ge
+      exact .inr (Iterator.ext eqs' eq)
+  cases this with
+  | inl le => exact inv it' state update le path
+  | inr eq =>
+    have mem := memOfPath state update (eq ▸ path)
+    exact notDone state mem
 
 end Regex.VM

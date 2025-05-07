@@ -151,6 +151,26 @@ theorem validFor_of_valid_pos_le {it it' : Iterator} (v : it.Valid) (v' : it'.Va
 
   exact ⟨lrev.reverse, m, r, by simpa [←eq₁] using vf, by simpa [←eq₂] using vf'⟩
 
+theorem pos_le_or_ge_next {it it' : Iterator} (v : it.Valid) (v' : it'.Valid) (eqs : it.toString = it'.toString) :
+  it.pos ≤ it'.pos ∨ it'.next.pos ≤ it.pos := by
+  if h : it.pos ≤ it'.pos then
+    exact .inl h
+  else
+    have lt : it'.pos < it.pos := Nat.lt_of_not_ge h
+    have ⟨l, m, r, vf', vf⟩ := validFor_of_valid_pos_le v' v eqs.symm (Nat.le_of_lt lt)
+    match m with
+    | [] =>
+      simp at vf vf'
+      have eq : it.pos = it'.pos := by
+        simp [vf.pos, vf'.pos]
+      exact .inl (eq ▸ Nat.le_refl _)
+    | c :: m =>
+      have vf' := vf'.next
+      simp at vf vf'
+      have le : it'.next.pos ≤ it.pos := by
+        simp [vf.pos, vf'.pos]
+      exact .inr le
+
 theorem validFor_of_hasNext {it : Iterator} (h : it.hasNext) (v : it.Valid) :
   ∃ l r, it.ValidFor l (it.curr :: r) := by
   have ⟨l, r, vf⟩ := v.validFor

@@ -20,6 +20,18 @@ inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) : Iterator
 
 namespace VMPath
 
+theorem valid {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update) : it.Valid := by
+  cases path with
+  | init _ _ cls => exact cls.valid
+  | more _ _ cls _ eqit => exact eqit ▸ cls.valid
+
+theorem toString {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update) :
+  it.toString = it₀.toString := by
+  induction path with
+  | init eqs => exact eqs
+  | more _ _ _ _ eqit ih =>
+    rw [eqit, Iterator.next_toString, ih]
+
 theorem eq_or_nfaPath {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update) :
   (i.val = nfa.start ∧ update = [] ∧ it.toString = it₀.toString ∧ it₀.pos ≤ it.pos) ∨
   ∃ its, its.toString = it₀.toString ∧ it₀.pos ≤ its.pos ∧ nfa.Path 0 nfa.start its i it update := by
