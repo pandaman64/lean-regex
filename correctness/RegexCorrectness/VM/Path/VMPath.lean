@@ -14,9 +14,9 @@ namespace Regex.NFA
 inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) : Iterator → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
   | init {it i update} (eqs : it.toString = it₀.toString) (le : it₀.pos ≤ it.pos) (cls : nfa.εClosure' it ⟨nfa.start, wf.start_lt⟩ i update) :
     VMPath nfa wf it₀ it i update
-  | more {i j k it update₁ update₂ update₃} (prev : VMPath nfa wf it₀ it i update₁) (step : nfa.CharStep it i j) (cls : nfa.εClosure' it.next j k update₂)
-    (hupdate : update₃ = update₁ ++ update₂) :
-    VMPath nfa wf it₀ it.next k update₃
+  | more {i j k it it' update₁ update₂ update₃} (prev : VMPath nfa wf it₀ it i update₁) (step : nfa.CharStep it i j) (cls : nfa.εClosure' it.next j k update₂)
+    (hupdate : update₃ = update₁ ++ update₂) (eqit : it' = it.next) :
+    VMPath nfa wf it₀ it' k update₃
 
 namespace VMPath
 
@@ -29,7 +29,7 @@ theorem eq_or_nfaPath {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf i
     cases cls with
     | inl h => simp [←h.1, h.2, eqs, le, -Iterator.toString, -Iterator.pos]
     | inr cls => exact .inr ⟨itp, eqs, le, cls⟩
-  | @more i j k it update₁ update₂ update₃ prev step cls equpdate ih =>
+  | @more i j k it it' update₁ update₂ update₃ prev step cls equpdate eqit ih =>
     have path₂ : nfa.Path 0 i it k it.next update₂ := by
       simp [εClosure'_iff_path nfa wf] at cls
       match cls with
@@ -42,8 +42,8 @@ theorem eq_or_nfaPath {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf i
     | .inl ⟨eqi, equpdate', eqs, le⟩ =>
       simp [←eqi, equpdate']
       simp [equpdate'] at equpdate
-      exact .inr ⟨it, eqs, le, equpdate ▸ path₂⟩
-    | .inr ⟨itp, eqs, le, path₁⟩ => exact .inr ⟨itp, eqs, le, equpdate ▸ path₁.trans path₂⟩
+      exact .inr ⟨it, eqs, le, equpdate ▸ eqit ▸ path₂⟩
+    | .inr ⟨itp, eqs, le, path₁⟩ => exact .inr ⟨itp, eqs, le, equpdate ▸ eqit ▸ path₁.trans path₂⟩
 
 theorem nfaPath_of_ne {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update)
   (ne : i.val ≠ nfa.start):

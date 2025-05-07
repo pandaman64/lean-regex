@@ -1,3 +1,4 @@
+import RegexCorrectness.Data.String
 import RegexCorrectness.VM.Search.Basic
 
 set_option autoImplicit false
@@ -7,6 +8,24 @@ open Regex (NFA)
 open String (Pos Iterator)
 
 namespace Regex.VM
+
+theorem MemOfPathInv.preserves {nfa wf it₀ it current next} (stepped expanded)
+  (h₁ : eachStepChar HistoryStrategy nfa wf it current next = stepped)
+  (h₂ : εClosure HistoryStrategy nfa wf it.next .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
+  (isNone₁ : stepped.1 = .none) (v : it.Valid)
+  (ndinv : current.NotDoneInv HistoryStrategy nfa) (lb : εClosure.LowerBound it.next next.states)
+  (inv : current.MemOfPathInv nfa wf it₀ it) :
+  expanded.2.MemOfPathInv nfa wf it₀ it.next := by
+  intro k update path
+  cases path with
+  | init eqs le cls => exact εClosure.mem_next h₂ (eachStepChar.lower_bound stepped h₁ lb) cls
+  | @more i j k it' _ update₁ update₂ update₃ prev step cls equpdate eqit =>
+    have : it = it' := Iterator.eq_of_valid_of_next_eq v step.validL eqit
+    subst it'
+    have mem : i ∈ current.states := inv i update₁ prev
+    have mem' : k ∈ stepped.2.states :=
+      eachStepChar.mem_of_step_of_none stepped h₁ isNone₁ ndinv lb i j k update₂ mem step cls
+    exact SparseSet.mem_of_mem_of_subset mem' (εClosure.subset h₂)
 
 def MatchedInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) (matched : Option (List (Nat × Pos))) : Prop :=
   (isSome : matched.isSome) →
