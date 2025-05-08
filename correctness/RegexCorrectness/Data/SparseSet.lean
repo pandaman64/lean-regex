@@ -64,4 +64,10 @@ theorem mem_get {s : SparseSet n} {i : Nat} (h : i < s.count) : s[i] ∈ s := by
   simp at this
   simp [this, h]
 
+def index (i : Fin n) (s : SparseSet n) : Nat := s.sparse[i]
+
+theorem index_of_mem {i : Fin n} {s : SparseSet n} (h : i ∈ s) : ∃ _ : s.index i < s.count, s[s.index i] = i := by
+  simp [mem] at h
+  exact ⟨h.1, by simpa [getElem, get, index] using h.2⟩
+
 end Regex.Data.SparseSet

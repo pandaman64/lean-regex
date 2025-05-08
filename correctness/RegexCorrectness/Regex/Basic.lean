@@ -55,7 +55,7 @@ theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
   apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
   simp [expr, Expr.tags]
 
-theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
+theorem captureNextBuf_soundness' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ it' it'' groups,
     it'.toString = it.toString ∧
@@ -66,10 +66,10 @@ theorem captures_of_captureNext' {re bufferSize it matched} (h : re.captureNextB
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
     exact Backtracker.captureNext_soundness s.disj h v
   else
-    simp [Regex.captureNextBuf, bt] at h
-    exact VM.captureNext_soundness s.nfa_eq.symm s.disj h v rfl
+    simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
+    exact VM.captureNext_soundness s.disj h v
 
-theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
+theorem captureNextBuf_soundness {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
   (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
   ∃ it' it'' groups,
     it'.toString = it.toString ∧
@@ -78,7 +78,7 @@ theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBu
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
     matched[0] = .some it'.pos ∧
     matched[1] = .some it''.pos := by
-  have ⟨it', it'', groups, eqs, le', c, eqv⟩ := captures_of_captureNext' h s v
+  have ⟨it', it'', groups, eqs, le', c, eqv⟩ := captureNextBuf_soundness' h s v
   refine ⟨it', it'', groups, eqs, le', c, eqv, ?_⟩
 
   cases c with
@@ -89,6 +89,19 @@ theorem captures_of_captureNext {re bufferSize it matched} (h : re.captureNextBu
     have h₂ : 1 < bufferSize := Nat.lt_of_lt_of_le (by decide) le
     simp [h₁, h₂] at eqv
     exact ⟨eqv.1.symm, eqv.2.symm⟩
+
+theorem captureNextBuf_completeness {re bufferSize it} (h : re.captureNextBuf bufferSize it = .none)
+  (s : IsSearchRegex re) (v : it.Valid) :
+  ¬∃ it' it'' groups,
+    it'.toString = it.toString ∧
+    it.pos ≤ it'.pos ∧
+    s.expr.Captures it' it'' groups := by
+  if bt : re.useBacktracker then
+    simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
+    exact Backtracker.captureNext_completeness h v
+  else
+    simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
+    exact VM.captureNext_completeness h v
 
 theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first, last))
   (s : IsSearchRegex re) (v : it.Valid) :
@@ -102,7 +115,7 @@ theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first,
   match h' : re.captureNextBuf 2 it with
   | .none => simp [h'] at h
   | .some matched =>
-    have ⟨it', it'', groups, eqs, le, c, eqv, eq₁, eq₂⟩ := captures_of_captureNext h' s v (Nat.le_refl _)
+    have ⟨it', it'', groups, eqs, le, c, eqv, eq₁, eq₂⟩ := captureNextBuf_soundness h' s v (Nat.le_refl _)
     simp [h', eq₁, eq₂] at h
     exact ⟨it', it'', groups, eqs, le, c, by simp [←h]⟩
 

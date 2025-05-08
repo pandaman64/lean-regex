@@ -144,6 +144,33 @@ theorem matched_inv (h : εClosure σ nfa wf it matched next stack = (matched', 
         exact ⟨state, SparseSet.mem_insert, this.1, by simp [updates', writeUpdate, this]⟩
     exact ih h inv'
 
+theorem not_done_of_none (result) (h : εClosure σ nfa wf it matched next stack = result)
+  (isNone : result.1 = .none)
+  (inv : next.NotDoneInv σ nfa) :
+  result.2.NotDoneInv σ nfa := by
+  induction matched, next, stack using εClosure.induct' σ nfa wf it with
+  | base matched next =>
+    simp [εClosure.base] at h
+    simpa [←h] using inv
+  | visited matched next update state stack mem ih =>
+    rw [εClosure.visited mem] at h
+    exact ih h inv
+  | not_visited matched next update state stack mem node matched'' states' updates' ih =>
+    rw [εClosure.not_visited mem] at h
+    have inv' : SearchState.NotDoneInv σ nfa ⟨states', updates'⟩ := by
+      intro i mem
+      simp [states'] at mem
+      cases SparseSet.eq_or_mem_of_mem_insert mem with
+      | inl eq =>
+        rw [eq]
+        intro hn
+        have isSome'' : matched''.isSome := by
+          simp [matched'', node, hn, Option.isSome_iff_ne_none]
+        have eq' : result.1 = matched'' := eq_matched_some h isSome''
+        simp [eq', matched'', node, hn, Option.isSome_iff_ne_none] at isNone
+      | inr mem => exact inv i mem
+    exact ih h inv'
+
 def LowerInvStep (it : Iterator) (states : SparseSet nfa.nodes.size) (stack : εStack σ nfa) : Prop :=
   ∀ i j update, i ∈ states → nfa.εStep' it i j update → j ∈ states ∨ ∃ update', (update', j) ∈ stack
 
@@ -152,6 +179,11 @@ def LowerBoundStep (it : Iterator) (states : SparseSet nfa.nodes.size) : Prop :=
 
 def LowerBound (it : Iterator) (states : SparseSet nfa.nodes.size) : Prop :=
   ∀ i j update, i ∈ states → nfa.εClosure' it i j update → j ∈ states
+
+theorem LowerBound.of_empty {it : Iterator} {states : SparseSet nfa.nodes.size} (h : states.isEmpty) :
+  LowerBound it states := by
+  intro i j update mem cls
+  exact (SparseSet.not_mem_of_isEmpty h mem).elim
 
 theorem LowerBound.of_step {it : Iterator} {states : SparseSet nfa.nodes.size} (h : LowerBoundStep it states) :
   εClosure.LowerBound it states := by

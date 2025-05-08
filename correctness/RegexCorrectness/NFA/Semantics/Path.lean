@@ -222,6 +222,11 @@ theorem lt_right (wf : nfa.WellFormed) (path : nfa.Path lb i it j it' updates) :
   | last step => exact step.lt_right wf
   | more _ _ ih => exact ih
 
+theorem toString (path : nfa.Path lb i it j it' updates) : it'.toString = it.toString := by
+  induction path with
+  | last step => exact step.toString_eq
+  | more step _ ih => exact step.toString_eq ▸ ih
+
 theorem le_pos (path : nfa.Path lb i it j it' updates) : it.pos ≤ it'.pos := by
   induction path with
   | last step => exact step.le_pos

@@ -41,7 +41,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       have pos_valid := v.2.valid_of_le le
       have : 1 ≤ self.regex.maxTag := v.1.le_maxTag
       have ⟨it, it', groups, eqs, le, c, eqv, eq₁, eq₂⟩ :=
-        v.1.captures_of_captureNext h' pos_valid (by omega)
+        v.1.captureNextBuf_soundness h' pos_valid (by omega)
       simp at eqs
 
       simp [h'] at h
