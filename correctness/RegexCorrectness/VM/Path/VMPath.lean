@@ -11,6 +11,18 @@ open String (Pos Iterator)
 
 namespace Regex.NFA
 
+theorem Step.εStep_or_charStep {nfa : NFA} {it it' i j update} (wf : nfa.WellFormed) (step : nfa.Step 0 i it j it' update) :
+  (nfa.εStep' it ⟨i, step.lt⟩ ⟨j, step.lt_right wf⟩ update ∧ it' = it) ∨
+  (nfa.CharStep it ⟨i, step.lt⟩ ⟨j, step.lt_right wf⟩ ∧ it' = it.next ∧ update = .none) := by
+  cases step with
+  | epsilon ge lt v eq => exact .inl ⟨Step.epsilon ge lt v eq, rfl⟩
+  | anchor ge lt eq v htest => exact .inl ⟨Step.anchor ge lt eq v htest, rfl⟩
+  | splitLeft ge lt eq v => exact .inl ⟨Step.splitLeft ge lt eq v, rfl⟩
+  | splitRight ge lt eq v => exact .inl ⟨Step.splitRight ge lt eq v, rfl⟩
+  | save ge lt eq v => exact .inl ⟨Step.save ge lt eq v, rfl⟩
+  | char ge lt eq vf => exact .inr ⟨Step.char ge lt eq vf, rfl, rfl⟩
+  | sparse ge lt eq mem vf => exact .inr ⟨Step.sparse ge lt eq mem vf, rfl, rfl⟩
+
 inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) : Iterator → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
   | init {it i update} (eqs : it.toString = it₀.toString) (le : it₀.pos ≤ it.pos) (cls : nfa.εClosure' it ⟨nfa.start, wf.start_lt⟩ i update) :
     VMPath nfa wf it₀ it i update
@@ -19,6 +31,27 @@ inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) : Iterator
     VMPath nfa wf it₀ it' k update₃
 
 namespace VMPath
+
+theorem more_εStep {nfa : NFA} {wf it₀ it i j update₁ update₂}
+  (prev : nfa.VMPath wf it₀ it i update₁) (step : nfa.εStep' it i j update₂) :
+  nfa.VMPath wf it₀ it j (update₁ ++ List.ofOption update₂) := by
+  cases prev with
+  | init eqs le cls => exact .init eqs le (cls.snoc step)
+  | more prev step' cls hupdate eqit => exact .more prev step' (cls.snoc (eqit ▸ step)) (by simp [hupdate]) eqit
+
+theorem more_charStep {nfa : NFA} {wf it₀ it i j update}
+  (prev : nfa.VMPath wf it₀ it i update) (step : nfa.CharStep it i j) :
+  nfa.VMPath wf it₀ it.next j update := by
+  cases prev with
+  | init eqs le cls => exact .more (.init eqs le cls) step (.base step.validR) (by simp) rfl
+  | more prev step' cls hupdate eqit => exact .more (.more prev step' cls hupdate eqit) step (.base step.validR) (by simp) rfl
+
+theorem more_step {nfa : NFA} {wf it₀ it it' i j update₁ update₂}
+  (prev : nfa.VMPath wf it₀ it i update₁) (step : nfa.Step 0 i it j it' update₂) :
+  nfa.VMPath wf it₀ it' ⟨j, step.lt_right wf⟩ (update₁ ++ List.ofOption update₂) := by
+  match step.εStep_or_charStep wf with
+  | .inl ⟨step, eqit⟩ => exact eqit ▸ prev.more_εStep step
+  | .inr ⟨step, eqit, equpdate⟩ => simpa [eqit, equpdate] using prev.more_charStep step
 
 theorem valid {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf it₀ it i update) : it.Valid := by
   cases path with
@@ -78,6 +111,21 @@ theorem nfaPath_of_ne {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf i
   (ne : i.val ≠ nfa.start):
   ∃ its, its.toString = it₀.toString ∧ it₀.pos ≤ its.pos ∧ nfa.Path 0 nfa.start its i it update := by
   simpa [ne] using eq_or_nfaPath path
+
+theorem concat_nfaPath {nfa : NFA} {wf it₀ it it' i j update₁ update₂}
+  (isLt₁ : i < nfa.nodes.size)
+  (path₁ : nfa.VMPath wf it₀ it ⟨i, isLt₁⟩ update₁) (path₂ : nfa.Path 0 i it j it' update₂) :
+  nfa.VMPath wf it₀ it' ⟨j, path₂.lt_right wf⟩ (update₁ ++ update₂) := by
+  induction path₂ generalizing update₁ with
+  | @last j it k it' update₂ step => exact path₁.more_step step
+  | @more j it k it' l it'' update₂ update₃ step rest ih => simpa using ih rest.lt (path₁.more_step step)
+
+theorem of_nfaPath {nfa : NFA} {it₀ it it' i update} (wf : nfa.WellFormed)
+  (eqs : it.toString = it₀.toString) (le : it₀.pos ≤ it.pos)
+  (path : nfa.Path 0 nfa.start it i it' update) :
+  nfa.VMPath wf it₀ it' ⟨i, path.lt_right wf⟩ update := by
+  have path₁ : nfa.VMPath wf it₀ it ⟨nfa.start, wf.start_lt⟩ [] := .init eqs le (.base path.validL)
+  exact path₁.concat_nfaPath wf.start_lt path
 
 end VMPath
 

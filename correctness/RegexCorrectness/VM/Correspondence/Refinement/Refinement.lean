@@ -110,29 +110,14 @@ theorem stepChar.refines {currentUpdates currentUpdates' state} (result result')
   (refUpdates : refineUpdates currentUpdates' currentUpdates)
   (refState : next'.refines next) :
   refineUpdateOpt result'.1 result.1 ∧ result'.2.refines result.2 := by
-  unfold stepChar at h'
+  simp [stepChar] at h h'
   split at h'
-  next c state' hn =>
-    rw [stepChar_char hn] at h
-    split at h'
-    next eq =>
-      simp [eq] at h h'
-      exact εClosure.refines result result' h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
-    next ne =>
-      simp [ne] at h
-      simp [←h', ←h, refineUpdateOpt, refState]
-  next cs state' hn =>
-    rw [stepChar_sparse hn] at h
-    split at h'
-    next mem =>
-      simp [mem] at h h'
-      exact εClosure.refines result result' h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
-    next nmem =>
-      simp [nmem] at h
-      simp [←h', ←h, refineUpdateOpt, refState]
-  next h₁ h₂ =>
-    rw [stepChar_not_char_sparse h₁ h₂] at h
-    simp [←h', ←h, refineUpdateOpt, refState]
+  next state' hn =>
+    simp [hn] at h
+    exact εClosure.refines result result' h h' (by simp [refineUpdateOpt]) refState (.cons (refUpdates state) rfl .nil)
+  next hn =>
+    simp [hn] at h
+    simpa [←h', ←h, refineUpdateOpt] using refState
 
 theorem eachStepChar.go.refines {current current' i hle hle'} (result result')
   (h : eachStepChar.go (BufferStrategy bufferSize) nfa wf it current i hle next = result)
