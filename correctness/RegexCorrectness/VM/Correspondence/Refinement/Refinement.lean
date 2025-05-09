@@ -227,8 +227,8 @@ theorem captureNext.refines :
   refineUpdateOpt (captureNext HistoryStrategy nfa wf it) (captureNext (BufferStrategy bufferSize) nfa wf it) := by
   unfold captureNext
   simp
-  generalize hexpand' : εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size HistoryStrategy.empty⟩ [(HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded'
-  generalize hexpand : εClosure (BufferStrategy bufferSize) nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size (BufferStrategy bufferSize).empty⟩ [((BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
+  generalize hexpand' : εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.replicate nfa.nodes.size HistoryStrategy.empty⟩ [(HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩)] = expanded'
+  generalize hexpand : εClosure (BufferStrategy bufferSize) nfa wf it .none ⟨.empty, Vector.replicate nfa.nodes.size (BufferStrategy bufferSize).empty⟩ [((BufferStrategy bufferSize).empty, ⟨nfa.start, wf.start_lt⟩)] = expanded
 
   have ⟨refMatched, refState⟩ := εClosure.refines expanded expanded' hexpand hexpand'
     (by simp [refineUpdateOpt]) (by simp [SearchState.refines, refineUpdates]) (.cons rfl rfl .nil)

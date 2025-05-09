@@ -64,7 +64,7 @@ theorem captureNext.path_done_of_matched {nfa wf it₀ matched'}
     nfa.VMPath wf it₀ it state (matched'.get isSome') := by
   simp [captureNext] at h
 
-  set result := εClosure HistoryStrategy nfa wf it₀ .none ⟨.empty, Vector.mkVector nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure HistoryStrategy nfa wf it₀ .none ⟨.empty, Vector.replicate nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   set matched := result.1
   set current := result.2
   have h' : result = (matched, current) := rfl
@@ -202,7 +202,7 @@ theorem captureNext.ne_done_of_path_of_none {nfa wf it} (h : captureNext History
   (v : it.Valid) :
   ∀ it' state update, nfa.VMPath wf it it' state update → nfa[state] ≠ .done := by
   simp [captureNext] at h
-  set result := εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.mkVector nfa.nodes.size HistoryStrategy.empty⟩ [(HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.replicate nfa.nodes.size HistoryStrategy.empty⟩ [(HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩)]
   match h' : result.1 with
   | .none =>
     have ndinv : SearchState.NotDoneInv HistoryStrategy nfa result.2 := εClosure.not_done_of_none result rfl h' (.of_empty (by simp))

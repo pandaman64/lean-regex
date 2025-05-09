@@ -98,7 +98,7 @@ def insert (s : SparseSet n) (i : Fin n) : SparseSet n :=
       | inr lt =>
         have : dense'[j] = dense[j] := by
           simp [dense']
-          rw [Vector.getElem_set_ne dense count i isLt j.val (by omega) (by omega)]
+          rw [Vector.getElem_set_ne isLt (by omega) (by omega)]
         simp [sparse', this]
         rw [Vector.getElem_set]
         split

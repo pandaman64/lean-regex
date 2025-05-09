@@ -108,7 +108,7 @@ theorem materializeUpdatesAux_append {n accum updates₁ updates₂} :
 
 theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offset < n) :
   (materializeUpdatesAux n accum updates)[offset] =
-  ((materializeUpdatesAux n (Vector.mkVector n .none) updates)[offset] <|> accum[offset]) := by
+  ((materializeUpdatesAux n (Vector.replicate n .none) updates)[offset] <|> accum[offset]) := by
   induction updates generalizing accum with
   | nil => simp
   | cons head updates ih =>
@@ -119,7 +119,7 @@ theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offs
     conv =>
       rhs
       rw [ih]
-    cases (materializeUpdatesAux n (Vector.mkVector n .none) updates)[offset] with
+    cases (materializeUpdatesAux n (Vector.replicate n .none) updates)[offset] with
     | some _ => simp
     | none =>
       simp
@@ -129,7 +129,7 @@ theorem materializeUpdatesAux_getElem {n accum updates} {offset : Nat} (h : offs
         simp [h']
 
 @[simp]
-theorem materializeUpdates_empty {n} : materializeUpdates n [] = Vector.mkVector n .none := rfl
+theorem materializeUpdates_empty {n} : materializeUpdates n [] = Vector.replicate n .none := rfl
 
 @[simp]
 theorem materializeUpdates_snoc {n updates offset pos} :

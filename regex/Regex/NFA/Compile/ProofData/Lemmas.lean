@@ -14,7 +14,7 @@ theorem pushNode_wf {nfa : NFA} {node}
   intro i
   cases Nat.lt_or_ge i.val nfa.nodes.size with
   | inl lt =>
-    have : (nfa.nodes.push node)[i.val] = nfa.nodes[i.val] := nfa.nodes.getElem_push_lt _ _ lt
+    have : (nfa.nodes.push node)[i.val] = nfa.nodes[i.val] := nfa.nodes.getElem_push_lt lt
     simp [this]
     apply Node.inBounds_of_inBounds_of_le (wf.inBounds ⟨i.val, lt⟩) (by omega)
   | inr ge =>

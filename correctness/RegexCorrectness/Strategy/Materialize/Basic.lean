@@ -33,7 +33,7 @@ as the writes to the buffer. When the same offset appears multiple times in the 
 one wins.
 -/
 def materializeUpdates (n : Nat) (updates : List (Nat × Pos)) : Vector (Option Pos) n :=
-  materializeUpdatesAux n (Vector.mkVector n .none) updates
+  materializeUpdatesAux n (Vector.replicate n .none) updates
 
 def EquivMaterializedUpdate {n} (groups : Nat → Option (Pos × Pos)) (updates : Vector (Option Pos) n) : Prop :=
   ∀ tag,

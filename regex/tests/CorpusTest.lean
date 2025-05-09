@@ -3,7 +3,7 @@ import Lake.Toml.Decode
 import Regex
 
 open Lake (DecodeToml)
-open Lake.Toml (Value DecodeError)
+open Lake.Toml (Value DecodeError EDecodeM throwDecodeErrorAt)
 open String (Pos)
 
 set_option autoImplicit false
@@ -35,7 +35,7 @@ instance : DecodeToml Span where
       let start ← t.decode `start
       let «end» ← t.decode `«end»
       return { start, «end» }
-    | x => .error #[.mk x.ref "expected array of length 2 or table"]
+    | x => throwDecodeErrorAt x.ref "expected array of length 2 or table"
 
 structure Match where
   id : Nat
@@ -48,12 +48,12 @@ instance : ToString Match where
 def Match.eqv (m : Match) (positions : Array (Option (Pos × Pos))) : Bool :=
   m.spans.size = positions.size && ((m.spans.zip positions).all (fun (s, p) => Span.eqv s p))
 
-def decodeSpans (vs : Array Value) : Except (Array DecodeError) (Array (Option Span)) :=
+def decodeSpans (vs : Array Value) : EDecodeM (Array (Option Span)) :=
   vs.mapM fun v => match v with
     | .array _ #[] => pure .none
     | _ => DecodeToml.decode v |>.map .some
 
-def decodeMatch (v : Value) : Except (Array DecodeError) Match := do
+def decodeMatch (v : Value) : EDecodeM Match := do
   match v with
   | .array _ spans =>
     try
@@ -72,7 +72,7 @@ def decodeMatch (v : Value) : Except (Array DecodeError) Match := do
     | .none =>
       let spans ← decodeSpans (←t.decode `spans)
       return { id, spans }
-  | x => .error #[.mk x.ref "expected array or table"]
+  | x => throwDecodeErrorAt x.ref "expected array or table"
 
 instance : DecodeToml Match := ⟨decodeMatch⟩
 
@@ -85,7 +85,7 @@ instance : DecodeToml Expr where
   decode
     | .string _ s => return .single s
     | .array _ xs => return .many (←xs.mapM (DecodeToml.decode ·))
-    | x => .error #[.mk x.ref "expected string or array of strings"]
+    | x => throwDecodeErrorAt x.ref "expected string or array of strings"
 
 inductive MatchKind where
   | all
@@ -100,8 +100,8 @@ instance : DecodeToml MatchKind where
       | "all" => return .all
       | "leftmost-first" => return .leftmostFirst
       | "leftmost-longest" => return .leftmostLongest
-      | _ => .error #[.mk ref "expected \"all\", \"leftmost\", or \"leftmost-longest\""]
-    | x => .error #[.mk x.ref "expected string"]
+      | _ => throwDecodeErrorAt ref "expected \"all\", \"leftmost\", or \"leftmost-longest\""
+    | x => throwDecodeErrorAt x.ref "expected string"
 
 inductive SearchKind where
   | earliest
@@ -116,8 +116,8 @@ instance : DecodeToml SearchKind where
       | "earliest" => return .earliest
       | "leftmost" => return .leftmost
       | "overlapping" => return .overlapping
-      | _ => .error #[.mk ref "expected \"earliest\", \"leftmost\", or \"overlapping\""]
-    | x => .error #[.mk x.ref "expected string"]
+      | _ => throwDecodeErrorAt ref "expected \"earliest\", \"leftmost\", or \"overlapping\""
+    | x => throwDecodeErrorAt x.ref "expected string"
 
 structure RegexTest where
   group : String := ""
@@ -141,7 +141,7 @@ deriving Repr
 instance : ToString RegexTest where
   toString := reprStr
 
-def decodeRegexTest (test : Lake.Toml.Value) : Except (Array DecodeError) RegexTest := do
+def decodeRegexTest (test : Lake.Toml.Value) : EDecodeM RegexTest := do
   let table ← test.decodeTable
   let name ← table.decode `name
   let regex ← table.decode `regex
@@ -189,7 +189,7 @@ instance : ToString TestResult where
     | .ok => "ok"
     | .unsupported => "unsupported"
 
-def decodeRegexTests (group : String) (toml : Lake.Toml.Table) : Except (Array DecodeError) (Array RegexTest) := do
+def decodeRegexTests (group : String) (toml : Lake.Toml.Table) : EDecodeM (Array RegexTest) := do
   let tests : Array RegexTest ← toml.decode `test
   return tests.map fun test => { test with group }
 
@@ -267,7 +267,9 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
     fileName := filePath.toString,
     fileMap := fileMap
   }).toIO')
-  IO.ofExcept (decodeRegexTests group toml)
+  match decodeRegexTests group toml |>.run Array.empty with
+  | .ok tests _ => return tests
+  | .error () e => throw (IO.userError (s!"Error decoding regex tests: {e}"))
 
 def main (args : List String) : IO UInt32 := do
   let backtracker := args.contains "--backtracker"
