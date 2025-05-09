@@ -13,7 +13,7 @@ structure Strategy where
 
 abbrev Buffer (size : Nat) := Vector (Option Pos) size
 
-def Buffer.empty {size : Nat} : Buffer size := Vector.mkVector size none
+def Buffer.empty {size : Nat} : Buffer size := Vector.replicate size none
 
 def BufferStrategy (size : Nat) : Strategy where
   Update := Buffer size

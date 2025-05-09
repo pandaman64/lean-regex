@@ -131,7 +131,7 @@ where
           go (i + 1) hlt result.2
 
 def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
-  let updates : Vector σ.Update nfa.nodes.size := Vector.mkVector nfa.nodes.size σ.empty
+  let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
   let (matched, current) := εClosure σ nfa wf it .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
   go it matched current ⟨.empty, updates⟩
 where
