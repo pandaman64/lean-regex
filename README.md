@@ -9,7 +9,7 @@ lean-regex provides a robust, formally verified implementation of regular expres
 ### Key Features
 
 - **Formally Verified**: Both matching algorithms (backtracker and VM) are mathematically proven to correctly implement the semantics of regular expressions
-- **Real-World Regex Features**: Support for capture groups, character classes, alternation, repetition, and more
+- **Real-World Regex Features**: Support for capture groups, character classes, substring matching, and more
 - **Two Matching Engines**: Choose between a backtracker or virtual machine implementation, both provably correct
 - **Simple API**: Clean, easy-to-use interface for common regex operations
 
@@ -50,10 +50,6 @@ The library's correctness is formally verified through mathematical proofs in Le
 1. **Soundness**: When the engine reports a match, it correctly follows the formal semantics of regular expressions
 2. **Completeness**: When the engine reports no match, there truly is no match according to the formal semantics
 3. **Capture Correctness**: Capture groups correctly identify the matched substrings
-
-The formal verification covers both matching algorithms:
-- **Backtracker**: A depth-first search approach with a stack
-- **VM**: A breadth-first approach with specialized set operations
 
 ## Contributing
 
