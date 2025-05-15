@@ -40,7 +40,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'docbuild/.lake/docs'
+          path: 'correctness/.lake/docs'
 
   deploy:
     name: Deploy to GitHub Pages
