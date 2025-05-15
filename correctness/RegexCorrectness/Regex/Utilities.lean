@@ -18,9 +18,9 @@ theorem captures_of_find_some {positions} (h : re.find haystack = .some position
   have v := Captures.valid_captures haystack s
   exact (Matches.captures_of_next?_some h v).2
 
-theorem captures_of_mem_findAll.go {m : Matches} {accum : Array (Pos × Pos)}
-  (v : m.Valid) (inv : ∀ positions ∈ accum, ∃ startPos, Matches.Spec v.1 m.haystack startPos positions) :
-  ∀ positions ∈ findAll.go m accum, ∃ startPos, Matches.Spec v.1 m.haystack startPos positions := by
+theorem captures_of_mem_findAll.go {m : Matches} {accum : Array Substring}
+  (v : m.Valid) (inv : ∀ str ∈ accum, ∃ startPos, Matches.Spec v.1 m.haystack startPos str) :
+  ∀ str ∈ findAll.go m accum, ∃ startPos, Matches.Spec v.1 m.haystack startPos str := by
   induction m, accum using findAll.go.induct with
   | case1 m accum positions m' next_some? ih =>
     -- next match is found
@@ -31,9 +31,9 @@ theorem captures_of_mem_findAll.go {m : Matches} {accum : Array (Pos × Pos)}
     simp [regex_eq, haystack_eq] at ih
 
     have ⟨v', spec⟩ := Matches.captures_of_next?_some next_some? v
-    have inv' (p₁ p₂ : Pos) (mem : (p₁, p₂) ∈ accum ∨ (p₁, p₂) = positions) : ∃ startPos, Matches.Spec v.1 m.haystack startPos (p₁, p₂) := by
+    have inv' (str : Substring) (mem : str ∈ accum ∨ str = positions) : ∃ startPos, Matches.Spec v.1 m.haystack startPos str := by
       cases mem with
-      | inl mem => exact inv (p₁, p₂) mem
+      | inl mem => exact inv str mem
       | inr eq => exact ⟨m.currentPos, eq ▸ spec⟩
     exact ih v' inv'
   | case2 m accum next_none? =>

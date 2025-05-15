@@ -1,5 +1,7 @@
 import Regex.Regex.Basic
 
+set_option autoImplicit false
+
 open String (Pos)
 
 namespace Regex
@@ -10,41 +12,41 @@ structure Matches where
   currentPos : Pos
 deriving Repr
 
-def Matches.next? (self : Matches) : Option ((Pos × Pos) × Matches) := do
+def Matches.next? (self : Matches) : Option (Substring × Matches) := do
   if self.currentPos ≤ self.haystack.endPos then
-    let pos ← self.regex.searchNext ⟨self.haystack, self.currentPos⟩
-    if self.currentPos < pos.2 then
-      let next := { self with currentPos := pos.2 }
-      pure (pos, next)
-    else
-      let next := { self with currentPos := self.haystack.next self.currentPos }
-      pure (pos, next)
+    let s ← self.regex.searchNext ⟨self.haystack, self.currentPos⟩
+    let next :=
+      if self.currentPos < s.stopPos then
+        { self with currentPos := s.stopPos }
+      else
+        { self with currentPos := self.haystack.next self.currentPos }
+    pure (s, next)
   else
     throw ()
 
 def Matches.remaining (self : Matches) : Pos :=
   self.haystack.endPos + ⟨1⟩ - self.currentPos
 
-theorem Matches.lt_next?_some {m : Matches} (h : m.next? = some (pos, m')) :
+theorem Matches.lt_next?_some {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
   m.currentPos < m'.currentPos := by
   unfold next? at h
   split at h <;> simp [Option.bind_eq_some] at h
   have ⟨_, _, h⟩ := h
-  split at h <;> simp at h
+  split at h
   next h' => simp [←h, h']
   next =>
     simp [←h, String.next]
     have : (m.haystack.get m.currentPos).utf8Size > 0 := Char.utf8Size_pos _
     omega
 
-theorem Matches.haystack_eq_next?_some {m : Matches} (h : m.next? = some (pos, m')) :
+theorem Matches.haystack_eq_next?_some {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
   m'.haystack = m.haystack := by
   unfold next? at h
   split at h <;> simp [Option.bind_eq_some] at h
   have ⟨_, _, h⟩ := h
-  split at h <;> simp at h <;> simp [←h]
+  split at h <;> simp [←h]
 
-theorem Matches.next?_decreasing {m : Matches} (h : m.next? = some (pos, m')) :
+theorem Matches.next?_decreasing {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
   m'.remaining < m.remaining := by
   unfold remaining
   rw [haystack_eq_next?_some h]
@@ -64,7 +66,7 @@ macro_rules | `(tactic| decreasing_trivial) => `(tactic|
   rw [String.Pos.sizeOf_lt_iff];
   exact Matches.next?_decreasing (by assumption))
 
-instance : Stream Matches (Pos × Pos) := ⟨Matches.next?⟩
+instance : Stream Matches Substring := ⟨Matches.next?⟩
 
 end Regex
 

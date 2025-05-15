@@ -6,6 +6,27 @@ set_option autoImplicit false
 open String (Pos)
 open Regex.Strategy (materializeRegexGroups)
 
+namespace Regex.CapturedGroups
+
+theorem lt_of_get_some {self : CapturedGroups} {i s} (h : self.get i = .some s) :
+  2 * i + 1 < self.buffer.size := by
+  simp [get, Option.bind_eq_some] at h
+  have ⟨p₁, eq₁, p₁', eq₁', p₂, eq₂, p₂', eq₂', eq₃⟩ := h
+  simp [Array.getElem?_eq_some_iff] at eq₂
+  have ⟨lt, eq₂⟩ := eq₂
+  exact lt
+
+theorem get_eq_none_of_ge {self : CapturedGroups} {i} (h : 2 * i + 1 ≥ self.buffer.size) :
+  self.get i = .none := by
+  simp [get]
+  intro p₁ eq₁ p₁' eq₁' p₂ eq₂ p₂' eq₂'
+  simp [Array.getElem?_eq_some_iff] at eq₂
+  have ⟨lt, eq₂⟩ := eq₂
+  omega
+
+def materialize (self : CapturedGroups) (groups : Data.CaptureGroups) : Prop :=
+  ∀ i p₁ p₂, (self.get i) = .some ⟨self.haystack, p₁, p₂⟩ ↔ materializeRegexGroups groups i = .some (p₁, p₂)
+
 /--
 `CapturedGroups` conforms to the spec if and only if:
 
@@ -16,13 +37,15 @@ open Regex.Strategy (materializeRegexGroups)
   - in particular, the first group corresponds to the positions of the matched substring `m`
   - the last match of wins in case the same group is captured multiple times
 -/
-def Regex.CapturedGroups.Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (self : CapturedGroups) : Prop :=
+def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (self : CapturedGroups) : Prop :=
   ∃ it it' groups,
     it.toString = haystack ∧
     startPos ≤ it.pos ∧
     s.expr.Captures it it' groups ∧
-    self.get 0 = .some (it.pos, it'.pos) ∧
-    ∀ i, self.get i = materializeRegexGroups groups i
+    self.get 0 = .some ⟨haystack, it.pos, it'.pos⟩ ∧
+    self.materialize groups
+
+end Regex.CapturedGroups
 
 namespace Regex.Captures
 
@@ -45,73 +68,41 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       simp at eqs
 
       simp [h'] at h
-      set captured' := CapturedGroups.mk matched.toArray
-      have hcaptured (i : Nat) : captured'.get i = materializeRegexGroups groups i := by
-        have eqsize : matched.toArray.size = self.regex.maxTag + 1 :=
-          matched.size_toArray
-        if h₁ : 2 * i + 1 < self.regex.maxTag + 1 then
-          match eq₁ : matched[2 * i]'(by omega) with
-          | none =>
-            have hgroup := (eqv i).1 (by omega)
-            simp [eq₁] at hgroup
-            have : matched.toArray[2 * i]? = .some .none :=
-              eq₁ ▸ getElem?_pos matched.toArray (2 * i) (by omega)
-            simp [CapturedGroups.get, this, hgroup, captured']
-          | some v₁ =>
-            match eq₂ : matched[2 * i + 1] with
-            | none =>
-              have hgroup := (eqv i).2 (by omega)
-              simp [eq₂] at hgroup
-              have : matched.toArray[2 * i + 1]? = .some .none :=
-                eq₂ ▸ getElem?_pos matched.toArray (2 * i + 1) (by omega)
-              simp [CapturedGroups.get, this, hgroup, captured']
-            | some v₂ =>
-              have hgroup₁ := (eqv i).1 (by omega)
-              have hgroup₂ := (eqv i).2 (by omega)
-              simp [eq₁, eq₂] at hgroup₁ hgroup₂
-              have ⟨_, hgroup₁⟩ := hgroup₁
-              have ⟨_, hgroup₂⟩ := hgroup₂
-              simp [hgroup₁] at hgroup₂
-
-              have eq₁' : matched.toArray[2 * i]? = .some v₁ :=
-                eq₁ ▸ getElem?_pos matched.toArray (2 * i) (by omega)
-              have eq₂' : matched.toArray[2 * i + 1]? = .some v₂ :=
-                eq₂ ▸ getElem?_pos matched.toArray (2 * i + 1) (by omega)
-              simp [CapturedGroups.get, eq₁', eq₂', hgroup₁, hgroup₂, captured']
+      set captured' : CapturedGroups := ⟨self.haystack, matched.toArray⟩
+      have materializes : captured'.materialize groups := by
+        intro i p₁ p₂
+        have eqsize : matched.toArray.size = self.regex.maxTag + 1 := matched.size_toArray
+        if lt : 2 * i + 1 < matched.toArray.size then
+          have eq := eqv.eq i (by omega) p₁ p₂
+          simp [eq, captured', CapturedGroups.get, Option.bind_eq_some, Vector.getElem?_eq_some_iff]
+          apply Iff.intro
+          . intro ⟨⟨_, h₁⟩, ⟨_, h₂⟩⟩
+            exact ⟨h₁, h₂⟩
+          . intro ⟨h₁, h₂⟩
+            exact ⟨⟨by omega, h₁⟩, ⟨by omega, h₂⟩⟩
         else
-          match h₂ : materializeRegexGroups groups i with
-          | none =>
-            have : matched.toArray[2 * i + 1]? = .none :=
-              getElem?_neg matched.toArray (2 * i + 1) (by omega)
-            simp [CapturedGroups.get, this, captured']
-          | some _ =>
-            have : (materializeRegexGroups groups i).isSome := by simp [h₂]
-            have := Strategy.mem_tags_of_materializeRegexGroups_some c this
-            have := v.1.maxTag_eq ▸ NFA.lt_of_mem_tags_compile v.1.nfa_eq.symm this
-            simp at h₁
-            omega
-      have captured₀ : captured'.get 0 = .some (it.pos, it'.pos) := by
-        simp [hcaptured 0]
-        have h₁ := (eqv 0).1 (by omega)
-        have h₂ := (eqv 0).2 (by omega)
-        simp [BufferStrategy] at eq₁ eq₂
-        simp [eq₁] at h₁
-        simp [eq₂] at h₂
-        have ⟨_, eq₁⟩ := h₁
-        have ⟨_, eq₂⟩ := h₂
-        simp [eq₂] at eq₁
-        simp [eq₁, eq₂]
+          have eq : captured'.get i = .none := captured'.get_eq_none_of_ge (Nat.ge_of_not_lt lt)
+          simp [eq]
+          intro eq'
+          have mem : i ∈ v.1.expr.tags := Strategy.mem_tags_of_materializeRegexGroups_some (tag := i) c (by simp [eq'])
+          have lt' : 2 * i < self.regex.maxTag := v.1.maxTag_eq ▸ NFA.lt_of_mem_tags_compile v.1.nfa_eq.symm mem
+          omega
+
+      have captured₀ : captured'.get 0 = .some ⟨self.haystack, it.pos, it'.pos⟩ := by
+        have eq : materializeRegexGroups groups 0 = some (it.pos, it'.pos) := (eqv.eq 0 (by omega) it.pos it'.pos).mpr ⟨eq₁, eq₂⟩
+        have eq' : captured'.get 0 = .some ⟨captured'.haystack, it.pos, it'.pos⟩ := (materializes 0 it.pos it'.pos).mpr eq
+        simp [eq', captured']
+
       simp [captured₀] at h
+      refine ⟨?_, it, it', groups, eqs, le, c, h.1 ▸ captured₀, h.1 ▸ materializes⟩
       split at h
       next =>
-        simp at h
-        simp [←h, Valid]
+        simp [←h.2]
         have vp : Pos.ValidPlus it.toString it'.pos := c.toString_eq ▸ c.validR.validPlus
-        exact ⟨⟨v.1, eqs ▸ vp⟩, it, it', groups, eqs, le, c, captured₀, hcaptured⟩
+        exact ⟨v.1, eqs ▸ vp⟩
       next nlt =>
-        simp at h
-        simp [←h, Valid]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, eqs, le, c, captured₀, hcaptured⟩
+        simp [←h.2]
+        exact ⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :
@@ -122,18 +113,10 @@ theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next
     match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
     | none => simp [h'] at h
     | some buffer =>
-      simp [h'] at h
-      match h'' : CapturedGroups.get ⟨buffer.toArray⟩ 0 with
-      | none => simp [h''] at h
-      | some _ =>
-        simp [h''] at h
-        split at h
-        next =>
-          simp at h
-          simp [←h]
-        next =>
-          simp at h
-          simp [←h]
+      simp [h', Option.bind_eq_some] at h
+      have ⟨_, _, _, h⟩ := h
+      simp [←h]
+      split <;> rfl
   next => simp at h
 
 theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :
@@ -144,18 +127,10 @@ theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.n
     match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
     | none => simp [h'] at h
     | some buffer =>
-      simp [h'] at h
-      match h'' : CapturedGroups.get ⟨buffer.toArray⟩ 0 with
-      | none => simp [h''] at h
-      | some _ =>
-        simp [h''] at h
-        split at h
-        next =>
-          simp at h
-          simp [←h]
-        next =>
-          simp at h
-          simp [←h]
+      simp [h', Option.bind_eq_some] at h
+      have ⟨_, _, _, h⟩ := h
+      simp [←h]
+      split <;> rfl
   next => simp at h
 
 theorem valid_captures {re : Regex} (haystack : String) (s : re.IsSearchRegex) :

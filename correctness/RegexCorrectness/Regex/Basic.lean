@@ -103,14 +103,14 @@ theorem captureNextBuf_completeness {re bufferSize it} (h : re.captureNextBuf bu
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
     exact VM.captureNext_completeness h v
 
-theorem searchNext_some {re it first last} (h : re.searchNext it = .some (first, last))
+theorem searchNext_some {re it str} (h : re.searchNext it = .some str)
   (s : IsSearchRegex re) (v : it.Valid) :
   ∃ it' it'' groups,
     it'.toString = it.toString ∧
     it.pos ≤ it'.pos ∧
     s.expr.Captures it' it'' groups ∧
-    first = it'.pos ∧
-    last = it''.pos := by
+    str.startPos = it'.pos ∧
+    str.stopPos = it''.pos := by
   simp [Regex.searchNext, s.nfa_eq] at h
   match h' : re.captureNextBuf 2 it with
   | .none => simp [h'] at h

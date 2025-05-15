@@ -1,22 +1,25 @@
 import Regex.Regex.Basic
 
+set_option autoImplicit false
+
 open String (Pos)
 
 namespace Regex
 
 structure CapturedGroups where
+  haystack : String
   buffer : Array (Option Pos)
 deriving Repr, DecidableEq
 
-def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option (Pos × Pos) := do
+def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option Substring := do
   let start ← (← self.buffer[2 * index]?)
   let stop ← (← self.buffer[2 * index + 1]?)
-  return (start, stop)
+  return ⟨self.haystack, start, stop⟩
 
-def CapturedGroups.toArray (self : CapturedGroups) : Array (Option (Pos × Pos)) :=
+def CapturedGroups.toArray (self : CapturedGroups) : Array (Option Substring) :=
   go 0 #[]
 where
-  go (i : Nat) (accum : Array (Option (Pos × Pos))) : Array (Option (Pos × Pos)) :=
+  go (i : Nat) (accum : Array (Option Substring)) : Array (Option Substring) :=
     if 2 * i < self.buffer.size then
       go (i + 1) (accum.push (self.get i))
     else
@@ -31,42 +34,42 @@ deriving Repr
 def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
   if self.currentPos ≤ self.haystack.endPos then
     let buffer ← self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
-    let groups := CapturedGroups.mk buffer.toArray
-    let pos ← groups.get 0
-    if self.currentPos < pos.2 then
-      let next := { self with currentPos := pos.2 }
-      pure (groups, next)
-    else
-      let next := { self with currentPos := self.haystack.next self.currentPos }
-      pure (groups, next)
+    let groups : CapturedGroups := ⟨self.haystack, buffer.toArray⟩
+    let s ← groups.get 0
+    let next :=
+      if self.currentPos < s.stopPos then
+        { self with currentPos := s.stopPos }
+      else
+        { self with currentPos := self.haystack.next self.currentPos }
+    pure (groups, next)
   else
     throw ()
 
 def Captures.remaining (self : Captures) : Pos :=
   self.haystack.endPos + ⟨1⟩ - self.currentPos
 
-theorem Captures.lt_next?_some {m : Captures} (h : m.next? = some (pos, m')) :
+theorem Captures.lt_next?_some {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
   m.currentPos.byteIdx < m'.currentPos.byteIdx := by
   unfold next? at h
   split at h <;> simp [Option.bind_eq_some] at h
   have ⟨_, _, h⟩ := h
   have ⟨_, _, h⟩ := h
-  split at h <;> simp at h
+  split at h
   next h' => simp [←h, h']
   next =>
     simp [←h, String.next]
     have : (m.haystack.get m.currentPos).utf8Size > 0 := Char.utf8Size_pos _
     omega
 
-theorem Captures.haystack_eq_next?_some {m : Captures} (h : m.next? = some (pos, m')) :
+theorem Captures.haystack_eq_next?_some {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
   m'.haystack = m.haystack := by
   unfold next? at h
   split at h <;> simp [Option.bind_eq_some] at h
   have ⟨_, _, h⟩ := h
   have ⟨_, _, h⟩ := h
-  split at h <;> simp at h <;> simp [←h]
+  split at h <;> simp [←h]
 
-theorem Captures.next?_decreasing {m : Captures} (h : m.next? = some (pos, m')) :
+theorem Captures.next?_decreasing {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
   m'.remaining < m.remaining := by
   unfold remaining
   rw [haystack_eq_next?_some h]
