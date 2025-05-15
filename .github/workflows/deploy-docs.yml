@@ -27,12 +27,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
         
-      - name: Build Documentation
+      - name: Build RegexCorrectness
         uses: leanprover/lean-action@v1
         with:
-          build-args: '--keep-toolchain'
-          lake-package-directory: docbuild
-          lake-build-args: 'Regex:docs RegexCorrectness:docs'
+          build-args: '--wfail'
+          lake-package-directory: correctness
+
+      - name: Build Documentation
+        working-directory: docbuild
+        run: lake build --keep-toolchain Regex:docs RegexCorrectness:docs
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

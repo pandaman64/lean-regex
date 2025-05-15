@@ -39,6 +39,3 @@ jobs:
           with:
             build-args: '--wfail'
             lake-package-directory: correctness
-        - name: Build docs
-          working-directory: docbuild
-          run: lake build --keep-toolchain Regex:docs RegexCorrectness:docs
