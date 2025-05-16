@@ -82,9 +82,12 @@ instance : ToExpr Regex where
 Macro for creating a regex at compile time.
 
 Parses a string literal into a `Regex` object during Lean's elaboration phase.
-This allows regex patterns to be checked at compile time rather than runtime.
+This allows regex patterns to be checked at compile time rather than runtime,
+catching syntax errors during compilation instead of at runtime.
 
-Example: `re! "a+b*c?"` creates a compiled regex matching that pattern
+Examples:
+- `re! "a+b*c?"` creates a compiled regex matching that pattern
+- `re! r"\d"` can be combined with raw string literals for easier escaping
 -/
 elab "re!" lit:str : term => do
   match Regex.parse lit.getString with

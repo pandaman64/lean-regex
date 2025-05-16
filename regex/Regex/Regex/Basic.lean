@@ -60,11 +60,12 @@ def parse (s : String) : Except Regex.Syntax.Parser.Error Regex := do
   return { nfa := nfa, wf := Regex.NFA.compile_wf }
 
 /--
-Parses a regular expression string into a `Regex` structure, raising an exception on parse error.
+Parses a regular expression string into a `Regex` structure, panicking on parse error.
 
 * `s`: The regular expression string to parse
 * Returns: A compiled `Regex`
-* Throws: If the regex syntax is invalid
+* Panics: If the regex syntax is invalid
+* Note: Use `Regex.parse` instead if you want to handle parse errors
 -/
 def parse! (s : String) : Regex :=
   let nfa := Regex.NFA.compile (Regex.Syntax.Parser.parse! s)
