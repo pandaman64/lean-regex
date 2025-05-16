@@ -18,9 +18,9 @@ structure Span where
   «end» : Nat
 deriving Repr
 
-def Span.eqv (s : Option Span) (p : Option Substring) : Bool :=
+def Span.eqv (s : Option Span) (p : Option (Pos × Pos)) : Bool :=
   match s, p with
-  | .some s, .some p => s.start = p.startPos.byteIdx && s.end = p.stopPos.byteIdx
+  | .some s, .some p => s.start = p.1.byteIdx && s.end = p.2.byteIdx
   | .none, .none => true
   | .some _, .none => false
   | .none, .some _ => false
@@ -45,7 +45,7 @@ deriving Repr
 instance : ToString Match where
   toString := reprStr
 
-def Match.eqv (m : Match) (positions : Array (Option Substring)) : Bool :=
+def Match.eqv (m : Match) (positions : Array (Option (Pos × Pos))) : Bool :=
   m.spans.size = positions.size && ((m.spans.zip positions).all (fun (s, p) => Span.eqv s p))
 
 def decodeSpans (vs : Array Value) : EDecodeM (Array (Option Span)) :=
@@ -232,12 +232,13 @@ def RegexTest.run (test : RegexTest) (backtracker : Bool) : Except String TestRe
     match test.matchLimit with
     | .some limit => allCaptures.take limit
     | .none => allCaptures
-  if test.matches.size != captures.size then
-    throw s!"expected {test.matches}, got {captures}"
+  let positions := captures.map (·.map (·.map (fun s => (s.startPos, s.stopPos))))
+  if test.matches.size != positions.size then
+    throw s!"expected {test.matches}, got {positions}"
   else
-    for (m, c) in test.matches.zip captures do
+    for (m, c) in test.matches.zip positions do
       if not (m.eqv c) then
-        throw s!"expected {test.matches}, but got {captures}"
+        throw s!"expected {test.matches}, but got {positions}"
     return .ok
 
 def getTomlOrThrow (toml : Except Lean.MessageLog Lake.Toml.Table) : IO Lake.Toml.Table := do
