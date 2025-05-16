@@ -13,22 +13,21 @@ The pair of positions returned by `Matches` functions conforms to the spec if an
 - the haystack can be split into `l`, `m`, and `r` such that `haystack = l ++ m ++ r`
 - `m` starts after `startPos`.
 - there is a regex match starting at `l`, matching the substring `m`, and ending at `r`
-- the first position corresponds to the start of the matched substring `m`
-- the second position corresponds to the end of the matched substring `m`
+- the returned substring corresponds to `m`.
 -/
-def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (positions : Pos × Pos) : Prop :=
+def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (str : Substring) : Prop :=
   ∃ it it' groups,
     it.toString = haystack ∧
     startPos ≤ it.pos ∧
     s.expr.Captures it it' groups ∧
-    positions = (it.pos, it'.pos)
+    str = ⟨haystack, it.pos, it'.pos⟩
 
 def Valid (self : Matches) : Prop :=
   self.regex.IsSearchRegex ∧ self.currentPos.ValidPlus self.haystack
 
-theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self'))
+theorem captures_of_next?_some {self self' : Matches} {s} (h : self.next? = .some (s, self'))
   (v : self.Valid) :
-  self'.Valid ∧ Spec v.1 self.haystack self.currentPos positions := by
+  self'.Valid ∧ Spec v.1 self.haystack self.currentPos s := by
   unfold next? at h
   split at h
   next le =>
@@ -39,19 +38,24 @@ theorem captures_of_next?_some {self self' : Matches} {positions} (h : self.next
       simp [h'] at h
       have ⟨it, it', groups, eqs, le, c, eq₁, eq₂⟩ := v.1.searchNext_some h' pos_valid
       simp at eqs
-      split at h
-      next =>
-        simp at h
-        simp [←h, Valid]
-        have vp : Pos.ValidPlus it.toString matched.2 := c.toString_eq ▸ eq₂ ▸ c.validR.validPlus
-        exact ⟨⟨v.1, eqs ▸ vp⟩, it, it', groups, eqs, le, c, by simp [Prod.ext_iff, eq₁, eq₂]⟩
-      next =>
-        simp at h
-        simp [←h, Valid]
-        exact ⟨⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩, it, it', groups, eqs, le, c, by simp [Prod.ext_iff, eq₁, eq₂]⟩
+      refine ⟨?v', it, it', groups, eqs, le, c, ?eq⟩
+      case eq =>
+        simp [Regex.searchNext, Option.bind_eq_some] at h'
+        have ⟨_, _, p₁, _, p₂, _, h'⟩ := h'
+        simp [←h'] at eq₁ eq₂
+        simp [←h.1, ←h', eq₁, eq₂]
+      case v' =>
+        split at h
+        next =>
+          simp [←h.2]
+          have vp : Pos.ValidPlus it.toString matched.stopPos := c.toString_eq ▸ eq₂ ▸ c.validR.validPlus
+          exact ⟨v.1, eqs ▸ vp⟩
+        next =>
+          simp [←h.2]
+          exact ⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩
   next => simp at h
 
-theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
+theorem regex_eq_of_next?_some {self self' : Matches} {positions : Substring} (h : self.next? = .some (positions, self')) :
   self'.regex = self.regex := by
   unfold next? at h
   split at h
@@ -60,7 +64,7 @@ theorem regex_eq_of_next?_some {self self' : Matches} {positions} (h : self.next
     | none => simp [h'] at h
     | some matched =>
       simp [h'] at h
-      split at h <;> simp at h <;> simp [←h]
+      split at h <;> simp [←h]
   next => simp at h
 
 theorem haystack_eq_of_next?_some {self self' : Matches} {positions} (h : self.next? = .some (positions, self')) :
@@ -72,7 +76,7 @@ theorem haystack_eq_of_next?_some {self self' : Matches} {positions} (h : self.n
     | none => simp [h'] at h
     | some matched =>
       simp [h'] at h
-      split at h <;> simp at h <;> simp [←h]
+      split at h <;> simp [←h]
   next => simp at h
 
 theorem vaild_matches {re : Regex} (haystack : String) (s : re.IsSearchRegex) :

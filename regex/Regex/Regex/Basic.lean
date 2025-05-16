@@ -3,7 +3,9 @@ import Regex.NFA
 import Regex.VM
 import Regex.Backtracker
 
-open String (Pos Iterator)
+set_option autoImplicit false
+
+open String (Iterator)
 
 structure Regex where
   nfa : Regex.NFA
@@ -20,9 +22,9 @@ def captureNextBuf (self : Regex) (bufferSize : Nat) (it : Iterator) : Option (B
   else
     VM.captureNextBuf self.nfa self.wf bufferSize it
 
-def searchNext (self : Regex) (it : Iterator) : Option (Pos × Pos) :=  do
+def searchNext (self : Regex) (it : Iterator) : Option Substring :=  do
   let slots ← captureNextBuf self 2 it
-  pure (← slots[0], ← slots[1])
+  pure ⟨it.toString, ←slots[0], ←slots[1]⟩
 
 def parse (s : String) : Except Regex.Syntax.Parser.Error Regex := do
   let expr ← Regex.Syntax.Parser.parse s

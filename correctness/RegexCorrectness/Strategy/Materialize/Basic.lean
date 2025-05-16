@@ -40,4 +40,17 @@ def EquivMaterializedUpdate {n} (groups : Nat → Option (Pos × Pos)) (updates 
     ((h₁ : 2 * tag < n) → ((groups tag).map (·.1) = updates[2 * tag])) ∧
     ((h₂ : 2 * tag + 1 < n) → ((groups tag).map (·.2) = updates[2 * tag + 1]))
 
+theorem EquivMaterializedUpdate.eq {n} {groups : Nat → Option (Pos × Pos)} {updates : Vector (Option Pos) n}
+  (eqv : EquivMaterializedUpdate groups updates) (tag : Nat) (lt : 2 * tag + 1 < n) (p₁ p₂ : Pos) :
+  groups tag = .some (p₁, p₂) ↔ updates[2 * tag] = .some p₁ ∧ updates[2 * tag + 1] = .some p₂ := by
+  have eq₁ := (eqv tag).1 (by omega)
+  have eq₂ := (eqv tag).2 lt
+  match h : groups tag with
+  | .some (p₁', p₂') =>
+    simp [h] at eq₁ eq₂
+    simp [←eq₁, ←eq₂]
+  | .none =>
+    simp [h] at eq₁ eq₂
+    simp [←eq₁, ←eq₂]
+
 end Regex.Strategy

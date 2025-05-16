@@ -232,12 +232,13 @@ def RegexTest.run (test : RegexTest) (backtracker : Bool) : Except String TestRe
     match test.matchLimit with
     | .some limit => allCaptures.take limit
     | .none => allCaptures
-  if test.matches.size != captures.size then
-    throw s!"expected {test.matches}, got {captures}"
+  let positions := captures.map (·.map (·.map (fun s => (s.startPos, s.stopPos))))
+  if test.matches.size != positions.size then
+    throw s!"expected {test.matches}, got {positions}"
   else
-    for (m, c) in test.matches.zip captures do
+    for (m, c) in test.matches.zip positions do
       if not (m.eqv c) then
-        throw s!"expected {test.matches}, but got {captures}"
+        throw s!"expected {test.matches}, but got {positions}"
     return .ok
 
 def getTomlOrThrow (toml : Except Lean.MessageLog Lake.Toml.Table) : IO Lake.Toml.Table := do

@@ -5,13 +5,13 @@ open String (Pos)
 
 namespace Regex
 
-def find (regex : Regex) (haystack : String) : Option (Pos × Pos) :=
+def find (regex : Regex) (haystack : String) : Option Substring :=
   regex.matches haystack |>.next? |>.map Prod.fst
 
-def findAll (regex : Regex) (haystack : String) : Array (Pos × Pos) :=
+def findAll (regex : Regex) (haystack : String) : Array Substring :=
   go (regex.matches haystack) #[]
 where
-  go (m : Matches) (accum : Array (Pos × Pos)) : Array (Pos × Pos) :=
+  go (m : Matches) (accum : Array Substring) : Array Substring :=
     match _h : m.next? with
     | some (pos, m') => go m' (accum.push pos)
     | none => accum
@@ -19,8 +19,8 @@ where
 
 def replace (regex : Regex) (haystack : String) (replacement : String) : String :=
   match regex.find haystack with
-  | some (startPos, endPos) =>
-    haystack.extract 0 startPos ++ replacement ++ haystack.extract endPos haystack.endPos
+  | some s =>
+    haystack.extract 0 s.startPos ++ replacement ++ haystack.extract s.stopPos haystack.endPos
   | none => haystack
 
 def replaceAll (regex : Regex) (haystack : String) (replacement : String) : String :=
@@ -28,8 +28,8 @@ def replaceAll (regex : Regex) (haystack : String) (replacement : String) : Stri
 where
   go (m : Matches) (accum : String) (endPos : Pos) : String :=
     match _h : m.next? with
-    | some ((startPos', endPos'), m') =>
-      go m' (accum ++ haystack.extract endPos startPos' ++ replacement) endPos'
+    | some (s, m') =>
+      go m' (accum ++ haystack.extract endPos s.startPos ++ replacement) s.stopPos
     | none =>
       accum ++ haystack.extract endPos haystack.endPos
   termination_by m.remaining
