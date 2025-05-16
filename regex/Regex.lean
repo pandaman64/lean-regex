@@ -52,14 +52,14 @@ The library provides the following main structures:
 - `Captures`: A structure for iterating through all matches with their capture groups
 - `CapturedGroups`: A structure representing the capture groups from a single match
 
-Common operations include:
+Regex operations include:
 
-- `find`: Find the first match of a regex in a string
-- `findAll`: Find all matches of a regex in a string
-- `capture`: Capture the first match with its capture groups
-- `captureAll`: Capture all matches with their capture groups
-- `replace`: Replace the first match with a replacement string
-- `replaceAll`: Replace all matches with a replacement string
+- `Regex.find`: Find the first match of a regex in a string
+- `Regex.findAll`: Find all matches of a regex in a string
+- `Regex.capture`: Capture the first match with its capture groups
+- `Regex.captureAll`: Capture all matches with their capture groups
+- `Regex.replace`: Replace the first match with a replacement string
+- `Regex.replaceAll`: Replace all matches with a replacement string
 
 ## Creating Regexes
 
