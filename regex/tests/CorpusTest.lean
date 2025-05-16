@@ -18,9 +18,9 @@ structure Span where
   «end» : Nat
 deriving Repr
 
-def Span.eqv (s : Option Span) (p : Option (Pos × Pos)) : Bool :=
+def Span.eqv (s : Option Span) (p : Option Substring) : Bool :=
   match s, p with
-  | .some s, .some p => s.start = p.1.byteIdx && s.end = p.2.byteIdx
+  | .some s, .some p => s.start = p.startPos.byteIdx && s.end = p.stopPos.byteIdx
   | .none, .none => true
   | .some _, .none => false
   | .none, .some _ => false
@@ -45,7 +45,7 @@ deriving Repr
 instance : ToString Match where
   toString := reprStr
 
-def Match.eqv (m : Match) (positions : Array (Option (Pos × Pos))) : Bool :=
+def Match.eqv (m : Match) (positions : Array (Option Substring)) : Bool :=
   m.spans.size = positions.size && ((m.spans.zip positions).all (fun (s, p) => Span.eqv s p))
 
 def decodeSpans (vs : Array Value) : EDecodeM (Array (Option Span)) :=
