@@ -43,6 +43,8 @@ let captures := groupRegex.capture "aaabb"
 -- Returns captured groups: group 0 = whole match, group 1 = "aaa", group 2 = "bb"
 ```
 
+For more details, please check [the API reference](https://pandaman64.github.io/lean-regex/Regex.html).
+
 ## Formal Verification
 
 The library's correctness is formally verified through mathematical proofs in Lean 4. This ensures that:
