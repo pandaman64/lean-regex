@@ -15,7 +15,7 @@ the start and end of each capture group.
 structure CapturedGroups where
   haystack : String
   buffer : Array (Option Pos)
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 /--
 Gets a specific capture group as a substring.

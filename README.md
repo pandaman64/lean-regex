@@ -31,10 +31,10 @@ subDir = "regex"
 import Regex
 
 -- Create a regex at compile-time using re! syntax
-let emailRegex := re! r"[a-zA-Z0-9_]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}"
+let regex := re! r"\d{4}-\d{2}-\d{2}"
 
 -- Find matches
-let matches := emailRegex.findAll "Contact us at info@example.com or support@company.org"
+let allMatches := regex.findAll "2025-05-24: Something happened\\n2025-05-26: Another thing happened"
 -- Returns positions of matches
 
 -- Capture groups
