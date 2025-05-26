@@ -25,6 +25,14 @@ rev = "v4.19.0"
 subDir = "regex"
 ```
 
+or
+
+```lean
+require Regex from git "https://github.com/pandaman64/lean-regex.git" @ "v4.19.0" / "regex"
+```
+
+to your `lakefile.lean`
+
 ## Usage
 
 ```lean
