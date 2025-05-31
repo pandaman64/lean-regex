@@ -1,5 +1,6 @@
 -- Unit tests for the regex parser.
 import Regex.Syntax.Parser.Basic
+import Regex.Syntax.Parser.ToString
 
 namespace Regex.Syntax.Parser.Test
 
@@ -20,75 +21,86 @@ private def decEq (a b : Except Error Ast) : Decidable (a = b) :=
 
 local instance : DecidableEq (Except Error Ast) := decEq
 
-#guard parseAst "(a)" = .ok (.group (.char 'a'))
-#guard parseAst "(?:a)" = .ok (.char 'a')
+-- Helper function to test roundtrip: parse -> toString -> parse should equal original
+private def testRoundtrip (input : String) (expected : Ast) : Bool :=
+  match parseAst input with
+  | .ok ast =>
+    if ast = expected then
+      match parseAst ast.toString with
+      | .ok ast' => ast' = expected
+      | .error _ => false
+    else false
+  | .error _ => false
 
-#guard parseAst "^" = .ok (.anchor .start)
-#guard parseAst "$" = .ok (.anchor .eos)
-#guard parseAst "^abc$" = .ok (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
+#guard testRoundtrip "(a)" (.group (.char 'a'))
+#guard testRoundtrip "(?:a)" (.char 'a')
 
-#guard parseAst "[abc]" = .ok (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard parseAst "[^abc]" = .ok (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard parseAst "[a-z]" = .ok (.classes ⟨false, #[.range 'a' 'z' (by decide)]⟩)
-#guard parseAst r"[\da]" = .ok (.classes ⟨false, #[.perl ⟨false, .digit⟩, .single 'a']⟩)
-#guard parseAst "[-]" = .ok (.classes ⟨false, #[.single '-']⟩)
-#guard parseAst "[a-]" = .ok (.classes ⟨false, #[.single 'a', .single '-']⟩)
+#guard testRoundtrip "^" (.anchor .start)
+#guard testRoundtrip "$" (.anchor .eos)
+#guard testRoundtrip "^abc$" (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
+
+#guard testRoundtrip "[abc]" (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
+#guard testRoundtrip "[^abc]" (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
+#guard testRoundtrip "[a-z]" (.classes ⟨false, #[.range 'a' 'z' (by decide)]⟩)
+#guard testRoundtrip r"[\da]" (.classes ⟨false, #[.perl ⟨false, .digit⟩, .single 'a']⟩)
+#guard testRoundtrip "[-]" (.classes ⟨false, #[.single '-']⟩)
+#guard testRoundtrip "[a-]" (.classes ⟨false, #[.single 'a', .single '-']⟩)
 -- special characters are allowed in classes
-#guard parseAst r"[(){}*+?|^$.\--]" = .ok (.classes ⟨false, #[
+#guard testRoundtrip r"[(){}*+?|^$.\--]" (.classes ⟨false, #[
   '(', ')', '{', '}', '*', '+', '?', '|', '^', '$', '.', '-', '-'
 ].map .single⟩)
 
-#guard parseAst "|" = .ok (.alternate .epsilon .epsilon)
-#guard parseAst "a|" = .ok (.alternate (.char 'a') .epsilon)
-#guard parseAst "|a" = .ok (.alternate .epsilon (.char 'a'))
-#guard parseAst "a|b" = .ok (.alternate (.char 'a') (.char 'b'))
-#guard parseAst "a|b|c" = .ok (.alternate (.alternate (.char 'a') (.char 'b')) (.char 'c'))
-#guard parseAst "ab|cd(e|f)" = .ok (.alternate
+#guard testRoundtrip "|" (.alternate .epsilon .epsilon)
+#guard testRoundtrip "a|" (.alternate (.char 'a') .epsilon)
+#guard testRoundtrip "|a" (.alternate .epsilon (.char 'a'))
+#guard testRoundtrip "a|b" (.alternate (.char 'a') (.char 'b'))
+#guard testRoundtrip "a|b|c" (.alternate (.alternate (.char 'a') (.char 'b')) (.char 'c'))
+#guard testRoundtrip "ab|cd(e|f)" (.alternate
   (.concat (.char 'a') (.char 'b'))
   (.concat (.concat (.char 'c') (.char 'd')) (.group (.alternate (.char 'e') (.char 'f')))))
 
-#guard parseAst "a*b*c*" = .ok (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
-#guard parseAst "a?" = .ok (.alternate (.char 'a') .epsilon)
+#guard testRoundtrip "a*b*c*" (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
+#guard testRoundtrip "a?" (.alternate (.char 'a') .epsilon)
 
 -- escaping rules for special characters
-#guard parseAst "\\n" = .ok (.char '\n')
-#guard parseAst "\\t" = .ok (.char '\t')
-#guard parseAst "\\r" = .ok (.char '\r')
-#guard parseAst "\\a" = .ok (.char '\x07')
-#guard parseAst "\\f" = .ok (.char '\x0c')
-#guard parseAst "\\v" = .ok (.char '\x0b')
-#guard parseAst "\\0" = .ok (.char '\x00')
-#guard parseAst "\\-" = .ok (.char '-')
-#guard parseAst "\\[" = .ok (.char '[')
-#guard parseAst "\\]" = .ok (.char ']')
-#guard parseAst "\\(" = .ok (.char '(')
-#guard parseAst "\\)" = .ok (.char ')')
-#guard parseAst "\\{" = .ok (.char '{')
-#guard parseAst "\\}" = .ok (.char '}')
-#guard parseAst "\\*" = .ok (.char '*')
-#guard parseAst "\\+" = .ok (.char '+')
-#guard parseAst "\\?" = .ok (.char '?')
-#guard parseAst "\\|" = .ok (.char '|')
-#guard parseAst "\\^" = .ok (.char '^')
-#guard parseAst "\\$" = .ok (.char '$')
-#guard parseAst "\\." = .ok (.char '.')
-#guard parseAst "\\\\" = .ok (.char '\\')
+#guard testRoundtrip "\\n" (.char '\n')
+#guard testRoundtrip "\\t" (.char '\t')
+#guard testRoundtrip "\\r" (.char '\r')
+#guard testRoundtrip "\\a" (.char '\x07')
+#guard testRoundtrip "\\f" (.char '\x0c')
+#guard testRoundtrip "\\v" (.char '\x0b')
+#guard testRoundtrip "\\0" (.char '\x00')
+#guard testRoundtrip "\\-" (.char '-')
+#guard testRoundtrip "\\[" (.char '[')
+#guard testRoundtrip "\\]" (.char ']')
+#guard testRoundtrip "\\(" (.char '(')
+#guard testRoundtrip "\\)" (.char ')')
+#guard testRoundtrip "\\{" (.char '{')
+#guard testRoundtrip "\\}" (.char '}')
+#guard testRoundtrip "\\*" (.char '*')
+#guard testRoundtrip "\\+" (.char '+')
+#guard testRoundtrip "\\?" (.char '?')
+#guard testRoundtrip "\\|" (.char '|')
+#guard testRoundtrip "\\^" (.char '^')
+#guard testRoundtrip "\\$" (.char '$')
+#guard testRoundtrip "\\." (.char '.')
+#guard testRoundtrip "\\\\" (.char '\\')
 
-#guard parseAst "\\xab" = .ok (.char '\xab')
-#guard parseAst "\\u1234" = .ok (.char '\u1234')
+#guard testRoundtrip "\\xab" (.char '\xab')
+#guard testRoundtrip "\\u1234" (.char '\u1234')
 
-#guard parseAst "\\d" = .ok (.perl ⟨false, .digit⟩)
-#guard parseAst "\\D" = .ok (.perl ⟨true, .digit⟩)
-#guard parseAst "\\s" = .ok (.perl ⟨false, .space⟩)
-#guard parseAst "\\S" = .ok (.perl ⟨true, .space⟩)
-#guard parseAst "\\w" = .ok (.perl ⟨false, .word⟩)
-#guard parseAst "\\W" = .ok (.perl ⟨true, .word⟩)
+#guard testRoundtrip "\\d" (.perl ⟨false, .digit⟩)
+#guard testRoundtrip "\\D" (.perl ⟨true, .digit⟩)
+#guard testRoundtrip "\\s" (.perl ⟨false, .space⟩)
+#guard testRoundtrip "\\S" (.perl ⟨true, .space⟩)
+#guard testRoundtrip "\\w" (.perl ⟨false, .word⟩)
+#guard testRoundtrip "\\W" (.perl ⟨true, .word⟩)
 
 #guard parseAst "\\z" = .error (.unexpectedEscapedChar 'z')
 #guard parseAst "\\g" = .error (.unexpectedEscapedChar 'g')
 
 -- '}' is not a special character
-#guard parseAst "}" = .ok (.char '}')
+#guard testRoundtrip "}" (.char '}')
 
 -- syntax errors and error messages
 #guard parseAst "a{1,|bx" = .error (.unexpectedChar '|')
