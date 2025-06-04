@@ -21,17 +21,17 @@ Add lean-regex to your Lean project by adding the following to your `lakefile.to
 [[require]]
 name = "Regex"
 git = "https://github.com/pandaman64/lean-regex"
-rev = "v4.19.0"
+rev = "v4.20.0"
 subDir = "regex"
 ```
 
 or
 
 ```lean
-require Regex from git "https://github.com/pandaman64/lean-regex.git" @ "v4.19.0" / "regex"
+require Regex from git "https://github.com/pandaman64/lean-regex.git" @ "v4.20.0" / "regex"
 ```
 
-to your `lakefile.lean`
+to your `lakefile.lean`.
 
 ## Usage
 

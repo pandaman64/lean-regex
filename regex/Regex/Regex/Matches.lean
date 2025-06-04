@@ -48,7 +48,7 @@ def Matches.remaining (self : Matches) : Pos :=
 theorem Matches.lt_next?_some {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
   m.currentPos < m'.currentPos := by
   unfold next? at h
-  split at h <;> simp [Option.bind_eq_some] at h
+  split at h <;> simp [Option.bind_eq_some_iff] at h
   have ⟨_, _, h⟩ := h
   split at h
   next h' => simp [←h, h']
@@ -60,7 +60,7 @@ theorem Matches.lt_next?_some {s : Substring} {m m' : Matches} (h : m.next? = so
 theorem Matches.haystack_eq_next?_some {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
   m'.haystack = m.haystack := by
   unfold next? at h
-  split at h <;> simp [Option.bind_eq_some] at h
+  split at h <;> simp [Option.bind_eq_some_iff] at h
   have ⟨_, _, h⟩ := h
   split at h <;> simp [←h]
 

@@ -10,7 +10,7 @@ namespace Regex.CapturedGroups
 
 theorem lt_of_get_some {self : CapturedGroups} {i s} (h : self.get i = .some s) :
   2 * i + 1 < self.buffer.size := by
-  simp [get, Option.bind_eq_some] at h
+  simp [get, Option.bind_eq_some_iff] at h
   have ⟨p₁, eq₁, p₁', eq₁', p₂, eq₂, p₂', eq₂', eq₃⟩ := h
   simp [Array.getElem?_eq_some_iff] at eq₂
   have ⟨lt, eq₂⟩ := eq₂
@@ -74,7 +74,7 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
         have eqsize : matched.toArray.size = self.regex.maxTag + 1 := matched.size_toArray
         if lt : 2 * i + 1 < matched.toArray.size then
           have eq := eqv.eq i (by omega) p₁ p₂
-          simp [eq, captured', CapturedGroups.get, Option.bind_eq_some, Vector.getElem?_eq_some_iff]
+          simp [eq, captured', CapturedGroups.get, Option.bind_eq_some_iff, Vector.getElem?_eq_some_iff]
           apply Iff.intro
           . intro ⟨⟨_, h₁⟩, ⟨_, h₂⟩⟩
             exact ⟨h₁, h₂⟩
@@ -113,7 +113,7 @@ theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next
     match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
     | none => simp [h'] at h
     | some buffer =>
-      simp [h', Option.bind_eq_some] at h
+      simp [h', Option.bind_eq_some_iff] at h
       have ⟨_, _, _, h⟩ := h
       simp [←h]
       split <;> rfl
@@ -127,7 +127,7 @@ theorem haystack_eq_of_next?_some {self self' : Captures} {captured} (h : self.n
     match h' : self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩ with
     | none => simp [h'] at h
     | some buffer =>
-      simp [h', Option.bind_eq_some] at h
+      simp [h', Option.bind_eq_some_iff] at h
       have ⟨_, _, _, h⟩ := h
       simp [←h]
       split <;> rfl

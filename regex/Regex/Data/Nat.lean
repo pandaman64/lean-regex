@@ -33,7 +33,7 @@ theorem popcount_even {n : Nat} (h : ¬n.testBit 0) : popcount n = popcount (n /
     unfold popcount
   split
   next h' => simp [h']
-  next h' => simp only [Nat.add_right_eq_self, mod_two_eq_zero_iff_testBit_zero, h]
+  next h' => simp only [Nat.add_eq_left, mod_two_eq_zero_iff_testBit_zero, h]
 
 theorem popcount_le_of_lt_pow {n w : Nat} (h : n < 2 ^ w) : popcount n ≤ w := by
   induction n using popcount.induct generalizing w with
