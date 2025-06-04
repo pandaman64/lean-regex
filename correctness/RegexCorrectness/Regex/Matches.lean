@@ -40,7 +40,7 @@ theorem captures_of_next?_some {self self' : Matches} {s} (h : self.next? = .som
       simp at eqs
       refine ⟨?v', it, it', groups, eqs, le, c, ?eq⟩
       case eq =>
-        simp [Regex.searchNext, Option.bind_eq_some] at h'
+        simp [Regex.searchNext, Option.bind_eq_some_iff] at h'
         have ⟨_, _, p₁, _, p₂, _, h'⟩ := h'
         simp [←h'] at eq₁ eq₂
         simp [←h.1, ←h', eq₁, eq₂]

@@ -90,7 +90,7 @@ def Captures.remaining (self : Captures) : Pos :=
 theorem Captures.lt_next?_some {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
   m.currentPos.byteIdx < m'.currentPos.byteIdx := by
   unfold next? at h
-  split at h <;> simp [Option.bind_eq_some] at h
+  split at h <;> simp [Option.bind_eq_some_iff] at h
   have ⟨_, _, h⟩ := h
   have ⟨_, _, h⟩ := h
   split at h
@@ -103,7 +103,7 @@ theorem Captures.lt_next?_some {groups : CapturedGroups} {m m' : Captures} (h : 
 theorem Captures.haystack_eq_next?_some {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
   m'.haystack = m.haystack := by
   unfold next? at h
-  split at h <;> simp [Option.bind_eq_some] at h
+  split at h <;> simp [Option.bind_eq_some_iff] at h
   have ⟨_, _, h⟩ := h
   have ⟨_, _, h⟩ := h
   split at h <;> simp [←h]
