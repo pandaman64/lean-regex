@@ -13,7 +13,7 @@ def PerlClassKind.mem (c : Char) (kind : PerlClassKind) : Bool :=
   match kind with
   | PerlClassKind.digit => c.isDigit
   | PerlClassKind.space => c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\x0C'
-  | PerlClassKind.word => c.isAlphanum
+  | PerlClassKind.word => c.isAlphanum || c == '_'
 
 structure PerlClass where
   negated : Bool
