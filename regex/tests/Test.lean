@@ -145,4 +145,12 @@ def alt_in_alt_100 := re! r##"ab?|$"##
 #eval alt_in_alt_100.captureAll "az"
 #eval alt_in_alt_100.bt.captureAll "az"
 
+def word_class := Regex.parse! r##"\w+"##
+#guard word_class.capture "hello_world" = .some ⟨"hello_world", #[.some ⟨0⟩, .some ⟨11⟩]⟩
+#guard word_class.capture "test_123" = .some ⟨"test_123", #[.some ⟨0⟩, .some ⟨8⟩]⟩
+#guard word_class.capture "special@chars" = .some ⟨"special@chars", #[.some ⟨0⟩, .some ⟨7⟩]⟩
+#guard word_class.bt.capture "hello_world" = .some ⟨"hello_world", #[.some ⟨0⟩, .some ⟨11⟩]⟩
+#guard word_class.bt.capture "test_123" = .some ⟨"test_123", #[.some ⟨0⟩, .some ⟨8⟩]⟩
+#guard word_class.bt.capture "special@chars" = .some ⟨"special@chars", #[.some ⟨0⟩, .some ⟨7⟩]⟩
+
 end Comparison
