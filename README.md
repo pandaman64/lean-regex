@@ -62,8 +62,9 @@ Returns captured groups: group 0 = whole match, group 1 = "aaa", group 2 = "bb":
 some {
   haystack := "aaabb",
   buffer := #[
-    some { byteIdx := 0 }, some { byteIdx := 5 }, some { byteIdx := 0 },
-    some { byteIdx := 3 }, some { byteIdx := 3 }, some { byteIdx := 5 }
+    some { byteIdx := 0 }, some { byteIdx := 5 },
+    some { byteIdx := 0 }, some { byteIdx := 3 },
+    some { byteIdx := 3 }, some { byteIdx := 5 }
   ]
 }
 -/
