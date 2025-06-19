@@ -1,3 +1,4 @@
+import Regex.Regex.Elab
 import Regex.Regex.Matches
 import Regex.Regex.Captures
 
@@ -90,5 +91,85 @@ where
     | some (groups, m') => go m' (accum.push groups)
     | none => accum
   termination_by m.remaining
+
+/--
+Tests if a regex matches a string.
+
+* `self`: The regex to match against
+* `input`: The input string
+* Returns: `true` if the `Regex` matches, `false` otherwise
+-/
+def test (self : Regex) (input : String) : Bool :=
+  self.find input |>.isSome
+
+#eval do
+  let regex := re! r"\d{4}-\d{2}-\d{2}"
+  let hasMatch := regex.test
+    --"No match"
+    "2025-05-24"
+  IO.print hasMatch
+
+/--
+Splits a string using regex matches as breakpoints.
+
+* `self`: The regex to match against
+* `input`: The input string
+* Returns: an array containing the substrings in between the regex matches
+-/
+def split (self : Regex) (input : String) : Array String :=
+  -- TODO what is the intended behavior when matches overlap?
+  let paddedMatches :=
+    self.findAll input
+      |>.insertIdx 0 ⟨input, 0, 0⟩
+      |>.push ⟨input, input.endPos, input.endPos⟩
+  let toSubstringInbetween : (Substring × Substring) → Substring :=
+    fun (prev,next) => ⟨input,prev.stopPos,next.startPos⟩
+  paddedMatches.zip (paddedMatches.drop 1)
+    |>.map toSubstringInbetween
+    |>.map Substring.toString
+    |>.filter (not ∘ String.isEmpty)
+
+#eval do
+  let regex := re! r" "
+  let split := regex.split "    This is a sentence.    "
+  IO.print split
+
+/--
+Counts the number of regex matches in a string.
+
+* `self`: The regex to match against
+* `input`: The input string
+* Returns: the number of regex matches in a string
+-/
+def count (self : Regex) (input : String) : Nat :=
+  self.findAll input |>.size
+
+#eval do
+  let regex := re! r"\d{4}-\d{2}-\d{2}"
+  let numberOfMatches := regex.count
+    --"No match"
+    "2025-05-24"
+  IO.print numberOfMatches
+
+#eval do
+  let regex := re! r"\s+"
+  let numberOfMatches := regex.count "         "
+  IO.print numberOfMatches
+
+/--
+Extracts all regex matches in a string.
+
+* `self`: The regex to match against
+* `input`: The input string
+* Returns: an array containing all regex matches occuring in a string
+-/
+def extractAll (self : Regex) (input : String) : Array String :=
+  self.findAll input |>.map Substring.toString
+
+#eval do
+  let regex := re! r"\d{2}"
+  let allMatches := regex.extractAll
+    "1234"
+  IO.print allMatches
 
 end Regex
