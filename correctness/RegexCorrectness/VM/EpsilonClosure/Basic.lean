@@ -177,8 +177,7 @@ theorem not_visited (hmem : state ∉ next.states) :
   εClosure σ nfa wf it matched' ⟨states', updates'⟩ (pushNext σ nfa it node (wf.inBounds state) update stack') := by
   conv =>
     lhs
-    simp [εClosure, hmem]
-  rfl
+    simp only [εClosure, hmem, reduceDIte]
 
 end
 

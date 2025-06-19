@@ -34,13 +34,18 @@ theorem refineUpdateOpt.none_iff (h : refineUpdateOpt matched' matched) :
   | .some _, .some _ => simp
   | .none, .some _ | .some _, .none => simp [refineUpdateOpt] at h
 
-theorem refineUpdateOpt.orElse {update₁ update₂ : Option (List (Nat × Pos))} {buffer₁ buffer₂ : Option (Buffer bufferSize)}
+theorem refineUpdateOpt.or {update₁ update₂ : Option (List (Nat × Pos))} {buffer₁ buffer₂ : Option (Buffer bufferSize)}
   (h₁ : refineUpdateOpt update₁ buffer₁) (h₂ : refineUpdateOpt update₂ buffer₂) :
-  refineUpdateOpt (update₁ <|> update₂) (buffer₁ <|> buffer₂) := by
+  refineUpdateOpt (Option.or update₁ update₂) (Option.or buffer₁ buffer₂) := by
   match update₁, buffer₁ with
   | .some _, .some _ => simp [h₁]
   | .none, .none => simp [h₂]
   | .none, .some _ | .some _, .none => simp [refineUpdateOpt] at h₁
+
+theorem refineUpdateOpt.orElse {update₁ update₂ : Option (List (Nat × Pos))} {buffer₁ buffer₂ : Option (Buffer bufferSize)}
+  (h₁ : refineUpdateOpt update₁ buffer₁) (h₂ : refineUpdateOpt update₂ buffer₂) :
+  refineUpdateOpt (update₁ <|> update₂) (buffer₁ <|> buffer₂) := by
+  simpa using refineUpdateOpt.or h₁ h₂
 
 def refineUpdates (updates : Vector (List (Nat × Pos)) nfa.nodes.size) (buffers : Vector (Buffer bufferSize) nfa.nodes.size) : Prop :=
   ∀ (i : Fin nfa.nodes.size), refineUpdate updates[i] buffers[i]
