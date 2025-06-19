@@ -165,9 +165,9 @@ theorem not_done_of_none (result) (h : εClosure σ nfa wf it matched next stack
         rw [eq]
         intro hn
         have isSome'' : matched''.isSome := by
-          simp [matched'', node, hn, Option.isSome_iff_ne_none, Option.orElse_eq_none_iff]
+          simp [matched'', node, hn, Option.isSome_iff_ne_none]
         have eq' : result.1 = matched'' := eq_matched_some h isSome''
-        simp [eq', matched'', node, hn, Option.isSome_iff_ne_none, Option.orElse_eq_none_iff] at isNone
+        simp [eq', matched'', node, hn, Option.isSome_iff_ne_none] at isNone
       | inr mem => exact inv i mem
     exact ih h inv'
 
@@ -304,7 +304,7 @@ theorem lower_bound_step {it : Iterator} (h : εClosure σ nfa wf it matched nex
         | inr h => exact .inr ⟨update', h⟩
     exact ih h inv'
   | not_visited matched next update state stack mem node matched' states' updates' ih =>
-    simp [εClosure.not_visited mem] at h
+    rw [εClosure.not_visited mem] at h
     exact ih h (inv.preserves wf)
 
 theorem lower_bound {i update} (h : εClosure σ nfa wf it matched next [(update, i)] = (matched', next'))

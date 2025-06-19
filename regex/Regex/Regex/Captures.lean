@@ -114,7 +114,7 @@ theorem Captures.next?_decreasing {groups : CapturedGroups} {m m' : Captures} (h
   rw [haystack_eq_next?_some h]
   have h₁ : m.currentPos < m'.currentPos := lt_next?_some h
   have h₂ : m.currentPos < m.haystack.endPos + ⟨1⟩ := by
-    simp [next?] at h
+    simp only [next?, String.pos_lt_eq, Option.pure_def, Option.bind_eq_bind] at h
     split at h <;> try contradiction
     next le => exact Nat.add_le_add_right le 1
   exact Nat.sub_lt_sub_left h₂ h₁
