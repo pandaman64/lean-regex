@@ -112,8 +112,6 @@ Extracts all regex matches in a string.
 def extractAll (regex : Regex) (haystack : String) : Array String :=
   regex.findAll haystack |>.map Substring.toString
 
-end Regex
-
 /--
 Tests if a regex matches a string.
 
@@ -151,3 +149,5 @@ def split (regex : Regex) (haystack : String) : Array String :=
   paddedMatches.zip (paddedMatches.drop 1)
     |>.map toSubstringInbetween
     |>.map Substring.toString
+
+end Regex
