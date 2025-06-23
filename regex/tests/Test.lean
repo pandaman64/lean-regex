@@ -154,3 +154,89 @@ def word_class := Regex.parse! r##"\w+"##
 #guard word_class.bt.capture "special@chars" = .some ⟨"special@chars", #[.some ⟨0⟩, .some ⟨7⟩]⟩
 
 end Comparison
+
+namespace BasicUtilityMethods
+
+def empty := re! ""
+#guard empty.test "" = true
+#guard empty.test "a" = true
+#guard empty.test "aa" = true
+#guard empty.test "🐙" = true
+#guard empty.count "" = 1
+#guard empty.count "a" = 2
+#guard empty.count "aa" = 3
+#guard empty.count "🐙" = 2
+#guard empty.extract "" = .some ""
+#guard empty.extract "a" = .some ""
+#guard empty.extract "aa" = .some ""
+#guard empty.extract "🐙" = .some ""
+#guard empty.extractAll "" = #[""]
+#guard empty.extractAll "a" = #["", ""]
+#guard empty.extractAll "aa" = #["", "", ""]
+#guard empty.extractAll "🐙" = #["", ""]
+
+def singleton := re! "a"
+#guard singleton.test "" = false
+#guard singleton.test "a" = true
+#guard singleton.test "🐙" = false
+#guard singleton.count "" = 0
+#guard singleton.count "a" = 1
+#guard singleton.count "🐙" = 0
+#guard singleton.extract "" = .none
+#guard singleton.extract "a" = .some "a"
+#guard singleton.extract "🐙" = .none
+#guard singleton.extractAll "" = #[]
+#guard singleton.extractAll "a" = #["a"]
+#guard singleton.extractAll "🐙" = #[]
+
+def unicode := re! "🐙"
+#guard unicode.test "" = false
+#guard unicode.test "a" = false
+#guard unicode.test "🐙" = true
+#guard unicode.count "" = 0
+#guard unicode.count "a" = 0
+#guard unicode.count "🐙" = 1
+#guard unicode.extract "" = .none
+#guard unicode.extract "a" = .none
+#guard unicode.extract "🐙" = .some "🐙"
+#guard unicode.extractAll "" = #[]
+#guard unicode.extractAll "a" = #[]
+#guard unicode.extractAll "🐙" = #["🐙"]
+
+def date := re! r"\d{4}-\d{2}-\d{2}"
+#guard date.test "" = false
+#guard date.test "a" = false
+#guard date.test "🐙" = false
+#guard date.test "2025-05-24-2025-05-26" = true
+#guard date.count "" = 0
+#guard date.count "a" = 0
+#guard date.count "🐙" = 0
+#guard date.count "2025-05-24-2025-05-26" = 2
+#guard date.extract "" = .none
+#guard date.extract "a" = .none
+#guard date.extract "🐙" = .none
+#guard date.extract "2025-05-24-2025-05-26" = .some "2025-05-24"
+#guard date.extractAll "" = #[]
+#guard date.extractAll "a" = #[]
+#guard date.extractAll "🐙" = #[]
+#guard date.extractAll "2025-05-24-2025-05-26" = #["2025-05-24", "2025-05-26"]
+
+def octopuses := re! "(🐙|octopus)+"
+#guard octopuses.test "" = false
+#guard octopuses.test "a" = false
+#guard octopuses.test "🐙" = true
+#guard octopuses.test "octopus 🐙 🐙octopus" = true
+#guard octopuses.count "" = 0
+#guard octopuses.count "a" = 0
+#guard octopuses.count "🐙" = 1
+#guard octopuses.count "octopus 🐙 🐙octopus" = 3
+#guard octopuses.extract "" = .none
+#guard octopuses.extract "a" = .none
+#guard octopuses.extract "🐙" = .some "🐙"
+#guard octopuses.extract "octopus 🐙 🐙octopus" = .some "octopus"
+#guard octopuses.extractAll "" = #[]
+#guard octopuses.extractAll "a" = #[]
+#guard octopuses.extractAll "🐙" = #["🐙"]
+#guard octopuses.extractAll "octopus 🐙 🐙octopus" = #["octopus", "🐙", "🐙octopus"]
+
+end BasicUtilityMethods
