@@ -93,44 +93,6 @@ where
   termination_by m.remaining
 
 /--
-Tests if a regex matches a string.
-
-* `regex`: The regex to match against
-* `haystack`: The input string to search in
-* Returns: `true` if the `Regex` matches, `false` otherwise
--/
-def test (regex : Regex) (haystack : String) : Bool :=
-  regex.find haystack |>.isSome
-
-/--
-Splits a string using regex matches as breakpoints.
-
-* `regex`: The regex to match against
-* `haystack`: The input string to search in
-* Returns: an array containing the substrings in between the regex matches
--/
-def split (regex : Regex) (haystack : String) : Array String :=
-  let paddedMatches :=
-    regex.findAll haystack
-      |>.insertIdx 0 ⟨haystack, 0, 0⟩
-      |>.push ⟨haystack, haystack.endPos, haystack.endPos⟩
-  let toSubstringInbetween : (Substring × Substring) → Substring :=
-    fun (prev,next) => ⟨haystack,prev.stopPos,next.startPos⟩
-  paddedMatches.zip (paddedMatches.drop 1)
-    |>.map toSubstringInbetween
-    |>.map Substring.toString
-
-/--
-Counts the number of regex matches in a string.
-
-* `regex`: The regex to match against
-* `haystack`: The input string to search in
-* Returns: the number of regex matches in a string
--/
-def count (regex : Regex) (haystack : String) : Nat :=
-  regex.findAll haystack |>.size
-
-/--
 Extracts the first regex match in a string.
 
 * `regex`: The regex to match against
@@ -151,3 +113,41 @@ def extractAll (regex : Regex) (haystack : String) : Array String :=
   regex.findAll haystack |>.map Substring.toString
 
 end Regex
+
+/--
+Tests if a regex matches a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: `true` if the `Regex` matches, `false` otherwise
+-/
+def test (regex : Regex) (haystack : String) : Bool :=
+  regex.find haystack |>.isSome
+
+/--
+Counts the number of regex matches in a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: the number of regex matches in a string
+-/
+def count (regex : Regex) (haystack : String) : Nat :=
+  regex.findAll haystack |>.size
+
+/--
+Splits a string using regex matches as breakpoints.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: an array containing the substrings in between the regex matches
+-/
+def split (regex : Regex) (haystack : String) : Array String :=
+  let paddedMatches :=
+    regex.findAll haystack
+      |>.insertIdx 0 ⟨haystack, 0, 0⟩
+      |>.push ⟨haystack, haystack.endPos, haystack.endPos⟩
+  let toSubstringInbetween : (Substring × Substring) → Substring :=
+    fun (prev,next) => ⟨haystack,prev.stopPos,next.startPos⟩
+  paddedMatches.zip (paddedMatches.drop 1)
+    |>.map toSubstringInbetween
+    |>.map Substring.toString
