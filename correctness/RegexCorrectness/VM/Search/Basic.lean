@@ -53,8 +53,8 @@ theorem captureNext.go.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed)
       have h₂' : matched.isSome ∨ stepped.1.isSome := by
         match matched with
         | .none =>
-          simp only [Option.orElse_eq_orElse, Option.orElse_none, Option.isNone_iff_eq_none, ←Option.not_isSome_iff_eq_none, Decidable.not_not] at h₂
-          exact .inr h₂
+          simp at h₂
+          exact .inr (Option.isSome_iff_ne_none.mpr h₂)
         | .some _ => exact .inl (by simp)
       exact ind_found it matched current next atEnd (by simpa using h₁) h₂' ih)
     it matched current next
@@ -98,7 +98,7 @@ theorem captureNext.go_ind_found {σ nfa wf it matched current next} (stepped)
     unfold captureNext.go
   simp only [atEnd, Bool.false_eq_true, ↓reduceIte, h', ←eq, Option.orElse_eq_orElse, Option.isNone_iff_eq_none, ite_eq_right_iff]
   intro h
-  simp [Option.orElse_eq_none_iff] at h
+  simp at h
   simp [h] at isSome
 
 end

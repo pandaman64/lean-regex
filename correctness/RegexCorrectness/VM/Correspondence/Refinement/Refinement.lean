@@ -89,10 +89,10 @@ theorem εClosure.refines (result result')
       rw [εClosure.not_visited (σ := HistoryStrategy) mem] at h'
       rw [εClosure.not_visited (σ := BufferStrategy bufferSize) (refState.1 ▸ h₂ ▸ mem)] at h
       refine ih result result' h h' ?_ ?_ ?_
-      . simp [matched'', node, h₂]
+      . simp only [Fin.getElem_fin, h₂, Option.orElse_eq_orElse, Option.orElse_eq_or, matched'', node]
         if eq : nfa[state.val] = .done then
-          simp [eq]
-          exact refMatched.orElse h₁
+          simp only [eq, reduceIte]
+          exact refMatched.or h₁
         else
           simpa [eq] using refMatched
       . simp [SearchState.refines, states'', updates'', node, h₂, refState.1]

@@ -17,7 +17,7 @@ theorem getElem_set_eq {w : Nat} (b : BitVec w) (i : Nat) (h : i < w) : (b.set i
 
 theorem getElem_set_ne {w : Nat} (b : BitVec w) (i j : Nat) (h : i < w) (h' : j < w) (hne : i ≠ j) : (b.set i)[j] = b[j] := by
   simp only [set, h, ↓reduceIte, natCast_eq_ofNat, BitVec.ofNat, getElem_or, getElem_ofFin,
-    Fin.val_ofNat', Nat.testBit_mod_two_pow, h', decide_true, Nat.testBit_shiftLeft, ge_iff_le,
+    Fin.val_ofNat, Nat.testBit_mod_two_pow, h', decide_true, Nat.testBit_shiftLeft, ge_iff_le,
     Bool.true_and, Bool.or_eq_left_iff_imp, Bool.and_eq_true, decide_eq_true_eq, and_imp]
   intro le test
   match h'' : j - i with
