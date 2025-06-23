@@ -20,6 +20,8 @@ instance : ToExpr Anchor where
   toExpr
     | .start => mkConst ``Anchor.start
     | .eos => mkConst ``Anchor.eos
+    | .wordBoundary => mkConst ``Anchor.wordBoundary
+    | .nonWordBoundary => mkConst ``Anchor.nonWordBoundary
 
 instance : ToExpr PerlClassKind where
   toTypeExpr := mkConst ``PerlClassKind

@@ -86,6 +86,8 @@ namespace Regex.Syntax.Parser -- Because Ast is there
   match a with
   | .start => "^"
   | .eos => "$"
+  | .wordBoundary => "\\b"
+  | .nonWordBoundary => "\\B"
 
 def Ast.toString : Ast → String
   | .empty => ""
