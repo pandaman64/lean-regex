@@ -110,7 +110,6 @@ Splits a string using regex matches as breakpoints.
 * Returns: an array containing the substrings in between the regex matches
 -/
 def split (regex : Regex) (haystack : String) : Array String :=
-  -- TODO what is the intended behavior when matches overlap?
   let paddedMatches :=
     regex.findAll haystack
       |>.insertIdx 0 ⟨haystack, 0, 0⟩
@@ -120,7 +119,6 @@ def split (regex : Regex) (haystack : String) : Array String :=
   paddedMatches.zip (paddedMatches.drop 1)
     |>.map toSubstringInbetween
     |>.map Substring.toString
-    |>.filter (not ∘ String.isEmpty) -- This filter does not agree with what Rust does
 
 /--
 Counts the number of regex matches in a string.
