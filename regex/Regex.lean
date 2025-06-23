@@ -42,16 +42,36 @@ to your `lakefile.lean`.
 import Regex
 
 -- Create a regex at compile-time using re! syntax
-let regex := re! r"\d{4}-\d{2}-\d{2}"
+def dateRegexExample := re! r"\d{4}-\d{2}-\d{2}"
 
--- Find matches
-let allMatches := regex.findAll "2025-05-24: Something happened\\n2025-05-26: Another thing happened"
--- Returns positions of matches
+-- Find and return matches (and their positions as components of each `Substring`)
+def allMatches := dateRegexExample.findAll
+  "2025-05-24: Something happened\\n2025-05-26: Another thing happened"
+
+-- #["2025-05-24".toSubstring, "2025-05-26".toSubstring]
+#eval allMatches
+
+-- #[{ byteIdx := 0 }, { byteIdx := 32 }]
+#eval allMatches.map (·.startPos)
 
 -- Capture groups
-let groupRegex := re! r"(a+)(b*)"
-let captures := groupRegex.capture "aaabb"
--- Returns captured groups: group 0 = whole match, group 1 = "aaa", group 2 = "bb"
+def groupRegexExample := re! r"(a+)(b*)"
+
+def captures := groupRegexExample.capture "aaabb"
+
+/-
+Returns captured groups: group 0 = whole match, group 1 = "aaa", group 2 = "bb":
+
+some {
+  haystack := "aaabb",
+  buffer := #[
+    some { byteIdx := 0 }, some { byteIdx := 5 },
+    some { byteIdx := 0 }, some { byteIdx := 3 },
+    some { byteIdx := 3 }, some { byteIdx := 5 }
+  ]
+}
+-/
+#eval captures
 ```
 
 ## API Overview
