@@ -69,6 +69,33 @@ some {
 }
 -/
 #eval captures
+
+-- Additional utility methods are available
+def utilityRegexExample := re! r"a+"
+
+def haystack := "a1aa2aaa3"
+
+-- some "a"
+#eval utilityRegexExample.extract haystack
+
+-- #["a", "aa", "aaa"]
+#eval utilityRegexExample.extractAll haystack
+
+-- true
+#eval utilityRegexExample.test haystack
+
+-- 3
+#eval utilityRegexExample.count haystack
+
+/-
+Splits a string using regex matches as breakpoints:
+
+#["", "1", "2", "3"]
+
+Note the empty substring due to the match "a" at the beginning of the input:
+"a1aa2aaa3" = "" ++ "a" ++ "1" ++ "aa" ++ "2" ++ "aaa" ++ "3"
+-/
+#eval utilityRegexExample.split haystack
 ```
 
 For more details, please check [the API reference](https://pandaman64.github.io/lean-regex/Regex.html).
