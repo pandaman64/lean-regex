@@ -133,6 +133,16 @@ def count (regex : Regex) (haystack : String) : Nat :=
   regex.findAll haystack |>.size
 
 /--
+Extracts the first regex match in a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: An optional string if a the match is found, or `none` otherwise
+-/
+def extract (regex : Regex) (haystack : String) : Option String :=
+  regex.find haystack |>.map Substring.toString
+
+/--
 Extracts all regex matches in a string.
 
 * `regex`: The regex to match against
