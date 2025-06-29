@@ -465,7 +465,7 @@ regression/i969,unsupported,
 regression/fowler-basic154-unanchored,ok,
 regression/word-boundary-interact-poorly-with-literal-optimizations,unsupported,
 regression/impossible-branch,ok,
-regression/captures-wrong-order,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 1 }, none, some { start := 0, end := 1 }] }], but got #[#[(some (0, 1)), (some (0, 1))]]"
+regression/captures-wrong-order,ok,
 regression/negated-unicode-word-boundary-dfa-fail,unsupported,
 regression/missed-match,ok,
 regression/regex-to-glob,unsupported,
