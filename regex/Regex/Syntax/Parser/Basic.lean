@@ -151,32 +151,6 @@ def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
       pure (min, .some min) -- {N} represents N repetitions
   ))
 
-def repeatConcat (ast : Ast) (n : Nat) : Ast :=
-  go ast (n - 1)
-where
-  go (accum : Ast) : Nat → Ast
-    | 0 => accum
-    | n + 1 => go (.concat accum ast) n
-
-def applyRepetition (min : Nat) (max : Option Nat) (ast : Ast) : Ast :=
-  match min, max with
-  -- special case for well-known repetitions
-  | 0, .some 1 => .alternate ast .epsilon
-  | 0, .none => .star ast
-  | 1, .none => .concat ast (.star ast)
-  -- r{min,}. min > 0 as `0, .none` is already covered.
-  | min, .none => .concat (repeatConcat ast min) (.star ast)
-  -- r{0,max}
-  | 0, .some max =>
-    if max == 0 then
-      .epsilon
-    else
-      repeatConcat (.alternate ast .epsilon) max
-  | min, .some max =>
-    if min == max then
-      repeatConcat ast min
-    else
-      Ast.concat (repeatConcat ast min) (repeatConcat (.alternate ast .epsilon) (max - min))
 
 def nonCapturing : Parser.LT Error Unit :=
   charOrError '?' *> charOrError ':' |>.mapConst ()
@@ -215,7 +189,7 @@ def primary (it : Iterator) : Result.LT it Error Ast :=
 termination_by (it.remainingBytes, 10)
 
 def repetition1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
-  (repetitionOp it |>.bind' fun (min, max) it' _ => repetition1 (applyRepetition min max ast) it').weaken
+  (repetitionOp it |>.bind' fun (min, max) it' _ => repetition1 (.repeat min max ast) it').weaken
   <|> pure ast
 termination_by (it.remainingBytes, 20)
 

@@ -59,8 +59,8 @@ private def testRoundtrip (input : String) (expected : Ast) : Bool :=
   (.concat (.char 'a') (.char 'b'))
   (.concat (.concat (.char 'c') (.char 'd')) (.group (.alternate (.char 'e') (.char 'f')))))
 
-#guard testRoundtrip "a*b*c*" (.concat (.concat (.star (.char 'a')) (.star (.char 'b'))) (.star (.char 'c')))
-#guard testRoundtrip "a?" (.alternate (.char 'a') .epsilon)
+#guard testRoundtrip "a*b*c*" (.concat (.concat (.repeat 0 none (.char 'a')) (.repeat 0 none (.char 'b'))) (.repeat 0 none (.char 'c')))
+#guard testRoundtrip "a?" (.repeat 0 (some 1) (.char 'a'))
 
 -- escaping rules for special characters
 #guard testRoundtrip "\\n" (.char '\n')
