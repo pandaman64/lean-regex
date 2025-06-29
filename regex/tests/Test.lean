@@ -1117,6 +1117,7 @@ def countTransform (captures : CapturedGroups) : String :=
 
 end Transform
 
+
 namespace Regressions
 
 -- Expanded capture groups should have the same tags and thus only the last match should be reported.
