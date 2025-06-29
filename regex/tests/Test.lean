@@ -241,20 +241,23 @@ def octopuses := re! "(🐙|octopus)+"
 
 end BasicUtilityMethods
 
+private def Regex.splitTest (regex : Regex) (haystack : String) : Array String :=
+  regex.split haystack |>.map Substring.toString
+
 namespace Split
 
 -- The tests below check for feature parity with the Rust Regex crate.
-#guard (re! "[ \t]+").split "a b \t  c\td    e" = #["a", "b", "c", "d", "e"]
-#guard (re! " ").split "Mary had a little lamb" = #["Mary", "had", "a", "little", "lamb"]
-#guard (re! "X").split "" = #[""]
-#guard (re! "X").split "lionXXtigerXleopard" = #["lion", "", "tiger", "leopard"]
-#guard (re! "::").split "lion::tiger::leopard" = #["lion", "tiger", "leopard"]
-#guard (re! "X").split "XXXXaXXbXc" = #["", "", "", "", "a", "", "b", "c"]
-#guard (re! "/").split "(///)" = #["(", "", "", ")"]
-#guard (re! "0").split "010" = #["", "1", ""]
-#guard (re! "").split "rust" = #["", "r", "u", "s", "t", ""]
-#guard (re! "").split "☃" = #["", "☃", ""]
-#guard (re! " ").split "    a  b c" = #["", "", "", "", "a", "", "b", "c"]
-#guard (re! " +").split "    a  b c" = #["", "a", "b", "c"]
+#guard (re! "[ \t]+").splitTest "a b \t  c\td    e"= #["a", "b", "c", "d", "e"]
+#guard (re! " ").splitTest "Mary had a little lamb" = #["Mary", "had", "a", "little", "lamb"]
+#guard (re! "X").splitTest "" = #[""]
+#guard (re! "X").splitTest "lionXXtigerXleopard" = #["lion", "", "tiger", "leopard"]
+#guard (re! "::").splitTest "lion::tiger::leopard" = #["lion", "tiger", "leopard"]
+#guard (re! "X").splitTest "XXXXaXXbXc" = #["", "", "", "", "a", "", "b", "c"]
+#guard (re! "/").splitTest "(///)" = #["(", "", "", ")"]
+#guard (re! "0").splitTest "010" = #["", "1", ""]
+#guard (re! "").splitTest "rust" = #["", "r", "u", "s", "t", ""]
+#guard (re! "").splitTest "☃" = #["", "☃", ""]
+#guard (re! " ").splitTest "    a  b c" = #["", "", "", "", "a", "", "b", "c"]
+#guard (re! " +").splitTest "    a  b c" = #["", "a", "b", "c"]
 
 end Split

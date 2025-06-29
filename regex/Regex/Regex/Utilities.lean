@@ -138,15 +138,15 @@ Splits a string using regex matches as breakpoints.
 * `haystack`: The input string to search in
 * Returns: an array containing the substrings in between the regex matches
 -/
-def split (regex : Regex) (haystack : String) : Array String :=
-  let paddedMatches :=
-    regex.findAll haystack
-      |>.insertIdx 0 ⟨haystack, 0, 0⟩
-      |>.push ⟨haystack, haystack.endPos, haystack.endPos⟩
-  let toSubstringInbetween : (Substring × Substring) → Substring :=
-    fun (prev,next) => ⟨haystack,prev.stopPos,next.startPos⟩
-  paddedMatches.zip (paddedMatches.drop 1)
-    |>.map toSubstringInbetween
-    |>.map Substring.toString
+def split (regex : Regex) (haystack : String) : Array Substring :=
+  go (regex.matches haystack) #[] 0
+where
+  go (m : Matches) (accum : Array Substring) (endPos : Pos) : Array Substring :=
+    match _h : m.next? with
+    | some (s, m') =>
+      go m' (accum.push ⟨haystack, endPos, s.startPos⟩) s.stopPos
+    | none =>
+      accum.push ⟨haystack, endPos, haystack.endPos⟩
+  termination_by m.remaining
 
 end Regex
