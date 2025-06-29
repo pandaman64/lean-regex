@@ -247,7 +247,7 @@ private def Regex.splitTest (regex : Regex) (haystack : String) : Array String :
 namespace Split
 
 -- The tests below check for feature parity with the Rust Regex crate.
-#guard (re! "[ \t]+").splitTest "a b \t  c\td    e"= #["a", "b", "c", "d", "e"]
+#guard (re! "[ \t]+").splitTest "a b \t  c\td    e" = #["a", "b", "c", "d", "e"]
 #guard (re! " ").splitTest "Mary had a little lamb" = #["Mary", "had", "a", "little", "lamb"]
 #guard (re! "X").splitTest "" = #[""]
 #guard (re! "X").splitTest "lionXXtigerXleopard" = #["lion", "", "tiger", "leopard"]
