@@ -85,8 +85,7 @@ The library's correctness is formally verified through mathematical proofs in Le
 
 The formal proofs provide strong guarantees about the correctness of our regular expression engines. However, it is important to understand what these proofs cover and what they do not:
 
-1. **Correctness is Relative to the Specification.** Our proofs guarantee that the implementation correctly adheres to our formal specification of regular expression semantics, as defined in [Expr/
-Semantics/Captures.lean](https://github.com/pandaman64/lean-regex/blob/main/correctness/RegexCorrectness/Data/Expr/Semantics/Captures.lean). If our specification differs from expected behavior, our proofs would not detect this
+1. **Correctness is Relative to the Specification.** Our proofs guarantee that the implementation correctly adheres to our formal specification of regular expression semantics, as defined in [Expr/Semantics/Captures.lean](https://github.com/pandaman64/lean-regex/blob/main/correctness/RegexCorrectness/Data/Expr/Semantics/Captures.lean). If our specification differs from expected behavior, our proofs would not detect this
 2. **Scope of Proven Properties.** We have focused on core matching properties such as the soundness and completeness. Not every function has been verified against every desirable property
 3. **Stack Safety.** While the core search logic is stack-safe, some preprocessing components (parsers and NFA compilers) use non-tail recursion. For exceptionally complex regular expressions, this could lead to stack overflow. If you encounter this, please report it as an issue
 
