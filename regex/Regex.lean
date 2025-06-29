@@ -72,6 +72,34 @@ some {
 }
 -/
 #eval captures
+
+-- Additional utility methods are available
+def utilityRegexExample := re! r"a+"
+
+def haystack := "a1aa2aaa3"
+
+-- some "a"
+#eval utilityRegexExample.extract haystack
+
+-- #["a", "aa", "aaa"]
+#eval utilityRegexExample.extractAll haystack
+
+-- true
+#eval utilityRegexExample.test haystack
+
+-- 3
+#eval utilityRegexExample.count haystack
+
+/-
+Splits a string using regex matches as breakpoints:
+
+#["", "1", "2", "3"]
+
+Note the empty substring due to the match "a" at the beginning of the input:
+"a1aa2aaa3" = "" ++ "a" ++ "1" ++ "aa" ++ "2" ++ "aaa" ++ "3"
+-/
+#eval utilityRegexExample.split haystack
+
 ```
 
 ## API Overview
@@ -87,10 +115,15 @@ Regex operations include:
 
 - `Regex.find`: Find the first match of a regex in a string
 - `Regex.findAll`: Find all matches of a regex in a string
+- `Regex.extract`: Extract the first match of a regex in a string
+- `Regex.extractAll`: Extract all matches of a regex in a string
 - `Regex.capture`: Capture the first match with its capture groups
 - `Regex.captureAll`: Capture all matches with their capture groups
 - `Regex.replace`: Replace the first match with a replacement string
 - `Regex.replaceAll`: Replace all matches with a replacement string
+- `Regex.test`: Test if a regex matches a string
+- `Regex.count`: Count the number of regex matches in a string
+- `Regex.split`: Split a string using regex matches as breakpoints
 
 ## Creating Regexes
 

@@ -91,4 +91,62 @@ where
     | none => accum
   termination_by m.remaining
 
+/--
+Extracts the first regex match in a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: An optional string if a the match is found, or `none` otherwise
+-/
+def extract (regex : Regex) (haystack : String) : Option String :=
+  regex.find haystack |>.map Substring.toString
+
+/--
+Extracts all regex matches in a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: an array containing all regex matches occuring in a string
+-/
+def extractAll (regex : Regex) (haystack : String) : Array String :=
+  regex.findAll haystack |>.map Substring.toString
+
+/--
+Tests if a regex matches a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: `true` if the `Regex` matches, `false` otherwise
+-/
+def test (regex : Regex) (haystack : String) : Bool :=
+  regex.find haystack |>.isSome
+
+/--
+Counts the number of regex matches in a string.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: the number of regex matches in a string
+-/
+def count (regex : Regex) (haystack : String) : Nat :=
+  regex.findAll haystack |>.size
+
+/--
+Splits a string using regex matches as breakpoints.
+
+* `regex`: The regex to match against
+* `haystack`: The input string to search in
+* Returns: an array containing the substrings in between the regex matches
+-/
+def split (regex : Regex) (haystack : String) : Array Substring :=
+  go (regex.matches haystack) #[] 0
+where
+  go (m : Matches) (accum : Array Substring) (endPos : Pos) : Array Substring :=
+    match _h : m.next? with
+    | some (s, m') =>
+      go m' (accum.push ⟨haystack, endPos, s.startPos⟩) s.stopPos
+    | none =>
+      accum.push ⟨haystack, endPos, haystack.endPos⟩
+  termination_by m.remaining
+
 end Regex
