@@ -29,7 +29,7 @@ where
     | 0 => accum
     | n + 1 => go (.concat accum e) n
 
-def applyRepetitionToExpr (min : Nat) (max : Option Nat) (e : Expr) : Expr :=
+def applyRepetitions (min : Nat) (max : Option Nat) (e : Expr) : Expr :=
   match min, max with
   | 0, .some 1 => .alternate e .epsilon
   | 0, .none => .star e
@@ -61,7 +61,7 @@ def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
     (index₂, .concat r₁ r₂)
   | .repeat min max h =>
     let (index', r) := h.toRegexAux index
-    (index', applyRepetitionToExpr min max r)
+    (index', applyRepetitions min max r)
   | .classes cs => (index, .classes cs)
   | .perl pc => (index, .classes ⟨false, #[Class.perl pc]⟩)
   | .dot => (index, .classes ⟨false, #[Class.beforeLineBreak, Class.afterLineBreak]⟩)

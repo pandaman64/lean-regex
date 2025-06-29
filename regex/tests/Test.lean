@@ -1116,3 +1116,11 @@ def countTransform (captures : CapturedGroups) : String :=
 #guard countRegex.transformAll "a aa aab c cc" countTransform = "1a0b 2a0b 2a1b 1c 2c"
 
 end Transform
+
+namespace Regressions
+
+-- Expanded capture groups should have the same tags and thus only the last match should be reported.
+def issue_84 := re! "(a){2}"
+#guard issue_84.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨2⟩, .some ⟨1⟩, .some ⟨2⟩]⟩
+
+end Regressions

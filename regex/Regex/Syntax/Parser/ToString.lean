@@ -89,6 +89,7 @@ namespace Regex.Syntax.Parser -- Because Ast is there
   | .wordBoundary => "\\b"
   | .nonWordBoundary => "\\B"
 
+-- TODO: consider the precedence of the operators.
 def Ast.toString : Ast → String
   | .empty => ""
   | .epsilon => ""
@@ -100,7 +101,7 @@ def Ast.toString : Ast → String
   | .repeat 0 .none ast => s!"{ast.toString}*"
   | .repeat 1 .none ast => s!"{ast.toString}+"
   | .repeat 0 (.some 1) ast => s!"{ast.toString}?"
-  | .repeat min (.some max) ast => 
+  | .repeat min (.some max) ast =>
     if min == max then ast.toString ++ "{" ++ Nat.repr min ++ "}"
     else ast.toString ++ "{" ++ Nat.repr min ++ "," ++ Nat.repr max ++ "}"
   | .repeat min .none ast => ast.toString ++ "{" ++ Nat.repr min ++ ",}"

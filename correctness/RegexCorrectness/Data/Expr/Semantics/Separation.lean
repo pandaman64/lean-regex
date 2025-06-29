@@ -14,8 +14,8 @@ def tags : Expr → Finset Nat
 def Disjoint : Expr → Prop
 | .empty | .epsilon | .anchor _ | .char _ | .classes _ => True
 | .group tag e => tag ∉ e.tags ∧ e.Disjoint
-| .alternate e₁ e₂ => e₁.tags ∩ e₂.tags = ∅ ∧ e₁.Disjoint ∧ e₂.Disjoint
-| .concat e₁ e₂ => e₁.tags ∩ e₂.tags = ∅ ∧ e₁.Disjoint ∧ e₂.Disjoint
+| .alternate e₁ e₂ => e₁.Disjoint ∧ e₂.Disjoint
+| .concat e₁ e₂ => e₁.Disjoint ∧ e₂.Disjoint
 | .star e => e.Disjoint
 
 theorem Captures.mem_tags_of_mem_groups {e : Expr} {it it' groups} (c : e.Captures it it' groups) :

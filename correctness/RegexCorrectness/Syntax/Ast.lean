@@ -9,134 +9,126 @@ open Regex.Data (Expr)
 
 namespace Regex.Syntax.Parser.Ast
 
--- `Finset.ico index index`' corresponds to a half-open interval [index, index').
-theorem repeatConcat_go_tags (e : Expr) (accum : Expr) (n : Nat) : 
-  (repeatConcat.go e accum n).tags = accum.tags ∪ e.tags := by
+theorem subset_repeatConcat_go_tags (e : Expr) (accum : Expr) (n : Nat) (h : e.tags ⊆ accum.tags) :
+  e.tags ⊆ (repeatConcat.go e accum n).tags := by
+  induction n generalizing accum with
+  | zero => simpa [repeatConcat.go] using h
+  | succ n ih =>
+    dsimp [repeatConcat.go]
+    exact ih (accum.concat e) (by simp [Expr.tags])
+
+theorem repeatConcat_go_tags_subset (e : Expr) (accum : Expr) (n : Nat) :
+  (repeatConcat.go e accum n).tags ⊆ accum.tags ∪ e.tags := by
   induction n generalizing accum with
   | zero => simp [repeatConcat.go]
-  | succ n ih => simp [repeatConcat.go, Expr.tags, ih]
+  | succ n ih =>
+    dsimp [repeatConcat.go]
+    simpa [Expr.tags] using ih (accum.concat e)
 
 theorem repeatConcat_tags (e : Expr) (n : Nat) : (repeatConcat e n).tags = e.tags := by
-  simp [repeatConcat, repeatConcat_go_tags]
+  refine Finset.Subset.antisymm ?_ ?_
+  . simpa using repeatConcat_go_tags_subset e e (n - 1)
+  . exact subset_repeatConcat_go_tags e e (n - 1) (by simp)
 
-theorem applyRepetitionToExpr_tags (min : Nat) (max : Option Nat) (e : Expr) :
-  (applyRepetitionToExpr min max e).tags = e.tags := by
-  simp only [applyRepetitionToExpr]
+theorem applyRepetitions_tags (min : Nat) (max : Option Nat) (e : Expr) :
+  (applyRepetitions min max e).tags ⊆ e.tags := by
+  simp only [applyRepetitions]
   split
   · simp [Expr.tags]
   · simp [Expr.tags]
+  · simp [Expr.tags]
   · simp [Expr.tags, repeatConcat_tags]
-  · simp [Expr.tags, repeatConcat_tags]
-  · split_ifs <;> simp [Expr.tags, repeatConcat_tags]
-  · split_ifs <;> simp [Expr.tags, repeatConcat_tags]
+  · split <;> simp [Expr.tags, repeatConcat_tags]
+  · split <;> simp [Expr.tags, repeatConcat_tags]
 
+-- `Finset.ico index index'` corresponds to a half-open interval [index, index').
 theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
   (h : ast.toRegexAux index = (index', e)) :
-  index ≤ index' ∧ e.tags = Finset.Ico index index' := by
-  induction index, ast using Ast.toRegexAux.induct generalizing index' e
+  index ≤ index' ∧ e.tags ⊆ Finset.Ico index index' := by
+  fun_induction ast.toRegexAux index generalizing index' e
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
   next index ast index'' e' h' ih =>
-    simp [toRegexAux, h'] at h
+    simp [h'] at h
     have ⟨le, ih⟩ := ih h'
-    simp [←h, Expr.tags, ih]
+    simp [←h, Expr.tags]
     refine ⟨by omega, ?_⟩
-    apply Finset.ext
-    intro tag
-    simp
-    omega
+    apply Finset.union_subset
+    . simp only [Finset.singleton_subset_iff, Finset.mem_Ico, le_refl, true_and]
+      omega
+    . exact Finset.Subset.trans ih (Finset.Ico_subset_Ico (by simp) (by simp))
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
-    simp [toRegexAux, h₁, h₂] at h
+    simp [h₁, h₂] at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
-    simp [←h, Expr.tags, ih₁, ih₂]
-    exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂⟩
+    simp [←h, Expr.tags]
+    exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
-    simp [toRegexAux, h₁, h₂] at h
+    simp [h₁, h₂] at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
-    simp [←h, Expr.tags, ih₁, ih₂]
-    exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂⟩
+    simp [←h, Expr.tags]
+    exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
   next index min max ast index'' e' h' ih =>
-    simp [toRegexAux, h'] at h
+    simp [h'] at h
     have ⟨le, ih⟩ := ih h'
-    simp [←h, Expr.tags, applyRepetitionToExpr_tags, ih, le]
+    simp [←h, Expr.tags, le]
+    exact Finset.Subset.trans (applyRepetitions_tags min max e') ih
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
   next =>
-    simp [toRegexAux] at h
+    simp at h
     simp [←h, Expr.tags]
 
-theorem repeatConcat_go_disjoint (e : Expr) (accum : Expr) (n : Nat) 
-  (he : Expr.Disjoint e) (haccum : Expr.Disjoint accum) 
-  (hdisjoint : accum.tags ∩ e.tags = ∅) : 
-  Expr.Disjoint (repeatConcat.go e accum n) := by
-  induction n generalizing accum with
-  | zero => simp [repeatConcat.go, haccum]
-  | succ n ih => 
-    simp [repeatConcat.go, Expr.Disjoint]
-    apply ih
-    · exact he
-    · simp [Expr.Disjoint, haccum, he, hdisjoint]
-    · simp [Expr.tags, hdisjoint]
+theorem repeatConcat_go_disjoint (e : Expr) (accum : Expr) (n : Nat) (h : e.Disjoint) (haccum : accum.Disjoint) :
+  (repeatConcat.go e accum n).Disjoint := by
+  fun_induction repeatConcat.go e accum n
+  next accum => exact haccum
+  next accum n ih => exact ih (by simp [Expr.Disjoint, h, haccum])
 
-theorem repeatConcat_disjoint (e : Expr) (n : Nat) (h : Expr.Disjoint e) : 
-  Expr.Disjoint (repeatConcat e n) := by
-  simp [repeatConcat]
-  apply repeatConcat_go_disjoint
-  · exact h
-  · exact h  
-  · simp
+theorem repeatConcat_disjoint (e : Expr) (n : Nat) (h : e.Disjoint) : (repeatConcat e n).Disjoint :=
+  repeatConcat_go_disjoint e e (n - 1) h h
 
-theorem applyRepetitionToExpr_disjoint (min : Nat) (max : Option Nat) (e : Expr) 
-  (h : Expr.Disjoint e) : Expr.Disjoint (applyRepetitionToExpr min max e) := by
-  simp only [applyRepetitionToExpr]
-  split
-  · simp [Expr.Disjoint, h]
-  · simp [Expr.Disjoint, h]
-  · simp [Expr.Disjoint, h, repeatConcat_disjoint]
-  · simp [Expr.Disjoint, h, repeatConcat_disjoint]
-  · split_ifs <;> simp [Expr.Disjoint, h, repeatConcat_disjoint]
-  · split_ifs <;> simp [Expr.Disjoint, h, repeatConcat_disjoint]
+theorem applyRepetitions_disjoint (min : Nat) (max : Option Nat) (e : Expr) (h : e.Disjoint) :
+  (applyRepetitions min max e).Disjoint := by
+  fun_cases applyRepetitions min max e <;> simp_all [Expr.Disjoint, repeatConcat_disjoint]
 
 theorem toRegexAux_disjoint (index : Nat) (ast : Ast) : Expr.Disjoint (ast.toRegexAux index).2 := by
-  induction index, ast using Ast.toRegexAux.induct
-  next => simp [toRegexAux, Expr.Disjoint]
-  next => simp [toRegexAux, Expr.Disjoint]
-  next => simp [toRegexAux, Expr.Disjoint]
-  next => simp [toRegexAux, Expr.Disjoint]
+  fun_induction ast.toRegexAux index
+  next => simp [Expr.Disjoint]
+  next => simp [Expr.Disjoint]
+  next => simp [Expr.Disjoint]
+  next => simp [Expr.Disjoint]
   next index ast index' e h ih =>
     simp [h] at ih
-    simp [toRegexAux, Expr.Disjoint, ih, h]
-    simp [toRegexAux_tags h]
+    simp [Expr.Disjoint, ih]
+    exact Finset.not_mem_subset (toRegexAux_tags h).2 (by simp)
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
-    simp [toRegexAux, Expr.Disjoint, h₁, h₂, ih₁, ih₂]
-    simp [toRegexAux_tags h₁, toRegexAux_tags h₂]
+    simp [Expr.Disjoint, h₁, h₂, ih₁, ih₂]
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
-    simp [toRegexAux, Expr.Disjoint, h₁, h₂, ih₁, ih₂]
-    simp [toRegexAux_tags h₁, toRegexAux_tags h₂]
-  next index min max ast index' e h ih => 
+    simp [Expr.Disjoint, h₁, h₂, ih₁, ih₂]
+  next index min max ast index' e h ih =>
     simp [h] at ih
-    simp [toRegexAux, applyRepetitionToExpr_disjoint, ih]
-  next => simp [toRegexAux, Expr.Disjoint]
-  next => simp [toRegexAux, Expr.Disjoint]
-  next => simp [toRegexAux, Expr.Disjoint]
+    exact applyRepetitions_disjoint min max e ih
+  next => simp [Expr.Disjoint]
+  next => simp [Expr.Disjoint]
+  next => simp [Expr.Disjoint]
 
 theorem toRegex_disjoint (ast : Ast) : Expr.Disjoint ast.toRegex :=
   toRegexAux_disjoint 0 ast
