@@ -40,9 +40,9 @@ Transforms the first match of a regex pattern using its capture groups.
 * Returns: The modified string, or the original string if no match is found
 -/
 def transform (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String :=
-    match (regex.captures haystack).next? with
+    match h : (regex.captures haystack).next? with
   | some (g,_) =>
-    let s := g.get 0 |>.get! -- TODO: show that this always succeeds and use get
+    let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
     haystack.extract 0 s.startPos ++ transformer g ++ haystack.extract s.stopPos haystack.endPos
   | none => haystack
 
@@ -58,9 +58,9 @@ def transformAll (regex : Regex) (haystack : String) (transformer : CapturedGrou
   go (regex.captures haystack) "" 0
 where
   go (c : Captures) (accum : String) (endPos : Pos) : String :=
-    match _h : c.next? with
+    match h : c.next? with
     | some (g, c') =>
-      let s := g.get 0 |>.get! -- TODO: show that this always succeeds and use get
+      let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
       go c' (accum ++ haystack.extract endPos s.startPos ++ transformer g) s.stopPos
     | none =>
       accum ++ haystack.extract endPos haystack.endPos
