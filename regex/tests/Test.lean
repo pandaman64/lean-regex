@@ -545,9 +545,6 @@ def word_boundary_27 := Regex.parse! r##"\b^"##
 ]
 
 -- Non word boundary tests
--- Tests for \B. Note that \B is not allowed if UTF-8 mode is enabled, so we
--- have to disable it for most of these tests. This is because \B can match at
--- non-UTF-8 boundaries.
 
 def non_word_boundary_01 := Regex.parse! r##"\Bfoo\B"##
 
@@ -863,12 +860,8 @@ def unicode_word_boundary_01 := Regex.parse! r##"\bx\b"##
   ⟨"x»", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 ]
 
--- ASCII word boundaries are completely oblivious to Unicode characters, so
--- even though β is a character, an ASCII \b treats it as a word boundary
--- when it is adjacent to another ASCII character. (The ASCII \b only looks
--- at the leading byte of β.) For Unicode \b, the tests are precisely inverted.
-
--- FIXME: This test is not working as expected.
+-- FIXME: This test is not working as expected because
+-- we only check for ASCII alphanumeric characters.
 -- name = "unicode3"
 -- #eval unicode_word_boundary_01.captureAll "áxβ"
 -- #guard unicode_word_boundary_01.captureAll "áxβ" = #[]
@@ -901,29 +894,15 @@ def unicode_non_word_boundary_01 := Regex.parse! r##"\Bx\B"##
 -- The same as above, but with \b instead of \B as a sanity check.
 def unicode_word_boundary_02 := Regex.parse! r##"\b"##
 
--- FIXME: This test is not working as expected.
--- -- name = "unicode5"
--- #eval unicode_word_boundary_02.captureAll "0\U0007EF5E"
--- #guard unicode_word_boundary_02.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨1⟩, .some ⟨1⟩]⟩
--- ]
--- #guard unicode_word_boundary_02.bt.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨1⟩, .some ⟨1⟩]⟩
--- ]
-
--- FIXME: This test is not working as expected.
--- -- name = "unicode5-only-ascii"
--- #eval unicode_word_boundary_02.captureAll "0\U0007EF5E"
--- #guard unicode_word_boundary_02.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨1⟩, .some ⟨1⟩]⟩
--- ]
--- #guard unicode_word_boundary_02.bt.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨1⟩, .some ⟨1⟩]⟩
--- ]
+-- name = "unicode5"
+#guard unicode_word_boundary_02.captureAll "0\uFFFF" = #[
+  ⟨"0\uFFFF", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
+  ⟨"0\uFFFF", #[.some ⟨1⟩, .some ⟨1⟩]⟩
+]
+#guard unicode_word_boundary_02.bt.captureAll "0\uFFFF" = #[
+  ⟨"0\uFFFF", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
+  ⟨"0\uFFFF", #[.some ⟨1⟩, .some ⟨1⟩]⟩
+]
 
 -- name = "unicode5-noutf8"
 #guard unicode_word_boundary_02.captureAll "0\xFF\xFF\xFF\xFF" = #[
@@ -944,67 +923,6 @@ def unicode_word_boundary_02 := Regex.parse! r##"\b"##
   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨0⟩, .some ⟨0⟩]⟩,
   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨1⟩, .some ⟨1⟩]⟩
 ]
-
--- Weird special case to ensure that ASCII \B treats each individual code unit
--- as a non-word byte. (The specific codepoint is irrelevant. It's an arbitrary
--- codepoint that uses 4 bytes in its UTF-8 encoding and is not a member of the
--- \w character class.)
-
-def unicode_non_word_boundary_02 := Regex.parse! r##"\B"##
-
--- FIXME: This test is not working as expected.
--- -- name = "unicode5-not"
--- #eval unicode_non_word_boundary_02.captureAll "0\U0007EF5E"
--- #guard unicode_non_word_boundary_02.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨5⟩, .some ⟨5⟩]⟩
--- ]
--- #guard unicode_non_word_boundary_02.bt.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨5⟩, .some ⟨5⟩]⟩
--- ]
-
--- FIXME: This test is not working as expected.
--- name = "unicode5-not-only-ascii"
--- #eval unicode_non_word_boundary_02.captureAll "0\U0007EF5E"
--- #guard unicode_non_word_boundary_02.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨2⟩, .some ⟨2⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨3⟩, .some ⟨3⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨4⟩, .some ⟨4⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨5⟩, .some ⟨5⟩]⟩
--- ]
--- #guard unicode_non_word_boundary_02.bt.captureAll "0\U0007EF5E" = #[
---   ⟨"0\U0007EF5E", #[.some ⟨2⟩, .some ⟨2⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨3⟩, .some ⟨3⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨4⟩, .some ⟨4⟩]⟩,
---   ⟨"0\U0007EF5E", #[.some ⟨5⟩, .some ⟨5⟩]⟩
--- ]
-
--- This gets no matches since \B only matches in the presence of valid UTF-8
--- when Unicode is enabled, even when UTF-8 mode is disabled.
-
--- FIXME: This test is not working as expected.
--- -- name = "unicode5-not-noutf8"
--- #eval unicode_non_word_boundary_02.captureAll "0\xFF\xFF\xFF\xFF"
--- #guard unicode_non_word_boundary_02.captureAll "0\xFF\xFF\xFF\xFF" = #[]
--- #guard unicode_non_word_boundary_02.bt.captureAll "0\xFF\xFF\xFF\xFF" = #[]
-
--- But this DOES get matches since \B in ASCII mode only looks at individual
--- bytes.
-
--- FIXME: This test is not working as expected.
--- name = "unicode5-not-noutf8-only-ascii"
--- #eval unicode_non_word_boundary_02.captureAll "0\xFF\xFF\xFF\xFF"
--- #guard unicode_non_word_boundary_02.captureAll "0\xFF\xFF\xFF\xFF" = #[
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨2⟩, .some ⟨2⟩]⟩,
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨3⟩, .some ⟨3⟩]⟩,
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨4⟩, .some ⟨4⟩]⟩,
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨5⟩, .some ⟨5⟩]⟩
--- ]
--- #guard unicode_non_word_boundary_02.bt.captureAll "0\xFF\xFF\xFF\xFF" = #[
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨2⟩, .some ⟨2⟩]⟩,
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨3⟩, .some ⟨3⟩]⟩,
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨4⟩, .some ⟨4⟩]⟩,
---   ⟨"0\xFF\xFF\xFF\xFF", #[.some ⟨5⟩, .some ⟨5⟩]⟩
--- ]
 
 -- Some tests of no particular significance.
 def unicode_word_boundary_03 := Regex.parse! r##"\b[0-9]+\b"##
