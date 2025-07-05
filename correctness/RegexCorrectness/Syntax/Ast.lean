@@ -59,7 +59,7 @@ theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
     simp at h
     simp [←h, Expr.tags]
   next index ast index'' e' h' ih =>
-    simp [h'] at h
+    simp at h
     have ⟨le, ih⟩ := ih h'
     simp [←h, Expr.tags]
     refine ⟨by omega, ?_⟩
@@ -68,21 +68,21 @@ theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
       omega
     . exact Finset.Subset.trans ih (Finset.Ico_subset_Ico (by simp) (by simp))
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
-    simp [h₁, h₂] at h
+    simp at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
     simp [←h, Expr.tags]
     exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
-    simp [h₁, h₂] at h
+    simp at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
     simp [←h, Expr.tags]
     exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
   next index min max ast index'' e' h' ih =>
-    simp [h'] at h
+    simp at h
     have ⟨le, ih⟩ := ih h'
-    simp [←h, Expr.tags, le]
+    simp [←h, le]
     exact Finset.Subset.trans (applyRepetitions_tags min max e') ih
   next =>
     simp at h
@@ -119,10 +119,10 @@ theorem toRegexAux_disjoint (index : Nat) (ast : Ast) : Expr.Disjoint (ast.toReg
     exact Finset.not_mem_subset (toRegexAux_tags h).2 (by simp)
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
-    simp [Expr.Disjoint, h₁, h₂, ih₁, ih₂]
+    simp [Expr.Disjoint, ih₁, ih₂]
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
-    simp [Expr.Disjoint, h₁, h₂, ih₁, ih₂]
+    simp [Expr.Disjoint, ih₁, ih₂]
   next index min max ast index' e h ih =>
     simp [h] at ih
     exact applyRepetitions_disjoint min max e ih

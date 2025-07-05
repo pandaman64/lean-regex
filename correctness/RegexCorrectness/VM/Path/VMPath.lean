@@ -102,7 +102,7 @@ theorem eq_or_nfaPath {nfa : NFA} {wf it₀ it i update} (path : nfa.VMPath wf i
 
     match ih with
     | .inl ⟨eqi, equpdate', eqs, le⟩ =>
-      simp [←eqi, equpdate']
+      simp [←eqi]
       simp [equpdate'] at equpdate
       exact .inr ⟨it, eqs, le, equpdate ▸ eqit ▸ path₂⟩
     | .inr ⟨itp, eqs, le, path₁⟩ => exact .inr ⟨itp, eqs, le, equpdate ▸ eqit ▸ path₁.trans path₂⟩

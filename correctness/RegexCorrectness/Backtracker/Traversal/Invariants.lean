@@ -359,7 +359,7 @@ theorem of_step_closure {bit₀ : BoundedIterator startIdx maxIdx} (wf : nfa.Wel
       | .inr ⟨hnext, eq⟩ =>
         subst eqit
         have eq : bit' = bit.next hnext := by
-          simp [BoundedIterator.ext_iff, bit', eq, BoundedIterator.next, Iterator.next'_eq_next]
+          simp [bit', eq, BoundedIterator.next, Iterator.next'_eq_next]
         rw [eq]
         exact reaches.next' hnext
     have visited' := h ⟨i, step.lt⟩ bit ⟨j, step.lt_right wf⟩ bit' update reaches hmem (by simp [←eqit, bit', step])

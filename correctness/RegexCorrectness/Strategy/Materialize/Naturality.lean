@@ -47,7 +47,7 @@ theorem EquivUpdate.materialize {e : Expr} {n it it' groups updates}
           else
             have h' : 2 * tag ≠ 2 * tag' + 1 := by omega
             have h'' : 2 * tag + 1 ≠ 2 * tag' + 1 := by omega
-            simp [h, h', h'', Vector.getElem_setIfInBounds_ne (h := h'')]
+            simp [h, h', Vector.getElem_setIfInBounds_ne (h := h'')]
             exact (ih tag').2 h₂
       . intro offset pos mem
         simp at mem

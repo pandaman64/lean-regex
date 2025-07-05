@@ -101,7 +101,7 @@ theorem captureNext.go.refines (nfa wf startIdx bufferSize bit visited) :
     match hauxB : captureNextAux (BufferStrategy bufferSize) nfa wf startIdx maxIdx visited [entryB] with
     | (.some updateB, visitedB) =>
       simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
-      simp [captureNext.go_found hauxH, captureNext.go_found hauxB, Refines, refineUpdateOpt, refResult]
+      simp [captureNext.go_found hauxH, captureNext.go_found hauxB, refineUpdateOpt, refResult]
     | (.none, _) => simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
   | not_found_next bit visited visitedH hauxH hnext ih =>
     let entryH : StackEntry HistoryStrategy nfa startIdx maxIdx := ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩
@@ -123,7 +123,7 @@ theorem captureNext.go.refines (nfa wf startIdx bufferSize bit visited) :
     | (.some _, _) => simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
     | (.none, visitedB) =>
       simp [Refines, entryH, hauxH, hauxB, refineUpdateOpt] at refResult
-      simp [captureNext.go_not_found_end hauxH hnext, captureNext.go_not_found_end hauxB hnext, Refines, refineUpdateOpt, refResult]
+      simp [captureNext.go_not_found_end hauxH hnext, captureNext.go_not_found_end hauxB hnext, refineUpdateOpt]
 
 theorem captureNext.refines (nfa wf bufferSize it) :
   refineUpdateOpt (captureNext HistoryStrategy nfa wf it) (captureNext (BufferStrategy bufferSize) nfa wf it) := by

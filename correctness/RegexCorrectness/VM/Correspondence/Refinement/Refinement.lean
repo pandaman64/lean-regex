@@ -57,11 +57,11 @@ theorem εClosure.pushNext.refines {state : Fin nfa.nodes.size} {update} {buffer
     simp [pushNext.save rfl, h₂]
     simp [HistoryStrategy, BufferStrategy, h₁]
   | anchor_pos _ _ a state' inBounds ht => simp [pushNext.anchor_pos rfl ht, h₁, h₂]
-  | anchor_neg _ _ a state' inBounds ht => simp [pushNext.anchor_neg rfl ht, h₁, h₂]
-  | done => simp [pushNext.done, h₁, h₂]
-  | fail => simp [pushNext.fail, h₁, h₂]
-  | char => simp [pushNext.char rfl, h₁, h₂]
-  | sparse => simp [pushNext.sparse rfl, h₁, h₂]
+  | anchor_neg _ _ a state' inBounds ht => simp [pushNext.anchor_neg rfl ht, h₂]
+  | done => simp [pushNext.done, h₂]
+  | fail => simp [pushNext.fail, h₂]
+  | char => simp [pushNext.char rfl, h₂]
+  | sparse => simp [pushNext.sparse rfl, h₂]
 
 theorem εClosure.refines (result result')
   (h : εClosure (BufferStrategy bufferSize) nfa wf it matched next stack = result)

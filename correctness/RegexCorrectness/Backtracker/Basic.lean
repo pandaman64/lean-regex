@@ -13,7 +13,7 @@ variable {σ : Strategy} {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Na
 theorem done (hn : nfa[state] = .done) : pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
   unfold pushNext
   simp at hn
-  simp [hn]
+  simp
   split <;> simp_all
 
 theorem fail (hn : nfa[state] = .fail) : pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
@@ -66,7 +66,6 @@ theorem anchor_negFin {a : Data.Anchor} {state' : Fin nfa.nodes.size} (hn : nfa[
   split <;> simp_all
 
 theorem anchor_neg {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : ¬Data.Anchor.test it.it a) :
-  haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
   pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
   rw [anchor_negFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h]
 

@@ -56,8 +56,8 @@ theorem sparse {cs next} (hn : nfa[i] = .sparse cs next) :
 theorem char_or_sparse (step : nfa.CharStep it i j) :
   (∃ c next, nfa[i] = .char c next) ∨ (∃ cs next, nfa[i] = .sparse cs next) := by
   match hn : nfa[i] with
-  | .char c next => simp [hn]
-  | .sparse cs next => simp [hn]
+  | .char c next => simp
+  | .sparse cs next => simp
   | .done | .fail | .epsilon _ => simp_all
   | .anchor _ _ => simp [anchor hn] at step
   | .split _ _ => simp [split hn] at step
