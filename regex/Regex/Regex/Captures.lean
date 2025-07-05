@@ -78,6 +78,15 @@ def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
   else
     throw ()
 
+theorem Captures.zeroth_group_some_of_next?_some {self next : Captures} {groups : CapturedGroups}
+    (h : self.next? = (groups,next)) : groups.get 0 |>.isSome := by
+  unfold next? at h
+  split at h <;> simp [Option.bind_eq_some_iff] at h
+  have ⟨_, _, h⟩ := h
+  have ⟨_, h, ⟨h', _⟩⟩ := h
+  rw [h'] at h
+  exact Option.isSome_of_mem h
+
 /--
 Gets the number of remaining characters to process in the haystack string.
 

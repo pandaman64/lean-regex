@@ -1,4 +1,5 @@
 import Regex.Regex.Utilities
+import Regex.Regex.Captures
 import Regex.Regex.Elab
 import Regex.Backtracker
 
@@ -1082,3 +1083,36 @@ namespace Split
 #guard (re! " +").splitTest "    a  b c" = #["", "a", "b", "c"]
 
 end Split
+
+namespace Transform
+
+open Regex
+
+def parenthesesRegex := re! r"\((\d+)\)"
+
+def parenthesesToBraces (captures : CapturedGroups) : String :=
+  let digits := captures.get 1 |>.map Substring.toString |>.getD ""
+  "{" ++ digits ++ "}"
+
+#guard parenthesesRegex.transform "" parenthesesToBraces = ""
+#guard parenthesesRegex.transformAll "" parenthesesToBraces = ""
+#guard parenthesesRegex.transform "(123) and ((4))" parenthesesToBraces = "{123} and ((4))"
+#guard parenthesesRegex.transformAll "(123) and ((4))" parenthesesToBraces = "{123} and ({4})"
+
+def countRegex := re! r"(a+)(b*)|(c+)"
+
+def countString (name : String) (input : Option Substring) : String :=
+  input.map (Substring.toString)
+    |>.map (fun s => toString s.length ++ name)
+    |>.getD ""
+
+def countTransform (captures : CapturedGroups) : String :=
+  let as := captures.get 1 |> countString "a"
+  let bs := captures.get 2 |> countString "b"
+  let cs := captures.get 3 |> countString "c"
+  as ++ bs ++ cs
+
+#guard countRegex.transform "a aa aab c cc" countTransform = "1a0b aa aab c cc"
+#guard countRegex.transformAll "a aa aab c cc" countTransform = "1a0b 2a0b 2a1b 1c 2c"
+
+end Transform

@@ -32,6 +32,41 @@ where
   termination_by m.remaining
 
 /--
+Transforms the first match of a regex pattern using its capture groups.
+
+* `regex`: The compiled regex pattern to use for matching
+* `haystack`: The input string to search in
+* `transformer`: The rule yielding the string to replace the match with
+* Returns: The modified string, or the original string if no match is found
+-/
+def transform (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String :=
+    match h : (regex.captures haystack).next? with
+  | some (g,_) =>
+    let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
+    haystack.extract 0 s.startPos ++ transformer g ++ haystack.extract s.stopPos haystack.endPos
+  | none => haystack
+
+/--
+Transforms all matches of a regex pattern using its capture groups.
+
+* `regex`: The compiled regex pattern to use for matching
+* `haystack`: The input string to search in
+* `transformer`: The rule yielding the string to replace the match with
+* Returns: The modified string, or the original string if no matches are found
+-/
+def transformAll (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String :=
+  go (regex.captures haystack) "" 0
+where
+  go (c : Captures) (accum : String) (endPos : Pos) : String :=
+    match h : c.next? with
+    | some (g, c') =>
+      let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
+      go c' (accum ++ haystack.extract endPos s.startPos ++ transformer g) s.stopPos
+    | none =>
+      accum ++ haystack.extract endPos haystack.endPos
+  termination_by c.remaining
+
+/--
 Replaces the first match of a regex pattern with a replacement string.
 
 * `regex`: The compiled regex pattern to use for matching
