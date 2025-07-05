@@ -90,6 +90,8 @@ def plainChar : Parser.LT Error Char :=
 def anchor : Parser.LT Error Ast :=
   (charOrError '^' |>.mapConst (.anchor .start))
   <|> (charOrError '$' |>.mapConst (.anchor .eos))
+  <|> (charOrError '\\' *> charOrError 'b' |>.mapConst (.anchor .wordBoundary))
+  <|> (charOrError '\\' *> charOrError 'B' |>.mapConst (.anchor .nonWordBoundary))
 
 def dot : Parser.LT Error Ast :=
   charOrError '.' |>.mapConst .dot

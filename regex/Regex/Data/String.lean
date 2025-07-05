@@ -33,7 +33,28 @@ theorem next_le_endPos (s : String) (p : Pos) (lt : p < s.endPos) : s.next p ≤
 
 end String
 
+namespace Char
+
+def isWordChar (ch : Char) : Bool :=
+  ch.isAlphanum || ch = '_'
+
+end Char
+
 namespace String.Iterator
+
+open Char
+
+def isCurrWord (it : Iterator) : Bool :=
+  it.hasNext && isWordChar it.curr
+
+def isPrevWord (it : Iterator) : Bool :=
+  it.hasPrev && isWordChar it.prev.curr
+
+def isAtWordBoundary (it : Iterator) : Bool :=
+  isCurrWord it != isPrevWord it
+
+def isAtNonWordBoundary (it : Iterator) : Bool :=
+  isCurrWord it == isPrevWord it
 
 theorem next'_eq_next (it : Iterator) (h : it.hasNext) : it.next' h = it.next := by
   simp [next', next]
