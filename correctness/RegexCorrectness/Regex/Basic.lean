@@ -111,7 +111,7 @@ theorem searchNext_some {re it str} (h : re.searchNext it = .some str)
     s.expr.Captures it' it'' groups ∧
     str.startPos = it'.pos ∧
     str.stopPos = it''.pos := by
-  simp [Regex.searchNext, s.nfa_eq] at h
+  simp [Regex.searchNext] at h
   match h' : re.captureNextBuf 2 it with
   | .none => simp [h'] at h
   | .some matched =>
