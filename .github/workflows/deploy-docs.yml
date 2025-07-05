@@ -35,4 +35,4 @@ jobs:
         id: build-docgen
         uses: leanprover-community/docgen-action@main
         with:
-          lake-package-directory: correctness
+          lake_package_directory: correctness
