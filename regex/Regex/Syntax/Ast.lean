@@ -16,11 +16,31 @@ inductive Ast : Type where
   | group : Ast → Ast
   | alternate : Ast → Ast → Ast
   | concat : Ast → Ast → Ast
-  | star : Ast → Ast
+  | repeat : Nat → Option Nat → Ast → Ast
   | classes : Classes → Ast
   | perl : PerlClass → Ast
   | dot : Ast
 deriving Inhabited, Repr, DecidableEq
+
+def repeatConcat (e : Expr) (n : Nat) : Expr :=
+  go e (n - 1)
+where
+  go (accum : Expr) : Nat → Expr
+    | 0 => accum
+    | n + 1 => go (.concat accum e) n
+
+def applyRepetitions (min : Nat) (max : Option Nat) (e : Expr) : Expr :=
+  match min, max with
+  | 0, .some 1 => .alternate e .epsilon
+  | 0, .none => .star e
+  | 1, .none => .concat e (.star e)
+  | min, .none => .concat (repeatConcat e min) (.star e)
+  | 0, .some max =>
+    if max == 0 then .epsilon
+    else repeatConcat (.alternate e .epsilon) max
+  | min, .some max =>
+    if min == max then repeatConcat e min
+    else .concat (repeatConcat e min) (repeatConcat (.alternate e .epsilon) (max - min))
 
 def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
   match ast with
@@ -39,9 +59,9 @@ def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
     let (index₁, r₁) := h₁.toRegexAux index
     let (index₂, r₂) := h₂.toRegexAux index₁
     (index₂, .concat r₁ r₂)
-  | .star h =>
+  | .repeat min max h =>
     let (index', r) := h.toRegexAux index
-    (index', .star r)
+    (index', applyRepetitions min max r)
   | .classes cs => (index, .classes cs)
   | .perl pc => (index, .classes ⟨false, #[Class.perl pc]⟩)
   | .dot => (index, .classes ⟨false, #[Class.beforeLineBreak, Class.afterLineBreak]⟩)

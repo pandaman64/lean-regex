@@ -65,16 +65,16 @@ theorem EquivUpdate.materialize {e : Expr} {n it it' groups updates}
         | inr eq => omega
   | alternateLeft _ ih =>
     simp [Expr.Disjoint] at disj
-    exact ih disj.2.1 eqv
+    exact ih disj.1 eqv
   | alternateRight _ ih =>
     simp [Expr.Disjoint] at disj
-    exact ih disj.2.2 eqv
+    exact ih disj.2 eqv
   | concat _ _ ih₁ ih₂ =>
     simp [Expr.Disjoint] at disj
     cases eqv with
     | @concat _ _ update₁ update₂ eqv₁ eqv₂ =>
-      have ih₁ := ih₁ disj.2.1 eqv₁
-      have ih₂ := ih₂ disj.2.2 eqv₂
+      have ih₁ := ih₁ disj.1 eqv₁
+      have ih₂ := ih₂ disj.2 eqv₂
       exact concat ih₁ ih₂
   | starConcat _ _ ih₁ ih₂ =>
     simp [Expr.Disjoint] at disj
