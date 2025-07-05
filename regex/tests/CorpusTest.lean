@@ -199,10 +199,6 @@ def RegexTest.fullName (test : RegexTest) : String :=
   else
     s!"{test.group}/{test.name}"
 
-def hasWordBoundary (s : String) : Bool :=
-  let re := re! r##"\\b|\\B"##
-  re.find s |>.isSome
-
 def supported (test : RegexTest) : Bool :=
   test.bounds.isNone && !test.anchored && !test.caseInsensitive
   && !test.unescape && test.unicode && test.utf8
@@ -214,18 +210,15 @@ def RegexTest.run (test : RegexTest) (backtracker : Bool) : Except String TestRe
   let regex ←
     match test.regex with
     | .single s =>
-      if hasWordBoundary s then
-        return .unsupported
-      else
-        match Regex.parse s, test.compiles with
-        | .ok regex, true =>
-          if backtracker then
-            pure { regex with useBacktracker := true }
-          else
-            pure regex
-        | .ok _, false => throw s!"expected '{s}' to not compile, but it did"
-        | .error e, true => throw s!"expected '{s}' to compile, but it did not: {e}"
-        | .error _, false => return .ok
+      match Regex.parse s, test.compiles with
+      | .ok regex, true =>
+        if backtracker then
+          pure { regex with useBacktracker := true }
+        else
+          pure regex
+      | .ok _, false => throw s!"expected '{s}' to not compile, but it did"
+      | .error e, true => throw s!"expected '{s}' to compile, but it did not: {e}"
+      | .error _, false => return .ok
     | .many _ => return .unsupported
   let allCaptures := (regex.captureAll test.haystack).map (·.toArray)
   let captures :=
