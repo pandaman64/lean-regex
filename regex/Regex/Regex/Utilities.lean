@@ -1,5 +1,4 @@
-import Regex.Regex.Matches
-import Regex.Regex.Captures
+import Regex.Regex.Iterators
 
 open String (Pos)
 
@@ -13,7 +12,10 @@ Finds the first match of a regex pattern in a string.
 * Returns: An optional substring representing the match, or `none` if no match is found
 -/
 def find (regex : Regex) (haystack : String) : Option Substring :=
-  regex.matches haystack |>.next? |>.map Prod.fst
+  match regex.matches haystack |>.step with
+  | .yield _ s _ => .some s
+  | .skip _ _ => .none
+  | .done _ => .none
 
 /--
 Finds all matches of a regex pattern in a string.
@@ -23,13 +25,7 @@ Finds all matches of a regex pattern in a string.
 * Returns: An array of all matched substrings
 -/
 def findAll (regex : Regex) (haystack : String) : Array Substring :=
-  go (regex.matches haystack) #[]
-where
-  go (m : Matches) (accum : Array Substring) : Array Substring :=
-    match _h : m.next? with
-    | some (pos, m') => go m' (accum.push pos)
-    | none => accum
-  termination_by m.remaining
+  regex.matches haystack |>.toArray
 
 /--
 Transforms the first match of a regex pattern using its capture groups.
@@ -40,11 +36,13 @@ Transforms the first match of a regex pattern using its capture groups.
 * Returns: The modified string, or the original string if no match is found
 -/
 def transform (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String :=
-    match h : (regex.captures haystack).next? with
-  | some (g,_) =>
-    let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
-    haystack.extract 0 s.startPos ++ transformer g ++ haystack.extract s.stopPos haystack.endPos
-  | none => haystack
+  match regex.captures haystack |>.step with
+  | .yield _ groups _ =>
+    -- TODO: prove again that the first group is always present
+    let s := groups.get 0 |>.get!
+    haystack.extract 0 s.startPos ++ transformer groups ++ haystack.extract s.stopPos haystack.endPos
+  | .skip _ _ => haystack
+  | .done _ => haystack
 
 /--
 Transforms all matches of a regex pattern using its capture groups.
@@ -54,17 +52,15 @@ Transforms all matches of a regex pattern using its capture groups.
 * `transformer`: The rule yielding the string to replace the match with
 * Returns: The modified string, or the original string if no matches are found
 -/
-def transformAll (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String :=
-  go (regex.captures haystack) "" 0
-where
-  go (c : Captures) (accum : String) (endPos : Pos) : String :=
-    match h : c.next? with
-    | some (g, c') =>
-      let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
-      go c' (accum ++ haystack.extract endPos s.startPos ++ transformer g) s.stopPos
-    | none =>
-      accum ++ haystack.extract endPos haystack.endPos
-  termination_by c.remaining
+def transformAll (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String := Id.run do
+  let mut accum := ""
+  let mut lastPos : Pos := 0
+  for groups in regex.captures haystack do
+    -- TODO: prove again that the first group is always present
+    let s := groups.get 0 |>.get!
+    accum := accum ++ haystack.extract lastPos s.startPos ++ transformer groups
+    lastPos := s.stopPos
+  accum ++ haystack.extract lastPos haystack.endPos
 
 /--
 Replaces the first match of a regex pattern with a replacement string.
@@ -85,8 +81,8 @@ Replaces all matches of a regex pattern with a replacement string.
 * `replacement`: The string to replace the matches with
 * Returns: The modified string, or the original string if no matches are found
 -/
-def replaceAll (regex : Regex) (haystack : String) (replacement : String) : String :=
-  transformAll regex haystack (fun _ => replacement)
+ def replaceAll (regex : Regex) (haystack : String) (replacement : String) : String :=
++  transformAll regex haystack (fun _ => replacement)
 
 /--
 Captures the first match of a regex pattern in a string, including capture groups.
@@ -97,7 +93,10 @@ Captures the first match of a regex pattern in a string, including capture group
           or `none` if no match is found
 -/
 def capture (regex : Regex) (haystack : String) : Option CapturedGroups :=
-  regex.captures haystack |>.next? |>.map Prod.fst
+  match regex.captures haystack |>.step with
+  | .yield _ groups _ => .some groups
+  | .skip _ _ => .none
+  | .done _ => .none
 
 /--
 Captures all matches of a regex pattern in a string, including capture groups.
@@ -107,13 +106,7 @@ Captures all matches of a regex pattern in a string, including capture groups.
 * Returns: An array of `CapturedGroups`, each containing a match and its capture groups
 -/
 def captureAll (regex : Regex) (haystack : String) : Array CapturedGroups :=
-  go (regex.captures haystack) #[]
-where
-  go (m : Captures) (accum : Array CapturedGroups) : Array CapturedGroups :=
-    match _h : m.next? with
-    | some (groups, m') => go m' (accum.push groups)
-    | none => accum
-  termination_by m.remaining
+  regex.captures haystack |>.toArray
 
 /--
 Extracts the first regex match in a string.
@@ -162,15 +155,13 @@ Splits a string using regex matches as breakpoints.
 * `haystack`: The input string to search in
 * Returns: an array containing the substrings in between the regex matches
 -/
-def split (regex : Regex) (haystack : String) : Array Substring :=
-  go (regex.matches haystack) #[] 0
-where
-  go (m : Matches) (accum : Array Substring) (endPos : Pos) : Array Substring :=
-    match _h : m.next? with
-    | some (s, m') =>
-      go m' (accum.push ⟨haystack, endPos, s.startPos⟩) s.stopPos
-    | none =>
-      accum.push ⟨haystack, endPos, haystack.endPos⟩
-  termination_by m.remaining
+def split (regex : Regex) (haystack : String) : Array Substring := Id.run do
+  let mut accum := #[]
+  let mut lastPos : Pos := 0
+  for groups in regex.captures haystack do
+    let s := groups.get 0 |>.get!
+    accum := accum.push ⟨haystack, lastPos, s.startPos⟩
+    lastPos := s.stopPos
+  accum.push ⟨haystack, lastPos, haystack.endPos⟩
 
 end Regex
