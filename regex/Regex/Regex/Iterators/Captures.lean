@@ -41,7 +41,7 @@ theorem withPos_eq_iff (c : Captures) (p₁ p₂ : Pos) : c.withPos p₁ = c.wit
 
 def step (self : Captures) : IterStep Captures CapturedGroups :=
   if self.currentPos ≤ self.haystack.endPos then
-    match self.regex.captureNextBuf self.bufferSize ⟨self.haystack, self.currentPos⟩ with
+    match self.regex.captureNextBuf (max self.bufferSize 2) ⟨self.haystack, self.currentPos⟩ with
     | .some buffer =>
       let groups : CapturedGroups := ⟨self.haystack, buffer.toArray⟩
       match groups.get 0 with
@@ -62,7 +62,7 @@ def step (self : Captures) : IterStep Captures CapturedGroups :=
 
 theorem step_yield (c c' : Captures) (groups : CapturedGroups) (h : c.step = .yield c' groups) :
   c.currentPos ≤ c.haystack.endPos ∧
-  ∃ buffer, c.regex.captureNextBuf c.bufferSize ⟨c.haystack, c.currentPos⟩ = .some buffer ∧
+  ∃ buffer, c.regex.captureNextBuf (max c.bufferSize 2) ⟨c.haystack, c.currentPos⟩ = .some buffer ∧
   groups = ⟨c.haystack, buffer.toArray⟩ ∧
   ∃ matched, groups.get 0 = .some matched ∧
   c' = c.withPos (if c.currentPos < matched.stopPos then matched.stopPos else c.haystack.next c.currentPos) := by
@@ -89,7 +89,7 @@ def IsPlausibleStep (it : IterM (α := Captures) m CapturedGroups) (step : IterS
   match step with
   | .yield it' out =>
     it.internalState.currentPos ≤ it.internalState.haystack.endPos ∧
-    ∃ buffer, it.internalState.regex.captureNextBuf it.internalState.bufferSize ⟨it.internalState.haystack, it.internalState.currentPos⟩ = .some buffer ∧
+    ∃ buffer, it.internalState.regex.captureNextBuf (max it.internalState.bufferSize 2) ⟨it.internalState.haystack, it.internalState.currentPos⟩ = .some buffer ∧
     out = ⟨it.internalState.haystack, buffer.toArray⟩ ∧
     ∃ matched, out.get 0 = .some matched ∧
     it' = toIterM (it.internalState.withPos (if it.internalState.currentPos < matched.stopPos then matched.stopPos else it.internalState.haystack.next it.internalState.currentPos)) m CapturedGroups
