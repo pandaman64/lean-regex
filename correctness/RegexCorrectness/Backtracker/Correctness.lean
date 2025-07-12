@@ -30,19 +30,23 @@ theorem captureNext_soundness {e bufferSize it matchedB}
     have := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
     simp [refineUpdateOpt] at this
 
+theorem captureNext_completeness' {e bufferSize it}
+  (hresB : captureNext (BufferStrategy bufferSize) (NFA.compile e) NFA.compile_wf it = .none) (v : it.Valid)
+  (it' it'' : Iterator) (groups : CaptureGroups) (eqs : it'.toString = it.toString) (le : it.pos ≤ it'.pos) (c : e.Captures it' it'' groups) :
+  False := by
+  match hresH : captureNext HistoryStrategy (NFA.compile e) NFA.compile_wf it with
+  | .some matchedH =>
+    have ref := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
+    simp [refineUpdateOpt] at ref
+  | .none => exact captureNext.not_captures_of_none_compile hresH v it' it'' groups eqs le c
+
 theorem captureNext_completeness {e bufferSize it}
   (hresB : captureNext (BufferStrategy bufferSize) (NFA.compile e) NFA.compile_wf it = .none) (v : it.Valid) :
   ¬∃ (it' it'' : Iterator) (groups : CaptureGroups),
     it'.toString = it.toString ∧
     it.pos ≤ it'.pos ∧
     e.Captures it' it'' groups := by
-  match hresH : captureNext HistoryStrategy (NFA.compile e) NFA.compile_wf it with
-  | .some matchedH =>
-    have ref := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
-    simp [refineUpdateOpt] at ref
-  | .none =>
-    simp only [not_exists, not_and]
-    exact captureNext.not_captures_of_none_compile hresH v
+  grind [captureNext_completeness']
 
 -- NOTE: we don't make this an instance because there are multiple decision procedures
 def decideSearchProblem (e : Expr) (it : Iterator) (disj : e.Disjoint) (v : it.Valid) : Decidable (SearchProblem e it) :=
