@@ -35,10 +35,12 @@ This is a lower-level function that powers the higher-level capture operations.
 * Returns: An optional buffer containing the matched capture groups, or `none` if no match is found
 -/
 def captureNextBuf (self : Regex) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
+  -- Skip to the next possible starting position
+  let start := self.optimizationInfo.findStart it
   if self.useBacktracker then
-    Backtracker.captureNextBuf self.nfa self.wf bufferSize it
+    Backtracker.captureNextBuf self.nfa self.wf bufferSize start
   else
-    VM.captureNextBuf self.nfa self.wf bufferSize it
+    VM.captureNextBuf self.nfa self.wf bufferSize start
 
 /--
 Searches for the next match in the input string.
