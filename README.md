@@ -1,5 +1,7 @@
 # lean-regex
 
+**Run `./.lake/build/bin/Bench -e 'def|have|push|wf|nfa' -n 1000 Regex/Backtracker/Basic.lean` in the `regex` directory to reproduce the measurement**.
+
 A formally verified regular expression engine for the Lean programming language.
 
 ## Overview

@@ -4,15 +4,16 @@ def printUsage : IO Unit := do
   IO.println "Usage: bench -e <regex_pattern> [-n <iterations>] <file_path>"
   IO.println "Example: bench -e 'def' -n 1000 ./file.lean"
 
-def findCount (re : Regex) (content : String) : Nat :=
-  re.findAll content |>.size
+@[noinline]
+def findCount (re : Regex) (content : String) : IO Nat :=
+  pure (re.findAll content |>.size)
 
 def benchmark (re : Regex) (content : String) (iterations : Nat) : IO Unit := do
   let mut totalTime := 0
   let mut count := 0
   for _ in [:iterations] do
     let startTime ← IO.monoNanosNow
-    count := findCount re content
+    count ← findCount re content
     let endTime ← IO.monoNanosNow
     totalTime := totalTime + (endTime - startTime)
   let totalTimeMs := totalTime.toFloat / 1_000_000
