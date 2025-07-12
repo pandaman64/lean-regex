@@ -65,7 +65,7 @@ theorem mem_next_of_mem_stack {entry} (h : εClosure σ nfa wf it matched next s
     | .inl eq =>
       simp [eq]
       have subset := εClosure.subset h
-      exact SparseSet.mem_of_mem_of_subset SparseSet.mem_insert subset
+      exact SparseSet.mem_of_mem_of_subset (SparseSet.mem_insert mem) subset
     | .inr mem => exact ih h (pushNext.mem_of_mem_stack mem)
 
 theorem eq_updates_of_mem_next {i} (h : εClosure σ nfa wf it matched next stack = (matched', next'))
@@ -80,7 +80,7 @@ theorem eq_updates_of_mem_next {i} (h : εClosure σ nfa wf it matched next stac
     exact ih h mem'
   | not_visited matched next update state stack mem node matched' states' updates' ih =>
     rw [εClosure.not_visited mem] at h
-    have ih : next'.updates[i] = updates'[i] := ih h (SparseSet.mem_insert_of_mem mem')
+    have ih : next'.updates[i] = updates'[i] := ih h (SparseSet.mem_insert_of_mem mem mem')
     simp [ih, updates']
     split
     next =>
@@ -134,14 +134,14 @@ theorem matched_inv (h : εClosure σ nfa wf it matched next stack = (matched', 
             exact (mem (Fin.eq_of_val_eq eq ▸ memi)).elim
           next => rfl
         have eq' : matched' = .some update := by simp [matched', hm]
-        exact ⟨i, SparseSet.mem_insert_of_mem memi, hn, by simp [eq, eq', equpdate]⟩
+        exact ⟨i, SparseSet.mem_insert_of_mem mem memi, hn, by simp [eq, eq', equpdate]⟩
       | .none =>
         have : node = .done ∧ matched' = .some update := by
           simp [matched']
           split
           next hn => simp [hn, hm]
           next hn => simp [matched', hn, hm] at isSome'
-        exact ⟨state, SparseSet.mem_insert, this.1, by simp [updates', writeUpdate, this]⟩
+        exact ⟨state, SparseSet.mem_insert mem, this.1, by simp [updates', writeUpdate, this]⟩
     exact ih h inv'
 
 theorem not_done_of_none (result) (h : εClosure σ nfa wf it matched next stack = result)
@@ -196,10 +196,10 @@ namespace LowerInvStep
 
 variable {states : SparseSet nfa.nodes.size} {entry : σ.Update × Fin nfa.nodes.size}
 
-theorem preserves' {stack' : εStack σ nfa} (nextEntries) (hstack : stack' = nextEntries ++ stack)
+theorem preserves' {stack' : εStack σ nfa} (hmem : entry.2 ∉ states) (nextEntries) (hstack : stack' = nextEntries ++ stack)
   (h : ∀ j update, nfa.εStep' it entry.2 j update → ∃ update', (update', j) ∈ nextEntries)
   (inv : LowerInvStep it states (entry :: stack)) :
-  LowerInvStep it (states.insert entry.2) stack' := by
+  LowerInvStep it (states.insert entry.2 hmem) stack' := by
   intro i j update mem step
   cases SparseSet.eq_or_mem_of_mem_insert mem with
   | inl eq =>
@@ -207,20 +207,20 @@ theorem preserves' {stack' : εStack σ nfa} (nextEntries) (hstack : stack' = ne
     exact .inr ⟨update', by simp [hstack, mem']⟩
   | inr mem =>
     match inv i j update mem step with
-    | .inl mem => exact .inl (SparseSet.mem_insert_of_mem mem)
+    | .inl mem => exact .inl (SparseSet.mem_insert_of_mem hmem mem)
     | .inr ⟨update', mem'⟩ =>
       simp at mem'
       cases mem' with
-      | inl eq => exact .inl (eq ▸ SparseSet.mem_insert)
+      | inl eq => exact .inl (eq ▸ SparseSet.mem_insert hmem)
       | inr mem' => exact .inr ⟨update', by simp [hstack, mem']⟩
 
-theorem preserves (wf : nfa.WellFormed) (inv : LowerInvStep it states (entry :: stack)) :
-  LowerInvStep it (states.insert entry.2) (pushNext σ nfa it nfa[entry.2] (wf.inBounds entry.2) entry.1 stack) := by
+theorem preserves (wf : nfa.WellFormed) (hmem : entry.2 ∉ states) (inv : LowerInvStep it states (entry :: stack)) :
+  LowerInvStep it (states.insert entry.2 hmem) (pushNext σ nfa it nfa[entry.2] (wf.inBounds entry.2) entry.1 stack) := by
   cases hn : nfa[entry.2], wf.inBounds entry.2, entry.1, stack using pushNext.fun_cases' σ nfa it with
   | epsilon _ _ state' inBounds =>
     rename_i update
     simp [pushNext.epsilon rfl]
-    apply inv.preserves' [(update, ⟨state', inBounds⟩)] (by simp)
+    apply inv.preserves' hmem [(update, ⟨state', inBounds⟩)] (by simp)
     simp
     intro j update' step
     simp [εStep'.epsilon hn] at step
@@ -228,7 +228,7 @@ theorem preserves (wf : nfa.WellFormed) (inv : LowerInvStep it states (entry :: 
   | split _ _ state₁ state₂ inBounds =>
     rename_i update
     simp [pushNext.split rfl]
-    apply inv.preserves' [(update, ⟨state₁, inBounds.1⟩), (update, ⟨state₂, inBounds.2⟩)] (by simp)
+    apply inv.preserves' hmem [(update, ⟨state₁, inBounds.1⟩), (update, ⟨state₂, inBounds.2⟩)] (by simp)
     simp [←and_or_left]
     intro j update' step
     simp [εStep'.split hn] at step
@@ -236,7 +236,7 @@ theorem preserves (wf : nfa.WellFormed) (inv : LowerInvStep it states (entry :: 
   | save _ _ offset state' inBounds =>
     rename_i update
     simp [pushNext.save rfl]
-    apply inv.preserves' [(σ.write update offset it.pos, ⟨state', inBounds⟩)] (by simp)
+    apply inv.preserves' hmem [(σ.write update offset it.pos, ⟨state', inBounds⟩)] (by simp)
     simp
     intro j update' step
     simp [εStep'.save hn] at step
@@ -244,38 +244,38 @@ theorem preserves (wf : nfa.WellFormed) (inv : LowerInvStep it states (entry :: 
   | anchor_pos _ _ anchor state' inBounds ht =>
     rename_i update
     simp [pushNext.anchor_pos rfl ht]
-    apply inv.preserves' [(update, ⟨state', inBounds⟩)] (by simp)
+    apply inv.preserves' hmem [(update, ⟨state', inBounds⟩)] (by simp)
     simp
     intro j update' step
     simp [εStep'.anchor hn] at step
     simp [Fin.ext_iff, step]
   | anchor_neg _ _ anchor state' inBounds ht =>
     simp [pushNext.anchor_neg rfl ht]
-    apply inv.preserves' [] (by simp)
+    apply inv.preserves' hmem [] (by simp)
     simp
     intro j update' step
     simp [εStep'.anchor hn, ht] at step
   | done _ _ inBounds =>
     simp [pushNext.done rfl]
-    apply inv.preserves' [] (by simp)
+    apply inv.preserves' hmem [] (by simp)
     simp
     intro j update' step
     simp [εStep'.done hn] at step
   | fail _ _ inBounds =>
     simp [pushNext.fail rfl]
-    apply inv.preserves' [] (by simp)
+    apply inv.preserves' hmem [] (by simp)
     simp
     intro j update' step
     simp [εStep'.fail hn] at step
   | char _ _ c state' inBounds =>
     simp [pushNext.char rfl]
-    apply inv.preserves' [] (by simp)
+    apply inv.preserves' hmem [] (by simp)
     simp
     intro j update' step
     simp [εStep'.char hn] at step
   | sparse _ _ cs state' inBounds =>
     simp [pushNext.sparse rfl]
-    apply inv.preserves' [] (by simp)
+    apply inv.preserves' hmem [] (by simp)
     simp
     intro j update' step
     simp [εStep'.sparse hn] at step
@@ -305,7 +305,7 @@ theorem lower_bound_step {it : Iterator} (h : εClosure σ nfa wf it matched nex
     exact ih h inv'
   | not_visited matched next update state stack mem node matched' states' updates' ih =>
     rw [εClosure.not_visited mem] at h
-    exact ih h (inv.preserves wf)
+    exact ih h (inv.preserves wf mem)
 
 theorem lower_bound {i update} (h : εClosure σ nfa wf it matched next [(update, i)] = (matched', next'))
   (lb : LowerBound it next.states) :
@@ -358,7 +358,7 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
   (not_mem : entry.2 ∉ next.states)
   (h : ∀ update j, (update, j) ∈ nextEntries → ∃ update', update = entry.1 ++ List.ofOption update' ∧ nfa.εStep' it₀ entry.2 j update')
   (inv : UpperInv states₀ it₀ i₀ update₀ next (entry :: stack)) :
-  letI states' := next.states.insert entry.2
+  letI states' := next.states.insert entry.2 not_mem
   letI updates' := if writeUpdate node then next.updates.set entry.2 entry.1 else next.updates
   UpperInv states₀ it₀ i₀ update₀ ⟨states', updates'⟩ stack' := by
   refine ⟨?mem_stack, ?mem_next⟩
@@ -396,7 +396,7 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
 
 theorem preserves {update : List (Nat × Pos)} {state : Fin nfa.nodes.size} (wf : nfa.WellFormed) (not_mem : state ∉ next.states)
   (inv : UpperInv states₀ it₀ i₀ update₀ next ((update, state) :: stack)) :
-  letI states' := next.states.insert state
+  letI states' := next.states.insert state not_mem
   letI updates' := if writeUpdate nfa[state] then next.updates.set state update else next.updates
   UpperInv states₀ it₀ i₀ update₀ ⟨states', updates'⟩ (pushNext HistoryStrategy nfa it₀ nfa[state] (wf.inBounds state) update stack) := by
   cases hn : nfa[state], wf.inBounds state, update, stack using pushNext.fun_cases' HistoryStrategy nfa it₀ with
