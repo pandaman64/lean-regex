@@ -26,5 +26,3 @@ theorem curr_of_captures_of_firstChar_some {it it' groups e ch} (c : Expr.Captur
     next => exact ih₁ h
 
 end Regex.Data.Expr
-
-#check String.Iterator.find

@@ -21,10 +21,9 @@ def fromExpr (expr : Expr) : OptimizationInfo :=
   { firstChar := expr.firstChar }
 
 def findStart (self : OptimizationInfo) (it : Iterator) : Iterator :=
-  if let .some c := self.firstChar then
-    it.find (· = c)
-  else
-    it
+  match self.firstChar with
+  | .some c => it.find (· = c)
+  | .none => it
 
 end OptimizationInfo
 
