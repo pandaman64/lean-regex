@@ -2,42 +2,15 @@ import Regex.Data.SparseSet
 
 namespace Regex.Data.SparseSet
 
-theorem mem_insert_of_mem {s : SparseSet n} {i j : Fin n} : i ∈ s → i ∈ s.insert j := by
-  intro h
-  unfold SparseSet.insert
-  split
-  next => exact h
-  next hmem =>
-    simp [mem]
-    if heq : j.val = i.val then
-      simp [heq]
-      exact Fin.eq_of_val_eq heq
-    else
-      simp [mem] at h
-      simp [heq]
-      have : s.count ≠ s.sparse[i.val].val := Nat.ne_of_gt h.left
-      simp [this, h]
-      exact Nat.lt_trans h.left (Nat.lt_succ_self _)
+theorem mem_insert_of_mem {s : SparseSet n} {i j : Fin n} (h : j ∉ s) (hmem : i ∈ s) : i ∈ s.insert j h := by
+  have ne : i ≠ j := fun eq => h (eq ▸ hmem)
+  simp [mem] at hmem
+  simp [insert, mem, Vector.getElem_set_ne (h := Fin.val_ne_of_ne ne.symm)]
+  grind
 
-theorem eq_or_mem_of_mem_insert {s : SparseSet n} {i j : Fin n} : i ∈ s.insert j → i = j ∨ i ∈ s := by
-  intro h
-  if heq : i = j then
-    exact Or.inl heq
-  else
-    suffices i ∈ s from Or.inr this
-    unfold SparseSet.insert at h
-    split at h
-    next => exact h
-    next hmem =>
-      have ne : j.val ≠ i.val := Ne.symm (Fin.val_ne_of_ne heq)
-      simp [mem, Vector.getElem_set, ne] at h
-      split at h
-      case isTrue heq' => simp [h] at heq
-      case isFalse heq' =>
-        have : s.sparse[i.val] < s.count := by
-          have : s.sparse[i.val] ≤ s.count := Nat.le_of_lt_succ h.left
-          exact Nat.lt_of_le_of_ne this (Ne.symm heq')
-        simp [mem, this, h]
+theorem eq_or_mem_of_mem_insert {s : SparseSet n} {i j : Fin n} {h : j ∉ s} : i ∈ s.insert j h → i = j ∨ i ∈ s := by
+  simp [insert, mem]
+  grind only [Vector.getElem_set, cases Or]
 
 theorem subset_self {s : SparseSet n} : s ⊆ s := by
   simp [HasSubset.Subset, Subset]
@@ -45,9 +18,9 @@ theorem subset_self {s : SparseSet n} : s ⊆ s := by
 theorem mem_of_mem_of_subset {s₁ s₂ : SparseSet n} {i : Fin n} (mem : i ∈ s₁) (sub : s₁ ⊆ s₂) : i ∈ s₂ :=
   sub i mem
 
-theorem subset_insert {s : SparseSet n} : s ⊆ s.insert i := by
+theorem subset_insert {s : SparseSet n} {h : i ∉ s} : s ⊆ s.insert i h := by
   intro j hj
-  exact mem_insert_of_mem hj
+  exact mem_insert_of_mem h hj
 
 theorem subset_trans {s₁ s₂ s₃ : SparseSet n} (h₁ : s₁ ⊆ s₂) (h₂ : s₂ ⊆ s₃) : s₁ ⊆ s₃ := by
   intro i hi

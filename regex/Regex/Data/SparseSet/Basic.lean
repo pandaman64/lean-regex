@@ -81,42 +81,37 @@ theorem lt_of_mem (i : Fin n) (h : ¬i ∈ s) : s.count < n := by
   apply h (Nat.lt_of_lt_of_le s.sparse[i].isLt ge)
   exact dense_sparse_of_full ge
 
-def insert (s : SparseSet n) (i : Fin n) : SparseSet n :=
-  if mem : i ∈ s then
-    s
-  else
-    let ⟨count, dense, sparse, sparse_dense, _⟩ := s
-    have isLt : count < n := lt_of_mem i mem
-    let dense' := dense.set count i
-    let sparse' := sparse.set i ⟨count, isLt⟩
-    have sparse_dense' (j : Fin n) (h : j < count + 1) : sparse'[dense'[j]] = j := by
-      have : j ≤ count := Nat.le_of_succ_le_succ h
-      cases Nat.eq_or_lt_of_le this with
-      | inl eq =>
-        simp [dense', sparse', eq, Vector.getElem_set_self]
-        exact Fin.eq_of_val_eq eq.symm
-      | inr lt =>
-        have : dense'[j] = dense[j] := by
-          simp [dense']
-          rw [Vector.getElem_set_ne isLt (by omega) (by omega)]
-        simp [sparse', this]
-        rw [Vector.getElem_set]
-        split
-        case isTrue eq =>
-          simp [SparseSet.mem] at mem
-          have : sparse[i.val] = j := by
-            simp [eq, sparse_dense j lt]
-          simp [this, lt] at mem
-          exact absurd (Fin.eq_of_val_eq eq.symm) mem
-        case isFalse => exact sparse_dense j lt
-    ⟨count + 1, dense', sparse', sparse_dense', isLt⟩
+def insert (s : SparseSet n) (i : Fin n) (mem : i ∉ s) : SparseSet n :=
+  let ⟨count, dense, sparse, sparse_dense, _⟩ := s
+  have isLt : count < n := lt_of_mem i mem
+  let dense' := dense.set count i
+  let sparse' := sparse.set i ⟨count, isLt⟩
+  have sparse_dense' (j : Fin n) (h : j < count + 1) : sparse'[dense'[j]] = j := by
+    have : j ≤ count := Nat.le_of_succ_le_succ h
+    cases Nat.eq_or_lt_of_le this with
+    | inl eq =>
+      simp [dense', sparse', eq, Vector.getElem_set_self]
+      exact Fin.eq_of_val_eq eq.symm
+    | inr lt =>
+      have : dense'[j] = dense[j] := by
+        simp [dense']
+        rw [Vector.getElem_set_ne isLt (by omega) (by omega)]
+      simp [sparse', this]
+      rw [Vector.getElem_set]
+      split
+      case isTrue eq =>
+        simp [SparseSet.mem] at mem
+        have : sparse[i.val] = j := by
+          simp [eq, sparse_dense j lt]
+        simp [this, lt] at mem
+        exact absurd (Fin.eq_of_val_eq eq.symm) mem
+      case isFalse => exact sparse_dense j lt
+  ⟨count + 1, dense', sparse', sparse_dense', isLt⟩
 
 @[simp]
-theorem mem_insert : i ∈ s.insert i := by
+theorem mem_insert (h : i ∉ s) : i ∈ s.insert i h := by
   unfold insert
-  split
-  case isTrue m => exact m
-  case isFalse m => simp [mem]
+  simp [mem]
 
 def clear (s : SparseSet n) : SparseSet n :=
   ⟨0, s.dense, s.sparse, fun _ _ => by contradiction, Nat.zero_le _⟩
@@ -161,16 +156,15 @@ instance : GetElem (SparseSet n) Nat (Fin n) (fun s i => i < s.count) where
 -- Termination measure for `SparseSet`
 def measure (s : SparseSet n) : Nat := n - s.count
 
-theorem measure_insert (h : ¬i ∈ s) : (s.insert i).measure = s.measure - 1 := by
-  simp at h
-  simp [measure, insert, h, Nat.sub_add_eq]
+theorem measure_insert (h : ¬i ∈ s) : (s.insert i h).measure = s.measure - 1 := by
+  simp [measure, insert, Nat.sub_add_eq]
 
-theorem lt_measure_insert (h : ¬s.mem i) : (s.insert i).measure < s.measure := by
-  simp [measure, insert, h, Nat.sub_add_eq]
-  apply Nat.sub_lt ?_ (by decide)
-  apply Nat.zero_lt_sub_of_lt (lt_of_mem i (by simp [h]))
+theorem lt_measure_insert (h : ¬s.mem i) : (s.insert i h).measure < s.measure := by
+  simp [measure, insert, Nat.sub_add_eq]
+  refine Nat.sub_lt ?_ (by decide)
+  exact Nat.zero_lt_sub_of_lt (lt_of_mem i (by simp [h]))
 
-theorem lt_measure_insert' (h : ¬i ∈ s) : (s.insert i).measure < s.measure :=
+theorem lt_measure_insert' (h : ¬i ∈ s) : (s.insert i h).measure < s.measure :=
   lt_measure_insert h
 
 macro_rules | `(tactic| decreasing_trivial) => `(tactic| apply SparseSet.lt_measure_insert; assumption)

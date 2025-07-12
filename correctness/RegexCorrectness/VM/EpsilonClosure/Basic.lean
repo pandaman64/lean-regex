@@ -136,18 +136,18 @@ theorem induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator
     state ∈ next.states →
     motive matched next stack' →
     motive matched next ((update, state) :: stack'))
-  (not_visited : ∀ (matched : Option σ.Update) (next : SearchState σ nfa) (update : σ.Update) (state : Fin nfa.nodes.size) (stack' : εStack σ nfa),
-    state ∉ next.states →
+  (not_visited : ∀ (matched : Option σ.Update) (next : SearchState σ nfa) (update : σ.Update) (state : Fin nfa.nodes.size) (stack' : εStack σ nfa)
+    (hmem : state ∉ next.states),
     let node := nfa[state]
     let matched' := if node = Node.done then matched <|> some update else matched
-    let states' := next.states.insert state
+    let states' := next.states.insert state hmem
     let updates' := if writeUpdate node = true then next.updates.set state update else next.updates
     motive matched' ⟨states', updates'⟩ (pushNext σ nfa it node (wf.inBounds state) update stack') →
     motive matched next ((update, state) :: stack')) :
   ∀ (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa), motive matched next stack :=
   fun matched next stack =>
     induct σ nfa wf it motive base visited
-      (fun matched update state stack' states updates hmem ih =>
+      (fun matched update state stack' states updates hmem _ ih =>
         not_visited matched ⟨states, updates⟩ update state stack' hmem ih)
       matched next stack
 
@@ -171,7 +171,7 @@ theorem visited (hmem : state ∈ next.states) :
 theorem not_visited (hmem : state ∉ next.states) :
   letI node := nfa[state]
   letI matched' := if node = Node.done then matched <|> some update else matched
-  letI states' := next.states.insert state
+  letI states' := next.states.insert state hmem
   letI updates' := if writeUpdate node = true then next.updates.set state update else next.updates
   εClosure σ nfa wf it matched next ((update, state) :: stack') =
   εClosure σ nfa wf it matched' ⟨states', updates'⟩ (pushNext σ nfa it node (wf.inBounds state) update stack') := by
