@@ -151,6 +151,10 @@ theorem validFor_of_valid_pos_le {it it' : Iterator} (v : it.Valid) (v' : it'.Va
 
   exact ⟨lrev.reverse, m, r, by simpa [←eq₁] using vf, by simpa [←eq₂] using vf'⟩
 
+theorem valid_pos_le_of_validFor {it it' : Iterator} {l m r : List Char} (vf₁ : it.ValidFor l.reverse (m ++ r)) (vf₂ : it'.ValidFor (m.reverse ++ l.reverse) r) :
+  it.toString = it'.toString ∧ it.pos ≤ it'.pos :=
+  ⟨by simp [vf₁.toString, vf₂.toString], by simp [vf₁.pos, vf₂.pos]⟩
+
 theorem pos_le_or_ge_next {it it' : Iterator} (v : it.Valid) (v' : it'.Valid) (eqs : it.toString = it'.toString) :
   it.pos ≤ it'.pos ∨ it'.next.pos ≤ it.pos := by
   if h : it.pos ≤ it'.pos then
@@ -242,6 +246,85 @@ theorem eq_of_valid_of_next_eq {it₁ it₂ : Iterator} (v₁ : it₁.Valid) (v�
     have pos₂ : it₂.pos = it₂.toString.endPos := vf₂.pos_atEnd
     rw [eqs₁₂, h, ←pos₂] at pos₁
     exact ((Nat.not_le_of_lt it₂.lt_next) pos₁).elim
+
+@[grind =]
+theorem find_toString {it : Iterator} {p : Char → Bool} : (it.find p).toString = it.toString := by
+  fun_induction find it p <;> grind [Iterator.next_toString]
+
+theorem find_le_pos {it : Iterator} {p : Char → Bool} : it.pos ≤ (it.find p).pos := by
+  fun_induction find it p
+  next => exact Nat.le_refl _
+  next => exact Nat.le_refl _
+  next it _ _ ih => exact Nat.le_trans (Nat.le_of_lt it.lt_next) ih
+
+theorem find_soundness (it it' : Iterator) (p : Char → Bool) (h : it' = it.find p) : (¬it'.atEnd ∧ p it'.curr) ∨ it'.atEnd := by
+  revert h
+  fun_induction find it p <;> grind
+
+theorem find_valid_of_valid {it : Iterator} {p : Char → Bool} (v : it.Valid) : (it.find p).Valid := by
+  fun_induction find it p
+  next => grind
+  next => grind
+  next it atEnd _ ih => exact ih (v.next (hasNext_of_not_atEnd atEnd))
+
+theorem find_completenessAux (it it' : Iterator) {p : Char → Bool} {l r : List Char} (vf : it.ValidFor l r) (h : it' = it.find p) :
+  ∃ m r', it'.ValidFor (m ++ l) r' ∧ ∀ c ∈ m, ¬p c := by
+  revert h
+  fun_induction find it p generalizing l r
+  next it atEnd =>
+    intro eq
+    subst it'
+    exact ⟨[], r, vf, by simp⟩
+  next it atEnd h =>
+    intro eq
+    subst it'
+    exact ⟨[], r, vf, by simp⟩
+  next it atEnd h ih =>
+    match r with
+    | [] => simp [vf.atEnd] at atEnd
+    | c :: r =>
+      intro eq
+      have ⟨m, r', vf', h'⟩ := ih vf.next eq
+      refine ⟨m ++ [c], r', by simp [vf'], fun c' mem => ?_⟩
+      simp at mem
+      cases mem with
+      | inl mem => exact h' c' mem
+      | inr eq => simpa [eq, vf.curr] using h
+
+theorem find_completeness {it : Iterator} {p : Char → Bool} (v : it.Valid) (it' : Iterator) (v' : it'.Valid)
+  (eqs : it'.toString = it.toString) (ge : it.pos ≤ it'.pos) (lt : it'.pos < (it.find p).pos) :
+  ¬p it'.curr := by
+  have ⟨l, m, r, vf₁, vf₂⟩ := Valid.validFor_of_valid_pos_le v v' eqs.symm ge
+  have ⟨m', r', vf₃, h⟩ := find_completenessAux it (it.find p) vf₁ rfl
+  have eqcs : l ++ m ++ r = l ++ m'.reverse ++ r' := by
+    have eqs₁ : it.toString = ⟨l ++ m ++ r⟩ := by simpa using vf₁.toString
+    have eqs₂ : (it.find p).toString = ⟨l ++ m'.reverse ++ r'⟩ := by simpa using vf₃.toString
+    rw [find_toString, eqs₁] at eqs₂
+    simpa using eqs₂
+  simp at eqcs
+  have ltLen : utf8Len m < utf8Len m' := by
+    have eqp₁ : it'.pos = ⟨utf8Len m + utf8Len l⟩ := by simpa using vf₂.pos
+    have eqp₂ : (it.find p).pos = ⟨utf8Len m' + utf8Len l⟩ := by simpa using vf₃.pos
+    rw [eqp₁, eqp₂] at lt
+    simpa using lt
+  have ⟨mr, eq₁, eq₂⟩ := String.eq_of_append_eq m r m'.reverse r' (by simpa using Nat.le_of_lt ltLen) eqcs
+  match r with
+  | [] =>
+    simp at eqcs
+    have : utf8Len m = utf8Len m' + utf8Len r' := by simp [eqcs]
+    grind
+  | c :: r =>
+    match mr with
+    | [] =>
+      simp at eq₁
+      simp [eq₁] at eqcs
+      simp [eqcs] at ltLen
+    | c' :: mr =>
+      simp at eq₁
+      rw [vf₂.curr, eq₁.1]
+      refine h c' ?_
+      rw [←List.mem_reverse, eq₂]
+      simp
 
 end String.Iterator
 

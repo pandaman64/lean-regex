@@ -78,7 +78,8 @@ instance : ToExpr Regex where
     let wfInstance := Expr.app (mkConst ``NFA.decWellFormed) nfa
     let wf := mkDecidableProof wfType wfInstance
     let maxTag := toExpr re.maxTag
-    mkApp4 (mkConst ``Regex.mk) nfa wf maxTag (mkConst ``false)
+    let optimizationInfo := toExpr re.optimizationInfo
+    mkApp5 (mkConst ``Regex.mk) nfa wf maxTag (mkConst ``false) optimizationInfo
 
 /--
 Macro for creating a regex at compile time.

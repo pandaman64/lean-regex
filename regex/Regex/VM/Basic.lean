@@ -61,16 +61,17 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   match stack with
   | [] => (matched, next)
   | (update, state) :: stack' =>
-    if _ : state ∈ next.states then
+    if mem : state ∈ next.states then
       εClosure σ nfa wf it matched next stack'
     else
       match h : next with
       | ⟨states, updates⟩ =>
         let node := nfa[state]
         let matched' := if node = .done then matched <|> update else matched
-        let states' := states.insert state
+        let states' := states.insert state mem
         let updates' := if εClosure.writeUpdate node then updates.set state update else updates
         let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
+        have : states'.measure < states.measure := SparseSet.lt_measure_insert' mem
         εClosure σ nfa wf it matched' ⟨states', updates'⟩ stack''
 termination_by (next.states.measure, stack)
 
