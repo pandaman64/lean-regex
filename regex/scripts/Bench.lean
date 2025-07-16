@@ -6,7 +6,7 @@ def printUsage : IO Unit := do
 
 @[noinline]
 def findCount (re : Regex) (content : String) : IO Nat :=
-  pure (re.findAll content |>.size)
+  re.count content |> pure
 
 def benchmark (re : Regex) (content : String) (iterations : Nat) : IO Unit := do
   let mut totalTime := 0
