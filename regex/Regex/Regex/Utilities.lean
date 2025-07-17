@@ -75,10 +75,7 @@ Replaces the first match of a regex pattern with a replacement string.
 * Returns: The modified string, or the original string if no match is found
 -/
 def replace (regex : Regex) (haystack : String) (replacement : String) : String :=
-  match regex.find haystack with
-  | some s =>
-    haystack.extract 0 s.startPos ++ replacement ++ haystack.extract s.stopPos haystack.endPos
-  | none => haystack
+  transform regex haystack (fun _ => replacement)
 
 /--
 Replaces all matches of a regex pattern with a replacement string.
@@ -89,15 +86,7 @@ Replaces all matches of a regex pattern with a replacement string.
 * Returns: The modified string, or the original string if no matches are found
 -/
 def replaceAll (regex : Regex) (haystack : String) (replacement : String) : String :=
-  go (regex.matches haystack) "" 0
-where
-  go (m : Matches) (accum : String) (endPos : Pos) : String :=
-    match _h : m.next? with
-    | some (s, m') =>
-      go m' (accum ++ haystack.extract endPos s.startPos ++ replacement) s.stopPos
-    | none =>
-      accum ++ haystack.extract endPos haystack.endPos
-  termination_by m.remaining
+  transformAll regex haystack (fun _ => replacement)
 
 /--
 Captures the first match of a regex pattern in a string, including capture groups.

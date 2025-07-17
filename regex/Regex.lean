@@ -100,6 +100,25 @@ Note the empty substring due to the match "a" at the beginning of the input:
 -/
 #eval utilityRegexExample.split haystack
 
+def transformRegexExample := re! r"(a+)(b*)|(c+)"
+
+def countString (name : String) (input : Option Substring) : String :=
+  input.map (Substring.toString)
+    |>.map (fun s => toString s.length ++ name)
+    |>.getD ""
+
+def countTransform (captures : CapturedGroups) : String :=
+  let as := captures.get 1 |> countString "a"
+  let bs := captures.get 2 |> countString "b"
+  let cs := captures.get 3 |> countString "c"
+  as ++ bs ++ cs
+
+-- "1a0b 2a0b 2a1b 1c 2c"
+#eval transformRegexExample.transformAll "a aa aab c cc" countTransform
+
+-- Transforming matches into a fixed string is also available using `.replace` and `.replaceAll`.
+#guard transformRegexExample.transformAll "a aa aab c cc" (fun _ => ".")
+     = transformRegexExample.replaceAll   "a aa aab c cc" "."
 ```
 
 ## API Overview
@@ -121,6 +140,8 @@ Regex operations include:
 - `Regex.captureAll`: Capture all matches with their capture groups
 - `Regex.replace`: Replace the first match with a replacement string
 - `Regex.replaceAll`: Replace all matches with a replacement string
+- `Regex.transform`: Transform the first match using a rule based on its captured groups
+- `Regex.transformAll`: Transform all matches using a rule based on their captured groups
 - `Regex.test`: Test if a regex matches a string
 - `Regex.count`: Count the number of regex matches in a string
 - `Regex.split`: Split a string using regex matches as breakpoints
