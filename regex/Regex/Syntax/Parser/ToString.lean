@@ -74,7 +74,7 @@ namespace Regex.Syntax.Parser -- Because Ast is there
 @[inline] def Class.toString (c : Class) : String :=
   match c with
   | .single ch => escapeCharInClass ch
-  | .range start _end _ => s!"{escapeCharInClass start}-{escapeCharInClass _end}"
+  | .range start end_ => s!"{escapeCharInClass start}-{escapeCharInClass end_}"
   | .perl pc => s!"\\{PerlClass.toString pc}"
 
 @[inline] def Classes.toString (cs : Classes) : String :=

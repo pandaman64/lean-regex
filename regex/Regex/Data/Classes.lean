@@ -1,3 +1,5 @@
+import Lean
+
 def Char.MAX_UNICODE : Nat := 0x10FFFF
 
 namespace Regex.Data
@@ -6,7 +8,7 @@ inductive PerlClassKind where
   | digit
   | space
   | word
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 -- NOTE: we may want to interpret these as Unicode character properties in the future
 def PerlClassKind.mem (c : Char) (kind : PerlClassKind) : Bool :=
@@ -18,38 +20,30 @@ def PerlClassKind.mem (c : Char) (kind : PerlClassKind) : Bool :=
 structure PerlClass where
   negated : Bool
   kind : PerlClassKind
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 def PerlClass.mem (c : Char) (pc : PerlClass) : Bool :=
   if pc.negated then !pc.kind.mem c else pc.kind.mem c
 
--- NOTE: s ≤ e prevents this from deriving Repr :(
 inductive Class where
   | single : Char → Class
-  | range : (s : Char) → (e : Char) → s ≤ e → Class
+  | range : (s : Char) → (e : Char) → Class
   | perl : PerlClass → Class
-deriving DecidableEq
-
-instance : Repr Class where
-  reprPrec cls _ :=
-    match cls with
-    | .single c => repr c
-    | .range s e _ => s!"{repr s}-{repr e}"
-    | .perl pc => repr pc
+deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 -- '.' matches any character except line break (\x0A)
-def Class.beforeLineBreak : Class := Class.range (Char.ofNat 0) '\x09' (by decide)
-def Class.afterLineBreak : Class := Class.range '\x0B' (Char.ofNat Char.MAX_UNICODE) (by decide)
+def Class.beforeLineBreak : Class := Class.range (Char.ofNat 0) '\x09'
+def Class.afterLineBreak : Class := Class.range '\x0B' (Char.ofNat Char.MAX_UNICODE)
 
 def Class.mem (c : Char) : Class → Bool
   | Class.single c' => c == c'
-  | Class.range s e _ => s ≤ c ∧ c ≤ e
+  | Class.range s e => s ≤ c ∧ c ≤ e
   | Class.perl pc => pc.mem c
 
 structure Classes where
   negated : Bool
   classes : Array Class
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 def Classes.mem (c : Char) (cs : Classes) : Bool :=
   if cs.negated then

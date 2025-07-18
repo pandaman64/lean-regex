@@ -7,41 +7,41 @@ namespace Epsilon
 
 deriving instance DecidableEq for Substring
 
-def epsilon := Regex.parse! r##""##
+def epsilon := re! r##""##
 #guard epsilon.find "" = .some ⟨"", ⟨0⟩, ⟨0⟩⟩
 
-def star := Regex.parse! r##"a*"##
+def star := re! r##"a*"##
 #guard star.find "" = .some ⟨"", ⟨0⟩, ⟨0⟩⟩
 
 end Epsilon
 
 namespace Priority
 
-def re := Regex.parse! r##"bool|boolean"##
+def re := re! r##"bool|boolean"##
 #guard re.find "boolean" = .some ⟨"boolean", ⟨0⟩, ⟨4⟩⟩
 
-def re' := Regex.parse! r##"|x"##
+def re' := re! r##"|x"##
 #guard re'.find "x" = .some ⟨"x", ⟨0⟩, ⟨0⟩⟩
 
-def re'' := Regex.parse! r##"x|"##
+def re'' := re! r##"x|"##
 #guard re''.find "x" = .some ⟨"x", ⟨0⟩, ⟨1⟩⟩
 
-def empty_110 := Regex.parse! r##"b|"##
+def empty_110 := re! r##"b|"##
 -- Why does only Rust skip (⟨2⟩, ⟨2⟩)? https://regex101.com/r/ZQcPeh/1
 -- #guard re'''.findAll "abc" = #[(⟨0⟩, ⟨0⟩), (⟨1⟩, ⟨2⟩), (⟨3⟩, ⟨3⟩)]
 #guard empty_110.findAll "abc" = #[⟨"abc", ⟨0⟩, ⟨0⟩⟩, ⟨"abc", ⟨1⟩, ⟨2⟩⟩, ⟨"abc", ⟨2⟩, ⟨2⟩⟩, ⟨"abc", ⟨3⟩, ⟨3⟩⟩]
 
-def empty_310 := Regex.parse! r##"b||"##
+def empty_310 := re! r##"b||"##
 -- Why does only Rust skip (⟨2⟩, ⟨2⟩)? https://regex101.com/r/j7z8gd/1
 -- #guard re'''.findAll "abc" = #[(⟨0⟩, ⟨0⟩), (⟨1⟩, ⟨2⟩), (⟨3⟩, ⟨3⟩)]
 #guard empty_110.findAll "abc" = #[⟨"abc", ⟨0⟩, ⟨0⟩⟩, ⟨"abc", ⟨1⟩, ⟨2⟩⟩, ⟨"abc", ⟨2⟩, ⟨2⟩⟩, ⟨"abc", ⟨3⟩, ⟨3⟩⟩]
 
-def empty_600 := Regex.parse! r##"(?:|a)*"##
+def empty_600 := re! r##"(?:|a)*"##
 #eval empty_600.findAll "aaa"
 -- BUG: we report [⟨"aaa", ⟨0⟩, ⟨3⟩⟩, ⟨"aaa", ⟨3⟩, ⟨3⟩⟩]
 -- #guard empty_600.findAll "aaa" = #[⟨"aaa", ⟨0⟩, ⟨0⟩⟩, ⟨"aaa", ⟨1⟩, ⟨1⟩⟩, ⟨"aaa", ⟨2⟩, ⟨2⟩⟩, ⟨"aaa", ⟨3⟩, ⟨3⟩⟩]
 
-def empty_610 := Regex.parse! r##"(?:|a)+"##
+def empty_610 := re! r##"(?:|a)+"##
 #eval empty_610.findAll "aaa"
 -- BUG: we report [⟨"aaa", ⟨0⟩, ⟨3⟩⟩, ⟨"aaa", ⟨3⟩, ⟨3⟩⟩]
 -- #guard empty_610.findAll "aaa" = #[⟨"aaa", ⟨0⟩, ⟨0⟩⟩, ⟨"aaa", ⟨1⟩, ⟨1⟩⟩, ⟨"aaa", ⟨2⟩, ⟨2⟩⟩, ⟨"aaa", ⟨3⟩, ⟨3⟩⟩]
@@ -52,19 +52,19 @@ namespace Comparison
 
 private def _root_.Regex.bt (regex : Regex) := { regex with useBacktracker := true }
 
-def simple_char := Regex.parse! r##"a"##
+def simple_char := re! r##"a"##
 #guard simple_char.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_char.capture "b" = .none
 #guard simple_char.bt.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_char.bt.capture "b" = .none
 
-def simple_concat := Regex.parse! r##"ab"##
+def simple_concat := re! r##"ab"##
 #guard simple_concat.capture "ab" = .some ⟨"ab", #[.some ⟨0⟩, .some ⟨2⟩]⟩
 #guard simple_concat.capture "ac" = .none
 #guard simple_concat.bt.capture "ab" = .some ⟨"ab", #[.some ⟨0⟩, .some ⟨2⟩]⟩
 #guard simple_concat.bt.capture "ac" = .none
 
-def simple_alt := Regex.parse! r##"a|b"##
+def simple_alt := re! r##"a|b"##
 #guard simple_alt.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_alt.capture "b" = .some ⟨"b", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_alt.capture "c" = .none
@@ -72,7 +72,7 @@ def simple_alt := Regex.parse! r##"a|b"##
 #guard simple_alt.bt.capture "b" = .some ⟨"b", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_alt.bt.capture "c" = .none
 
-def simple_star := Regex.parse! r##"a*"##
+def simple_star := re! r##"a*"##
 #guard simple_star.capture "" = .some ⟨"", #[.some ⟨0⟩, .some ⟨0⟩]⟩
 #guard simple_star.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_star.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨2⟩]⟩
@@ -80,7 +80,7 @@ def simple_star := Regex.parse! r##"a*"##
 #guard simple_star.bt.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 #guard simple_star.bt.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨2⟩]⟩
 
-def complex_pattern := Regex.parse! r##"(a|b)*c"##
+def complex_pattern := re! r##"(a|b)*c"##
 #guard complex_pattern.capture "c" = .some ⟨"c", #[.some ⟨0⟩, .some ⟨1⟩, .none, .none]⟩
 #guard complex_pattern.capture "ac" = .some ⟨"ac", #[.some ⟨0⟩, .some ⟨2⟩, .some ⟨0⟩, .some ⟨1⟩]⟩
 #guard complex_pattern.capture "bc" = .some ⟨"bc", #[.some ⟨0⟩, .some ⟨2⟩, .some ⟨0⟩, .some ⟨1⟩]⟩
@@ -92,7 +92,7 @@ def complex_pattern := Regex.parse! r##"(a|b)*c"##
 #guard complex_pattern.bt.capture "xyzaabbczy" = .some ⟨"xyzaabbczy", #[.some ⟨3⟩, .some ⟨8⟩, .some ⟨6⟩, .some ⟨7⟩]⟩
 #guard complex_pattern.bt.capture "d" = .none
 
-def nested_groups := Regex.parse! r##"(a(b(c)))"##
+def nested_groups := re! r##"(a(b(c)))"##
 #guard nested_groups.capture "abc" = .some ⟨"abc", #[.some ⟨0⟩, .some ⟨3⟩, .some ⟨0⟩, .some ⟨3⟩, .some ⟨1⟩, .some ⟨3⟩, .some ⟨2⟩, .some ⟨3⟩]⟩
 #guard nested_groups.capture "ab" = .none
 #guard nested_groups.capture "a" = .none
@@ -100,7 +100,7 @@ def nested_groups := Regex.parse! r##"(a(b(c)))"##
 #guard nested_groups.bt.capture "ab" = .none
 #guard nested_groups.bt.capture "a" = .none
 
-def complex_quantifiers := Regex.parse! r##"a{2,4}b{1,3}"##
+def complex_quantifiers := re! r##"a{2,4}b{1,3}"##
 #guard complex_quantifiers.capture "aab" = .some ⟨"aab", #[.some ⟨0⟩, .some ⟨3⟩]⟩
 #guard complex_quantifiers.capture "aaabbb" = .some ⟨"aaabbb", #[.some ⟨0⟩, .some ⟨6⟩]⟩
 #guard complex_quantifiers.capture "ab" = .none
@@ -110,7 +110,7 @@ def complex_quantifiers := Regex.parse! r##"a{2,4}b{1,3}"##
 #guard complex_quantifiers.bt.capture "ab" = .none
 #guard complex_quantifiers.bt.capture "aabbb" = .some ⟨"aabbb", #[.some ⟨0⟩, .some ⟨5⟩]⟩
 
-def alternation_with_groups := Regex.parse! r##"(ab|cd)(ef|gh)"##
+def alternation_with_groups := re! r##"(ab|cd)(ef|gh)"##
 #guard alternation_with_groups.capture "abef" = .some ⟨"abef", #[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨2⟩, .some ⟨2⟩, .some ⟨4⟩]⟩
 #guard alternation_with_groups.capture "cdgh" = .some ⟨"cdgh", #[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨2⟩, .some ⟨2⟩, .some ⟨4⟩]⟩
 #guard alternation_with_groups.capture "abgh" = .some ⟨"abgh", #[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨2⟩, .some ⟨2⟩, .some ⟨4⟩]⟩
@@ -120,7 +120,7 @@ def alternation_with_groups := Regex.parse! r##"(ab|cd)(ef|gh)"##
 #guard alternation_with_groups.bt.capture "abgh" = .some ⟨"abgh", #[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨2⟩, .some ⟨2⟩, .some ⟨4⟩]⟩
 #guard alternation_with_groups.bt.capture "cdef" = .some ⟨"cdef", #[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨2⟩, .some ⟨2⟩, .some ⟨4⟩]⟩
 
-def complex_character_classes := Regex.parse! r##"[a-zA-Z0-9_]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}"##
+def complex_character_classes := re! r##"[a-zA-Z0-9_]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}"##
 #guard complex_character_classes.capture "test@example.com" = .some ⟨"test@example.com", #[.some ⟨0⟩, .some ⟨16⟩]⟩
 #guard complex_character_classes.capture "user123@domain.org" = .some ⟨"user123@domain.org", #[.some ⟨0⟩, .some ⟨18⟩]⟩
 #guard complex_character_classes.capture "invalid@email" = .none
@@ -130,7 +130,7 @@ def complex_character_classes := Regex.parse! r##"[a-zA-Z0-9_]+@[a-zA-Z0-9]+\.[a
 #guard complex_character_classes.bt.capture "invalid@email" = .none
 #guard complex_character_classes.bt.capture "test@.com" = .none
 
-def nested_quantifiers := Regex.parse! r##"(a+)*b"##
+def nested_quantifiers := re! r##"(a+)*b"##
 #guard nested_quantifiers.capture "b" = .some ⟨"b", #[.some ⟨0⟩, .some ⟨1⟩, .none, .none]⟩
 #guard nested_quantifiers.capture "ab" = .some ⟨"ab", #[.some ⟨0⟩, .some ⟨2⟩, .some ⟨0⟩, .some ⟨1⟩]⟩
 #guard nested_quantifiers.capture "aaab" = .some ⟨"aaab", #[.some ⟨0⟩, .some ⟨4⟩, .some ⟨0⟩, .some ⟨3⟩]⟩
@@ -146,7 +146,7 @@ def alt_in_alt_100 := re! r##"ab?|$"##
 #eval alt_in_alt_100.captureAll "az"
 #eval alt_in_alt_100.bt.captureAll "az"
 
-def word_class := Regex.parse! r##"\w+"##
+def word_class := re! r##"\w+"##
 #guard word_class.capture "hello_world" = .some ⟨"hello_world", #[.some ⟨0⟩, .some ⟨11⟩]⟩
 #guard word_class.capture "test_123" = .some ⟨"test_123", #[.some ⟨0⟩, .some ⟨8⟩]⟩
 #guard word_class.capture "special@chars" = .some ⟨"special@chars", #[.some ⟨0⟩, .some ⟨7⟩]⟩
@@ -157,7 +157,7 @@ def word_class := Regex.parse! r##"\w+"##
 --
 -- word boundary tests
 --
-def word_boundary_01 := Regex.parse! r##"\b"##
+def word_boundary_01 := re! r##"\b"##
 
 -- name = "wb1"
 #guard word_boundary_01.capture "" = none
@@ -185,7 +185,7 @@ def word_boundary_01 := Regex.parse! r##"\b"##
   ⟨"ab", #[.some ⟨2⟩, .some ⟨2⟩]⟩
 ]
 
-def word_boundary_02 := Regex.parse! r##"^\b"##
+def word_boundary_02 := re! r##"^\b"##
 
 -- name = "wb4"
 #guard  word_boundary_02.captureAll "ab" = #[
@@ -195,7 +195,7 @@ def word_boundary_02 := Regex.parse! r##"^\b"##
   ⟨"ab", #[.some ⟨0⟩, .some ⟨0⟩]⟩
 ]
 
-def word_boundary_03 := Regex.parse! r##"\b$"##
+def word_boundary_03 := re! r##"\b$"##
 
 -- name = "wb5"
 #guard word_boundary_03.captureAll "ab" = #[
@@ -207,13 +207,13 @@ def word_boundary_03 := Regex.parse! r##"\b$"##
   ⟨"ab", #[.some ⟨2⟩, .some ⟨2⟩]⟩
 ]
 
-def word_boundary_04 := Regex.parse! r##"^\b$"##
+def word_boundary_04 := re! r##"^\b$"##
 
 -- name = "wb6"
 #guard word_boundary_04.captureAll "ab" = #[]
 #guard word_boundary_04.bt.captureAll "ab" = #[]
 
-def word_boundary_05 := Regex.parse! r##"\bbar\b"##
+def word_boundary_05 := re! r##"\bbar\b"##
 
 -- name = "wb7"
 #guard word_boundary_05.captureAll "nobar bar foo bar" = #[
@@ -225,7 +225,7 @@ def word_boundary_05 := Regex.parse! r##"\bbar\b"##
   ⟨"nobar bar foo bar", #[.some ⟨14⟩, .some ⟨17⟩]⟩
 ]
 
-def word_boundary_06 := Regex.parse! r##"a\b"##
+def word_boundary_06 := re! r##"a\b"##
 
 -- name = "wb8"
 #guard word_boundary_06.captureAll "faoa x" = #[
@@ -235,7 +235,7 @@ def word_boundary_06 := Regex.parse! r##"a\b"##
   ⟨"faoa x", #[.some ⟨3⟩, .some ⟨4⟩]⟩
 ]
 
-def word_boundary_07 := Regex.parse! r##"\bbar"##
+def word_boundary_07 := re! r##"\bbar"##
 
 -- name = "wb9"
 #guard word_boundary_07.captureAll "bar x" = #[
@@ -253,7 +253,7 @@ def word_boundary_07 := Regex.parse! r##"\bbar"##
   ⟨"foo\nbar x", #[.some ⟨4⟩, .some ⟨7⟩]⟩
 ]
 
-def word_boundary_08 := Regex.parse! r##"bar\b"##
+def word_boundary_08 := re! r##"bar\b"##
 
 -- name = "wb11"
 #guard word_boundary_08.captureAll "foobar" = #[
@@ -271,7 +271,7 @@ def word_boundary_08 := Regex.parse! r##"bar\b"##
   ⟨"foobar\nxxx", #[.some ⟨3⟩, .some ⟨6⟩]⟩
 ]
 
-def word_boundary_09 := Regex.parse! r##"(?:foo|bar|[A-Z])\b"##
+def word_boundary_09 := re! r##"(?:foo|bar|[A-Z])\b"##
 
 -- name = "wb13"
 #guard word_boundary_09.captureAll "foo" = #[
@@ -289,7 +289,7 @@ def word_boundary_09 := Regex.parse! r##"(?:foo|bar|[A-Z])\b"##
   ⟨"foo\n", #[.some ⟨0⟩, .some ⟨3⟩]⟩
 ]
 
-def word_boundary_10 := Regex.parse! r##"\b(?:foo|bar|[A-Z])"##
+def word_boundary_10 := re! r##"\b(?:foo|bar|[A-Z])"##
 
 -- name = "wb15"
 #guard word_boundary_10.captureAll "foo" = #[
@@ -299,7 +299,7 @@ def word_boundary_10 := Regex.parse! r##"\b(?:foo|bar|[A-Z])"##
   ⟨"foo", #[.some ⟨0⟩, .some ⟨3⟩]⟩
 ]
 
-def word_boundary_11 := Regex.parse! r##"\b(?:foo|bar|[A-Z])\b"##
+def word_boundary_11 := re! r##"\b(?:foo|bar|[A-Z])\b"##
 
 -- name = "wb16"
 #guard word_boundary_11.captureAll "X" = #[
@@ -345,7 +345,7 @@ def word_boundary_11 := Regex.parse! r##"\b(?:foo|bar|[A-Z])\b"##
   ⟨"ffoo bbar N x", #[.some ⟨10⟩, .some ⟨11⟩]⟩
 ]
 
-def word_boundary_12 := Regex.parse! r##"\b(?:fo|foo)\b"##
+def word_boundary_12 := re! r##"\b(?:fo|foo)\b"##
 
 -- name = "wb22"
 #guard word_boundary_12.captureAll "fo" = #[
@@ -363,7 +363,7 @@ def word_boundary_12 := Regex.parse! r##"\b(?:fo|foo)\b"##
   ⟨"foo", #[.some ⟨0⟩, .some ⟨3⟩]⟩
 ]
 
-def word_boundary_13 := Regex.parse! r##"\b\b"##
+def word_boundary_13 := re! r##"\b\b"##
 
 -- name = "wb24"
 #guard word_boundary_13.captureAll "" = #[]
@@ -379,7 +379,7 @@ def word_boundary_13 := Regex.parse! r##"\b\b"##
   ⟨"a", #[.some ⟨1⟩, .some ⟨1⟩]⟩
 ]
 
-def word_boundary_14 := Regex.parse! r##"\b$"##
+def word_boundary_14 := re! r##"\b$"##
 
 -- name = "wb26"
 #guard word_boundary_14.captureAll "" = #[]
@@ -405,7 +405,7 @@ def word_boundary_14 := Regex.parse! r##"\b$"##
   ⟨"y x", #[.some ⟨3⟩, .some ⟨3⟩]⟩
 ]
 
-def word_boundary_15 := Regex.parse! r##"(?:\b).$"##
+def word_boundary_15 := re! r##"(?:\b).$"##
 
 -- name = "wb29"
 #guard word_boundary_15.captureAll "x" = #[
@@ -415,7 +415,7 @@ def word_boundary_15 := Regex.parse! r##"(?:\b).$"##
   ⟨"x", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 ]
 
-def word_boundary_16 := Regex.parse! r##"^\b(?:fo|foo)\b"##
+def word_boundary_16 := re! r##"^\b(?:fo|foo)\b"##
 
 -- name = "wb30"
 #guard word_boundary_16.captureAll "fo" = #[
@@ -433,7 +433,7 @@ def word_boundary_16 := Regex.parse! r##"^\b(?:fo|foo)\b"##
   ⟨"foo", #[.some ⟨0⟩, .some ⟨3⟩]⟩
 ]
 
-def word_boundary_17 := Regex.parse! r##"^\b$"##
+def word_boundary_17 := re! r##"^\b$"##
 
 -- name = "wb32"
 #guard word_boundary_17.captureAll "" = #[]
@@ -443,7 +443,7 @@ def word_boundary_17 := Regex.parse! r##"^\b$"##
 #guard word_boundary_17.captureAll "x" = #[]
 #guard word_boundary_17.bt.captureAll "x" = #[]
 
-def word_boundary_18 := Regex.parse! r##"^(?:\b).$"##
+def word_boundary_18 := re! r##"^(?:\b).$"##
 
 -- name = "wb34"
 #guard word_boundary_18.captureAll "x" = #[
@@ -453,7 +453,7 @@ def word_boundary_18 := Regex.parse! r##"^(?:\b).$"##
   ⟨"x", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 ]
 
-def word_boundary_19 := Regex.parse! r##"^(?:\b).(?:\b)$"##
+def word_boundary_19 := re! r##"^(?:\b).(?:\b)$"##
 
 -- name = "wb35"
 #guard word_boundary_19.captureAll "x" = #[
@@ -463,13 +463,13 @@ def word_boundary_19 := Regex.parse! r##"^(?:\b).(?:\b)$"##
   ⟨"x", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 ]
 
-def word_boundary_20 := Regex.parse! r##"^^^^^\b$$$$$"##
+def word_boundary_20 := re! r##"^^^^^\b$$$$$"##
 
 -- name = "wb36"
 #guard word_boundary_20.captureAll "" = #[]
 #guard word_boundary_20.bt.captureAll "" = #[]
 
-def word_boundary_21 := Regex.parse! r##"^^^^^(?:\b).$$$$$"##
+def word_boundary_21 := re! r##"^^^^^(?:\b).$$$$$"##
 
 -- name = "wb37"
 #guard word_boundary_21.captureAll "x" = #[
@@ -479,13 +479,13 @@ def word_boundary_21 := Regex.parse! r##"^^^^^(?:\b).$$$$$"##
   ⟨"x", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 ]
 
-def word_boundary_22 := Regex.parse! r##"^^^^^\b$$$$$"##
+def word_boundary_22 := re! r##"^^^^^\b$$$$$"##
 
 -- name = "wb38"
 #guard word_boundary_22.captureAll "x" = #[]
 #guard word_boundary_22.bt.captureAll "x" = #[]
 
-def word_boundary_23 := Regex.parse! r##"^^^^^(?:\b\b\b).(?:\b\b\b)$$$$$"##
+def word_boundary_23 := re! r##"^^^^^(?:\b\b\b).(?:\b\b\b)$$$$$"##
 
 -- name = "wb39"
 #guard word_boundary_23.captureAll "x" = #[
@@ -495,7 +495,7 @@ def word_boundary_23 := Regex.parse! r##"^^^^^(?:\b\b\b).(?:\b\b\b)$$$$$"##
   ⟨"x", #[.some ⟨0⟩, .some ⟨1⟩]⟩
 ]
 
-def word_boundary_24 := Regex.parse! r##"(?:\b).+(?:\b)"##
+def word_boundary_24 := re! r##"(?:\b).+(?:\b)"##
 
 -- name = "wb40"
 #guard word_boundary_24.captureAll "$$abc$$" = #[
@@ -505,7 +505,7 @@ def word_boundary_24 := Regex.parse! r##"(?:\b).+(?:\b)"##
   ⟨"$$abc$$", #[.some ⟨2⟩, .some ⟨5⟩]⟩
 ]
 
-def word_boundary_25 := Regex.parse! r##"\b"##
+def word_boundary_25 := re! r##"\b"##
 
 -- name = "wb41"
 #guard word_boundary_25.captureAll "a b c" = #[
@@ -525,7 +525,7 @@ def word_boundary_25 := Regex.parse! r##"\b"##
   ⟨"a b c", #[.some ⟨5⟩, .some ⟨5⟩]⟩
 ]
 
-def word_boundary_26 := Regex.parse! r##"\bfoo\b"##
+def word_boundary_26 := re! r##"\bfoo\b"##
 
 -- name = "wb42"
 #guard word_boundary_26.captureAll "zzz foo zzz" = #[
@@ -535,7 +535,7 @@ def word_boundary_26 := Regex.parse! r##"\bfoo\b"##
   ⟨"zzz foo zzz", #[.some ⟨4⟩, .some ⟨7⟩]⟩
 ]
 
-def word_boundary_27 := Regex.parse! r##"\b^"##
+def word_boundary_27 := re! r##"\b^"##
 
 -- name = "wb43"
 #guard word_boundary_27.captureAll "ab" = #[
@@ -547,7 +547,7 @@ def word_boundary_27 := Regex.parse! r##"\b^"##
 
 -- Non word boundary tests
 
-def non_word_boundary_01 := Regex.parse! r##"\Bfoo\B"##
+def non_word_boundary_01 := re! r##"\Bfoo\B"##
 
 -- name = "nb1"
 #guard non_word_boundary_01.captureAll "n foo xfoox that" = #[
@@ -557,7 +557,7 @@ def non_word_boundary_01 := Regex.parse! r##"\Bfoo\B"##
   ⟨"n foo xfoox that", #[.some ⟨7⟩, .some ⟨10⟩]⟩
 ]
 
-def non_word_boundary_02 := Regex.parse! r##"a\B"##
+def non_word_boundary_02 := re! r##"a\B"##
 
 -- name = "nb2"
 #guard non_word_boundary_02.captureAll "faoa x" = #[
@@ -567,7 +567,7 @@ def non_word_boundary_02 := Regex.parse! r##"a\B"##
   ⟨"faoa x", #[.some ⟨1⟩, .some ⟨2⟩]⟩
 ]
 
-def non_word_boundary_03 := Regex.parse! r##"\Bbar"##
+def non_word_boundary_03 := re! r##"\Bbar"##
 
 -- name = "nb3"
 #guard non_word_boundary_03.captureAll "bar x" = #[]
@@ -577,7 +577,7 @@ def non_word_boundary_03 := Regex.parse! r##"\Bbar"##
 #guard non_word_boundary_03.captureAll "foo\nbar x" = #[]
 #guard non_word_boundary_03.bt.captureAll "foo\nbar x" = #[]
 
-def non_word_boundary_04 := Regex.parse! r##"bar\B"##
+def non_word_boundary_04 := re! r##"bar\B"##
 
 -- name = "nb5"
 #guard non_word_boundary_04.captureAll "foobar" = #[]
@@ -587,7 +587,7 @@ def non_word_boundary_04 := Regex.parse! r##"bar\B"##
 #guard non_word_boundary_04.captureAll "foobar\nxxx" = #[]
 #guard non_word_boundary_04.bt.captureAll "foobar\nxxx" = #[]
 
-def non_word_boundary_05 := Regex.parse! r##"(?:foo|bar|[A-Z])\B"##
+def non_word_boundary_05 := re! r##"(?:foo|bar|[A-Z])\B"##
 
 -- name = "nb7"
 #guard non_word_boundary_05.captureAll "foox" = #[
@@ -597,13 +597,13 @@ def non_word_boundary_05 := Regex.parse! r##"(?:foo|bar|[A-Z])\B"##
   ⟨"foox", #[.some ⟨0⟩, .some ⟨3⟩]⟩
 ]
 
-def non_word_boundary_06 := Regex.parse! r##"(?:foo|bar|[A-Z])\B"##
+def non_word_boundary_06 := re! r##"(?:foo|bar|[A-Z])\B"##
 
 -- name = "nb8"
 #guard non_word_boundary_06.captureAll "foo\n" = #[]
 #guard non_word_boundary_06.bt.captureAll "foo\n" = #[]
 
-def non_word_boundary_07 := Regex.parse! r##"\B"##
+def non_word_boundary_07 := re! r##"\B"##
 
 -- name = "nb9"
 #guard non_word_boundary_07.captureAll "" = #[
@@ -613,19 +613,19 @@ def non_word_boundary_07 := Regex.parse! r##"\B"##
   ⟨"", #[.some ⟨0⟩, .some ⟨0⟩]⟩
 ]
 
-def non_word_boundary_08 := Regex.parse! r##"\B"##
+def non_word_boundary_08 := re! r##"\B"##
 
 -- name = "nb10"
 #guard non_word_boundary_08.captureAll "x" = #[]
 #guard non_word_boundary_08.bt.captureAll "x" = #[]
 
-def non_word_boundary_09 := Regex.parse! r##"\B(?:foo|bar|[A-Z])"##
+def non_word_boundary_09 := re! r##"\B(?:foo|bar|[A-Z])"##
 
 -- name = "nb11"
 #guard non_word_boundary_09.captureAll "foo" = #[]
 #guard non_word_boundary_09.bt.captureAll "foo" = #[]
 
-def non_word_boundary_10 := Regex.parse! r##"\B(?:foo|bar|[A-Z])\B"##
+def non_word_boundary_10 := re! r##"\B(?:foo|bar|[A-Z])\B"##
 
 -- name = "nb12"
 #guard non_word_boundary_10.captureAll "xXy" = #[
@@ -675,7 +675,7 @@ def non_word_boundary_10 := Regex.parse! r##"\B(?:foo|bar|[A-Z])\B"##
   ⟨"foo bar vNX", #[.some ⟨9⟩, .some ⟨10⟩]⟩
 ]
 
-def non_word_boundary_11 := Regex.parse! r##"\B(?:foo|fo)\B"##
+def non_word_boundary_11 := re! r##"\B(?:foo|fo)\B"##
 
 -- name = "nb19"
 #guard non_word_boundary_11.captureAll "xfoo" = #[
@@ -685,7 +685,7 @@ def non_word_boundary_11 := Regex.parse! r##"\B(?:foo|fo)\B"##
   ⟨"xfoo", #[.some ⟨1⟩, .some ⟨3⟩]⟩
 ]
 
-def non_word_boundary_12 := Regex.parse! r##"\B(?:foo|fo)\B"##
+def non_word_boundary_12 := re! r##"\B(?:foo|fo)\B"##
 
 -- name = "nb20"
 #guard non_word_boundary_12.captureAll "xfooo" = #[
@@ -695,7 +695,7 @@ def non_word_boundary_12 := Regex.parse! r##"\B(?:foo|fo)\B"##
   ⟨"xfooo", #[.some ⟨1⟩, .some ⟨4⟩]⟩
 ]
 
-def non_word_boundary_13 := Regex.parse! r##"\B\B"##
+def non_word_boundary_13 := re! r##"\B\B"##
 
 -- name = "nb21"
 #guard non_word_boundary_13.captureAll "" = #[
@@ -709,7 +709,7 @@ def non_word_boundary_13 := Regex.parse! r##"\B\B"##
 #guard non_word_boundary_13.captureAll "x" = #[]
 #guard non_word_boundary_13.bt.captureAll "x" = #[]
 
-def non_word_boundary_14 := Regex.parse! r##"\B$"##
+def non_word_boundary_14 := re! r##"\B$"##
 
 -- name = "nb23"
 #guard non_word_boundary_14.captureAll "" = #[
@@ -727,13 +727,13 @@ def non_word_boundary_14 := Regex.parse! r##"\B$"##
 #guard non_word_boundary_14.captureAll "y x" = #[]
 #guard non_word_boundary_14.bt.captureAll "y x" = #[]
 
-def non_word_boundary_15 := Regex.parse! r##"\B.$"##
+def non_word_boundary_15 := re! r##"\B.$"##
 
 -- name = "nb26"
 #guard non_word_boundary_15.captureAll "x" = #[]
 #guard non_word_boundary_15.bt.captureAll "x" = #[]
 
-def non_word_boundary_16 := Regex.parse! r##"^\B(?:fo|foo)\B"##
+def non_word_boundary_16 := re! r##"^\B(?:fo|foo)\B"##
 
 -- name = "nb27"
 #guard non_word_boundary_16.captureAll "fo" = #[]
@@ -743,7 +743,7 @@ def non_word_boundary_16 := Regex.parse! r##"^\B(?:fo|foo)\B"##
 #guard non_word_boundary_16.captureAll "foo" = #[]
 #guard non_word_boundary_16.bt.captureAll "foo" = #[]
 
-def non_word_boundary_17 := Regex.parse! r##"^\B"##
+def non_word_boundary_17 := re! r##"^\B"##
 
 -- name = "nb29"
 #guard non_word_boundary_17.captureAll "" = #[
@@ -757,7 +757,7 @@ def non_word_boundary_17 := Regex.parse! r##"^\B"##
 #guard non_word_boundary_17.captureAll "x" = #[]
 #guard non_word_boundary_17.bt.captureAll "x" = #[]
 
-def non_word_boundary_18 := Regex.parse! r##"^\B\B"##
+def non_word_boundary_18 := re! r##"^\B\B"##
 
 -- name = "nb31"
 #guard non_word_boundary_18.captureAll "" = #[
@@ -771,7 +771,7 @@ def non_word_boundary_18 := Regex.parse! r##"^\B\B"##
 #guard non_word_boundary_18.captureAll "x" = #[]
 #guard non_word_boundary_18.bt.captureAll "x" = #[]
 
-def non_word_boundary_19 := Regex.parse! r##"^\B$"##
+def non_word_boundary_19 := re! r##"^\B$"##
 
 -- name = "nb33"
 #guard non_word_boundary_19.captureAll "" = #[
@@ -785,19 +785,19 @@ def non_word_boundary_19 := Regex.parse! r##"^\B$"##
 #guard non_word_boundary_19.captureAll "x" = #[]
 #guard non_word_boundary_19.bt.captureAll "x" = #[]
 
-def non_word_boundary_20 := Regex.parse! r##"^\B.$"##
+def non_word_boundary_20 := re! r##"^\B.$"##
 
 -- name = "nb35"
 #guard non_word_boundary_20.captureAll "x" = #[]
 #guard non_word_boundary_20.bt.captureAll "x" = #[]
 
-def non_word_boundary_21 := Regex.parse! r##"^\B.\B$"##
+def non_word_boundary_21 := re! r##"^\B.\B$"##
 
 -- name = "nb36"
 #guard non_word_boundary_21.captureAll "x" = #[]
 #guard non_word_boundary_21.bt.captureAll "x" = #[]
 
-def non_word_boundary_22 := Regex.parse! r##"^^^^^\B$$$$$"##
+def non_word_boundary_22 := re! r##"^^^^^\B$$$$$"##
 
 -- name = "nb37"
 #guard non_word_boundary_22.captureAll "" = #[
@@ -807,13 +807,13 @@ def non_word_boundary_22 := Regex.parse! r##"^^^^^\B$$$$$"##
   ⟨"", #[.some ⟨0⟩, .some ⟨0⟩]⟩
 ]
 
-def non_word_boundary_23 := Regex.parse! r##"^^^^^\B.$$$$$"##
+def non_word_boundary_23 := re! r##"^^^^^\B.$$$$$"##
 
 -- name = "nb38"
 #guard non_word_boundary_23.captureAll "x" = #[]
 #guard non_word_boundary_23.bt.captureAll "x" = #[]
 
-def non_word_boundary_24 := Regex.parse! r##"^^^^^\B$$$$$"##
+def non_word_boundary_24 := re! r##"^^^^^\B$$$$$"##
 
 -- name = "nb39"
 #guard non_word_boundary_24.captureAll "x" = #[]
@@ -827,7 +827,7 @@ def non_word_boundary_24 := Regex.parse! r##"^^^^^\B$$$$$"##
 --
 -- Unicode word boundary tests
 --
-def unicode_word_boundary_01 := Regex.parse! r##"\bx\b"##
+def unicode_word_boundary_01 := re! r##"\bx\b"##
 
 -- name = "unicode1"
 #guard unicode_word_boundary_01.captureAll "«x" = #[
@@ -876,7 +876,7 @@ def unicode_word_boundary_01 := Regex.parse! r##"\bx\b"##
   ⟨"áxβ", #[.some ⟨2⟩, .some ⟨3⟩]⟩
 ]
 
-def unicode_non_word_boundary_01 := Regex.parse! r##"\Bx\B"##
+def unicode_non_word_boundary_01 := re! r##"\Bx\B"##
 
 -- FIXME: This test is not working as expected.
 -- name = "unicode4"
@@ -893,7 +893,7 @@ def unicode_non_word_boundary_01 := Regex.parse! r##"\Bx\B"##
 #guard unicode_non_word_boundary_01.bt.captureAll "áxβ" = #[]
 
 -- The same as above, but with \b instead of \B as a sanity check.
-def unicode_word_boundary_02 := Regex.parse! r##"\b"##
+def unicode_word_boundary_02 := re! r##"\b"##
 
 -- name = "unicode5"
 #guard unicode_word_boundary_02.captureAll "0\uFFFF" = #[
@@ -926,7 +926,7 @@ def unicode_word_boundary_02 := Regex.parse! r##"\b"##
 ]
 
 -- Some tests of no particular significance.
-def unicode_word_boundary_03 := Regex.parse! r##"\b[0-9]+\b"##
+def unicode_word_boundary_03 := re! r##"\b[0-9]+\b"##
 
 -- name = "unicode6"
 #guard unicode_word_boundary_03.captureAll "foo 123 bar 456 quux 789" = #[
@@ -963,7 +963,7 @@ def unicode_word_boundary_03 := Regex.parse! r##"\b[0-9]+\b"##
 -- A variant of the problem described here:
 -- https://github.com/google/re2/blob/89567f5de5b23bb5ad0c26cbafc10bdc7389d1fa/re2/dfa.cc#L658-L667
 
-def unicode_word_boundary_04 := Regex.parse! r##"(?:\b|%)+"##
+def unicode_word_boundary_04 := re! r##"(?:\b|%)+"##
 
 -- FIXME: This test is not working as expected.
 -- -- name = "alt-with-assertion-repetition"
@@ -1124,3 +1124,5 @@ def issue_84 := re! "(a){2}"
 #guard issue_84.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨2⟩, .some ⟨1⟩, .some ⟨2⟩]⟩
 
 end Regressions
+
+#print Regressions.issue_84
