@@ -107,8 +107,8 @@ def range : Parser.LT Error Class :=
   |>.guard fun (f, s) => do
     let f ← expectsChar f
     let s ← expectsChar s
-    if h : f ≤ s then
-      pure (.range f s h)
+    if f ≤ s then
+      pure (.range f s)
     else
       throw (.invalidRange f s)
 where

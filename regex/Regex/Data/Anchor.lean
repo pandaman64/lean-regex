@@ -1,14 +1,14 @@
 import Regex.Data.String
-namespace Regex.Data
+import Lean
 
+namespace Regex.Data
 
 inductive Anchor where
   | start
   | eos
   | wordBoundary
   | nonWordBoundary
-deriving DecidableEq, Repr, Inhabited
-
+deriving DecidableEq, Repr, Inhabited, Lean.ToExpr
 
 open String.Iterator
 

@@ -41,7 +41,7 @@ private def testRoundtrip (input : String) (expected : Ast) : Bool :=
 
 #guard testRoundtrip "[abc]" (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
 #guard testRoundtrip "[^abc]" (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard testRoundtrip "[a-z]" (.classes ⟨false, #[.range 'a' 'z' (by decide)]⟩)
+#guard testRoundtrip "[a-z]" (.classes ⟨false, #[.range 'a' 'z']⟩)
 #guard testRoundtrip r"[\da]" (.classes ⟨false, #[.perl ⟨false, .digit⟩, .single 'a']⟩)
 #guard testRoundtrip "[-]" (.classes ⟨false, #[.single '-']⟩)
 #guard testRoundtrip "[a-]" (.classes ⟨false, #[.single 'a', .single '-']⟩)

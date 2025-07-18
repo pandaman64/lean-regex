@@ -1,5 +1,6 @@
 import Regex.Data.Anchor
 import Regex.Data.Classes
+import Lean
 
 set_option autoImplicit false
 
@@ -15,7 +16,7 @@ inductive Node where
   | save (offset : Nat) (next : Nat)
   -- TODO: use an efficient representation
   | sparse (cs : Regex.Data.Classes) (next : Nat)
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
   match n with
@@ -121,7 +122,7 @@ namespace Regex
 structure NFA where
   nodes : Array NFA.Node
   start : Nat
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 instance : ToString NFA where
   toString nfa := reprStr nfa
