@@ -84,7 +84,7 @@ theorem mem_next_of_stepChar {i j k update}
       simp [vf.curr, hc] at hn
     next ne₁ ne₂ =>
       have := step.char_or_sparse
-      simp_all only [Prod.mk.injEq, imp_false, Fin.getElem_fin, exists_const, exists_false, or_self]
+      simp_all only [Prod.mk.injEq, imp_false, Fin.getElem_fin, exists_const, or_self]
 
 theorem write_updates_of_mem_next {i k}
   (h : stepChar HistoryStrategy nfa wf it currentUpdates next i = (matched', next'))
