@@ -29,13 +29,12 @@ theorem findStart_completeness {it it' it'' : Iterator} {opt : OptimizationInfo}
   False := by
   revert lt
   fun_cases findStart opt it
-  next ch h =>
+  next cs h =>
     intro lt
-    have ne := Iterator.find_completeness v it' c.validL eqs ge lt
-    simp at ne
+    have : ¬(cs.contains it'.curr) := Iterator.find_completeness v it' c.validL eqs ge lt
     simp [eq, fromExpr] at h
-    have eq : it'.curr = ch := Expr.curr_of_captures_of_firstChar_some c h
-    exact ne eq
+    have : cs.contains it'.curr := Expr.curr_of_captures_of_firstChars_some c h
+    contradiction
   next => exact Nat.not_lt_of_ge ge
 
 end Regex.OptimizationInfo
