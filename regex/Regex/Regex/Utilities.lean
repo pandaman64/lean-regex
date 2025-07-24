@@ -81,8 +81,8 @@ Replaces all matches of a regex pattern with a replacement string.
 * `replacement`: The string to replace the matches with
 * Returns: The modified string, or the original string if no matches are found
 -/
- def replaceAll (regex : Regex) (haystack : String) (replacement : String) : String :=
-+  transformAll regex haystack (fun _ => replacement)
+def replaceAll (regex : Regex) (haystack : String) (replacement : String) : String :=
+  transformAll regex haystack (fun _ => replacement)
 
 /--
 Captures the first match of a regex pattern in a string, including capture groups.

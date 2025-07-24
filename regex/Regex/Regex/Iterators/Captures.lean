@@ -86,26 +86,7 @@ theorem step_done (c : Captures) (h : c.step = .done) : c.currentPos > c.haystac
   all_goals simp
 
 def IsPlausibleStep (it : IterM (α := Captures) m CapturedGroups) (step : IterStep (IterM (α := Captures) m CapturedGroups) CapturedGroups) : Prop :=
-  match step with
-  | .yield it' out =>
-    it.internalState.currentPos ≤ it.internalState.haystack.endPos ∧
-    ∃ buffer, it.internalState.regex.captureNextBuf (max it.internalState.bufferSize 2) ⟨it.internalState.haystack, it.internalState.currentPos⟩ = .some buffer ∧
-    out = ⟨it.internalState.haystack, buffer.toArray⟩ ∧
-    ∃ matched, out.get 0 = .some matched ∧
-    it' = toIterM (it.internalState.withPos (if it.internalState.currentPos < matched.stopPos then matched.stopPos else it.internalState.haystack.next it.internalState.currentPos)) m CapturedGroups
-  | .skip it' => it.internalState.currentPos ≤ it.internalState.haystack.endPos ∧ it'.internalState = it.internalState.withPos (it.internalState.haystack.endPos + ⟨1⟩)
-  | .done => it.internalState.currentPos > it.internalState.haystack.endPos
-
-theorem step_IsPlausibleStep {it : IterM (α := Captures) m CapturedGroups} : IsPlausibleStep it (it.internalState.step.mapIterator (⟨·⟩)) := by
-  match h : it.internalState.step with
-  | .yield it' out =>
-    have ⟨hle, buffer, eq₁, eq₂, matched, eq₃, eq₄⟩ := step_yield it.internalState it' out h
-    simp [IsPlausibleStep]
-    exact ⟨hle, buffer, eq₁, eq₂, matched, eq₃, by simp [toIterM, eq₄]⟩
-  | .skip it' =>
-    have ⟨hle, h⟩ := step_skip it.internalState it' h
-    simp [IsPlausibleStep, hle, h]
-  | .done => simpa [IsPlausibleStep] using step_done it.internalState h
+  step = it.internalState.step.mapIterator (⟨·⟩)
 
 section Iterators
 
@@ -114,7 +95,7 @@ variable {m : Type → Type w} [Pure m]
 @[always_inline, inline]
 instance: Iterator Captures m CapturedGroups where
   IsPlausibleStep := IsPlausibleStep
-  step it := pure ⟨it.internalState.step.mapIterator (⟨·⟩), step_IsPlausibleStep⟩
+  step it := pure ⟨it.internalState.step.mapIterator (⟨·⟩), rfl⟩
 
 def measureFun (self : Captures) : Nat := self.haystack.endPos.byteIdx + 1 - self.currentPos.byteIdx
 
@@ -124,21 +105,24 @@ private def finetenessRelation : Std.Iterators.FinitenessRelation Captures m whe
   subrelation {it it'} h := by
     simp_wf
     obtain ⟨step, h, h'⟩ := h
-    cases step with
-    | yield _ out =>
-      simp [IterStep.successor] at h
-      simp [h, IterM.IsPlausibleStep, Iterator.IsPlausibleStep, IsPlausibleStep] at h'
-      obtain ⟨hle, buffer, eq₁, eq₂, matched, eq₃, eq₄⟩ := h'
-      simp [toIterM] at eq₄
-      simp [measureFun, eq₄]
+    simp [IterM.IsPlausibleStep, Iterator.IsPlausibleStep, IsPlausibleStep] at h'
+    cases eq : it.internalState.step with
+    | yield it' out =>
+      simp [eq] at h'
+      simp [h', IterStep.successor] at h
+      have ⟨hle, buffer, eq₁, eq₂, matched, eq₃, eq₄⟩ := step_yield it.internalState it' out eq
+      simp [←h, eq₄, measureFun]
       refine Nat.sub_lt_sub_left (Nat.succ_le_succ hle) ?_
       split <;> simp_all [String.next, Char.utf8Size_pos]
-    | skip _ =>
-      simp [IterStep.successor] at h
-      simp [h, IterM.IsPlausibleStep, Iterator.IsPlausibleStep, IsPlausibleStep] at h'
-      simp [measureFun, h']
-      exact Nat.zero_lt_sub_of_lt (Nat.succ_le_succ h'.1)
-    | done => simp [IterStep.successor] at h
+    | skip it' =>
+      simp [eq] at h'
+      simp [h', IterStep.successor] at h
+      have ⟨hle, h''⟩ := step_skip it.internalState it' eq
+      simp [←h, h'', measureFun]
+      exact Nat.zero_lt_sub_of_lt (Nat.succ_le_succ hle)
+    | done =>
+      simp [eq] at h'
+      simp [h', IterStep.successor] at h
 
 instance : Finite Captures m := Finite.of_finitenessRelation finetenessRelation
 
@@ -158,7 +142,7 @@ end Iterators
 
 end Captures
 
-def capturesM (regex : Regex) (haystack : String) (m : Type → Type w) (bufferSize : Nat := regex.maxTag + 1) [Monad m] : IterM (α := Captures) m CapturedGroups :=
+def capturesM (regex : Regex) (haystack : String) (m : Type → Type w) (bufferSize : Nat := regex.maxTag + 1) : IterM (α := Captures) m CapturedGroups :=
   toIterM ⟨regex, haystack, bufferSize, 0⟩ m CapturedGroups
 
 def captures (regex : Regex) (haystack : String) (bufferSize : Nat := regex.maxTag + 1) : Iter (α := Captures) CapturedGroups :=
