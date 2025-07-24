@@ -17,7 +17,7 @@ theorem curr_of_captures_of_firstChars_some {it it' groups e n cs} (c : Expr.Cap
   | alternateLeft c₁ ih =>
     intro cs h
     simp [firstChars, Option.bind_eq_some_iff] at h
-    have ⟨_,hcs₁,_,_,hcs⟩ := h
+    have ⟨_, hcs₁, _, _, hcs⟩ := h
     rw [← hcs]
     simp only [Array.contains_eq_mem, Array.mem_append, Bool.decide_or, Bool.or_eq_true,
       decide_eq_true_eq]
@@ -26,7 +26,7 @@ theorem curr_of_captures_of_firstChars_some {it it' groups e n cs} (c : Expr.Cap
   | alternateRight _ ih =>
     intro cs h
     simp [firstChars, Option.bind_eq_some_iff] at h
-    have ⟨_,_,_,hcs₂,hcs⟩ := h
+    have ⟨_, _, _, hcs₂, hcs⟩ := h
     rw [← hcs]
     simp only [Array.contains_eq_mem, Array.mem_append, Bool.decide_or, Bool.or_eq_true,
       decide_eq_true_eq]
