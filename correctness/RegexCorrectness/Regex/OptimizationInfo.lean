@@ -2,9 +2,11 @@ import Regex.Regex.OptimizationInfo
 import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.Data.Expr.Optimization
 import RegexCorrectness.Data.String
+import RegexCorrectness.Data.HashSet
 
 open Regex.Data (Expr CaptureGroups)
 open String (Iterator)
+open Std
 
 namespace Regex.OptimizationInfo
 
@@ -33,7 +35,10 @@ theorem findStart_completeness {it it' it'' : Iterator} {opt : OptimizationInfo}
     intro lt
     have : ¬(cs.contains it'.curr) := Iterator.find_completeness v it' c.validL eqs ge lt
     simp [eq, fromExpr] at h
-    have : cs.contains it'.curr := Expr.curr_of_captures_of_firstChars_some c h
+    have ⟨_, h₁, h₂⟩ := h
+    have : cs.contains it'.curr := by
+      rw [← h₂, ← HashSet.contains_toArray_iff]
+      exact Expr.curr_of_captures_of_firstChars_some c h₁
     contradiction
   next => exact Nat.not_lt_of_ge ge
 
