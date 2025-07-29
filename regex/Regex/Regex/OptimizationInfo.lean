@@ -18,7 +18,7 @@ deriving Repr, Inhabited, DecidableEq, Lean.ToExpr
 namespace OptimizationInfo
 
 def fromExpr (expr : Expr) : OptimizationInfo :=
-  { firstChars := expr.firstChars (maxSize := 8) }
+  { firstChars := expr.firstChars (maxSize := 8) |>.map Std.HashSet.toArray }
 
 def findStart (self : OptimizationInfo) (it : Iterator) : Iterator :=
   match self.firstChars with
