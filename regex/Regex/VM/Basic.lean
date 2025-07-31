@@ -97,7 +97,7 @@ def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (
     | _ => .none
   match state' with
   | .some state' =>
-    let update := currentUpdates.get state
+    let update := currentUpdates[state]
     εClosure σ nfa wf it.next .none next [(update, state')]
   | .none =>
     (.none, next)

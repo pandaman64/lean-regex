@@ -50,7 +50,9 @@ theorem captureNext.go.inv {nfa wf it₀ it matched current next matched'}
         have ⟨state, mem, hn, equpdate⟩ := eachStepChar.done_of_matched_some (matched' := stepped.1) (next' := stepped.2) rfl (by simp [h])
         have ⟨update, path, write⟩ := curr_inv' state mem
         intro _
-        exact ⟨state, it.next, hn, by simpa [←h, ←equpdate, write (by simp [εClosure.writeUpdate, hn])] using path⟩
+        have hwu : εClosure.writeUpdate nfa[state] := by
+          simp [εClosure.writeUpdate, hn]
+        exact ⟨state, it.next, hn, by simp_rw [←h, ←equpdate, write hwu]; exact path⟩
     exact ih h (v.next (it.hasNext_of_not_atEnd atEnd)) eqs (Nat.le_trans le (Nat.le_of_lt it.lt_next)) curr_inv' (by simp) matched_inv'
 
 /--
@@ -73,6 +75,7 @@ theorem captureNext.path_done_of_matched {nfa wf it₀ matched'}
     intro isSome
     have ⟨state, mem, hn, hupdate⟩ := εClosure.matched_inv h' (by simp) isSome
     have ⟨update, path, write⟩ := curr_inv state mem
+    simp at hupdate
     simp [εClosure.writeUpdate, hn, hupdate] at write
     exact ⟨state, it₀, hn, write ▸ path⟩
 
@@ -202,7 +205,7 @@ theorem captureNext.ne_done_of_path_of_none {nfa wf it} (h : captureNext History
   (v : it.Valid) :
   ∀ it' state update, nfa.VMPath wf it it' state update → nfa[state] ≠ .done := by
   simp [captureNext] at h
-  set result := εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.replicate nfa.nodes.size HistoryStrategy.empty⟩ [(HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure HistoryStrategy nfa wf it .none ⟨.empty, Vector.replicate nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   match h' : result.1 with
   | .none =>
     have ndinv : SearchState.NotDoneInv HistoryStrategy nfa result.2 := εClosure.not_done_of_none result rfl h' (.of_empty (by simp))

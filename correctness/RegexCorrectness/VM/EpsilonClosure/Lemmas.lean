@@ -370,7 +370,7 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
       have ⟨update', equ, cls⟩ := inv.mem_stack entry.1 entry.2 (by simp)
       have ⟨update'', equ', step⟩ := h update j mem
       have := cls.snoc step
-      exact ⟨update' ++ List.ofOption update'', by simp [equ, equ']; apply List.append_assoc, cls.snoc step⟩
+      exact ⟨update' ++ List.ofOption update'', by simp [equ, equ'], cls.snoc step⟩
     | inr mem => exact inv.mem_stack update j (by simp [mem])
   case mem_next =>
     intro j mem
@@ -446,7 +446,7 @@ theorem upper_boundAux (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator)
   UpperInv states₀ it₀ i₀ update₀ next' []  := by
   induction matched, next, stack using εClosure.induct' HistoryStrategy nfa wf it₀ with
   | base matched next =>
-    simp [εClosure.base] at h
+    simp [↓εClosure.base] at h
     simp [h] at inv₀
     exact inv₀
   | visited matched next update state stack mem ih =>

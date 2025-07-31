@@ -106,7 +106,7 @@ theorem preserves {bit stack' update state it} (inv : StackInv wf bit (⟨update
     let update' := HistoryStrategy.write update offset it.pos
     apply inv.preserves' [⟨update', state', it⟩] (by simp [update'])
     simp
-    exact ⟨.some (offset, it.pos), .save (Nat.zero_le _) state.isLt hn inv.path.validR, by simp [update', HistoryStrategy]⟩
+    exact ⟨.some (offset, it.pos), .save (Nat.zero_le _) state.isLt hn inv.path.validR, by simp [update']⟩
   | anchor_pos stack' update state it a state' hn ht =>
     rw [pushNext.anchor_pos hn ht]
     apply inv.preserves' [⟨update, state', it⟩] (by simp)
