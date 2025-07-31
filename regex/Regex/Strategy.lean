@@ -29,6 +29,16 @@ instance {size} : DecidableEq (BufferStrategy size).Update := inferInstanceAs (D
 instance {size} : GetElem (BufferStrategy size).Update Nat (Option Pos) (fun _ i => i < size) :=
   inferInstanceAs (GetElem (Vector (Option Pos) size) Nat (Option Pos) _)
 
+@[simp]
+theorem BufferStrategy.update_def {size : Nat} : (BufferStrategy size).Update = Buffer size := rfl
+
+@[simp]
+theorem BufferStrategy.empty_def {size : Nat} : (BufferStrategy size).empty = Buffer.empty := rfl
+
+@[simp]
+theorem BufferStrategy.write_def {size buffer offset pos} :
+  (BufferStrategy size).write buffer offset pos = Vector.setIfInBounds buffer offset pos := rfl
+
 /--
 This strategy is inefficient and used only for proofs.
 -/
@@ -36,5 +46,15 @@ def HistoryStrategy : Strategy where
   Update := List (Nat × Pos)
   empty := []
   write update offset pos := update ++ [(offset, pos)]
+
+@[simp]
+theorem HistoryStrategy.update_def : HistoryStrategy.Update = List (Nat × Pos) := rfl
+
+@[simp]
+theorem HistoryStrategy.empty_def : HistoryStrategy.empty = [] := rfl
+
+@[simp]
+theorem HistoryStrategy.write_def {update : List (Nat × Pos)} {offset : Nat} {pos : Pos} :
+  HistoryStrategy.write update offset pos = update ++ [(offset, pos)] := rfl
 
 end Regex

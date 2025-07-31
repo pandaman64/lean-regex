@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open Regex (NFA)
 open Regex.Data (Expr CaptureGroups)
-open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates refineUpdateOpt refineUpdate)
+open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 open RegexCorrectness.Spec (SearchProblem)
 open String (Iterator)
 
@@ -22,13 +22,13 @@ theorem captureNext_soundness {e bufferSize it matchedB}
     EquivMaterializedUpdate (materializeRegexGroups groups) matchedB := by
   match hresH : captureNext HistoryStrategy (NFA.compile e) NFA.compile_wf it with
   | .some matchedH =>
-    have ref := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
-    simp [refineUpdateOpt, refineUpdate] at ref
+    have refResult := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
+    simp [materializeResult] at refResult
     have ⟨it', it'', groups, eqs, le, c, eqv⟩ := captureNext.capture_of_some_compile hresH v
-    exact ⟨it', it'', groups, eqs, le, c, ref ▸ eqv.materialize c disj⟩
+    exact ⟨it', it'', groups, eqs, le, c, refResult ▸ eqv.materialize c disj⟩
   | .none =>
-    have := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
-    simp [refineUpdateOpt] at this
+    have refResult := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
+    simp [materializeResult] at refResult
 
 theorem captureNext_completeness' {e bufferSize it}
   (hresB : captureNext (BufferStrategy bufferSize) (NFA.compile e) NFA.compile_wf it = .none) (v : it.Valid)
@@ -36,8 +36,8 @@ theorem captureNext_completeness' {e bufferSize it}
   False := by
   match hresH : captureNext HistoryStrategy (NFA.compile e) NFA.compile_wf it with
   | .some matchedH =>
-    have ref := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
-    simp [refineUpdateOpt] at ref
+    have refResult := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize it
+    simp [materializeResult] at refResult
   | .none => exact captureNext.not_captures_of_none_compile hresH v it' it'' groups eqs le c
 
 theorem captureNext_completeness {e bufferSize it}
