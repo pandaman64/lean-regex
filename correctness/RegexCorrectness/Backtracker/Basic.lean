@@ -213,8 +213,8 @@ theorem captureNextAux.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed)
   captureNextAux.induct σ nfa wf startIdx maxIdx motive
     base
     visited
-    (fun visited update state it stack' hmem _ hn => done visited update state it stack' hmem hn)
-    (fun visited update state it stack' hmem _ hn ih => next visited update state it stack' hmem hn ih)
+    (fun visited update state it stack' hmem _ hn => done visited update state it stack' hmem (by simpa using hn))
+    (fun visited update state it stack' hmem _ hn ih => next visited update state it stack' hmem (by simpa using hn) ih)
 
 /-
 Simplification lemmas for `captureNextAux`.

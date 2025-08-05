@@ -28,13 +28,13 @@ theorem eachStepChar.go.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed
     exact base next
   case done =>
     intro i _ next _ hlt state hn
-    exact done i hlt next hn
+    exact done i hlt next (by simpa using hn)
   case found =>
     intro i _ next _ hlt state hn result isSome
-    exact found i hlt next hn result.1 result.2 rfl isSome
+    exact found i hlt next (by simpa using hn) result.1 result.2 rfl isSome
   case not_found =>
     intro i _ next _ hlt state hn result notSome ih
-    exact not_found i hlt next hn result.1 result.2 rfl (by simp [notSome]) ih
+    exact not_found i hlt next (by simpa using hn) result.1 result.2 rfl (by simp [notSome]) ih
 
 @[simp]
 theorem eachStepChar.go_base {σ nfa wf it current next} :
