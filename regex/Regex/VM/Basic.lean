@@ -18,7 +18,7 @@ structure SearchState (σ : Strategy) (nfa : NFA) where
   states : SparseSet nfa.nodes.size
   updates : Vector σ.Update nfa.nodes.size
 
-abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
+abbrev εStack (σ : Strategy) (nfa : NFA) := Array (σ.Update × Fin nfa.nodes.size)
 
 namespace εClosure
 
@@ -34,12 +34,12 @@ def writeUpdate (node : NFA.Node) : Bool :=
 @[inline]
 def pushNext (σ : Strategy) (nfa : NFA) (it : Iterator) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
   match node with
-  | .epsilon state' => (update, ⟨state', inBounds⟩) :: stack
-  | .split state₁ state₂ => (update, ⟨state₁, inBounds.1⟩) :: (update, ⟨state₂, inBounds.2⟩) :: stack
-  | .save offset state' => (σ.write update offset it.pos, ⟨state', inBounds⟩) :: stack
+  | .epsilon state' => stack.push (update, ⟨state', inBounds⟩)
+  | .split state₁ state₂ => stack.push (update, ⟨state₂, inBounds.2⟩) |>.push (update, ⟨state₁, inBounds.1⟩)
+  | .save offset state' => stack.push (σ.write update offset it.pos, ⟨state', inBounds⟩)
   | .anchor a state' =>
     if a.test it then
-      (update, ⟨state', inBounds⟩) :: stack
+      stack.push (update, ⟨state', inBounds⟩)
     else
       stack
   | .done => stack
@@ -58,9 +58,11 @@ match is found.
 def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa) :
   Option σ.Update × SearchState σ nfa :=
-  match stack with
-  | [] => (matched, next)
-  | (update, state) :: stack' =>
+  if hemp : stack.size = 0 then
+    (matched, next)
+  else
+    let (update, state) := stack.back
+    let stack' := stack.pop
     if mem : state ∈ next.states then
       εClosure σ nfa wf it matched next stack'
     else
@@ -73,7 +75,7 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
         let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
         have : states'.measure < states.measure := SparseSet.lt_measure_insert' mem
         εClosure σ nfa wf it matched' ⟨states', updates'⟩ stack''
-termination_by (next.states.measure, stack)
+termination_by (next.states.measure, stack.size)
 
 /--
 If the given state can make a transition on the current character of `it`, make the transition and
@@ -98,7 +100,7 @@ def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (
   match state' with
   | .some state' =>
     let update := currentUpdates[state]
-    εClosure σ nfa wf it.next .none next [(update, state')]
+    εClosure σ nfa wf it.next .none next #[(update, state')]
   | .none =>
     (.none, next)
 
@@ -133,7 +135,7 @@ where
 
 def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
   let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
-  let (matched, current) := εClosure σ nfa wf it .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
+  let (matched, current) := εClosure σ nfa wf it .none ⟨.empty, updates⟩ #[(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
   go it matched current ⟨.empty, updates⟩
 where
   go (it : Iterator) (matched : Option σ.Update) (current next : SearchState σ nfa) :
@@ -147,7 +149,7 @@ where
         let stepped := eachStepChar σ nfa wf it current next
         let matched' := stepped.1 <|> matched
         if matched'.isNone then
-          let expanded := εClosure σ nfa wf it.next .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
+          let expanded := εClosure σ nfa wf it.next .none stepped.2 #[(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
           go it.next expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩
         else
           go it.next matched' stepped.2 ⟨current.states.clear, current.updates⟩
