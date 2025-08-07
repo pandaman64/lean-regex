@@ -147,8 +147,9 @@ theorem induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator
   ∀ (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa), motive matched next stack :=
   fun matched next stack =>
     induct σ nfa wf it motive base visited
-      (fun matched update state stack' states updates hmem _ ih =>
-        not_visited matched ⟨states, updates⟩ update state stack' hmem ih)
+      (fun matched update state stack' states updates hmem _ ih => by
+        simp only [Node.isDone_def, decide_eq_true_eq] at ih
+        exact not_visited matched ⟨states, updates⟩ update state stack' hmem ih)
       matched next stack
 
 /-
@@ -177,8 +178,9 @@ theorem not_visited (hmem : state ∉ next.states) :
   εClosure σ nfa wf it matched' ⟨states', updates'⟩ (pushNext σ nfa it node (wf.inBounds state) update stack') := by
   conv =>
     lhs
-    simp only [εClosure, hmem, reduceDIte]
+    simp only [εClosure, hmem, reduceDIte, Node.isDone_def, decide_eq_true_eq]
 
 end
+
 
 end Regex.VM.εClosure

@@ -18,6 +18,16 @@ inductive Node where
   | sparse (cs : Regex.Data.Classes) (next : Nat)
 deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
+@[inline, always_inline]
+def Node.isDone (n : Node) : Bool :=
+  match n with
+  | .done => true
+  | _ => false
+
+@[simp, grind]
+theorem Node.isDone_def {n : Node} : n.isDone = decide (n = .done) := by
+  grind [isDone]
+
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
   match n with
   | .done => True

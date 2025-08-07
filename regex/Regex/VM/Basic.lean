@@ -67,7 +67,7 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
       match h : next with
       | ⟨states, updates⟩ =>
         let node := nfa[state]
-        let matched' := if node = .done then matched <|> update else matched
+        let matched' := if node.isDone then matched <|> update else matched
         let states' := states.insert state mem
         let updates' := if εClosure.writeUpdate node then updates.set state update else updates
         let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
@@ -118,7 +118,7 @@ where
     else
       have hlt : i < current.states.count := Nat.lt_of_le_of_ne hle h
       let state := current.states[i]
-      if nfa[state] = .done then
+      if nfa[state].isDone then
         -- Early-stop iteration when we encounter `.done` since the path to this `.done` node
         -- is prioritized over the paths through the later nodes.
         (.none, next)

@@ -62,7 +62,7 @@ def captureNextAux (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx m
       let visited' := visited.set state it.index
       have : nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited'.popcount < nfa.nodes.size * (maxIdx + 1 - startIdx) + 1 - visited.popcount :=
         BitMatrix.popcount_decreasing visited state it.index h
-      if nfa[state] = .done then
+      if nfa[state].isDone then
         (.some update, visited')
       else
         let stack'' := captureNextAux.pushNext σ nfa wf startIdx maxIdx stack' update state it
