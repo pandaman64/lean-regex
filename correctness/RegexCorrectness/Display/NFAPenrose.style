@@ -1,0 +1,122 @@
+-- Style file for visualizing an NFA
+globals {
+  radius         = 25
+  topAlign       = 30
+  nodeSeparation = 250
+}
+
+colors {
+  white      = rgba(1., 1., 1., 1.)
+  lightGray  = rgba(.8, .8, .8, 1.)
+  mediumGray = rgba(.6, .6, .6, 1.)
+  darkGray   = rgba(.4, .4, .4, 1.)
+  paleGray   = rgba(0, 0, 0, 0.1)
+  black      = rgba(0, 0, 0, 1)
+}
+
+-- draw each node as a circle
+forall Node n
+{
+  -- draw the node as a shaded circle
+  n.shape = Circle {
+    r: globals.radius -- radius
+    fillColor: colors.lightGray
+    strokeColor: colors.mediumGray
+    strokeWidth: 1
+  }
+
+  n.x = n.shape.center[0]
+  n.y = n.shape.center[1]
+
+  -- draw the node label inside the node
+  n.labelText = Equation {
+     string: n.label
+     center: n.shape.center
+     fontSize: "10px"
+     fillColor: colors.darkGray
+  }
+}
+
+-- draw a circle around the done node
+forall Node node
+where DoneNode (node)
+{
+  shape doneMarker = Circle {
+    center : node.shape.center
+    r : 1.5 * node.shape.r
+    fillColor : colors.paleGray
+  }
+}
+
+forall Node u; Node v
+where Successor (u, v)
+{
+  -- ensure all node have their centers with same y coordinate
+  ensure equal(u.y, v.y)
+
+  --  ensure successive nodes are separated by 100
+  ensure equal(v.x - u.x, globals.nodeSeparation)
+}
+
+-- draw transitions for non neighboring nodes
+forall Node u; Node v; Transition t; False b
+where t := Transition(u, v, b);
+{
+  -- draw an arrow from u to v
+  vec2 x0 = u.shape.center
+  vec2 x2 = v.shape.center
+  scalar distance = norm(x2 - x0)
+  vec2 w = (x2-x0)/distance -- unit vector from u to v
+  vec2 n = rot90(w) -- unit normal
+  -- calculate p0, p1, p2 for quadratic interpolated curve
+  -- the coefficients are derived by trial and error, looking at the results
+  -- to see what looks like a good curve.
+  vec2 p0 = x0
+  vec2 p2 = x2 - 30*w + 10*n
+  vec2 mid = (p0+p2)/2
+  vec2 p1 = mid + distance * 0.1 * n
+
+  shape t.shape = Path {
+    d: interpolateQuadraticFromPoints("open", p0, p1, p2)
+    endArrowhead: "straight"
+  }
+
+  layer t.shape below u.shape
+
+  -- draw the label on the transition arrow
+  t.text = Equation {
+    string: t.label
+    center: (p1[0], (p1[1] + 7))
+    fontSize: "10px"
+    fillColor: colors.darkGray
+  }
+}
+
+-- draw transitions for neighboring nodes
+forall Node u; Node v; Transition t; True b
+where t := Transition(u, v, b);
+{
+  t.shape = Line {
+    start: (u.x + u.shape.r, u.y)
+    end: (v.x - v.shape.r, v.y)
+    endArrowhead: "straight"
+  }
+
+  -- draw the label on the transition arrow
+  t.text = Equation {
+    string: t.label
+    center: ((t.shape.start[0] + (t.shape.end[0] - t.shape.start[0])*.5) , (t.shape.start[1] + 7))
+    fontSize: "10px"
+    fillColor: colors.darkGray
+  }
+}
+
+-- draw arrow pointing to start node
+forall Node u
+where StartNode(u) {
+  startArrow = Line {
+    start: (u.x - (u.shape.r + 20), u.y)
+    end: (u.x - u.shape.r, u.y)
+    endArrowhead: "straight"
+  }
+}

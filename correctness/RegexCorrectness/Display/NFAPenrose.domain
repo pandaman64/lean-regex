@@ -1,0 +1,33 @@
+type Boolean
+
+type True <: Boolean
+constructor True()
+
+type False <: Boolean
+constructor False()
+
+type Node
+
+-- Node: the constructor for Node type
+-- offset: index of the node in the nodes array
+-- strOffset: string value of the offset
+constructor Node(String offset)
+
+type Transition
+-- Transition: constructor
+-- begin: offset of the starting node for the transition
+-- end: offset of the ending node for the transition
+-- isNeighbor: True if end - begin == 1, False otherwise; indicates if the offsets are neighboring
+constructor Transition(Node begin, Node end, Boolean isNeighbor)
+
+-- the offset of starting node
+predicate StartNode(Node)
+
+-- the offset of done node
+predicate DoneNode(Node)
+
+-- predicate relating two successive nodes in the nodes array
+-- this is used for drawing the nodes in the appropriate order
+-- thisNodeOffset: off set of current node
+-- successorNodeOffset: offset of the next node
+predicate Successor(Node thisNode, Node successorNode)
