@@ -74,7 +74,7 @@ where t := Transition(u, v, b);
   vec2 p0 = x0
   vec2 p2 = x2 - 30*w + 10*n
   vec2 mid = (p0+p2)/2
-  vec2 p1 = mid + distance * 0.1 * n
+  vec2 p1 = mid + distance * 0.15 * n
 
   shape t.shape = Path {
     d: interpolateQuadraticFromPoints("open", p0, p1, p2)
