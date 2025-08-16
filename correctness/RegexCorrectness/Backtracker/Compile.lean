@@ -14,8 +14,9 @@ namespace captureNext
 
 theorem path_done_of_some {nfa wf it update} (hres : captureNext HistoryStrategy nfa wf it = .some update) (v : it.Valid) :
   ∃ state it' it'', nfa[state] = .done ∧ it'.toString = it.toString ∧ it.pos ≤ it'.pos ∧ Path nfa wf it' it'' state update := by
+  let bit : BoundedIterator it.pos.byteIdx it.toString.endPos.byteIdx := ⟨it, Nat.le_refl _, v.le_endPos, rfl⟩
   simp [captureNext_le v.le_endPos] at hres
-  have ⟨state, bit', bit'', hn, reaches, path⟩ := go.path_done_of_some (BoundedIterator.valid_of_it_valid v) hres
+  have ⟨state, bit', bit'', hn, reaches, path⟩ := go.path_done_of_some (bit := bit) v hres
   have ⟨_, _, eqs, le⟩ := BoundedIterator.Reaches.iff_valid_le_pos.mp reaches
   simp [BoundedIterator.toString] at eqs
   simp [BoundedIterator.pos] at le
@@ -47,7 +48,7 @@ theorem ne_done_of_path_of_none {nfa wf it} (hres : captureNext HistoryStrategy 
   let bit : BoundedIterator startIdx maxIdx := ⟨it, Nat.le_refl _, v.le_endPos, rfl⟩
   let visited := BitMatrix.zero nfa.nodes.size (maxIdx + 1 - startIdx)
 
-  have reaches : bit.Reaches bit := .refl (BoundedIterator.valid_of_it_valid v)
+  have reaches : bit.Reaches bit := .refl v
   have h := go.ne_done_of_path_of_none hres reaches go.Inv.zero captureNextAux.NotDoneInv.zero
 
   intro it' it'' state update eqs ge path hn
@@ -60,7 +61,7 @@ theorem ne_done_of_path_of_none {nfa wf it} (hres : captureNext HistoryStrategy 
 
   have reaches : bit.Reaches bit' := by
     simp [BoundedIterator.Reaches.iff_valid_le_pos]
-    exact ⟨BoundedIterator.valid_of_it_valid v, BoundedIterator.valid_of_it_valid v', eqs.symm, ge⟩
+    exact ⟨v, v', eqs.symm, ge⟩
 
   exact h bit' bit'' state update reaches path hn
 

@@ -56,7 +56,7 @@ namespace StackInv
 
 theorem intro {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : StackInv wf bit [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
   simp [StackInv, HistoryStrategy]
-  exact .init (BoundedIterator.valid_of_valid v)
+  exact .init v
 
 theorem path {bit : BoundedIterator startIdx maxIdx} {entry : StackEntry HistoryStrategy nfa startIdx maxIdx} {stack' : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
   (inv : StackInv wf bit (entry :: stack')) :
@@ -119,7 +119,8 @@ theorem preserves {bit stack' update state it} (inv : StackInv wf bit (⟨update
     rw [pushNext.char_pos hn hnext hc]
     apply inv.preserves' [⟨update, state', it.next hnext⟩] (by simp)
     simp
-    have ⟨l, r, vf⟩ := (it.valid_of_it_valid inv.path.validR).validFor_of_hasNext hnext
+    have ⟨l, r, vf⟩ := inv.path.validR.validFor_of_hasNext hnext
+    simp [BoundedIterator.curr, Iterator.curr'_eq_curr] at hc
     exact ⟨.none, .char (Nat.zero_le _) state.isLt hn (hc ▸ vf), by simp⟩
   | char_neg stack' update state it c state' hn h =>
     rw [pushNext.char_neg hn h]
@@ -128,7 +129,7 @@ theorem preserves {bit stack' update state it} (inv : StackInv wf bit (⟨update
     rw [pushNext.sparse_pos hn hnext hc]
     apply inv.preserves' [⟨update, state', it.next hnext⟩] (by simp)
     simp
-    have ⟨l, r, vf⟩ := (it.valid_of_it_valid inv.path.validR).validFor_of_hasNext hnext
+    have ⟨l, r, vf⟩ := inv.path.validR.validFor_of_hasNext hnext
     exact ⟨.none, .sparse (Nat.zero_le _) state.isLt hn vf hc, by simp⟩
   | sparse_neg stack' update state it cs state' hn h =>
     rw [pushNext.sparse_neg hn h]
