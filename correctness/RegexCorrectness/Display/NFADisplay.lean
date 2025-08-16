@@ -15,7 +15,7 @@ private def isNeighbor (i j : Nat) : String :=
   if i - j == 1 then "TRUE" else "FALSE"
 
 private def escapeLabel (label : String) : String :=
-  label.replace "_" "\\_"
+  label.replace "\\" "\\\\" |>.replace "_" "\\_"
 
 def labelElement (elemLabel label : String) : String :=
   if label = "$" then
