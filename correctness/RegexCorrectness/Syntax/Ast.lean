@@ -63,8 +63,8 @@ theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
     have ⟨le, ih⟩ := ih h'
     simp [←h, Expr.tags]
     refine ⟨by omega, ?_⟩
-    apply Finset.union_subset
-    . simp only [Finset.singleton_subset_iff, Finset.mem_Ico, le_refl, true_and]
+    apply Finset.insert_subset
+    . simp only [Finset.mem_Ico, le_refl, true_and]
       omega
     . exact Finset.Subset.trans ih (Finset.Ico_subset_Ico (by simp) (by simp))
   next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
