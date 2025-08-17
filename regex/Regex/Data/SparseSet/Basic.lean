@@ -81,6 +81,7 @@ theorem lt_of_mem (i : Fin n) (h : ¬i ∈ s) : s.count < n := by
   apply h (Nat.lt_of_lt_of_le s.sparse[i].isLt ge)
   exact dense_sparse_of_full ge
 
+@[inline, always_inline]
 def insert (s : SparseSet n) (i : Fin n) (mem : i ∉ s) : SparseSet n :=
   let ⟨count, dense, sparse, sparse_dense, _⟩ := s
   have isLt : count < n := lt_of_mem i mem
