@@ -144,9 +144,11 @@ def done : NFA :=
   let start := 0
   ⟨nodes, start⟩
 
+@[inline, always_inline]
 def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
   nfa.nodes[i]
 
+@[inline, always_inline]
 instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
   getElem nfa i h := get nfa i h
 
