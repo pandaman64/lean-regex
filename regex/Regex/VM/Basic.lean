@@ -55,6 +55,7 @@ Visit all ε-transitions from the states in the stack, updating `next.states` wh
 match is found.
 -/
 -- Once we have the new compiler, we may want to test specialization by `@[specialize σ]`.
+@[specialize σ] -- TODO: doesn't seem to generate code for BufferStrategy
 def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa) :
   Option σ.Update × SearchState σ nfa :=
@@ -79,6 +80,7 @@ termination_by (next.states.measure, stack)
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
+@[specialize σ]
 def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vector σ.Update nfa.nodes.size)
   (next : SearchState σ nfa) (state : Fin nfa.nodes.size) :
   Option σ.Update × SearchState σ nfa :=
@@ -106,11 +108,13 @@ def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (
 For all states in `current`, make a transition on the current character of `it` and traverse
 ε-closures from the resulting states.
 -/
+@[specialize σ]
 def eachStepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (current : SearchState σ nfa) (next : SearchState σ nfa) :
   Option σ.Update × SearchState σ nfa :=
   go 0 (Nat.zero_le _) next
 where
+  @[specialize σ]
   go (i : Nat) (hle : i ≤ current.states.count) (next : SearchState σ nfa) :
     Option σ.Update × SearchState σ nfa :=
     if h : i = current.states.count then
@@ -131,11 +135,13 @@ where
         else
           go (i + 1) hlt result.2
 
+@[specialize σ]
 def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
   let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
   let (matched, current) := εClosure σ nfa wf it .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
   go it matched current ⟨.empty, updates⟩
 where
+  @[specialize σ]
   go (it : Iterator) (matched : Option σ.Update) (current next : SearchState σ nfa) :
     Option σ.Update :=
     if it.atEnd then
