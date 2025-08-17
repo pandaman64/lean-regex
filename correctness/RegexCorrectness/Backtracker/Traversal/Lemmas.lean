@@ -142,10 +142,10 @@ theorem path_done_of_some {nfa wf startIdx maxIdx bit update} {visited : BitMatr
   | found bit visited update' visited' haux =>
     simp [captureNext.go_found haux] at hres
     simp [hres] at haux
-    have ⟨l, r, vf⟩ := (bit.valid_of_valid v).validFor
+    have ⟨l, r, vf⟩ := v.validFor
     have inv₀ : StackInv wf bit [⟨[], ⟨nfa.start, wf.start_lt⟩, bit⟩] := by
       simp [StackInv]
-      exact .init (bit.valid_of_valid v)
+      exact .init v
     have ⟨state, bit', hn, reaches, path⟩ := captureNextAux.path_done_of_some haux inv₀
     exact ⟨state, bit, bit', hn, .refl v, path⟩
   | not_found_next bit visited visited' haux hnext ih =>

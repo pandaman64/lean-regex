@@ -62,8 +62,6 @@ def remainingBytes (bit : BoundedIterator startIdx maxIdx) : Nat := bit.it.remai
 theorem next_remainingBytes_lt (bit : BoundedIterator startIdx maxIdx) (h : bit.hasNext) : (bit.next h).remainingBytes < bit.remainingBytes := by
   simp [next, remainingBytes]
 
-def Valid (bit : BoundedIterator startIdx maxIdx) : Prop := String.Pos.isValid bit.it.toString bit.it.pos
-
 end BoundedIterator
 
 end Regex.Data

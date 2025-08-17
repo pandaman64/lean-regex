@@ -37,14 +37,10 @@ theorem pos_eq_of_not_hasNext {bit : BoundedIterator startIdx maxIdx} (hnext : �
   simp [pos, toString, String.Pos.ext_iff]
   exact Nat.le_antisymm (bit.eq ▸ bit.le) hnext
 
-theorem valid_of_it_valid {bit : BoundedIterator startIdx maxIdx} (v : bit.it.Valid) : bit.Valid := v.isValid
+def Valid (bit : BoundedIterator startIdx maxIdx) : Prop := bit.it.Valid
 
-theorem valid_of_valid {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : bit.it.Valid := Iterator.Valid.of_isValid v
-
-theorem next_valid {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) (v : bit.Valid) : (bit.next h).Valid := by
-  apply valid_of_it_valid
-  simp [next, String.Iterator.next'_eq_next]
-  exact (bit.valid_of_valid v).next h
+theorem next_valid {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) (v : bit.Valid) : (bit.next h).Valid :=
+  String.Iterator.Valid.next v h
 
 @[simp]
 theorem toEnd_toString (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.toString = bit.toString := by
@@ -53,7 +49,7 @@ theorem toEnd_toString (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.toStr
 theorem toEnd_pos (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.pos = bit.toString.endPos := by
   simp [toEnd, Iterator.toEnd, toString, pos]
 
-theorem toEnd_valid (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.Valid := valid_of_it_valid (String.Iterator.Valid.toEnd bit.it)
+theorem toEnd_valid (bit : BoundedIterator startIdx maxIdx) : bit.toEnd.Valid := String.Iterator.Valid.toEnd bit.it
 
 theorem pos_le_toEnd_pos (bit : BoundedIterator startIdx maxIdx) : bit.pos ≤ bit.toEnd.pos := by
   simp [toEnd, Iterator.toEnd, pos]
@@ -172,7 +168,7 @@ theorem pos {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit
 
 theorem valid {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit) : bit.Valid := by
   simp [ValidFor] at vf
-  exact valid_of_it_valid vf.valid
+  exact vf.valid
 
 theorem eq {l l' r r'} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit) (vf' : ValidFor l' r' bit) : l = l' ∧ r = r' :=
   Iterator.ValidFor.eq vf vf'
@@ -184,8 +180,9 @@ end ValidFor
 
 namespace Valid
 
-theorem validFor {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : ∃ l r, ValidFor l r bit :=
-  (bit.valid_of_valid v).validFor
+theorem validFor {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : ∃ l r, ValidFor l r bit := by
+  simp [Valid] at v
+  exact v.validFor
 
 theorem validFor_of_hasNext {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) (v : bit.Valid) :
   ∃ l r, ValidFor l (bit.curr h :: r) bit := by
@@ -294,7 +291,7 @@ theorem of_validFor {l m r : List Char} (vf₁ : ValidFor l.reverse (m ++ r) bit
     exact .next vf₁.valid hnext₁ h
 
 theorem validFor (h : Reaches bit₁ bit₂) : ∃ (l m r : List Char), ValidFor l.reverse (m ++ r) bit₁ ∧ ValidFor (m.reverse ++ l.reverse) r bit₂ :=
-  String.Iterator.Valid.validFor_of_valid_pos_le (BoundedIterator.valid_of_valid h.validL) (BoundedIterator.valid_of_valid h.validR) h.toString.symm (h.le_pos)
+  String.Iterator.Valid.validFor_of_valid_pos_le h.validL h.validR h.toString.symm h.le_pos
 
 theorem iff_validFor : Reaches bit₁ bit₂ ↔ ∃ (l m r : List Char), ValidFor l.reverse (m ++ r) bit₁ ∧ ValidFor (m.reverse ++ l.reverse) r bit₂ :=
   ⟨validFor, fun ⟨l, m, r, vf₁, vf₂⟩ => of_validFor (l := l) (m := m) (r := r) vf₁ vf₂⟩
@@ -305,7 +302,7 @@ theorem iff_valid_le_pos : Reaches bit₁ bit₂ ↔ bit₁.Valid ∧ bit₂.Val
     have ⟨l, m, r, vf₁, vf₂⟩ := h.validFor
     exact ⟨vf₁.valid, vf₂.valid, by simp [vf₁.toString, vf₂.toString] , by simp [vf₁.pos, vf₂.pos]⟩
   . intro ⟨v₁, v₂, eq, le⟩
-    have ⟨l, m, r, vf₁, vf₂⟩ := Iterator.Valid.validFor_of_valid_pos_le (valid_of_valid v₁) (valid_of_valid v₂) eq le
+    have ⟨l, m, r, vf₁, vf₂⟩ := Iterator.Valid.validFor_of_valid_pos_le v₁ v₂ eq le
     exact of_validFor (l := l) (m := m) (r := r) vf₁ vf₂
 
 theorem _root_.Regex.Data.BoundedIterator.reaches_toEnd {bit : BoundedIterator startIdx maxIdx} (v : bit.Valid) : bit.Reaches bit.toEnd := by

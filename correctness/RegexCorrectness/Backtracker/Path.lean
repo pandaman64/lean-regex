@@ -85,7 +85,7 @@ theorem reaches {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit b
   | init v =>
     have eq : bit' = bit := BoundedIterator.ext eqit'
     rw [eq]
-    exact .refl (BoundedIterator.valid_of_it_valid v)
+    exact .refl v
   | @more i j itm it' update₁ update₂ update₃ prev step equpdate ih =>
     match step.it_eq_or_next with
     | .inl eq => exact ih (by simp [eq, eqit'])
