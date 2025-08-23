@@ -9,14 +9,14 @@ def tags : Expr → Finset Nat
 | .group tag e => {tag} ∪ e.tags
 | .alternate e₁ e₂ => e₁.tags ∪ e₂.tags
 | .concat e₁ e₂ => e₁.tags ∪ e₂.tags
-| .star e => e.tags
+| .star _greedy e => e.tags
 
 def Disjoint : Expr → Prop
 | .empty | .epsilon | .anchor _ | .char _ | .classes _ => True
 | .group tag e => tag ∉ e.tags ∧ e.Disjoint
 | .alternate e₁ e₂ => e₁.Disjoint ∧ e₂.Disjoint
 | .concat e₁ e₂ => e₁.Disjoint ∧ e₂.Disjoint
-| .star e => e.Disjoint
+| .star _greedy e => e.Disjoint
 
 theorem Captures.mem_tags_of_mem_groups {e : Expr} {it it' groups} (c : e.Captures it it' groups) :
   ∀ tag first last, (tag, first, last) ∈ groups → tag ∈ e.tags := by

@@ -27,7 +27,7 @@ theorem pushRegex_size_lt {nfa : NFA} {next e} :
     calc nfa.nodes.size
       _ < (nfa.pushRegex next e₂).nodes.size := ih₂
       _ < _ := ih₁
-  | star e ih =>
+  | star greedy e ih =>
     simp [pushRegex]
     calc nfa.nodes.size
       _ < (nfa.pushNode .fail).nodes.size := by simp

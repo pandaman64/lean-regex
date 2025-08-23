@@ -64,7 +64,7 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
   | .concat r₁ r₂ =>
     let nfa₂ := nfa.pushRegex next r₂
     nfa₂.pushRegex nfa₂.start r₁
-  | .star r =>
+  | .star greedy r =>
     let start := nfa.nodes.size
     -- We need to generate a placeholder node first. We use `fail` for it because
     -- 1. We want to make sure `done` does not appear except at the first node.
@@ -72,7 +72,11 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
     let placeholder := nfa.pushNode .fail
     let compiled := placeholder.pushRegex start r
 
-    let split := Node.split compiled.start next
+    let split :=
+      if greedy then
+        .split compiled.start next
+      else
+        .split next compiled.start
     -- While we know that `pushRegex` increase the size and hence this `setIfInBounds` is always
     -- in bounds, we don't use that information to eliminate the bounds check. This is because
     -- it requires changing the return type to `{ nfa' : NFA // nfa.nodes.size < nfa'.nodes.size }`

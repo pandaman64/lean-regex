@@ -89,6 +89,9 @@ namespace Regex.Syntax.Parser -- Because Ast is there
   | .wordBoundary => "\\b"
   | .nonWordBoundary => "\\B"
 
+def applyGreedy (s : String) (greedy : Bool) : String :=
+  if greedy then s else s ++ "?"
+
 -- TODO: consider the precedence of the operators.
 def Ast.toString : Ast → String
   | .empty => ""
@@ -98,13 +101,13 @@ def Ast.toString : Ast → String
   | .group ast => s!"({ast.toString})"
   | .alternate ast1 ast2 => s!"{ast1.toString}|{ast2.toString}"
   | .concat ast1 ast2 => s!"{ast1.toString}{ast2.toString}"
-  | .repeat 0 .none ast => s!"{ast.toString}*"
-  | .repeat 1 .none ast => s!"{ast.toString}+"
-  | .repeat 0 (.some 1) ast => s!"{ast.toString}?"
-  | .repeat min (.some max) ast =>
-    if min == max then ast.toString ++ "{" ++ Nat.repr min ++ "}"
-    else ast.toString ++ "{" ++ Nat.repr min ++ "," ++ Nat.repr max ++ "}"
-  | .repeat min .none ast => ast.toString ++ "{" ++ Nat.repr min ++ ",}"
+  | .repeat 0 .none greedy ast => applyGreedy (s!"{ast.toString}*") greedy
+  | .repeat 1 .none greedy ast => applyGreedy (s!"{ast.toString}+") greedy
+  | .repeat 0 (.some 1) greedy ast => applyGreedy (s!"{ast.toString}?") greedy
+  | .repeat min (.some max) greedy ast =>
+    if min == max then applyGreedy s!"{ast.toString}\{{min}}" greedy
+    else applyGreedy s!"{ast.toString}\{{min},{max}}" greedy
+  | .repeat min .none greedy ast => applyGreedy s!"{ast.toString}\{{min},}" greedy
   | .classes cs => Classes.toString cs
   | .perl pc => s!"\\{PerlClass.toString pc}"
   | .dot => "."

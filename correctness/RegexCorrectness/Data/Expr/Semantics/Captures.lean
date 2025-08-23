@@ -21,9 +21,9 @@ inductive Expr.Captures : Iterator → Iterator → CaptureGroups → Expr → P
     Expr.Captures it it' groups (.alternate e₁ e₂)
   | concat {it it' it'' groups₁ groups₂ e₁ e₂} (cap₁ : Expr.Captures it it' groups₁ e₁) (cap₂ : Expr.Captures it' it'' groups₂ e₂) :
     Expr.Captures it it'' (.concat groups₁ groups₂) (.concat e₁ e₂)
-  | starEpsilon {it e} (v : it.Valid) : Expr.Captures it it .empty (.star e)
-  | starConcat {it it' it'' groups₁ groups₂ e} (cap₁ : Expr.Captures it it' groups₁ e) (cap₂ : Expr.Captures it' it'' groups₂ (.star e)) :
-    Expr.Captures it it'' (.concat groups₁ groups₂) (.star e)
+  | starEpsilon {it greedy e} (v : it.Valid) : Expr.Captures it it .empty (.star greedy e)
+  | starConcat {it it' it'' groups₁ groups₂ greedy e} (cap₁ : Expr.Captures it it' groups₁ e) (cap₂ : Expr.Captures it' it'' groups₂ (.star greedy e)) :
+    Expr.Captures it it'' (.concat groups₁ groups₂) (.star greedy e)
 
 namespace Expr.Captures
 

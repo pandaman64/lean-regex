@@ -106,8 +106,8 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i it j it' update}
       cases this with
       | inl eq => exact .inr (eq ▸ ge_pushRegex_start rfl)
       | inr le => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₂_property) le)
-  | star e ih =>
-    let pd := Star.intro' nfa next e
+  | star greedy e ih =>
+    let pd := Star.intro' nfa next greedy e
     have step : (pd.nfa').Step nfa.nodes.size i it j it' update := step
 
     have get := pd.get i step.lt
@@ -117,8 +117,14 @@ theorem Step.eq_or_ge_of_pushRegex {nfa : NFA} {next e i it j it' update}
     next =>
       simp [Step.iff_split get] at step
       cases step.2.1 with
-      | inl eq => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
-      | inr eq => exact .inl eq
+      | inl eq =>
+        split at eq
+        . exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
+        . exact .inl eq
+      | inr eq =>
+        split at eq
+        . exact .inl eq
+        . exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
     next ge' =>
       have ge : Star.nfaPlaceholder.nodes.size ≤ i := by
         simp [Star.nfaPlaceholder]

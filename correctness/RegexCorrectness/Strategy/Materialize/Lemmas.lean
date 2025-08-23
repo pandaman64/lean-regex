@@ -45,7 +45,7 @@ theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {it it' groups tag}
     | some _ =>
       simp [h] at ih₂
       simp [tags, ih₂]
-  | @starConcat _ _ _ g₁ g₂ _ _ _ ih₁ ih₂ =>
+  | @starConcat _ _ _ g₁ g₂ _ _ _ _ ih₁ ih₂ =>
     simp at isSome
     match h : materializeRegexGroups g₂ tag with
     | none =>
