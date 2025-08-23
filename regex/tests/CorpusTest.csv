@@ -161,10 +161,10 @@ iter/start2,ok,
 iter/anchored1,unsupported,
 iter/anchored2,unsupported,
 iter/anchored3,unsupported,
-iter/nonempty-followedby-empty,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 3))], #[(some (3, 6))], #[(some (6, 6))]]"
-iter/nonempty-followedby-oneempty,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }], got #[#[(some (0, 3))], #[(some (3, 4))], #[(some (4, 4))]]"
-iter/nonempty-followedby-onemixed,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 7 }] }], got #[#[(some (0, 3))], #[(some (3, 7))], #[(some (7, 7))]]"
-iter/nonempty-followedby-twomixed,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 8 }] }], but got #[#[(some (0, 3))], #[(some (3, 8))], #[(some (8, 8))]]"
+iter/nonempty-followedby-empty,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 3))], #[(some (3, 3))], #[(some (4, 4))], #[(some (5, 5))], #[(some (6, 6))]]"
+iter/nonempty-followedby-oneempty,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }], got #[#[(some (0, 3))], #[(some (3, 3))], #[(some (4, 4))]]"
+iter/nonempty-followedby-onemixed,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 7 }] }], got #[#[(some (0, 3))], #[(some (3, 3))], #[(some (4, 7))], #[(some (7, 7))]]"
+iter/nonempty-followedby-twomixed,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 4 }] }, { id := 0, spans := #[some { start := 5, end := 8 }] }], got #[#[(some (0, 3))], #[(some (3, 3))], #[(some (4, 4))], #[(some (5, 8))], #[(some (8, 8))]]"
 leftmost-all/alt,unsupported,
 leftmost-all/multi,unsupported,
 leftmost-all/dotall,unsupported,
@@ -401,7 +401,7 @@ regression/negated-char-class-200,error,"expected '(?i)[^x]' to compile, but it 
 regression/ascii-word-underscore,error,"expected '[[:word:]]' to compile, but it did not: expected EOF"
 regression/captures-repeat,error,"expected '([a-f]){2}(?P<foo>[x-z])' to compile, but it did not: unexpected character: ?"
 regression/alt-in-alt-100,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }], got #[#[(some (0, 1))], #[(some (2, 2))], #[(some (2, 2))]]"
-regression/alt-in-alt-200,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], but got #[#[(some (0, 5))]]"
+regression/alt-in-alt-200,ok,
 regression/leftmost-first-prefix,ok,
 regression/many-alternates,ok,
 regression/word-boundary-alone-100,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }, { id := 0, spans := #[some { start := 7, end := 7 }] }, { id := 0, spans := #[some { start := 11, end := 11 }] }, { id := 0, spans := #[some { start := 13, end := 13 }] }, { id := 0, spans := #[some { start := 17, end := 17 }] }], got #[#[(some (0, 0))], #[(some (6, 6))], #[(some (6, 6))], #[(some (7, 7))], #[(some (11, 11))], #[(some (11, 11))], #[(some (13, 13))], #[(some (13, 13))], #[(some (17, 17))], #[(some (17, 17))]]"
