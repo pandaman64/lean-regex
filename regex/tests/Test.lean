@@ -46,6 +46,39 @@ def empty_610 := re! r##"(?:|a)+"##
 -- BUG: we report [⟨"aaa", ⟨0⟩, ⟨3⟩⟩, ⟨"aaa", ⟨3⟩, ⟨3⟩⟩]
 -- #guard empty_610.findAll "aaa" = #[⟨"aaa", ⟨0⟩, ⟨0⟩⟩, ⟨"aaa", ⟨1⟩, ⟨1⟩⟩, ⟨"aaa", ⟨2⟩, ⟨2⟩⟩, ⟨"aaa", ⟨3⟩, ⟨3⟩⟩]
 
+-- Non-greedy matching tests
+def non_greedy_star := re! r##"a*?"##
+#guard non_greedy_star.capture "" = .some ⟨"", #[.some ⟨0⟩, .some ⟨0⟩]⟩
+#guard non_greedy_star.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨0⟩]⟩
+#guard non_greedy_star.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨0⟩]⟩
+#guard non_greedy_star.capture "aaa" = .some ⟨"aaa", #[.some ⟨0⟩, .some ⟨0⟩]⟩
+
+def non_greedy_plus := re! r##"a+?"##
+#guard non_greedy_plus.capture "" = .none
+#guard non_greedy_plus.capture "a" = .some ⟨"a", #[.some ⟨0⟩, .some ⟨1⟩]⟩
+#guard non_greedy_plus.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨1⟩]⟩
+#guard non_greedy_plus.capture "aaa" = .some ⟨"aaa", #[.some ⟨0⟩, .some ⟨1⟩]⟩
+
+def non_greedy_quantifier := re! r##"a{2,4}?"##
+#guard non_greedy_quantifier.capture "" = .none
+#guard non_greedy_quantifier.capture "a" = .none
+#guard non_greedy_quantifier.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨2⟩]⟩
+#guard non_greedy_quantifier.capture "aaa" = .some ⟨"aaa", #[.some ⟨0⟩, .some ⟨2⟩]⟩
+#guard non_greedy_quantifier.capture "aaaa" = .some ⟨"aaaa", #[.some ⟨0⟩, .some ⟨2⟩]⟩
+
+def non_greedy_word_boundary := re! r##"\b\w+?\b"##
+#eval non_greedy_word_boundary.captureAll "hello world"
+#eval non_greedy_word_boundary.captureAll "a b c"
+#guard non_greedy_word_boundary.captureAll "hello world" = #[
+  ⟨"hello world", #[.some ⟨0⟩, .some ⟨5⟩]⟩,
+  ⟨"hello world", #[.some ⟨6⟩, .some ⟨11⟩]⟩
+]
+#guard non_greedy_word_boundary.captureAll "a b c" = #[
+  ⟨"a b c", #[.some ⟨0⟩, .some ⟨1⟩]⟩,
+  ⟨"a b c", #[.some ⟨2⟩, .some ⟨3⟩]⟩,
+  ⟨"a b c", #[.some ⟨4⟩, .some ⟨5⟩]⟩
+]
+
 end Priority
 
 namespace Comparison
@@ -1124,5 +1157,3 @@ def issue_84 := re! "(a){2}"
 #guard issue_84.capture "aa" = .some ⟨"aa", #[.some ⟨0⟩, .some ⟨2⟩, .some ⟨1⟩, .some ⟨2⟩]⟩
 
 end Regressions
-
-#print Regressions.issue_84
