@@ -252,19 +252,24 @@ theorem step_start_iff :
   have ge : nfa.nodes.size ≤ nfa'.start := ge_pushRegex_start rfl
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_lt, start_eq]
-  have : nfa'[nfa'.start] = .split nfaExpr.start next := by
+  have : nfa'[nfa'.start] = splitNode := by
     simp [start_eq, get_start]
+  simp [splitNode] at this
   apply Iff.intro
   . intro step
-    cases step <;> simp_all
+    cases step <;> grind
   . intro ⟨hj, hit, hupdate, v⟩
     cases hj with
     | inl hj =>
       simp_all
-      exact .splitLeft ge lt this v
+      split at this
+      . exact .splitLeft ge lt this v
+      . exact .splitRight ge lt this v
     | inr hj =>
       simp_all
-      exact .splitRight ge lt this v
+      split at this
+      . exact .splitRight ge lt this v
+      . exact .splitLeft ge lt this v
 
 end Star
 

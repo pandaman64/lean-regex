@@ -50,7 +50,7 @@ theorem pushRegex_get_lt {nfa next e nfa'} (eq : pushRegex nfa next e = nfa') (i
 
     simp [pd.eq_result eq, ih₁, ih₂]
     rfl
-  | star r ih =>
+  | star greedy r ih =>
     let pd := Star.intro eq
 
     have ih := ih (nfa' := pd.nfaExpr) rfl (Nat.lt_trans h pd.nfaPlaceholder_property)
@@ -148,7 +148,7 @@ variable [Star]
 
 theorem get (i : Nat) (h : i < nfa'.nodes.size) :
   if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
-  else if _ : i = nfa.nodes.size then nfa'[i] = .split nfaExpr.start next
+  else if _ : i = nfa.nodes.size then nfa'[i] = splitNode
   else nfa'[i] = nfaExpr[i]'(size_eq_expr' ▸ h) := by
   split_ifs
   next h' => exact pushRegex_get_lt eq'.symm i h'
@@ -273,7 +273,7 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
       cases this with
       | inl eq => exact .inr (eq ▸ ge_pushRegex_start rfl)
       | inr le => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfa₂_property) le)
-  | star e ih =>
+  | star greedy e ih =>
     let pd := Star.intro eq
     simp [pd.eq_result eq] at step h₂
 
@@ -282,10 +282,16 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
     simp [nlt] at get
     split_ifs at get
     next =>
-      simp [get, Node.charStep, Node.εStep] at step
+      simp [get, Node.charStep, Node.εStep, Star.splitNode] at step
       cases step with
-      | inl eq => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
-      | inr eq => exact .inl eq
+      | inl eq =>
+        split at eq
+        . exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
+        . exact .inl eq
+      | inr eq =>
+        split at eq
+        . exact .inl eq
+        . exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
     next h₁' =>
       have h₁ : Star.nfaPlaceholder.nodes.size ≤ i := by
         simp [Star.nfaPlaceholder]
@@ -352,7 +358,7 @@ theorem mem_save_of_mem_tags_pushRegex {nfa next e result tag} (eq : pushRegex n
       simp at eq' i j
       refine ⟨⟨i, Nat.lt_trans i.isLt pd.size₂_lt⟩, ⟨j, Nat.lt_trans j.isLt pd.size₂_lt⟩, offset, offset', ?_⟩
       simp [pd.get_lt₂, eq']
-  | star e ih =>
+  | star greedy e ih =>
     let pd := Star.intro eq
     rw [pd.eq_result eq]
 
@@ -496,14 +502,16 @@ theorem done_iff_zero_pushRegex {nfa next e result} (eq : pushRegex nfa next e =
     simp [pd.eq_result eq]
     apply ih₁ rfl (Nat.zero_lt_of_lt pd.nfa₂_property)
     apply ih₂ rfl h₁ h₂
-  | star r ih =>
+  | star greedy r ih =>
     let pd := Star.intro eq
     simp [pd.eq_result eq]
     intro i isLt
     have get := pd.get i isLt
     split_ifs at get <;> simp [get]
     next h' => exact h₂ i h'
-    next h' => exact Nat.ne_of_gt (h' ▸ h₁)
+    next h' =>
+      simp [Star.splitNode]
+      exact Nat.ne_of_gt (h' ▸ h₁)
     next h' =>
       apply ih rfl (Nat.zero_lt_of_lt Star.nfaPlaceholder_property)
       simp [Star.nfaPlaceholder]

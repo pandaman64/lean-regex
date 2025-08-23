@@ -140,11 +140,11 @@ theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e�
   exact ⟨.concat group₁ group₂, equ ▸ .concat eqv₁ eqv₂, .concat c₁ c₂⟩
 
 open Compile.ProofData Star in
-theorem captures_of_path.star_of_loop [Star] (loop : Loop it it' update)
+theorem captures_of_path.star_of_loop [Star] {greedy} (loop : Loop it it' update)
   (ih : ∀ {it it' update},
     nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start it nfaPlaceholder.start it' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures it it' groups) :
-  ∃ groups, EquivUpdate groups update ∧ (Expr.star e).Captures it it' groups := by
+  ∃ groups, EquivUpdate groups update ∧ (Expr.star greedy e).Captures it it' groups := by
   induction loop with
   | last step => exact ⟨.empty, .empty, .starEpsilon step.validL⟩
   | loop pathExpr _ ihLoop =>
@@ -152,7 +152,7 @@ theorem captures_of_path.star_of_loop [Star] (loop : Loop it it' update)
     have ⟨groups₂, eqv₂, c₂⟩ := ihLoop
     exact ⟨.concat groups₁ groups₂, .concat eqv₁ eqv₂, .starConcat c₁ c₂⟩
 
-theorem captures_of_path.star {e} (eq : nfa.pushRegex next (.star e) = result)
+theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : result.Path nfa.nodes.size result.start it next it' update)
   (ih : ∀ {nfa : NFA} {next result it it' update}, nfa.pushRegex next e = result →
@@ -160,12 +160,12 @@ theorem captures_of_path.star {e} (eq : nfa.pushRegex next (.star e) = result)
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start it next it' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures it it' groups) :
-  ∃ groups, EquivUpdate groups update ∧ (Expr.star e).Captures it it' groups := by
+  ∃ groups, EquivUpdate groups update ∧ (Expr.star greedy e).Captures it it' groups := by
   open Compile.ProofData Star in
   let pd := Star.intro eq
   simp [pd.eq_result eq] at path
   have loop := Loop.intro wf next_lt path
-  apply captures_of_path.star_of_loop loop
+  apply captures_of_path.star_of_loop (greedy := greedy) loop
 
   intro it it' update path
   have path := castToExpr wf path
@@ -209,7 +209,7 @@ theorem captures_of_path (eq : nfa.pushRegex next e = result)
   | group tag e ih => exact captures_of_path.group eq wf next_lt path ih
   | alternate e₁ e₂ ih₁ ih₂ => exact captures_of_path.alternate eq wf next_lt path ih₁ ih₂
   | concat e₁ e₂ ih₁ ih₂ => exact captures_of_path.concat eq wf next_lt path ih₁ ih₂
-  | star e ih => exact captures_of_path.star eq wf next_lt path ih
+  | star greedy e ih => exact captures_of_path.star eq wf next_lt path ih
 
 theorem captures_of_path_compile (eq : compile e = nfa) (path : nfa.Path 1 nfa.start it 0 it' update) :
   ∃ groups, EquivUpdate groups update ∧ e.Captures it it' groups := by

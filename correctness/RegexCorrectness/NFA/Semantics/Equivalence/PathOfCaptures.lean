@@ -102,13 +102,13 @@ theorem path_of_captures.concat {e₁ e₂ it it' it'' groups₁ groups₂} (eq 
   have path₂ := castFrom₂ path₂
   exact (path₁.liftBound (Nat.le_of_lt nfa₂_property)).trans path₂
 
-theorem path_of_captures.starConcat {e it it' it'' groups₁ groups₂} (eq : nfa.pushRegex next (.star e) = result)
+theorem path_of_captures.starConcat {greedy e it it' it'' groups₁ groups₂} (eq : nfa.pushRegex next (.star greedy e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) (v : it.Valid)
   (ih₁ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.nodes.size result.start it next it' update)
-  (ih₂ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next (.star e) = result →
+  (ih₂ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next (.star greedy e) = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.nodes.size result.start it' next it'' update) :
@@ -127,7 +127,10 @@ theorem path_of_captures.starConcat {e it it' it'' groups₁ groups₂} (eq : nf
   have path₁ : nfa'.Path nfa.nodes.size nfaExpr.start it nfa'.start it' update₁ :=
     start_eq_placeholder ▸ (castFromExpr path₁).liftBound (by simp [nfaPlaceholder]; exact Nat.le_succ _)
   have step : nfa'.Step nfa.nodes.size nfa'.start it nfaExpr.start it .none :=
-    .splitLeft (j₂ := next) (by simp [start_eq]; exact Nat.le_refl _) (wf' wf next_lt).start_lt (by simp [start_eq, get_start]; rfl) v
+    if h : pd.greedy then
+      .splitLeft (j₂ := next) (by simp [start_eq]; exact Nat.le_refl _) (wf' wf next_lt).start_lt (by simp [start_eq, get_start, splitNode, h]; rfl) v
+    else
+      .splitRight (j₁ := next) (by simp [start_eq]; exact Nat.le_refl _) (wf' wf next_lt).start_lt (by simp [start_eq, get_start, splitNode, h]; rfl) v
 
   exact (Path.more step path₁).trans path₂
 
@@ -165,7 +168,7 @@ theorem path_of_captures (eq : nfa.pushRegex next e = result)
   | alternateLeft c ih => exact path_of_captures.alternateLeft eq wf next_lt c.validL ih
   | alternateRight c ih => exact path_of_captures.alternateRight eq wf next_lt c.validL ih
   | concat _ _ ih₁ ih₂ => exact path_of_captures.concat eq wf next_lt ih₁ ih₂
-  | @starEpsilon it e v =>
+  | @starEpsilon it greedy e v =>
     let pd := Star.intro eq
     exists [], .empty
     simp [pd.eq_result eq]

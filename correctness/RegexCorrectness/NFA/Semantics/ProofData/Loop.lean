@@ -45,10 +45,13 @@ theorem Loop.introAux {i it j it' update}
       simp [step]
 
       have wf' := wf' wf next_lt
-      have : nfa'[nfa'.start]'wf'.start_lt = .split nfaExpr.start next := by
+      have : nfa'[nfa'.start]'wf'.start_lt = splitNode := by
         simp [start_eq, get_start]
+      simp [splitNode] at this
 
-      exact .inl (.splitRight (Nat.le_of_eq start_eq.symm) wf'.start_lt this step.2.2)
+      split at this
+      . exact .inl (.splitRight (Nat.le_of_eq start_eq.symm) wf'.start_lt this step.2.2)
+      . exact .inl (.splitLeft (Nat.le_of_eq start_eq.symm) wf'.start_lt this step.2.2)
     next nei =>
       have : nfa.nodes.size ≤ i := step.ge
       have : i ≠ nfa.nodes.size := start_eq ▸ nei

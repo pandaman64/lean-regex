@@ -405,11 +405,11 @@ theorem size_eq_expr' : nfa'.nodes.size = nfaExpr.nodes.size := by
   rfl
 
 def splitNode : NFA.Node :=
-  if greedy then .split nfaExpr.start next else .split next nfaExpr.start
+  .split (if greedy then nfaExpr.start else next) (if greedy then next else nfaExpr.start)
 
 theorem get_start : nfa'[nfa.nodes.size]'size_lt = splitNode := by
-  simp [eq', pushRegex, NFA.get_eq_nodes_get]
-  rfl
+  simp [eq', pushRegex, NFA.get_eq_nodes_get, splitNode]
+  split <;> rfl
 
 theorem get_ne_start (i : Nat) (h : i < nfa'.nodes.size) (ne : i ≠ nfa.nodes.size) :
   nfa'[i] = nfaExpr[i]'(size_eq_expr' ▸ h) := by
