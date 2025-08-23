@@ -59,8 +59,18 @@ private def testRoundtrip (input : String) (expected : Ast) : Bool :=
   (.concat (.char 'a') (.char 'b'))
   (.concat (.concat (.char 'c') (.char 'd')) (.group (.alternate (.char 'e') (.char 'f')))))
 
-#guard testRoundtrip "a*b*c*" (.concat (.concat (.repeat 0 none (.char 'a')) (.repeat 0 none (.char 'b'))) (.repeat 0 none (.char 'c')))
-#guard testRoundtrip "a?" (.repeat 0 (some 1) (.char 'a'))
+#guard testRoundtrip "a*b*c*" (.concat (.concat (.repeat 0 none true (.char 'a')) (.repeat 0 none true (.char 'b'))) (.repeat 0 none true (.char 'c')))
+#guard testRoundtrip "a?" (.repeat 0 (some 1) true (.char 'a'))
+#guard testRoundtrip "a*?" (.repeat 0 none false (.char 'a'))
+#guard testRoundtrip "a+?" (.repeat 1 none false (.char 'a'))
+#guard testRoundtrip "a*??" (.repeat 0 (some 1) true (.repeat 0 none false (.char 'a')))
+#guard testRoundtrip "a+??" (.repeat 0 (some 1) true (.repeat 1 none false (.char 'a')))
+#guard testRoundtrip "a{1,2}" (.repeat 1 (some 2) true (.char 'a'))
+#guard testRoundtrip "a{1,2}?" (.repeat 1 (some 2) false (.char 'a'))
+#guard testRoundtrip "a{2}" (.repeat 2 (some 2) true (.char 'a'))
+#guard testRoundtrip "a{2}?" (.repeat 2 (some 2) false (.char 'a'))
+#guard testRoundtrip "a{2,}?" (.repeat 2 none false (.char 'a'))
+#guard testRoundtrip "a{2,}?" (.repeat 2 none false (.char 'a'))
 
 -- escaping rules for special characters
 #guard testRoundtrip "\\n" (.char '\n')

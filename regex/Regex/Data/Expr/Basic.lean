@@ -14,7 +14,7 @@ inductive Expr : Type where
   | group : Nat → Expr → Expr
   | alternate : Expr → Expr → Expr
   | concat : Expr → Expr → Expr
-  | star : Expr → Expr
+  | star : Bool → Expr → Expr
   | classes : Classes → Expr
 deriving Repr, Inhabited
 

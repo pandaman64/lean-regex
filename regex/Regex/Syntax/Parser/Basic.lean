@@ -132,7 +132,7 @@ def classes : Parser.LT Error Ast :=
     pure (Ast.classes ⟨negated, classes⟩)
   )
 
-def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
+def repetitionInner : Parser.LT Error (Nat × Option Nat) :=
   (charOrError '*' |>.mapConst (0, .none))
   <|> (charOrError '+' |>.mapConst (1, .none))
   <|> (charOrError '?' |>.mapConst (0, .some 1))
@@ -151,6 +151,10 @@ def repetitionOp : Parser.LT Error (Nat × Option Nat) :=
       pure (min, .some min) -- {N} represents N repetitions
   ))
 
+def repetitionOp : Parser.LT Error (Nat × Option Nat × Bool) :=
+  repetitionInner.bindOr fun (min, max) => do
+    let nonGreedy ← test '?'
+    pure (min, max, !nonGreedy)
 
 def nonCapturing : Parser.LT Error Unit :=
   charOrError '?' *> charOrError ':' |>.mapConst ()
@@ -189,7 +193,7 @@ def primary (it : Iterator) : Result.LT it Error Ast :=
 termination_by (it.remainingBytes, 10)
 
 def repetition1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
-  (repetitionOp it |>.bind' fun (min, max) it' _ => repetition1 (.repeat min max ast) it').weaken
+  (repetitionOp it |>.bind' fun (min, max, greedy) it' _ => repetition1 (.repeat min max greedy ast) it').weaken
   <|> pure ast
 termination_by (it.remainingBytes, 20)
 

@@ -76,8 +76,8 @@ theorem pushRegex_wf {nfa : NFA} {next e}
 
     have wf₂ : (pd.nfa₂).WellFormed := ih₂ wf next_lt
     apply ih₁ wf₂ wf₂.start_lt
-  | star e ih =>
-    let pd := Star.intro' nfa next e
+  | star greedy e ih =>
+    let pd := Star.intro' nfa next greedy e
     show (pd.nfa').WellFormed
 
     have wf_placeholder : (pd.nfaPlaceholder).WellFormed := by
@@ -92,8 +92,10 @@ theorem pushRegex_wf {nfa : NFA} {next e}
     cases Nat.decEq i pd.nfa.nodes.size with
     | isTrue eq =>
       simp [eq]
-      simp [pd.get_start, Node.inBounds]
-      exact ⟨pd.size_eq_expr' ▸ wf_expr.start_lt, Nat.lt_trans next_lt size_lt⟩
+      simp [pd.get_start, Star.splitNode]
+      split
+      . exact ⟨pd.size_eq_expr' ▸ wf_expr.start_lt, Nat.lt_trans next_lt size_lt⟩
+      . exact ⟨Nat.lt_trans next_lt size_lt, pd.size_eq_expr' ▸ wf_expr.start_lt⟩
     | isFalse ne =>
       simp [pd.get_ne_start i i.isLt ne, pd.size_eq_expr']
       exact wf_expr.inBounds ⟨i, pd.size_eq_expr' ▸ i.isLt⟩

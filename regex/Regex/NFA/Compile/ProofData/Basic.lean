@@ -371,20 +371,21 @@ theorem size₂_lt : nfa₂.nodes.size < nfa'.nodes.size := by
 end Concat
 
 class Star extends ProofData where
+  greedy : Bool
   e' : Expr
-  expr_eq : e = .star e'
+  expr_eq : e = .star greedy e'
 
 namespace Star
 
-def intro {nfa next e' result} (_ : NFA.pushRegex nfa next (.star e') = result) : Star :=
-  { nfa, next, e := .star e', e', expr_eq := rfl }
+def intro {nfa next greedy e' result} (_ : NFA.pushRegex nfa next (.star greedy e') = result) : Star :=
+  { nfa, next, e := .star greedy e', greedy, e', expr_eq := rfl }
 
-def intro' (nfa : NFA) (next : Nat) (e': Expr) : Star :=
-  { nfa, next, e := .star e', e', expr_eq := rfl }
+def intro' (nfa : NFA) (next : Nat) (greedy : Bool) (e': Expr) : Star :=
+  { nfa, next, e := .star greedy e', greedy, e', expr_eq := rfl }
 
 variable [Star]
 
-theorem eq' : nfa' = nfa.pushRegex next (.star e') := by
+theorem eq' : nfa' = nfa.pushRegex next (.star greedy e') := by
   simp [nfa', expr_eq]
 
 def nfaPlaceholder : NFA := nfa.pushNode .fail
@@ -403,7 +404,10 @@ theorem size_eq_expr' : nfa'.nodes.size = nfaExpr.nodes.size := by
   simp [eq', pushRegex]
   rfl
 
-theorem get_start : nfa'[nfa.nodes.size]'size_lt = .split nfaExpr.start next := by
+def splitNode : NFA.Node :=
+  if greedy then .split nfaExpr.start next else .split next nfaExpr.start
+
+theorem get_start : nfa'[nfa.nodes.size]'size_lt = splitNode := by
   simp [eq', pushRegex, NFA.get_eq_nodes_get]
   rfl
 

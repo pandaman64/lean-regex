@@ -9,7 +9,7 @@ def nullOnly (expr : Expr) : Bool :=
   | .group _ e => e.nullOnly
   | .concat e₁ e₂ => e₁.nullOnly && e₂.nullOnly
   | .alternate e₁ e₂ => e₁.nullOnly && e₂.nullOnly
-  | .star e => e.nullOnly
+  | .star _ e => e.nullOnly
 
 def firstChar (expr : Expr) : Option Char :=
   match expr with
@@ -22,6 +22,6 @@ def firstChar (expr : Expr) : Option Char :=
     let c₁ ← e₁.firstChar
     let c₂ ← e₂.firstChar
     if c₁ = c₂ then .some c₁ else .none
-  | .star _ => .none
+  | .star _ _ => .none
 
 end Regex.Data.Expr
