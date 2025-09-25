@@ -27,47 +27,28 @@ def writeUpdate (node : NFA.Node) : Bool :=
   | .done | .char _ _ | .sparse _ _ => true
   | _ => false
 
+@[inline]
+def pushNext (σ : Strategy) (nfa : NFA) (it : Iterator) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
+  match node with
+  | .epsilon state' => (update, ⟨state', inBounds⟩) :: stack
+  | .split state₁ state₂ => (update, ⟨state₁, inBounds.1⟩) :: (update, ⟨state₂, inBounds.2⟩) :: stack
+  | .save offset state' => (σ.write update offset it.pos, ⟨state', inBounds⟩) :: stack
+  | .anchor a state' =>
+    if a.test it then
+      (update, ⟨state', inBounds⟩) :: stack
+    else
+      stack
+  | .done => stack
+  | .fail => stack
+  | .char _ _ => stack
+  | .sparse _ _ => stack
+
 end εClosure
-
-structure εClosureExploreResult (σ : Strategy) (nfa : NFA) where
-  matched : Option σ.Update
-  states : SparseSet nfa.nodes.size
-  updates : Vector σ.Update nfa.nodes.size
-  stack : εStack σ nfa
-
-def εClosureExplore (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
-  (matched : Option σ.Update) (states : SparseSet nfa.nodes.size) (updates : Vector σ.Update nfa.nodes.size)
-  (update : σ.Update) (state : Fin nfa.nodes.size) (stack : εStack σ nfa) :
-  εClosureExploreResult σ nfa :=
-  if mem : state ∈ states then
-    ⟨matched, states, updates, stack⟩
-  else
-    let node := nfa[state]
-    let matched' := if node.isDone then matched <|> update else matched
-    let states' := states.insert state mem
-    let updates' := if εClosure.writeUpdate node then updates.set state update else updates
-    have : states'.measure < states.measure := SparseSet.lt_measure_insert' mem
-    match hn : node with
-    | .epsilon state' => εClosureExplore σ nfa wf it matched' states' updates' update ⟨state', wf.inBounds' state hn⟩ stack
-    | .split state₁ state₂ => εClosureExplore σ nfa wf it matched' states' updates' update ⟨state₁, (wf.inBounds' state hn).1⟩ ((update, ⟨state₂, (wf.inBounds' state hn).2⟩) :: stack)
-    | .save offset state' => εClosureExplore σ nfa wf it matched' states' updates' (σ.write update offset it.pos) ⟨state', wf.inBounds' state hn⟩ stack
-    | .anchor a state' =>
-      if a.test it then
-        εClosureExplore σ nfa wf it matched' states' updates' update ⟨state', wf.inBounds' state hn⟩ stack
-      else
-        ⟨matched', states', updates', stack⟩
-    | .done => ⟨matched', states', updates', stack⟩
-    | .fail => ⟨matched', states', updates', stack⟩
-    | .char _ _ => ⟨matched', states', updates', stack⟩
-    | .sparse _ _ => ⟨matched', states', updates', stack⟩
-termination_by states.measure
 
 structure εClosureResult (σ : Strategy) (nfa : NFA) where
   matched : Option σ.Update
   states : SparseSet nfa.nodes.size
   updates : Vector σ.Update nfa.nodes.size
-
-instance {σ : Strategy} {nfa : NFA} : Inhabited (εClosureResult σ nfa) := ⟨⟨.none, .empty, .replicate _ σ.empty⟩⟩
 
 /--
 Visit all ε-transitions from the states in the stack, updating `next.states` when the new state is
@@ -75,16 +56,23 @@ Visit all ε-transitions from the states in the stack, updating `next.states` wh
 match is found.
 -/
 -- Once we have the new compiler, we may want to test specialization by `@[specialize σ]`.
-partial def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
+def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
   (matched : Option σ.Update) (states : SparseSet nfa.nodes.size) (updates : Vector σ.Update nfa.nodes.size) (stack : εStack σ nfa) :
   εClosureResult σ nfa :=
   match stack with
   | [] => ⟨matched, states, updates⟩
   | (update, state) :: stack' =>
-    let ⟨matched', states', updates', stack''⟩ := εClosureExplore σ nfa wf it matched states updates update state stack'
-    -- TODO: prove that `(state ∈ states → states' = states ∧ stack' < stack) ∧ (state ∉ states → states'.measure < states.measure)`
-    -- Probably it's easier to handle termination if we assume `state ∉ states` in εClosureExplore.
-    εClosure σ nfa wf it matched' states' updates' stack''
+    if mem : state ∈ states then
+      εClosure σ nfa wf it matched states updates stack'
+    else
+      let node := nfa[state]
+      let matched' := if node.isDone then matched <|> update else matched
+      let states' := states.insert state mem
+      let updates' := if εClosure.writeUpdate node then updates.set state update else updates
+      let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
+      have : states'.measure < states.measure := SparseSet.lt_measure_insert' mem
+      εClosure σ nfa wf it matched' states' updates' stack''
+termination_by (states.measure, stack)
 
 /--
 If the given state can make a transition on the current character of `it`, make the transition and
