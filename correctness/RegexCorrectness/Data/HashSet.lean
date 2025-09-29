@@ -18,7 +18,4 @@ theorem mem_union_iff {a : α} (m₁ m₂ : HashSet α) :
       rw [BEq.comm]
       grind
 
-theorem contains_toArray_iff {a : α} (m : HashSet α) :
-    m.contains a ↔ m.toArray.contains a := sorry
-
 end Std.HashSet
