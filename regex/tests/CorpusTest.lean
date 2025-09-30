@@ -246,7 +246,7 @@ def load (filePath : String) : IO Lake.Toml.Table := do
   let tomlContent ← IO.FS.readFile filePath
   let fileMap := tomlContent.toFileMap
   let toml ← getTomlOrThrow (←(Lake.Toml.loadToml {
-    input := tomlContent,
+    inputString := tomlContent,
     fileName := filePath,
     fileMap := fileMap
   }).toIO')
@@ -257,7 +257,7 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
   let tomlContent ← IO.FS.readFile filePath
   let fileMap := tomlContent.toFileMap
   let toml ← getTomlOrThrow (←(Lake.Toml.loadToml {
-    input := tomlContent,
+    inputString := tomlContent,
     fileName := filePath.toString,
     fileMap := fileMap
   }).toIO')
