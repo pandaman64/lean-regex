@@ -1,5 +1,7 @@
 import Regex.Data.Expr.Basic
 
+open Std
+
 namespace Regex.Data.Expr
 
 def nullOnly (expr : Expr) : Bool :=
@@ -11,17 +13,19 @@ def nullOnly (expr : Expr) : Bool :=
   | .alternate e₁ e₂ => e₁.nullOnly && e₂.nullOnly
   | .star _ e => e.nullOnly
 
-def firstChar (expr : Expr) : Option Char :=
-  match expr with
-  | .empty | .epsilon | .anchor _ => .none
-  | .char c => .some c
-  | .classes _ => .none
-  | .group _ e => e.firstChar
-  | .concat e₁ e₂ => if e₁.nullOnly then e₂.firstChar else e₁.firstChar
-  | .alternate e₁ e₂ => do
-    let c₁ ← e₁.firstChar
-    let c₂ ← e₂.firstChar
-    if c₁ = c₂ then .some c₁ else .none
-  | .star _ _ => .none
+def firstChars (maxSize : Nat) (expr : Expr) : Option (HashSet Char) := do
+  let cs ← match expr with
+    | .empty | .epsilon | .anchor _ => .none
+    | .char c => .some {c}
+    | .classes _ => .none -- TODO: take .single class into account
+    | .group _ e => e.firstChars maxSize
+    | .concat e₁ e₂ => if e₁.nullOnly then e₂.firstChars maxSize else e₁.firstChars maxSize
+    | .alternate e₁ e₂ => do
+      let cs₁ ← e₁.firstChars maxSize
+      let cs₂ ← e₂.firstChars maxSize
+      return cs₁.union cs₂
+    | .star _ _ => .none
+  guard (cs.size ≤ maxSize)
+  return cs
 
 end Regex.Data.Expr
