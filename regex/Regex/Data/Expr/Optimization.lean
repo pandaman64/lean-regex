@@ -24,7 +24,7 @@ def firstChars (maxSize : Nat) (expr : Expr) : Option (HashSet Char) := do
       let cs₁ ← e₁.firstChars maxSize
       let cs₂ ← e₂.firstChars maxSize
       return cs₁.union cs₂
-    | .star _ => .none
+    | .star _ _ => .none
   guard (cs.size ≤ maxSize)
   return cs
 

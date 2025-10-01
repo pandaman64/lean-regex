@@ -37,7 +37,8 @@ theorem findStart_completeness {it it' it'' : Iterator} {opt : OptimizationInfo}
     simp [eq, fromExpr] at h
     have ⟨_, h₁, h₂⟩ := h
     have : cs.contains it'.curr := by
-      rw [← h₂, ← HashSet.contains_toArray_iff]
+      rw [← h₂]
+      simp only [HashSet.contains_toArray]
       exact Expr.curr_of_captures_of_firstChars_some c h₁
     contradiction
   next => exact Nat.not_lt_of_ge ge
