@@ -9,7 +9,7 @@ defaultTargets = ["RegexCorrectness"]
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.24.0-rc1"
+rev = "v4.24.0"
 
 [[require]]
 name = "Regex"
