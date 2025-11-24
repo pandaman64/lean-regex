@@ -18,7 +18,7 @@ structure Span where
   «end» : Nat
 deriving Repr
 
-def Span.eqv (s : Option Span) (p : Option (Pos × Pos)) : Bool :=
+def Span.eqv (s : Option Span) (p : Option (Pos.Raw × Pos.Raw)) : Bool :=
   match s, p with
   | .some s, .some p => s.start = p.1.byteIdx && s.end = p.2.byteIdx
   | .none, .none => true
@@ -45,7 +45,7 @@ deriving Repr
 instance : ToString Match where
   toString := reprStr
 
-def Match.eqv (m : Match) (positions : Array (Option (Pos × Pos))) : Bool :=
+def Match.eqv (m : Match) (positions : Array (Option (Pos.Raw × Pos.Raw))) : Bool :=
   m.spans.size = positions.size && ((m.spans.zip positions).all (fun (s, p) => Span.eqv s p))
 
 def decodeSpans (vs : Array Value) : EDecodeM (Array (Option Span)) :=
