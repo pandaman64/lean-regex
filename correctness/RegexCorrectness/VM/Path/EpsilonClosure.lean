@@ -3,12 +3,13 @@ import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
-open String (Pos Iterator)
+open String (Iterator)
+open String.Pos (Raw)
 
 -- Transition relations specialized for ε-closure traversal.
 namespace Regex.NFA
 
-def εStep' (nfa : NFA) (it : Iterator) (i j : Fin nfa.nodes.size) (update : Option (Nat × Pos)) : Prop :=
+def εStep' (nfa : NFA) (it : Iterator) (i j : Fin nfa.nodes.size) (update : Option (Nat × Raw)) : Prop :=
   nfa.Step 0 i it j it update
 
 section
@@ -51,7 +52,7 @@ theorem εStep'.valid (step : nfa.εStep' it i j update) : it.Valid := step.vali
 
 end
 
-inductive εClosure' (nfa : NFA) (it : Iterator) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
+inductive εClosure' (nfa : NFA) (it : Iterator) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × Raw) → Prop where
   | base {i} (v : it.Valid) : εClosure' nfa it i i []
   | step {i j k update₁ update₂} (step : nfa.εStep' it i j update₁) (rest : εClosure' nfa it j k update₂) :
     εClosure' nfa it i k (update₁ ::ₒ update₂)
@@ -91,7 +92,7 @@ theorem εClosure'_of_path {nfa : NFA} {i j it it' updates} (wf : nfa.WellFormed
       subst hit hit'
       exact ((Nat.not_le_of_lt it.lt_next) rest.le_pos).elim
 
-theorem εClosure'_iff_path (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (it : Iterator) (updates : List (Nat × Pos)) :
+theorem εClosure'_iff_path (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (it : Iterator) (updates : List (Nat × Raw)) :
   nfa.εClosure' it i j updates ↔ (i = j ∧ updates = [] ∧ it.Valid) ∨ nfa.Path 0 i it j it updates := by
   apply Iff.intro
   . intro cls

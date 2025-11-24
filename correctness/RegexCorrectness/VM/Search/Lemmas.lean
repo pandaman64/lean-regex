@@ -5,11 +5,12 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (Pos Iterator)
+open String (Iterator)
+open String.Pos (Raw)
 
 namespace Regex.VM
 
-def MatchedInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) (matched : Option (List (Nat × Pos))) : Prop :=
+def MatchedInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) (matched : Option (List (Nat × Raw))) : Prop :=
   (isSome : matched.isSome) →
     ∃ state it,
       nfa[state] = .done ∧
@@ -111,7 +112,7 @@ theorem SearchState.MemOfPathInv.preserves {nfa wf it₀ it current next} (stepp
 def NeDoneOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (it₀ it : Iterator) : Prop :=
   ∀ it' state update, it'.pos ≤ it.pos → nfa.VMPath wf it₀ it' state update → nfa[state] ≠ .done
 
-theorem NeDoneOfPathInv.preserves {nfa wf it₀ it} {expanded : Option (List (Nat × Pos)) × SearchState HistoryStrategy nfa}
+theorem NeDoneOfPathInv.preserves {nfa wf it₀ it} {expanded : Option (List (Nat × Raw)) × SearchState HistoryStrategy nfa}
   (eqs : it.toString = it₀.toString) (v : it.Valid)
   (notDone : expanded.2.NotDoneInv HistoryStrategy nfa) (memOfPath : expanded.2.MemOfPathInv nfa wf it₀ it.next)
   (inv : NeDoneOfPathInv nfa wf it₀ it) :
@@ -124,7 +125,7 @@ theorem NeDoneOfPathInv.preserves {nfa wf it₀ it} {expanded : Option (List (Na
     cases v'.pos_le_or_ge_next v eqs' with
     | inl le => exact .inl le
     | inr ge =>
-      have eq : it'.pos = it.next.pos := by simpa [Pos.ext_iff] using Nat.le_antisymm le ge
+      have eq : it'.pos = it.next.pos := by simpa [Raw.ext_iff] using Nat.le_antisymm le ge
       exact .inr (Iterator.ext eqs' eq)
   cases this with
   | inl le => exact inv it' state update le path
@@ -215,7 +216,7 @@ theorem captureNext.ne_done_of_path_of_none {nfa wf it} (h : captureNext History
       exact εClosure.mem_next (matched' := result.1) (next' := result.2) rfl (.of_empty (by simp)) cls
     have inv : NeDoneOfPathInv nfa wf it it := by
       intro it' state update le path
-      have eqp : it'.pos = it.pos := by simpa [Pos.ext_iff] using Nat.le_antisymm le path.le_pos
+      have eqp : it'.pos = it.pos := by simpa [Raw.ext_iff] using Nat.le_antisymm le path.le_pos
       have eq : it' = it := Iterator.ext path.toString eqp
       have mem : state ∈ result.2.states := mopInv state update (eq ▸ path)
       exact ndinv state mem

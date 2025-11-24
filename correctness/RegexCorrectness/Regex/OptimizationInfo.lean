@@ -2,7 +2,6 @@ import Regex.Regex.OptimizationInfo
 import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.Data.Expr.Optimization
 import RegexCorrectness.Data.String
-import RegexCorrectness.Data.HashSet
 
 open Regex.Data (Expr CaptureGroups)
 open String (Iterator)

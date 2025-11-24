@@ -6,7 +6,7 @@ open Regex.Data (CaptureGroups)
 
 namespace Regex.NFA
 
-inductive EquivUpdate : CaptureGroups → List (Nat × String.Pos) → Prop where
+inductive EquivUpdate : CaptureGroups → List (Nat × String.Pos.Raw) → Prop where
   | empty : EquivUpdate .empty []
   | group {groups updates tag first last} (eqv : EquivUpdate groups updates) :
     EquivUpdate (.group tag first last groups) ((2 * tag, first) :: updates ++ [(2 * tag + 1, last)])

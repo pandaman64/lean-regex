@@ -10,9 +10,10 @@ namespace Regex.CapturedGroups
 
 theorem lt_of_get_some {self : CapturedGroups} {i s} (h : self.get i = .some s) :
   2 * i + 1 < self.buffer.size := by
-  simp [get, Option.bind_eq_some_iff] at h
-  have ⟨p₁, eq₁, p₁', eq₁', p₂, eq₂, p₂', eq₂', eq₃⟩ := h
-  simp [Array.getElem?_eq_some_iff] at eq₂
+  simp only [get, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
+    ↓existsAndEq, true_and] at h
+  have ⟨p₁, eq₁, p₂, eq₂, eqs⟩ := h
+  simp only [Array.getElem?_eq_some_iff] at eq₂
   have ⟨lt, eq₂⟩ := eq₂
   exact lt
 
@@ -37,7 +38,7 @@ def materialize (self : CapturedGroups) (groups : Data.CaptureGroups) : Prop :=
   - in particular, the first group corresponds to the positions of the matched substring `m`
   - the last match of wins in case the same group is captured multiple times
 -/
-def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (self : CapturedGroups) : Prop :=
+def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos.Raw) (self : CapturedGroups) : Prop :=
   ∃ it it' groups,
     it.toString = haystack ∧
     startPos ≤ it.pos ∧
@@ -98,11 +99,11 @@ theorem captures_of_next?_some {self self' : Captures} {captured} (h : self.next
       split at h
       next =>
         simp [←h.2]
-        have vp : Pos.ValidPlus it.toString it'.pos := c.toString_eq ▸ c.validR.validPlus
+        have vp : Pos.Raw.ValidPlus it.toString it'.pos := c.toString_eq ▸ c.validR.validPlus
         exact ⟨v.1, eqs ▸ vp⟩
       next nlt =>
         simp [←h.2]
-        exact ⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩
+        exact ⟨v.1, String.Pos.Raw.validPlus_of_next_valid pos_valid⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Captures} {captured} (h : self.next? = .some (captured, self')) :

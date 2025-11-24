@@ -8,7 +8,7 @@ open Regex.Data (BoundedIterator)
 
 namespace Regex.Backtracker
 
-inductive Path (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Iterator → Fin nfa.nodes.size → List (Nat × String.Pos) → Prop where
+inductive Path (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Iterator → Fin nfa.nodes.size → List (Nat × String.Pos.Raw) → Prop where
   | init (v : it.Valid) : Path nfa wf it it ⟨nfa.start, wf.start_lt⟩ []
   | more {i j : Fin nfa.nodes.size} {it' it'' update₁ update₂ update₃} (prev : Path nfa wf it it' i update₁) (step : nfa.Step 0 i it' j it'' update₂)
     (equpdate : update₃ = update₁ ++ List.ofOption update₂) :

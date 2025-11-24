@@ -8,14 +8,15 @@ set_option autoImplicit false
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (εStep' εClosure' CharStep)
-open String (Pos Iterator)
+open String (Iterator)
+open String.Pos (Raw)
 
 namespace Regex.VM
 
 variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
-  {current : SearchState HistoryStrategy nfa} {currentUpdates : Vector (List (Nat × Pos)) nfa.nodes.size}
+  {current : SearchState HistoryStrategy nfa} {currentUpdates : Vector (List (Nat × Raw)) nfa.nodes.size}
   {next : SearchState HistoryStrategy nfa} {state : Fin nfa.nodes.size}
-  {matched' : Option (List (Nat × Pos))} {next' : SearchState HistoryStrategy nfa}
+  {matched' : Option (List (Nat × Raw))} {next' : SearchState HistoryStrategy nfa}
 
 namespace stepChar
 
