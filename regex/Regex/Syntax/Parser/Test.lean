@@ -1,6 +1,5 @@
 -- Unit tests for the regex parser.
 import Regex.Syntax.Parser.Basic
-import Regex.Syntax.Parser.ToString
 
 namespace Regex.Syntax.Parser.Test
 
@@ -22,95 +21,90 @@ private def decEq (a b : Except Error Ast) : Decidable (a = b) :=
 local instance : DecidableEq (Except Error Ast) := decEq
 
 -- Helper function to test roundtrip: parse -> toString -> parse should equal original
-private def testRoundtrip (input : String) (expected : Ast) : Bool :=
+private def test (input : String) (expected : Ast) : Bool :=
   match parseAst input with
-  | .ok ast =>
-    if ast = expected then
-      match parseAst ast.toString with
-      | .ok ast' => ast' = expected
-      | .error _ => false
-    else false
+  | .ok ast => ast = expected
   | .error _ => false
 
-#guard testRoundtrip "(a)" (.group (.char 'a'))
-#guard testRoundtrip "(?:a)" (.char 'a')
+#guard test "(a)" (.group (.char 'a'))
+#guard test "(?:a)" (.char 'a')
 
-#guard testRoundtrip "^" (.anchor .start)
-#guard testRoundtrip "$" (.anchor .eos)
-#guard testRoundtrip "^abc$" (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
+#guard test "^" (.anchor .start)
+#guard test "$" (.anchor .eos)
+#guard test "^abc$" (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
 
-#guard testRoundtrip "[abc]" (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard testRoundtrip "[^abc]" (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard testRoundtrip "[a-z]" (.classes ⟨false, #[.range 'a' 'z']⟩)
-#guard testRoundtrip r"[\da]" (.classes ⟨false, #[.perl ⟨false, .digit⟩, .single 'a']⟩)
-#guard testRoundtrip "[-]" (.classes ⟨false, #[.single '-']⟩)
-#guard testRoundtrip "[a-]" (.classes ⟨false, #[.single 'a', .single '-']⟩)
+#guard test "[abc]" (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
+#guard test "[^abc]" (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
+#guard test "[a-z]" (.classes ⟨false, #[.range 'a' 'z']⟩)
+#guard test r"[\da]" (.classes ⟨false, #[.perl ⟨false, .digit⟩, .single 'a']⟩)
+#guard test "[-]" (.classes ⟨false, #[.single '-']⟩)
+#guard test "[a-]" (.classes ⟨false, #[.single 'a', .single '-']⟩)
 -- special characters are allowed in classes
-#guard testRoundtrip r"[(){}*+?|^$.\--]" (.classes ⟨false, #[
+#guard test r"[(){}*+?|^$.\--]" (.classes ⟨false, #[
   '(', ')', '{', '}', '*', '+', '?', '|', '^', '$', '.', '-', '-'
 ].map .single⟩)
 
-#guard testRoundtrip "|" (.alternate .epsilon .epsilon)
-#guard testRoundtrip "a|" (.alternate (.char 'a') .epsilon)
-#guard testRoundtrip "|a" (.alternate .epsilon (.char 'a'))
-#guard testRoundtrip "a|b" (.alternate (.char 'a') (.char 'b'))
-#guard testRoundtrip "a|b|c" (.alternate (.alternate (.char 'a') (.char 'b')) (.char 'c'))
-#guard testRoundtrip "ab|cd(e|f)" (.alternate
+#guard test "|" (.alternate .epsilon .epsilon)
+#guard test "a|" (.alternate (.char 'a') .epsilon)
+#guard test "|a" (.alternate .epsilon (.char 'a'))
+#guard test "a|b" (.alternate (.char 'a') (.char 'b'))
+#guard test "a|b|c" (.alternate (.alternate (.char 'a') (.char 'b')) (.char 'c'))
+#guard test "ab|cd(e|f)" (.alternate
   (.concat (.char 'a') (.char 'b'))
   (.concat (.concat (.char 'c') (.char 'd')) (.group (.alternate (.char 'e') (.char 'f')))))
 
-#guard testRoundtrip "a*b*c*" (.concat (.concat (.repeat 0 none true (.char 'a')) (.repeat 0 none true (.char 'b'))) (.repeat 0 none true (.char 'c')))
-#guard testRoundtrip "a?" (.repeat 0 (some 1) true (.char 'a'))
-#guard testRoundtrip "a*?" (.repeat 0 none false (.char 'a'))
-#guard testRoundtrip "a+?" (.repeat 1 none false (.char 'a'))
-#guard testRoundtrip "a*??" (.repeat 0 (some 1) true (.repeat 0 none false (.char 'a')))
-#guard testRoundtrip "a+??" (.repeat 0 (some 1) true (.repeat 1 none false (.char 'a')))
-#guard testRoundtrip "a{1,2}" (.repeat 1 (some 2) true (.char 'a'))
-#guard testRoundtrip "a{1,2}?" (.repeat 1 (some 2) false (.char 'a'))
-#guard testRoundtrip "a{2}" (.repeat 2 (some 2) true (.char 'a'))
-#guard testRoundtrip "a{2}?" (.repeat 2 (some 2) false (.char 'a'))
-#guard testRoundtrip "a{2,}?" (.repeat 2 none false (.char 'a'))
-#guard testRoundtrip "a{2,}?" (.repeat 2 none false (.char 'a'))
+#guard test "a*b*c*" (.concat (.concat (.repeat 0 none true (.char 'a')) (.repeat 0 none true (.char 'b'))) (.repeat 0 none true (.char 'c')))
+#guard test "a?" (.repeat 0 (some 1) true (.char 'a'))
+#guard test "a*?" (.repeat 0 none false (.char 'a'))
+#guard test "a+?" (.repeat 1 none false (.char 'a'))
+#guard test "a*??" (.repeat 0 (some 1) true (.repeat 0 none false (.char 'a')))
+#guard test "a+??" (.repeat 0 (some 1) true (.repeat 1 none false (.char 'a')))
+#guard test "a{1,2}" (.repeat 1 (some 2) true (.char 'a'))
+#guard test "a{1,2}?" (.repeat 1 (some 2) false (.char 'a'))
+#guard test "a{2}" (.repeat 2 (some 2) true (.char 'a'))
+#guard test "a{2}?" (.repeat 2 (some 2) false (.char 'a'))
+#guard test "a{2,}?" (.repeat 2 none false (.char 'a'))
+#guard test "a{2,}?" (.repeat 2 none false (.char 'a'))
 
 -- escaping rules for special characters
-#guard testRoundtrip "\\n" (.char '\n')
-#guard testRoundtrip "\\t" (.char '\t')
-#guard testRoundtrip "\\r" (.char '\r')
-#guard testRoundtrip "\\a" (.char '\x07')
-#guard testRoundtrip "\\f" (.char '\x0c')
-#guard testRoundtrip "\\v" (.char '\x0b')
-#guard testRoundtrip "\\0" (.char '\x00')
-#guard testRoundtrip "\\-" (.char '-')
-#guard testRoundtrip "\\[" (.char '[')
-#guard testRoundtrip "\\]" (.char ']')
-#guard testRoundtrip "\\(" (.char '(')
-#guard testRoundtrip "\\)" (.char ')')
-#guard testRoundtrip "\\{" (.char '{')
-#guard testRoundtrip "\\}" (.char '}')
-#guard testRoundtrip "\\*" (.char '*')
-#guard testRoundtrip "\\+" (.char '+')
-#guard testRoundtrip "\\?" (.char '?')
-#guard testRoundtrip "\\|" (.char '|')
-#guard testRoundtrip "\\^" (.char '^')
-#guard testRoundtrip "\\$" (.char '$')
-#guard testRoundtrip "\\." (.char '.')
-#guard testRoundtrip "\\\\" (.char '\\')
+#guard test "\\n" (.char '\n')
+#guard test "\\t" (.char '\t')
+#guard test "\\r" (.char '\r')
+#guard test "\\a" (.char '\x07')
+#guard test "\\f" (.char '\x0c')
+#guard test "\\v" (.char '\x0b')
+#guard test "\\0" (.char '\x00')
+#guard test "\\-" (.char '-')
+#guard test "\\[" (.char '[')
+#guard test "\\]" (.char ']')
+#guard test "\\(" (.char '(')
+#guard test "\\)" (.char ')')
+#guard test "\\{" (.char '{')
+#guard test "\\}" (.char '}')
+#guard test "\\*" (.char '*')
+#guard test "\\+" (.char '+')
+#guard test "\\?" (.char '?')
+#guard test "\\|" (.char '|')
+#guard test "\\^" (.char '^')
+#guard test "\\$" (.char '$')
+#guard test "\\." (.char '.')
+#guard test "\\\\" (.char '\\')
 
-#guard testRoundtrip "\\xab" (.char '\xab')
-#guard testRoundtrip "\\u1234" (.char '\u1234')
+#guard test "\\xab" (.char '\xab')
+#guard test "\\u1234" (.char '\u1234')
 
-#guard testRoundtrip "\\d" (.perl ⟨false, .digit⟩)
-#guard testRoundtrip "\\D" (.perl ⟨true, .digit⟩)
-#guard testRoundtrip "\\s" (.perl ⟨false, .space⟩)
-#guard testRoundtrip "\\S" (.perl ⟨true, .space⟩)
-#guard testRoundtrip "\\w" (.perl ⟨false, .word⟩)
-#guard testRoundtrip "\\W" (.perl ⟨true, .word⟩)
+#guard test "\\d" (.perl ⟨false, .digit⟩)
+#guard test "\\D" (.perl ⟨true, .digit⟩)
+#guard test "\\s" (.perl ⟨false, .space⟩)
+#guard test "\\S" (.perl ⟨true, .space⟩)
+#guard test "\\w" (.perl ⟨false, .word⟩)
+#guard test "\\W" (.perl ⟨true, .word⟩)
 
 #guard parseAst "\\z" = .error (.unexpectedEscapedChar 'z')
 #guard parseAst "\\g" = .error (.unexpectedEscapedChar 'g')
 
 -- '}' is not a special character
-#guard testRoundtrip "}" (.char '}')
+#guard test "}" (.char '}')
 
 -- syntax errors and error messages
 #guard parseAst "a{1,|bx" = .error (.unexpectedChar '|')

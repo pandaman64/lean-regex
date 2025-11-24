@@ -24,7 +24,7 @@ def Node.isDone (n : Node) : Bool :=
   | .done => true
   | _ => false
 
-@[simp, grind]
+@[simp, grind =]
 theorem Node.isDone_def {n : Node} : n.isDone = decide (n = .done) := by
   grind [isDone]
 

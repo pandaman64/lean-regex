@@ -19,7 +19,7 @@ variable {startIdx maxIdx : Nat}
 
 def toString (bit : BoundedIterator startIdx maxIdx) : String := bit.it.toString
 
-def pos (bit : BoundedIterator startIdx maxIdx) : String.Pos := bit.it.pos
+def pos (bit : BoundedIterator startIdx maxIdx) : String.Pos.Raw := bit.it.pos
 
 def index (bit : BoundedIterator startIdx maxIdx) : Fin (maxIdx + 1 - startIdx) :=
   have lt : bit.it.pos.byteIdx - startIdx < maxIdx + 1 - startIdx := by

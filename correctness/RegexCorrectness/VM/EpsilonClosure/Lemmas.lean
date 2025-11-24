@@ -8,7 +8,8 @@ set_option autoImplicit false
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (εStep')
-open String (Pos Iterator)
+open String (Iterator)
+open String.Pos (Raw)
 
 namespace Regex.VM.εClosure
 
@@ -322,8 +323,8 @@ end
 section
 
 variable {nfa : NFA} {wf : nfa.WellFormed} {it : Iterator}
-  {matched : Option (List (Nat × Pos))} {next : SearchState HistoryStrategy nfa} {stack : εStack HistoryStrategy nfa}
-  {matched' : Option (List (Nat × Pos))} {next' : SearchState HistoryStrategy nfa}
+  {matched : Option (List (Nat × Raw))} {next : SearchState HistoryStrategy nfa} {stack : εStack HistoryStrategy nfa}
+  {matched' : Option (List (Nat × Raw))} {next' : SearchState HistoryStrategy nfa}
 
 /--
 Intuition: given that we reached `i₀` (from `nfa.start`) with `it₀` and `update₀`, the εClosure
@@ -335,7 +336,7 @@ doesn't change during the traversal.
 At the end of the traversal, we can guarantee that all states in `next` were already in `states₀` or
 they are reachable from `i₀` with the updates written to `next.updates`.
 -/
-structure UpperInv (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Pos))
+structure UpperInv (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Raw))
   (next : SearchState HistoryStrategy nfa) (stack : εStack HistoryStrategy nfa) : Prop where
   -- The intuition is that `update₀` corresponds to the update list from `nfa.start` to `i₀`, and
   -- `update'` is the update list from `i₀` to `j`. Therefore, `update₀ ++ update'` gives the update
@@ -347,8 +348,8 @@ structure UpperInv (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator) (i�
 
 namespace UpperInv
 
-variable {states₀ : SparseSet nfa.nodes.size} {it₀ : Iterator} {i₀ : Fin nfa.nodes.size} {update₀ : List (Nat × Pos)}
-  {next : SearchState HistoryStrategy nfa} {entry : List (Nat × Pos) × Fin nfa.nodes.size} {stack : εStack HistoryStrategy nfa}
+variable {states₀ : SparseSet nfa.nodes.size} {it₀ : Iterator} {i₀ : Fin nfa.nodes.size} {update₀ : List (Nat × Raw)}
+  {next : SearchState HistoryStrategy nfa} {entry : List (Nat × Raw) × Fin nfa.nodes.size} {stack : εStack HistoryStrategy nfa}
 
 theorem it_valid {entry} (inv : UpperInv states₀ it₀ i₀ update₀ next (entry :: stack)) : it₀.Valid := by
   have ⟨_, _, cls⟩ := inv.mem_stack entry.1 entry.2 (by simp)
@@ -394,7 +395,7 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
           exact h write
         next => exact h write
 
-theorem preserves {update : List (Nat × Pos)} {state : Fin nfa.nodes.size} (wf : nfa.WellFormed) (not_mem : state ∉ next.states)
+theorem preserves {update : List (Nat × Raw)} {state : Fin nfa.nodes.size} (wf : nfa.WellFormed) (not_mem : state ∉ next.states)
   (inv : UpperInv states₀ it₀ i₀ update₀ next ((update, state) :: stack)) :
   letI states' := next.states.insert state not_mem
   letI updates' := if writeUpdate nfa[state] then next.updates.set state update else next.updates
@@ -440,7 +441,7 @@ end UpperInv
 /--
 All new states in `next'` are reachable from the starting state `i₀` and have corresponding updates in `next'.updates`.
 -/
-theorem upper_boundAux (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Pos))
+theorem upper_boundAux (states₀ : SparseSet nfa.nodes.size) (it₀ : Iterator) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Raw))
   (h : εClosure HistoryStrategy nfa wf it₀ matched next stack = (matched', next'))
   (inv₀ : UpperInv states₀ it₀ i₀ update₀ next stack) :
   UpperInv states₀ it₀ i₀ update₀ next' []  := by
@@ -478,7 +479,7 @@ theorem UpperInv.intro {i₀ update₀} (it₀ : Iterator) (v : it₀.Valid) :
     intro j mem
     exact .inl mem
 
-theorem upper_bound {i} {update : List (Nat × Pos)}
+theorem upper_bound {i} {update : List (Nat × Raw)}
   (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next'))
   (v : it.Valid) :
   ∀ j ∈ next'.states, j ∈ next.states ∨
@@ -501,7 +502,7 @@ theorem mem_next {i update}
 All states in `next'.states` are already in `next.states` or they are reachable from `i` with the
 updates written to `next'.updates`.
 -/
-theorem write_updates_of_mem_next {i j} {update : List (Nat × Pos)}
+theorem write_updates_of_mem_next {i j} {update : List (Nat × Raw)}
   (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next'))
   (v : it.Valid) (mem : j ∈ next'.states) :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' it i j update' ∧ (writeUpdate nfa[j] → next'.updates[j] = update ++ update') :=
@@ -512,7 +513,7 @@ For all states in the ε-closure of `i`, it's already in `next.states` or there 
 whose updates are written to `next.updates`. The written update list can be different since the
 traversal may have reached the state through a different path.
 -/
-theorem write_updates {i j} {update update' : List (Nat × Pos)} (v : it.Valid)
+theorem write_updates {i j} {update update' : List (Nat × Raw)} (v : it.Valid)
   (h : εClosure HistoryStrategy nfa wf it matched next [(update, i)] = (matched', next'))
   (lb : εClosure.LowerBound it next.states) (cls : nfa.εClosure' it i j update') :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' it i j update' ∧ (writeUpdate nfa[j] → next'.updates[j] = update ++ update') :=

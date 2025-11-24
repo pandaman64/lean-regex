@@ -7,7 +7,8 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (Pos Iterator)
+open String (Iterator)
+open String.Pos (Raw)
 
 namespace Regex.NFA
 
@@ -23,7 +24,7 @@ theorem Step.εStep_or_charStep {nfa : NFA} {it it' i j update} (wf : nfa.WellFo
   | char ge lt eq vf => exact .inr ⟨Step.char ge lt eq vf, rfl, rfl⟩
   | sparse ge lt eq mem vf => exact .inr ⟨Step.sparse ge lt eq mem vf, rfl, rfl⟩
 
-inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) : Iterator → Fin nfa.nodes.size → List (Nat × Pos) → Prop where
+inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (it₀ : Iterator) : Iterator → Fin nfa.nodes.size → List (Nat × Raw) → Prop where
   | init {it i update} (eqs : it.toString = it₀.toString) (le : it₀.pos ≤ it.pos) (cls : nfa.εClosure' it ⟨nfa.start, wf.start_lt⟩ i update) :
     VMPath nfa wf it₀ it i update
   | more {i j k it it' update₁ update₂ update₃} (prev : VMPath nfa wf it₀ it i update₁) (step : nfa.CharStep it i j) (cls : nfa.εClosure' it.next j k update₂)

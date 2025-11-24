@@ -16,7 +16,7 @@ it must have looped `nfaExpr` before `n` times, followed by the last step from `
 A `Loop` term corresponds to such a loop. The `last` variant corresponds to the last step,
 and the `loop` variant extracts the first iteration and the remaining loop.
 -/
-inductive Loop : Iterator → Iterator → List (Nat × String.Pos) → Prop where
+inductive Loop : Iterator → Iterator → List (Nat × String.Pos.Raw) → Prop where
   | last {it} (step : nfa'.Step nfa.nodes.size nfa'.start it next it .none) : Loop it it []
   | loop {it it' it'' update₁ update₂}
     (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start it nfaPlaceholder.start it' update₁)

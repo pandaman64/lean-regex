@@ -24,10 +24,10 @@ theorem materializeStack.nil : materializeStack [] = ([] : List (StackEntry (Buf
 theorem materializeStack.cons {entryH stackH} :
   materializeStack (entryH :: stackH) = (StackEntry.materialize entryH :: materializeStack stackH : List (StackEntry (BufferStrategy bufferSize) nfa startIdx maxIdx)) := rfl
 
-def materializeResultAux (resultH : Option (List (Nat × Pos)) × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Option (Buffer bufferSize) × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) :=
+def materializeResultAux (resultH : Option (List (Nat × Pos.Raw)) × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Option (Buffer bufferSize) × BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) :=
   ⟨resultH.1.map (materializeUpdates bufferSize), resultH.2⟩
 
-def materializeResult (resultH : Option (List (Nat × Pos))) : Option (Buffer bufferSize) :=
+def materializeResult (resultH : Option (List (Nat × Pos.Raw))) : Option (Buffer bufferSize) :=
   resultH.map (materializeUpdates bufferSize)
 
 theorem captureNextAux.pushNext.refines {nfa wf startIdx maxIdx bufferSize stackH stackB updateH updateB state it}

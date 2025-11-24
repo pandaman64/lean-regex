@@ -16,18 +16,18 @@ Groups captured by a regex match.
 -/
 inductive CaptureGroups : Type where
   | empty : CaptureGroups
-  | group (tag : Nat) (first last : Pos) (rest : CaptureGroups) : CaptureGroups
+  | group (tag : Nat) (first last : Pos.Raw) (rest : CaptureGroups) : CaptureGroups
   | concat (g₁ g₂ : CaptureGroups) : CaptureGroups
 
 namespace CaptureGroups
 
-def mem (groups : CaptureGroups) (group : Nat × Pos × Pos) : Prop :=
+def mem (groups : CaptureGroups) (group : Nat × Pos.Raw × Pos.Raw) : Prop :=
   match groups with
   | .empty => False
   | .group tag first last rest => (tag = group.1 ∧ first = group.2.1 ∧ last = group.2.2) ∨ rest.mem group
   | .concat g₁ g₂ => g₁.mem group ∨ g₂.mem group
 
-instance : Membership (Nat × Pos × Pos) CaptureGroups where
+instance : Membership (Nat × Pos.Raw × Pos.Raw) CaptureGroups where
   mem := CaptureGroups.mem
 
 @[simp]

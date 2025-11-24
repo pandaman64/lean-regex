@@ -43,7 +43,7 @@ def transform (regex : Regex) (haystack : String) (transformer : CapturedGroups 
     match h : (regex.captures haystack).next? with
   | some (g,_) =>
     let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
-    haystack.extract 0 s.startPos ++ transformer g ++ haystack.extract s.stopPos haystack.endPos
+    Pos.Raw.extract haystack 0 s.startPos ++ transformer g ++ Pos.Raw.extract haystack s.stopPos haystack.endPos
   | none => haystack
 
 /--
@@ -57,13 +57,13 @@ Transforms all matches of a regex pattern using its capture groups.
 def transformAll (regex : Regex) (haystack : String) (transformer : CapturedGroups → String) : String :=
   go (regex.captures haystack) "" 0
 where
-  go (c : Captures) (accum : String) (endPos : Pos) : String :=
+  go (c : Captures) (accum : String) (endPos : Pos.Raw) : String :=
     match h : c.next? with
     | some (g, c') =>
       let s := g.get 0 |>.get (Captures.zeroth_group_some_of_next?_some h)
-      go c' (accum ++ haystack.extract endPos s.startPos ++ transformer g) s.stopPos
+      go c' (accum ++ Pos.Raw.extract haystack endPos s.startPos ++ transformer g) s.stopPos
     | none =>
-      accum ++ haystack.extract endPos haystack.endPos
+      accum ++ Pos.Raw.extract haystack endPos haystack.endPos
   termination_by c.remaining
 
 /--
@@ -165,7 +165,7 @@ Splits a string using regex matches as breakpoints.
 def split (regex : Regex) (haystack : String) : Array Substring :=
   go (regex.matches haystack) #[] 0
 where
-  go (m : Matches) (accum : Array Substring) (endPos : Pos) : Array Substring :=
+  go (m : Matches) (accum : Array Substring) (endPos : Pos.Raw) : Array Substring :=
     match _h : m.next? with
     | some (s, m') =>
       go m' (accum.push ⟨haystack, endPos, s.startPos⟩) s.stopPos

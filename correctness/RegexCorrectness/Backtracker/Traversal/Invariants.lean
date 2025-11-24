@@ -161,7 +161,7 @@ section
 variable {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {bit₀ : BoundedIterator startIdx maxIdx} {visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)} {stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)}
 
 def ClosureInv (bit₀ : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (stack : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) : Prop :=
-  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
+  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos.Raw)),
     bit₀.Reaches bit →
     visited.get state bit.index →
     nfa.Step 0 state bit.it state' bit'.it update →
@@ -172,7 +172,7 @@ namespace ClosureInv
 -- Preservation of the non-visited cases
 theorem preserves' {entry stack'} (inv : ClosureInv bit₀ visited (entry :: stack)) (reaches₀ : bit₀.Reaches entry.it)
   (nextEntries : List (StackEntry HistoryStrategy nfa startIdx maxIdx)) (hstack : stack' = nextEntries ++ stack)
-  (hnext : ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
+  (hnext : ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos.Raw)),
     nfa.Step 0 entry.state entry.it.it state' bit'.it update →
     ∃ entry' ∈ nextEntries, entry'.state = state' ∧ entry'.it = bit') :
   ClosureInv bit₀ (visited.set entry.state entry.it.index) stack' := by
@@ -312,14 +312,14 @@ theorem step_closure {bit₀ bit : BoundedIterator startIdx maxIdx} {result} (hr
     exact ih hres (cinv.preserves (reaches₀.trans stinv.reaches) hn) stinv.preserves
 
 def StepClosure (bit₀ : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
-  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos)),
+  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : Option (Nat × Pos.Raw)),
     bit₀.Reaches bit →
     visited.get state bit.index →
     nfa.Step 0 state bit.it state' bit'.it update →
     visited.get state' bit'.index
 
 def PathClosure (bit₀ : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) : Prop :=
-  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos)),
+  ∀ (state : Fin nfa.nodes.size) (bit : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos.Raw)),
     bit₀.Reaches bit →
     visited.get state bit.index →
     nfa.Path 0 state bit.it state' bit'.it update →
@@ -411,7 +411,7 @@ theorem rfl {wf : nfa.WellFormed} {bit₀ bit : BoundedIterator startIdx maxIdx}
 theorem preserves {bit' : BoundedIterator startIdx maxIdx} {state : Fin nfa.nodes.size}
   (inv : VisitedInv wf bit₀ bit reaches₀ visited visited')
   (reaches : bit₀.Reaches bit')
-  (update : List (Nat × Pos)) (path : Path nfa wf bit.it bit'.it state update) :
+  (update : List (Nat × Pos.Raw)) (path : Path nfa wf bit.it bit'.it state update) :
   VisitedInv wf bit₀ bit reaches₀ visited (visited'.set state bit'.index) := by
   intro state' bit'' reaches' hmem
   simp [visited'.get_set] at hmem

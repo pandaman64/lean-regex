@@ -27,7 +27,7 @@ theorem PathClosure.preserves {result} (hres : captureNextAux HistoryStrategy nf
 
 theorem mem_of_path_of_none {result} (hres : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = result)
   (isNone : result.1 = .none) (reaches : bit₀.Reaches bit) (cls : PathClosure bit₀ visited)
-  (bit' : BoundedIterator startIdx maxIdx) (state : Fin nfa.nodes.size) (update : List (Nat × Pos)) (path : Path nfa wf bit.it bit'.it state update) :
+  (bit' : BoundedIterator startIdx maxIdx) (state : Fin nfa.nodes.size) (update : List (Nat × Pos.Raw)) (path : Path nfa wf bit.it bit'.it state update) :
   result.2.get state bit'.index := by
   have mem_start : result.2.get ⟨nfa.start, wf.start_lt⟩ bit.index := hres ▸ mem_stack_top ⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩ [] rfl
   match path.eq_or_nfaPath with
@@ -62,7 +62,7 @@ structure Inv (wf : nfa.WellFormed) (bit₀ bit : BoundedIterator startIdx maxId
   closure : PathClosure bit₀ visited
   mem_iff_path : ∀ (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx),
     bit₀.Reaches bit' →
-    (visited.get state' bit'.index ↔ ∃ (bitPrev : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos)), bitPrev.BetweenE bit₀ bit ∧ Path nfa wf bitPrev.it bit'.it state' update)
+    (visited.get state' bit'.index ↔ ∃ (bitPrev : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos.Raw)), bitPrev.BetweenE bit₀ bit ∧ Path nfa wf bitPrev.it bit'.it state' update)
 
 namespace Inv
 
@@ -72,8 +72,8 @@ theorem mem_iff_of_aux_none {result} (haux : captureNextAux HistoryStrategy nfa 
   (isNone : result.1 = .none) (reaches : bit₀.Reaches bit) (inv : Inv wf bit₀ bit visited)
   (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (reaches' : bit₀.Reaches bit') :
   result.2.get state' bit'.index ↔
-    (∃ (bitPrev : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos)), bitPrev.BetweenE bit₀ bit ∧ Path nfa wf bitPrev.it bit'.it state' update) ∨
-      ∃ (update : List (Nat × Pos)), Path nfa wf bit.it bit'.it state' update := by
+    (∃ (bitPrev : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos.Raw)), bitPrev.BetweenE bit₀ bit ∧ Path nfa wf bitPrev.it bit'.it state' update) ∨
+      ∃ (update : List (Nat × Pos.Raw)), Path nfa wf bit.it bit'.it state' update := by
   rw [captureNextAux.mem_iff_mem_or_path_of_none haux isNone reaches inv.closure bit' state' reaches']
   rw [inv.mem_iff_path state' bit' reaches']
 
@@ -90,7 +90,7 @@ theorem preservesAux {result} (haux : captureNextAux HistoryStrategy nfa wf star
 theorem mem_iff_path_of_aux_none_of_not_hasNext {result} (haux : captureNextAux HistoryStrategy nfa wf startIdx maxIdx visited [⟨HistoryStrategy.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = result)
   (isNone : result.1 = .none) (reaches : bit₀.Reaches bit) (hnext : ¬bit.hasNext) (inv : Inv wf bit₀ bit visited)
   (state' : Fin nfa.nodes.size) (bit' : BoundedIterator startIdx maxIdx) (reaches' : bit₀.Reaches bit') :
-  result.2.get state' bit'.index ↔ ∃ (bit : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos)), bit₀.Reaches bit ∧ Path nfa wf bit.it bit'.it state' update := by
+  result.2.get state' bit'.index ↔ ∃ (bit : BoundedIterator startIdx maxIdx) (update : List (Nat × Pos.Raw)), bit₀.Reaches bit ∧ Path nfa wf bit.it bit'.it state' update := by
   rw [inv.mem_iff_of_aux_none haux isNone reaches state' bit' reaches']
   apply Iff.intro
   . intro h
@@ -112,7 +112,7 @@ end Inv
 theorem ne_done_of_path_of_none (hres : go HistoryStrategy nfa wf startIdx maxIdx bit visited = .none)
   (reaches : bit₀.Reaches bit)
   (inv : Inv wf bit₀ bit visited) (ndinv : NotDoneInv visited) :
-  ∀ (bit' bit'' : BoundedIterator startIdx maxIdx) (state : Fin nfa.nodes.size) (update : List (Nat × Pos)),
+  ∀ (bit' bit'' : BoundedIterator startIdx maxIdx) (state : Fin nfa.nodes.size) (update : List (Nat × Pos.Raw)),
     bit₀.Reaches bit' →
     Path nfa wf bit'.it bit''.it state update →
     nfa[state] ≠ .done := by

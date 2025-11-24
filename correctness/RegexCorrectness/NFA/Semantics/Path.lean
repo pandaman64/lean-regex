@@ -12,7 +12,7 @@ open String (Iterator)
 
 namespace Regex.NFA
 
-inductive Step (nfa : NFA) (lb : Nat) : Nat → Iterator → Nat → Iterator → Option (Nat × String.Pos) → Prop where
+inductive Step (nfa : NFA) (lb : Nat) : Nat → Iterator → Nat → Iterator → Option (Nat × String.Pos.Raw) → Prop where
   | epsilon {i j it} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .epsilon j) (v : it.Valid) :
     Step nfa lb i it j it .none
   | anchor {i j it a} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .anchor a j) (v : it.Valid) (h : a.test it) :
@@ -52,7 +52,7 @@ theorem le_pos (step : nfa.Step lb i it j it' update) : it.pos ≤ it'.pos := by
   cases step.it_eq_or_next with
   | inl eq => exact eq ▸ Nat.le_refl _
   | inr eq =>
-    simp [eq, String.Iterator.next, String.next]
+    simp only [Iterator.pos, eq, Iterator.next, String.Pos.Raw.next]
     exact Nat.le_add_right _ _
 
 theorem validL (step : nfa.Step lb i it j it' update) : it.Valid := by
@@ -71,7 +71,7 @@ theorem toString_eq (step : nfa.Step lb i it j it' update) :
   it'.toString = it.toString := by
   cases step.it_eq_or_next with
   | inl eq => simp [eq]
-  | inr eq => simp [eq, String.Iterator.next, String.next]
+  | inr eq => simp [eq, String.Iterator.next, String.Pos.Raw.next]
 
 theorem le_endPos (step : nfa.Step lb i it j it' update) : it'.pos ≤ it.toString.endPos :=
   step.toString_eq ▸ step.validR.le_endPos
@@ -198,7 +198,7 @@ end Step
 /--
 A collection of steps in an NFA forms a path.
 -/
-inductive Path (nfa : NFA) (lb : Nat) : Nat → Iterator → Nat → Iterator → List (Nat × String.Pos) → Prop where
+inductive Path (nfa : NFA) (lb : Nat) : Nat → Iterator → Nat → Iterator → List (Nat × String.Pos.Raw) → Prop where
   | last {i it j it' update} (step : Step nfa lb i it j it' update) : Path nfa lb i it j it' (List.ofOption update)
   | more {i it j it' k it'' update updates} (step : Step nfa lb i it j it' update) (rest : Path nfa lb j it' k it'' updates) :
     Path nfa lb i it k it'' (update ::ₒ updates)

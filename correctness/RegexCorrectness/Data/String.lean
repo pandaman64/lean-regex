@@ -16,7 +16,7 @@ theorem hasNext_of_not_atEnd {it : Iterator} (h : ¬it.atEnd) : it.hasNext := by
 
 @[simp]
 theorem ne_next (it : Iterator) : it ≠ it.next := by
-  simp [ext_iff, next, Pos.ext_iff]
+  simp [ext_iff, next, Pos.Raw.ext_iff]
   exact Nat.ne_of_lt (lt_next it)
 
 @[simp]
@@ -80,11 +80,11 @@ theorem validFor_of_valid_pos_le {it it' : Iterator} (v : it.Valid) (v' : it'.Va
   have ⟨lrev, mr, vf⟩ := v.validFor
   have ⟨lmrev, r, vf'⟩ := v'.validFor
 
-  have hstring : it.toString = ⟨lrev.reverse ++ mr⟩ := by simpa using vf.toString
-  have hstring' : it'.toString = ⟨lmrev.reverse ++ r⟩ := by simpa using vf'.toString
+  have hstring : it.toString = String.mk (lrev.reverse ++ mr) := by simpa using vf.toString
+  have hstring' : it'.toString = String.mk (lmrev.reverse ++ r) := by simpa using vf'.toString
   have eq : lrev.reverse ++ mr = lmrev.reverse ++ r := by
-    rw [hstring, hstring'] at eqs
-    simpa using eqs
+    rw [hstring, hstring', String.mk_eq_asString, String.mk_eq_asString] at eqs
+    exact List.asString_injective eqs
 
   have hpos : it.pos = ⟨utf8Len lrev⟩ := vf.pos
   have hpos' : it'.pos = ⟨utf8Len lmrev⟩ := vf'.pos
@@ -140,7 +140,7 @@ theorem eq {it : Iterator} {l₁ r₁ l₂ r₂} (v₁ : it.ValidFor l₁ r₁) 
   l₁ = l₂ ∧ r₁ = r₂ := by
   have o₁ := v₁.out'
   have o₂ := v₂.out'
-  simp [o₁, String.ext_iff, Pos.ext_iff] at o₂
+  simp [o₁, String.ext_iff, Pos.Raw.ext_iff] at o₂
   have := String.eq_of_append_utf8Len o₂.1 (by simp [o₂.2])
   simpa
 
@@ -173,11 +173,11 @@ theorem eq_of_valid_of_next_eq {it₁ it₂ : Iterator} (v₁ : it₁.Valid) (v�
   have ⟨l₂, r₂, vf₂⟩ := v₂.validFor
   match r₁, r₂ with
   | [], [] =>
-    have eqs₁ : it₁.toString = ⟨l₁.reverse⟩ := vf₁.toString
-    have eqs₂ : it₂.toString = ⟨l₂.reverse⟩ := vf₂.toString
+    have eqs₁ : it₁.toString = String.mk (l₁.reverse) := vf₁.toString
+    have eqs₂ : it₂.toString = String.mk (l₂.reverse) := vf₂.toString
     have eqs : l₁ = l₂ := by
-      rw [eqs₁, eqs₂] at eqs₁₂
-      simpa using eqs₁₂
+      rw [eqs₁, eqs₂, String.mk_eq_asString, String.mk_eq_asString] at eqs₁₂
+      exact List.reverse_inj.mp (List.asString_injective eqs₁₂)
     exact vf₁.eq_it (eqs ▸ vf₂)
   | c₁ :: r₁, c₂ :: r₂ =>
     have vf₁' := vf₁.next
@@ -247,10 +247,10 @@ theorem find_completeness {it : Iterator} {p : Char → Bool} (v : it.Valid) (it
   have ⟨l, m, r, vf₁, vf₂⟩ := Valid.validFor_of_valid_pos_le v v' eqs.symm ge
   have ⟨m', r', vf₃, h⟩ := find_completenessAux it (it.find p) vf₁ rfl
   have eqcs : l ++ m ++ r = l ++ m'.reverse ++ r' := by
-    have eqs₁ : it.toString = ⟨l ++ m ++ r⟩ := by simpa using vf₁.toString
-    have eqs₂ : (it.find p).toString = ⟨l ++ m'.reverse ++ r'⟩ := by simpa using vf₃.toString
-    rw [find_toString, eqs₁] at eqs₂
-    simpa using eqs₂
+    have eqs₁ : it.toString = String.mk (l ++ m ++ r) := by simpa using vf₁.toString
+    have eqs₂ : (it.find p).toString = String.mk (l ++ m'.reverse ++ r') := by simpa using vf₃.toString
+    rw [find_toString, eqs₁, String.mk_eq_asString, String.mk_eq_asString] at eqs₂
+    exact List.asString_injective eqs₂
   simp at eqcs
   have ltLen : utf8Len m < utf8Len m' := by
     have eqp₁ : it'.pos = ⟨utf8Len m + utf8Len l⟩ := by simpa using vf₂.pos
@@ -278,38 +278,39 @@ theorem find_completeness {it : Iterator} {p : Char → Bool} (v : it.Valid) (it
 
 end String.Iterator
 
-namespace String.Pos
+namespace String.Pos.Raw
 
 /--
 A variant of `Valid` that allows past-one position that represents the position after running
 a search at the end of the string.
 -/
-def ValidPlus (s : String) (p : Pos) :=
-  p.Valid s ∨ p = s.endPos + ⟨1⟩
+def ValidPlus (s : String) (p : Pos.Raw) :=
+  p.Valid s ∨ p = s.endPos.offsetBy ⟨1⟩
 
-theorem Valid.validPlus {s : String} {p : Pos} : p.Valid s → p.ValidPlus s := .inl
+theorem Valid.validPlus {s : String} {p : Pos.Raw} : p.Valid s → p.ValidPlus s := .inl
 
-theorem next_endPos {s : String} : (s.next s.endPos) = s.endPos + ⟨1⟩ := by
+theorem next_endPos {s : String} : s.endPos.next s = s.endPos.offsetBy ⟨1⟩ := by
   have next_eq := next_of_valid' s.data []
   simp [Char.utf8Size] at next_eq
-  -- definitionally equal to the goal now.
-  exact next_eq
+  simp [endPos, next_eq, offsetBy, Nat.add_comm]
 
-theorem validPlus_of_next_valid {s : String} {p : Pos} (h : p.Valid s) : (s.next p).ValidPlus s := by
+theorem validPlus_of_next_valid {s : String} {p : Pos.Raw} (h : p.Valid s) : (p.next s).ValidPlus s := by
   have : p ≤ s.endPos := Valid.le_endPos h
   cases Nat.lt_or_eq_of_le this with
   | inl lt => exact .inl (valid_next h lt)
   | inr eq =>
-    have : p = s.endPos := ext eq
+    have : p = s.endPos := Pos.Raw.ext eq
     subst p
     exact .inr next_endPos
 
-theorem ValidPlus.valid_of_le {s : String} {p : Pos} (le : p ≤ s.endPos) (vp : p.ValidPlus s) : p.Valid s := by
+theorem ValidPlus.valid_of_le {s : String} {p : Pos.Raw} (le : p ≤ s.endPos) (vp : p.ValidPlus s) : p.Valid s := by
   cases vp with
   | inl v => exact v
   | inr eq =>
     subst eq
-    have : s.endPos.byteIdx + 1 ≤ s.endPos.byteIdx := le
-    omega
+    have : s.endPos.byteIdx + 1 ≤ s.endPos.byteIdx := by
+      simp_all [endPos, offsetBy]
+      grind
+    grind
 
-end String.Pos
+end String.Pos.Raw

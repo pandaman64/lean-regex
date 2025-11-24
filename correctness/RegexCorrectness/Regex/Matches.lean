@@ -15,7 +15,7 @@ The pair of positions returned by `Matches` functions conforms to the spec if an
 - there is a regex match starting at `l`, matching the substring `m`, and ending at `r`
 - the returned substring corresponds to `m`.
 -/
-def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos) (str : Substring) : Prop :=
+def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : Pos.Raw) (str : Substring) : Prop :=
   ∃ it it' groups,
     it.toString = haystack ∧
     startPos ≤ it.pos ∧
@@ -48,11 +48,11 @@ theorem captures_of_next?_some {self self' : Matches} {s} (h : self.next? = .som
         split at h
         next =>
           simp [←h.2]
-          have vp : Pos.ValidPlus it.toString matched.stopPos := c.toString_eq ▸ eq₂ ▸ c.validR.validPlus
+          have vp : Pos.Raw.ValidPlus it.toString matched.stopPos := c.toString_eq ▸ eq₂ ▸ c.validR.validPlus
           exact ⟨v.1, eqs ▸ vp⟩
         next =>
           simp [←h.2]
-          exact ⟨v.1, String.Pos.validPlus_of_next_valid pos_valid⟩
+          exact ⟨v.1, String.Pos.Raw.validPlus_of_next_valid pos_valid⟩
   next => simp at h
 
 theorem regex_eq_of_next?_some {self self' : Matches} {positions : Substring} (h : self.next? = .some (positions, self')) :

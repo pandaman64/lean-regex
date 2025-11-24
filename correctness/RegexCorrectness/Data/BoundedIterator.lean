@@ -18,7 +18,7 @@ theorem ext_pos {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h₁ : bit₁
 theorem ext_index {bit₁ bit₂ : BoundedIterator startIdx maxIdx} (h₁ : bit₁.toString = bit₂.toString) (h₂ : bit₁.index = bit₂.index) : bit₁ = bit₂ := by
   simp [BoundedIterator.ext_pos_iff, h₁]
   simp [index] at h₂
-  simp [String.Pos.ext_iff]
+  simp [String.Pos.Raw.ext_iff]
   calc bit₁.pos.byteIdx
     _ = bit₂.pos.byteIdx - startIdx + startIdx := Nat.eq_add_of_sub_eq bit₁.ge h₂
     _ = bit₂.pos.byteIdx := Nat.sub_add_cancel bit₂.ge
@@ -34,8 +34,8 @@ theorem pos_lt_next_pos {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext
 
 theorem pos_eq_of_not_hasNext {bit : BoundedIterator startIdx maxIdx} (hnext : ¬bit.hasNext) : bit.pos = bit.toString.endPos := by
   simp [hasNext, Iterator.hasNext] at hnext
-  simp [pos, toString, String.Pos.ext_iff]
-  exact Nat.le_antisymm (bit.eq ▸ bit.le) hnext
+  simp [pos, toString, String.Pos.Raw.ext_iff]
+  exact Nat.le_antisymm (bit.eq ▸ bit.le : bit.it.pos.byteIdx ≤ bit.it.toString.endPos.byteIdx) hnext
 
 def Valid (bit : BoundedIterator startIdx maxIdx) : Prop := bit.it.Valid
 
@@ -107,8 +107,8 @@ theorem hasNext_of_nextn_hasNext {bit : BoundedIterator startIdx maxIdx} {n : Na
       exact hnext
     simpa [nextn_toString]
   show decide (bit.pos.byteIdx < bit.toString.endPos.byteIdx) = true
-  simp
-  omega
+  simp only [decide_eq_true_eq]
+  grind
 
 theorem nextn_next_eq_next_nextn {bit : BoundedIterator startIdx maxIdx} {n : Nat} (hnext : (bit.nextn n).hasNext) : (bit.nextn n).next hnext = (bit.next (hasNext_of_nextn_hasNext hnext)).nextn n := by
   induction n generalizing bit with
@@ -158,7 +158,7 @@ theorem next' {l r} {bit : BoundedIterator startIdx maxIdx} (h : bit.hasNext) (v
 theorem curr {l c r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l (c :: r) bit) : bit.curr (by simp [vf.hasNext]) = c := by
   simp [BoundedIterator.curr, bit.it.curr'_eq_curr, String.Iterator.ValidFor.curr vf]
 
-theorem toString {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit) : bit.toString = ⟨l.reverse ++ r⟩ := by
+theorem toString {l r} {bit : BoundedIterator startIdx maxIdx} (vf : ValidFor l r bit) : bit.toString = String.mk (l.reverse ++ r) := by
   simp [ValidFor] at vf
   simpa [toString] using vf.toString
 
@@ -342,7 +342,7 @@ theorem iffE : bit.BetweenI bs be ↔ bit.BetweenE bs be ∨ (bs.Reaches bit ∧
       exact .inl ⟨lt, h⟩
     else
       have eq_pos : bit.pos = be.pos := by
-        simp [String.Pos.ext_iff]
+        simp [String.Pos.Raw.ext_iff]
         exact Nat.le_antisymm (le_pos h) (Nat.le_of_not_lt lt)
       have eq : bit = be := by
         simp [BoundedIterator.ext_pos_iff, eq_pos, h.2.toString]
@@ -363,15 +363,15 @@ theorem validE (h : bit.BetweenE bs be) : be.Valid := h.2.2.validR
 theorem ne_end (h : bit.BetweenE bs be) : bit ≠ be := by
   intro eq
   have lt : bit.pos < be.pos := h.1
-  simp only [eq, String.pos_lt_eq, Nat.lt_irrefl] at lt
+  simp only [eq, String.Pos.Raw.lt_iff, Nat.lt_irrefl] at lt
 
 theorem next_iffI (v : be.Valid) (hnext : be.hasNext) : bit.BetweenE bs (be.next hnext) ↔ bit.BetweenI bs be := by
-  simp [BetweenE, v, -String.pos_lt_eq]
+  simp [BetweenE, v]
   apply Iff.intro
   . intro ⟨lt, h⟩
     match h with
     | .inl h => exact h
-    | .inr ⟨_, eq⟩ => simp only [eq, String.pos_lt_eq, Nat.lt_irrefl] at lt
+    | .inr ⟨_, eq⟩ => simp only [eq, String.Pos.Raw.lt_iff, Nat.lt_irrefl] at lt
   . intro h
     exact ⟨Nat.lt_of_le_of_lt (h.le_pos) (pos_lt_next_pos hnext), .inl h⟩
 

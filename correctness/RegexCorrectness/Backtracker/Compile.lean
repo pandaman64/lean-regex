@@ -36,7 +36,7 @@ theorem capture_of_some_compile {e it update} (hres : captureNext HistoryStrateg
   exact ⟨it', it'', groups, eqs, le, c, eqv⟩
 
 theorem ne_done_of_path_of_none {nfa wf it} (hres : captureNext HistoryStrategy nfa wf it = .none) (v : it.Valid) :
-  ∀ (it' it'' : Iterator) (state : Fin nfa.nodes.size) (update : List (Nat × Pos)),
+  ∀ (it' it'' : Iterator) (state : Fin nfa.nodes.size) (update : List (Nat × Pos.Raw)),
     it'.toString = it.toString →
     it.pos ≤ it'.pos →
     Path nfa wf it' it'' state update →

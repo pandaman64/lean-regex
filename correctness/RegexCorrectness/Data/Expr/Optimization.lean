@@ -1,6 +1,5 @@
 import Regex.Data.Expr
 import RegexCorrectness.Data.Expr.Semantics
-import RegexCorrectness.Data.HashSet
 
 namespace Regex.Data.Expr
 
@@ -18,20 +17,16 @@ theorem curr_of_captures_of_firstChars_some {it it' groups e n cs} (c : Expr.Cap
   | group _ _ => simp_all [firstChars, Option.bind_eq_some_iff]
   | alternateLeft c₁ ih =>
     intro cs h
-    simp [firstChars, Option.bind_eq_some_iff] at h
+    simp only [firstChars, HashSet.union_eq, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_eq_some_iff, Option.some.injEq] at h
     have ⟨_, hcs₁, _, _, hcs⟩ := h
-    rw [← hcs]
-    simp only [HashSet.contains_iff_mem, HashSet.mem_union_iff]
-    left
-    exact ih hcs₁
+    simpa [←hcs, HashSet.mem_union_iff] using .inl (ih hcs₁)
   | alternateRight _ ih =>
     intro cs h
-    simp [firstChars, Option.bind_eq_some_iff] at h
+    simp only [firstChars, HashSet.union_eq, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_eq_some_iff, Option.some.injEq] at h
     have ⟨_, _, _, hcs₂, hcs⟩ := h
-    rw [← hcs]
-    simp only [HashSet.contains_iff_mem, HashSet.mem_union_iff]
-    right
-    exact ih hcs₂
+    simpa [← hcs, HashSet.mem_union_iff] using .inr (ih hcs₂)
   | concat c₁ _ ih₁ ih₂ =>
     intro cs h
     simp [firstChars] at h
