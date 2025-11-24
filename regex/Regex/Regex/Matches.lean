@@ -14,7 +14,7 @@ Provides a stateful iterator for finding all regex matches in a haystack string.
 structure Matches where
   regex : Regex
   haystack : String
-  currentPos : Pos
+  currentPos : Pos.Raw
 deriving Repr
 
 /--
@@ -31,7 +31,7 @@ def Matches.next? (self : Matches) : Option (Substring × Matches) := do
       if self.currentPos < s.stopPos then
         { self with currentPos := s.stopPos }
       else
-        { self with currentPos := self.haystack.next self.currentPos }
+        { self with currentPos := self.currentPos.next self.haystack }
     pure (s, next)
   else
     throw ()
@@ -42,20 +42,17 @@ Gets the number of remaining characters to process in the haystack string.
 * `self`: The matches iterator
 * Returns: The number of remaining positions
 -/
-def Matches.remaining (self : Matches) : Pos :=
-  self.haystack.endPos + ⟨1⟩ - self.currentPos
+def Matches.remaining (self : Matches) : Nat :=
+  self.haystack.endPos.byteIdx + 1 - self.currentPos.byteIdx
 
 theorem Matches.lt_next?_some {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
-  m.currentPos < m'.currentPos := by
+  m.currentPos.byteIdx < m'.currentPos.byteIdx := by
   unfold next? at h
   split at h <;> simp [Option.bind_eq_some_iff] at h
   have ⟨_, _, h⟩ := h
   split at h
-  next h' => simp [←h, h']
-  next =>
-    simp [←h, String.next]
-    have : (m.haystack.get m.currentPos).utf8Size > 0 := Char.utf8Size_pos _
-    omega
+  next h' => simpa [←h] using h'
+  next => simpa [←h, Pos.Raw.next] using Char.utf8Size_pos _
 
 theorem Matches.haystack_eq_next?_some {s : Substring} {m m' : Matches} (h : m.next? = some (s, m')) :
   m'.haystack = m.haystack := by
@@ -68,23 +65,18 @@ theorem Matches.next?_decreasing {s : Substring} {m m' : Matches} (h : m.next? =
   m'.remaining < m.remaining := by
   unfold remaining
   rw [haystack_eq_next?_some h]
-  have h₁ : m.currentPos < m'.currentPos := lt_next?_some h
-  have h₂ : m.currentPos < m.haystack.endPos + ⟨1⟩ := by
-    simp only [next?, String.pos_lt_eq, Option.pure_def, Option.bind_eq_bind] at h
-    split at h <;> try contradiction
-    next le => exact Nat.add_le_add_right le 1
-  exact Nat.sub_lt_sub_left h₂ h₁
-
-theorem _root_.String.Pos.sizeOf_eq {p : Pos} : sizeOf p = 1 + p.byteIdx := rfl
-theorem _root_.String.Pos.sizeOf_lt_iff {p p' : Pos} :
-  sizeOf p < sizeOf p' ↔ p < p' := by
-  simp [String.Pos.sizeOf_eq]
+  have h₁ : m.currentPos.byteIdx < m'.currentPos.byteIdx := lt_next?_some h
+  have h₂ : m.currentPos.byteIdx ≤ m.haystack.endPos.byteIdx := by
+    unfold next? at h
+    split at h
+    next le => exact le
+    next => simp at h
+  grind
 
 macro_rules | `(tactic| decreasing_trivial) => `(tactic|
-  rw [String.Pos.sizeOf_lt_iff];
   exact Matches.next?_decreasing (by assumption))
 
-instance : Stream Matches Substring := ⟨Matches.next?⟩
+instance : Std.Stream Matches Substring := ⟨Matches.next?⟩
 
 end Regex
 

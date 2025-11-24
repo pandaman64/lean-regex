@@ -9,9 +9,9 @@ namespace Regex
 structure Strategy where
   Update : Type
   empty : Update
-  write : Update → Nat → Pos → Update
+  write : Update → Nat → Pos.Raw → Update
 
-abbrev Buffer (size : Nat) := Vector (Option Pos) size
+abbrev Buffer (size : Nat) := Vector (Option Pos.Raw) size
 
 def Buffer.empty {size : Nat} : Buffer size := Vector.replicate size none
 
@@ -20,14 +20,14 @@ def BufferStrategy (size : Nat) : Strategy where
   empty := Buffer.empty
   write buffer offset pos := Vector.setIfInBounds buffer offset pos
 
-instance {size} : Repr (BufferStrategy size).Update := inferInstanceAs (Repr (Vector (Option Pos) size))
+instance {size} : Repr (BufferStrategy size).Update := inferInstanceAs (Repr (Vector (Option Pos.Raw) size))
 
-instance {size} : Inhabited (BufferStrategy size).Update := inferInstanceAs (Inhabited (Vector (Option Pos) size))
+instance {size} : Inhabited (BufferStrategy size).Update := inferInstanceAs (Inhabited (Vector (Option Pos.Raw) size))
 
-instance {size} : DecidableEq (BufferStrategy size).Update := inferInstanceAs (DecidableEq (Vector (Option Pos) size))
+instance {size} : DecidableEq (BufferStrategy size).Update := inferInstanceAs (DecidableEq (Vector (Option Pos.Raw) size))
 
-instance {size} : GetElem (BufferStrategy size).Update Nat (Option Pos) (fun _ i => i < size) :=
-  inferInstanceAs (GetElem (Vector (Option Pos) size) Nat (Option Pos) _)
+instance {size} : GetElem (BufferStrategy size).Update Nat (Option Pos.Raw) (fun _ i => i < size) :=
+  inferInstanceAs (GetElem (Vector (Option Pos.Raw) size) Nat (Option Pos.Raw) _)
 
 @[simp]
 theorem BufferStrategy.update_def {size : Nat} : (BufferStrategy size).Update = Buffer size := rfl
@@ -43,18 +43,18 @@ theorem BufferStrategy.write_def {size buffer offset pos} :
 This strategy is inefficient and used only for proofs.
 -/
 def HistoryStrategy : Strategy where
-  Update := List (Nat × Pos)
+  Update := List (Nat × Pos.Raw)
   empty := []
   write update offset pos := update ++ [(offset, pos)]
 
 @[simp]
-theorem HistoryStrategy.update_def : HistoryStrategy.Update = List (Nat × Pos) := rfl
+theorem HistoryStrategy.update_def : HistoryStrategy.Update = List (Nat × Pos.Raw) := rfl
 
 @[simp]
 theorem HistoryStrategy.empty_def : HistoryStrategy.empty = [] := rfl
 
 @[simp]
-theorem HistoryStrategy.write_def {update : List (Nat × Pos)} {offset : Nat} {pos : Pos} :
+theorem HistoryStrategy.write_def {update : List (Nat × Pos.Raw)} {offset : Nat} {pos : Pos.Raw} :
   HistoryStrategy.write update offset pos = update ++ [(offset, pos)] := rfl
 
 end Regex
