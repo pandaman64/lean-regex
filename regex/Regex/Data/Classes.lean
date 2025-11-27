@@ -25,6 +25,9 @@ deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 def PerlClass.mem (c : Char) (pc : PerlClass) : Bool :=
   if pc.negated then !pc.kind.mem c else pc.kind.mem c
 
+instance : Membership Char PerlClass where
+  mem pc c := pc.mem c
+
 inductive Class where
   | single : Char → Class
   | range : (s : Char) → (e : Char) → Class
