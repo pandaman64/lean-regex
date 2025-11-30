@@ -2,9 +2,14 @@ import Regex.Regex.Basic
 
 set_option autoImplicit false
 
-open String (Pos)
+open String (ValidPos ValidPosPlusOne Slice)
 
 namespace Regex
+
+variable {haystack : String}
+
+local instance : Repr (ValidPos haystack) where
+  reprPrec p n := reprPrec p.offset n
 
 /--
 A structure representing the capture groups from a regex match.
@@ -12,9 +17,8 @@ A structure representing the capture groups from a regex match.
 Contains the original string (haystack) and a buffer of positions marking
 the start and end of each capture group.
 -/
-structure CapturedGroups where
-  haystack : String
-  buffer : Array (Option Pos.Raw)
+structure CapturedGroups (haystack : String) where
+  buffer : Array (Option (ValidPos haystack))
 deriving Repr, DecidableEq, Inhabited
 
 /--
@@ -24,10 +28,19 @@ Gets a specific capture group as a substring.
 * `index`: The index of the capture group to retrieve (0 for the entire match)
 * Returns: An optional substring representing the capture group, or `none` if the group didn't participate in the match
 -/
-def CapturedGroups.get (self : CapturedGroups) (index : Nat) : Option Substring := do
+def CapturedGroups.get (self : CapturedGroups haystack) (index : Nat) : Option Slice := do
   let start ← (← self.buffer[2 * index]?)
   let stop ← (← self.buffer[2 * index + 1]?)
-  return ⟨self.haystack, start, stop⟩
+  if h : start ≤ stop then
+    return ⟨haystack, start, stop, h⟩
+  else
+    throw ()
+
+theorem CapturedGroups.get_str_eq_some {self : CapturedGroups haystack} {index : Nat} {s : Slice}
+  (h : self.get index = some s) :
+  s.str = haystack := by
+  simp [get, Option.bind_eq_some_iff] at h
+  grind
 
 /--
 Converts all capture groups to an array of optional substrings.
@@ -36,10 +49,10 @@ Converts all capture groups to an array of optional substrings.
 * Returns: An array where each element is either a substring for a capture group
           or `none` if that group didn't participate in the match
 -/
-def CapturedGroups.toArray (self : CapturedGroups) : Array (Option Substring) :=
+def CapturedGroups.toArray (self : CapturedGroups haystack) : Array (Option Slice) :=
   go 0 #[]
 where
-  go (i : Nat) (accum : Array (Option Substring)) : Array (Option Substring) :=
+  go (i : Nat) (accum : Array (Option Slice)) : Array (Option Slice) :=
     if 2 * i < self.buffer.size then
       go (i + 1) (accum.push (self.get i))
     else
@@ -51,11 +64,12 @@ A structure that enables iterating through all capture groups of regex matches i
 Provides a stateful iterator for finding all regex matches and their capture groups
 in a haystack string.
 -/
-structure Captures where
+structure Captures (haystack : String) where
   regex : Regex
-  haystack : String
-  currentPos : Pos.Raw
+  currentPos : ValidPosPlusOne haystack
 deriving Repr
+
+namespace Captures
 
 /--
 Gets the next match and its capture groups.
@@ -64,72 +78,64 @@ Gets the next match and its capture groups.
 * Returns: An optional pair containing the captured groups and an updated iterator,
           or `none` if no more matches are found
 -/
-def Captures.next? (self : Captures) : Option (CapturedGroups × Captures) := do
-  if self.currentPos ≤ self.haystack.endPos then
-    let buffer ← self.regex.captureNextBuf (self.regex.maxTag + 1) ⟨self.haystack, self.currentPos⟩
-    let groups : CapturedGroups := ⟨self.haystack, buffer.toArray⟩
-    let s ← groups.get 0
-    let next :=
-      if self.currentPos < s.stopPos then
-        { self with currentPos := s.stopPos }
-      else
-        { self with currentPos := self.currentPos.next self.haystack }
-    pure (groups, next)
+def next? (self : Captures haystack) : Option (CapturedGroups haystack × Captures haystack) :=
+  if h : self.currentPos.isValid then
+    match self.regex.captureNextBuf (self.regex.maxTag + 1) (self.currentPos.asValidPos h) with
+    | .none => .none
+    | .some buffer =>
+      let groups : CapturedGroups haystack := ⟨buffer.toArray⟩
+      match h' : groups.get 0 with
+      | .none => .none
+      | .some s =>
+        have eq : s.str = haystack := CapturedGroups.get_str_eq_some h'
+        let nextPos := .validPos (eq ▸ s.endExclusive)
+        let next :=
+          if self.currentPos < nextPos then
+            { self with currentPos := nextPos }
+          else
+            { self with currentPos := self.currentPos.next h }
+        pure (groups, next)
   else
     throw ()
 
-theorem Captures.zeroth_group_some_of_next?_some {self next : Captures} {groups : CapturedGroups}
-    (h : self.next? = (groups,next)) : groups.get 0 |>.isSome := by
+theorem zeroth_group_some_of_next?_some {self next : Captures haystack} {groups : CapturedGroups haystack}
+  (h : self.next? = (groups, next)) :
+  groups.get 0 |>.isSome := by
   unfold next? at h
-  split at h <;> simp [Option.bind_eq_some_iff] at h
-  have ⟨_, _, h⟩ := h
-  have ⟨_, h, ⟨h', _⟩⟩ := h
-  rw [h'] at h
-  exact Option.isSome_of_mem h
+  split at h <;> try contradiction
+  split at h <;> simp at h
+  split at h <;> simp at h
+  next eq => simp [←h, eq]
 
-/--
-Gets the number of remaining characters to process in the haystack string.
-
-* `self`: The captures iterator
-* Returns: The number of remaining positions
--/
-def Captures.remaining (self : Captures) : Nat :=
-  self.haystack.endPos.byteIdx + 1 - self.currentPos.byteIdx
-
-theorem Captures.lt_next?_some {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
-  m.currentPos.byteIdx < m'.currentPos.byteIdx := by
+theorem lt_next?_some' {groups : CapturedGroups haystack} {c c' : Captures haystack} (h : c.next? = some (groups, c')) :
+  c.currentPos < c'.currentPos := by
   unfold next? at h
-  split at h <;> simp [Option.bind_eq_some_iff] at h
-  have ⟨_, _, h⟩ := h
-  have ⟨_, _, h⟩ := h
-  split at h
-  next h' => simpa [←h] using h'
-  next => simpa [←h, Pos.Raw.next] using Char.utf8Size_pos _
-
-theorem Captures.haystack_eq_next?_some {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
-  m'.haystack = m.haystack := by
-  unfold next? at h
-  split at h <;> simp [Option.bind_eq_some_iff] at h
-  have ⟨_, _, h⟩ := h
-  have ⟨_, _, h⟩ := h
-  split at h <;> simp [←h]
-
-theorem Captures.next?_decreasing {groups : CapturedGroups} {m m' : Captures} (h : m.next? = some (groups, m')) :
-  m'.remaining < m.remaining := by
-  unfold remaining
-  rw [haystack_eq_next?_some h]
-  have h₁ : m.currentPos.byteIdx < m'.currentPos.byteIdx := lt_next?_some h
-  have h₂ : m.currentPos.byteIdx ≤ m.haystack.endPos.byteIdx := by
-    unfold next? at h
-    split at h
-    next le => exact le
-    next => simp at h
   grind
 
-macro_rules | `(tactic| decreasing_trivial) => `(tactic|
-  exact Captures.next?_decreasing (by assumption))
+def lt (c c' : Captures haystack) : Prop := c.currentPos < c'.currentPos
 
-instance : Std.Stream Captures CapturedGroups := ⟨Captures.next?⟩
+instance : LT (Captures haystack) := ⟨lt⟩
+
+@[simp]
+theorem lt_next?_some {groups : CapturedGroups haystack} {c c' : Captures haystack} (h : c.next? = some (groups, c')) : c < c' :=
+  lt_next?_some' h
+
+theorem wellFounded_gt : WellFounded (fun (p : Captures haystack) q => q < p) :=
+  InvImage.wf Captures.currentPos ValidPosPlusOne.wellFounded_gt
+
+instance : WellFoundedRelation (Captures haystack) where
+  rel p q := q < p
+  wf := wellFounded_gt
+
+macro_rules | `(tactic| decreasing_trivial) => `(tactic|
+  (with_reducible change (_ : Regex.Captures _) < _
+   simp [
+    Captures.lt_next?_some (by assumption),
+  ]) <;> done)
+
+instance : Std.Stream (Captures haystack) (CapturedGroups haystack) := ⟨Captures.next?⟩
+
+end Captures
 
 end Regex
 
@@ -140,5 +146,5 @@ Creates a new `Captures` iterator for a regex pattern and input string.
 * `s`: The input string to search in
 * Returns: A `Captures` iterator positioned at the start of the string
 -/
-def Regex.captures (regex : Regex) (s : String) : Captures :=
-  { regex := regex, haystack := s, currentPos := 0 }
+def Regex.captures (regex : Regex) (s : String) : Captures s :=
+  { regex := regex, currentPos := s.startValidPosPlusOne }

@@ -47,7 +47,7 @@ def next? (self : Matches haystack) : Option (Slice × Matches haystack) :=
 theorem lt_next?_some' {s : Slice} {m m' : Matches haystack} (h : m.next? = some (s, m')) :
   m.currentPos < m'.currentPos := by
   unfold next? at h
-  grind --[ValidPosPlusOne.lt_next]
+  grind
 
 def lt (m m' : Matches haystack) : Prop := m.currentPos < m'.currentPos
 
