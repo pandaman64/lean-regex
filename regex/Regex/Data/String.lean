@@ -100,6 +100,16 @@ def isAtWordBoundary (p : ValidPos s) : Bool :=
 def isAtNonWordBoundary (p : ValidPos s) : Bool :=
   isCurrWord p == isPrevWord p
 
+@[specialize]
+def find (pos : ValidPos s) (p : Char → Bool) :=
+  if hn : pos = s.endValidPos then
+    pos
+  else if p (pos.get hn) then
+    pos
+  else
+    find (pos.next hn) p
+termination_by pos
+
 -- theorem next'_eq_next (it : Iterator) (h : it.hasNext) : it.next' h = it.next := by
 --   simp [next', next]
 
