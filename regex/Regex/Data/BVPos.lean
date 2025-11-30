@@ -63,12 +63,12 @@ instance : LT (BVPos startPos) := ⟨lt⟩
 theorem lt_next {bp : BVPos startPos} (h : bp ≠ s.endBVPos startPos) : bp < bp.next h :=
   bp.current.lt_next (h := ne_end_iff_current_ne_end.mp h)
 
-theorem wellFounded_lt : WellFounded (fun (p : BVPos startPos) q => q < p) :=
+theorem wellFounded_gt : WellFounded (fun (p : BVPos startPos) q => q < p) :=
   InvImage.wf BVPos.current ValidPos.wellFounded_gt
 
 instance : WellFoundedRelation (BVPos startPos) where
   rel p q := q < p
-  wf := wellFounded_lt
+  wf := wellFounded_gt
 
 end BVPos
 

@@ -143,3 +143,105 @@ termination_by pos
 --   simp [curr', curr]
 
 end String.ValidPos
+
+namespace String
+
+@[ext]
+structure ValidPosPlusOne (s : String) where
+  offset : Pos.Raw
+  isValidOrPlusOne : offset.IsValid s ∨ offset = s.rawEndPos.offsetBy ⟨1⟩
+deriving Repr, DecidableEq
+
+namespace ValidPosPlusOne
+
+variable {s : String}
+
+-- Doesn't seem to work at the moment
+@[match_pattern]
+def validPos (p : ValidPos s) : ValidPosPlusOne s :=
+  ⟨p.offset, .inl p.isValid⟩
+
+@[match_pattern]
+def sentinel (s : String) : ValidPosPlusOne s :=
+  ⟨s.rawEndPos.offsetBy ⟨1⟩, .inr rfl⟩
+
+@[elab_as_elim]
+def rec'.{u} {motive : ValidPosPlusOne s → Sort u}
+  (validPos : (p : ValidPos s) → motive (validPos p))
+  (sentinel : motive (sentinel s))
+  (p : ValidPosPlusOne s) : motive p :=
+  if h : p.offset = s.rawEndPos.offsetBy ⟨1⟩ then
+    have eq : p = .sentinel s := by
+      simp [ValidPosPlusOne.ext_iff, h, ValidPosPlusOne.sentinel]
+    eq ▸ sentinel
+  else
+    have h' : p.offset.IsValid s := by
+      cases p.isValidOrPlusOne with
+      | inl h => exact h
+      | inr h => contradiction
+    validPos ⟨p.offset, h'⟩
+
+instance : Inhabited (ValidPosPlusOne s) := ⟨.validPos s.startValidPos⟩
+
+def isValid (p : ValidPosPlusOne s) : Bool :=
+  p.offset.isValid s
+
+def asValidPos (p : ValidPosPlusOne s) (h : p.isValid) : ValidPos s :=
+  ⟨p.offset, Pos.Raw.isValid_eq_true_iff.mp h⟩
+
+def lt (p₁ p₂ : ValidPosPlusOne s) : Prop :=
+  p₁.offset < p₂.offset
+
+instance : LT (ValidPosPlusOne s) := ⟨lt⟩
+
+theorem lt_iff {p₁ p₂ : ValidPosPlusOne s} : p₁ < p₂ ↔ p₁.offset < p₂.offset :=
+  Iff.rfl
+
+instance {s : String} (p₁ p₂ : ValidPosPlusOne s) : Decidable (p₁ < p₂) :=
+  decidable_of_iff' _ lt_iff
+
+def next (p : ValidPosPlusOne s) (h : p.isValid) : ValidPosPlusOne s :=
+  let vp := p.asValidPos h
+  if h' : vp ≠ s.endValidPos then
+    .validPos (vp.next h')
+  else
+    .sentinel s
+
+theorem lt_sentinel_of_valid {p : ValidPosPlusOne s} (h : p.isValid) : p < .sentinel s :=
+  Nat.lt_of_le_of_lt (p.asValidPos h).isValid.le_rawEndPos (by simp [sentinel])
+
+@[simp, grind →]
+theorem lt_next (p : ValidPosPlusOne s) (h : p.isValid) : p < p.next h := by
+  fun_cases next
+  next vp ne => exact ValidPos.lt_next (p.asValidPos h) (h := ne)
+  next => exact lt_sentinel_of_valid h
+
+def remainingBytes (p : ValidPosPlusOne s) : Nat :=
+  s.rawEndPos.byteIdx + 1 - p.offset.byteIdx
+
+theorem lt_iff_remainingBytes_lt {p₁ p₂ : ValidPosPlusOne s} : p₁ < p₂ ↔ p₂.remainingBytes < p₁.remainingBytes := by
+  simp only [lt_iff, Pos.Raw.lt_iff, remainingBytes, byteIdx_rawEndPos]
+  have : p₂.offset.byteIdx ≤ s.utf8ByteSize + 1 := by
+    cases p₂.isValidOrPlusOne with
+    | inl h => exact Nat.le_trans h.le_utf8ByteSize (by grind)
+    | inr h => simp [h, Nat.add_comm]
+  grind
+
+theorem wellFounded_gt : WellFounded (fun (p : ValidPosPlusOne s) q => q < p) := by
+  simpa [lt_iff_remainingBytes_lt] using InvImage.wf remainingBytes Nat.lt_wfRel.wf
+
+instance : WellFoundedRelation (ValidPosPlusOne s) where
+  rel p q := q < p
+  wf := wellFounded_gt
+
+-- example {s : String} (p : ValidPosPlusOne s) : Nat :=
+--   match p with
+--   | .validPos pos => 1
+--   | .sentinel _ => 2
+
+end ValidPosPlusOne
+
+def startValidPosPlusOne (s : String) : ValidPosPlusOne s :=
+  .validPos s.startValidPos
+
+end String

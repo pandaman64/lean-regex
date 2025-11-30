@@ -59,6 +59,16 @@ def searchNext {s : String} (self : Regex) (p : ValidPos s) : Option Slice := do
     .none
 
 /--
+The slice returned by `searchNext` bundles the same string as the input string.
+-/
+theorem searchNext_str_eq_some {s : String} {self : Regex} {p : ValidPos s} {s' : Slice}
+  (h : searchNext self p = some s') :
+  s'.str = s := by
+  simp [searchNext, Option.bind_eq_some_iff] at h
+  obtain ⟨_, _, _, _, _, _, _, eq⟩ := h
+  simp [←eq]
+
+/--
 Constructs a `Regex` from a regular expression.
 
 * `expr`: The regular expression to compile
