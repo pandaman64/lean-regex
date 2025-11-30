@@ -2,7 +2,7 @@ import Regex.Syntax.Parser.Combinators.Result
 
 set_option autoImplicit false
 
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex.Syntax.Parser.Combinators
 
@@ -11,165 +11,165 @@ Total parser combinators a la [idris2-parser](https://github.com/stefan-hoeck/id
 
 `s` controls whether the input is strictly decreasing.
 -/
-abbrev Parser (s ε α) := ∀ (it : Iterator), Result s it ε α
+abbrev Parser (s strict ε α) := ∀ (p : ValidPos s), Result strict p ε α
 
 namespace Parser
 
-abbrev LE (ε α) := Parser false ε α
+abbrev LE (s ε α) := Parser s false ε α
 
-abbrev LT (ε α) := Parser true ε α
-
-@[inline]
-def imp {s₁ s₂ : Bool} {ε α} (h : s₂ → s₁) : Parser s₁ ε α → Parser s₂ ε α
-  | p, it => (p it).imp h
+abbrev LT (s ε α) := Parser s true ε α
 
 @[inline]
-def weaken {s ε α} : Parser s ε α → Parser false ε α
-  | p, it => (p it).weaken
+def imp {s : String} {strict₁ strict₂ : Bool} {ε α} (h : strict₂ → strict₁) : Parser s strict₁ ε α → Parser s strict₂ ε α
+  | p, pos => (p pos).imp h
 
 @[inline]
-def cast {s₁ s₂ ε α} (h : s₁ = s₂) : Parser s₁ ε α → Parser s₂ ε α
-  | p, it => (p it).cast h
+def weaken {s strict ε α} : Parser s strict ε α → Parser s false ε α
+  | p, pos => (p pos).weaken
 
 @[inline]
-def opt {s ε α} : Parser s ε α → Parser false ε (Option α)
-  | p, it => (p it).opt
+def cast {s : String} {strict₁ strict₂ : Bool} {ε α} (h : strict₁ = strict₂) : Parser s strict₁ ε α → Parser s strict₂ ε α
+  | p, pos => (p pos).cast h
 
 @[inline]
-def guard {s ε α β} (f : α → Except ε β) : Parser s ε α → Parser s ε β
-  | p, it => (p it).guard f
+def opt {s strict ε α} : Parser s strict ε α → Parser s false ε (Option α)
+  | p, pos => (p pos).opt
 
 @[inline]
-def complete {s ε α} (expectedEof : ε) : Parser s ε α → Parser s ε α
-  | p, it => (p it).complete expectedEof
+def guard {s strict ε α β} (f : α → Except ε β) : Parser s strict ε α → Parser s strict ε β
+  | p, pos => (p pos).guard f
 
 @[inline]
-def debug {s ε α} [ToString α] (name : String) (p : Parser s ε α) : Parser s ε α
-  | it => dbgTrace s!"Parsing {name} at {it}" fun () =>
-    (p it).map (fun a => dbgTrace s!"parsed {a}" (fun () => a))
+def complete {s strict ε α} (expectedEof : ε) : Parser s strict ε α → Parser s strict ε α
+  | p, pos => (p pos).complete expectedEof
 
 @[inline]
-def commit {s ε α} : Parser s ε α → Parser s ε α
-  | p, it => (p it).commit
+def debug {s strict ε α} [ToString α] (name : String) (p : Parser s strict ε α) : Parser s strict ε α
+  | pos => dbgTrace s!"Parsing {name} at ({s}, {pos.offset})" fun () =>
+    (p pos).map (fun a => dbgTrace s!"parsed {a}" (fun () => a))
 
 @[inline]
-def map {s ε α β} (f : α → β) : Parser s ε α → Parser s ε β
-  | p, it => (p it).map f
+def commit {s strict ε α} : Parser s strict ε α → Parser s strict ε α
+  | p, pos => (p pos).commit
 
 @[inline]
-def mapConst {s ε α β} (a : α) : Parser s ε β → Parser s ε α
-  | p, it => Functor.mapConst a (p it)
+def map {s strict ε α β} (f : α → β) : Parser s strict ε α → Parser s strict ε β
+  | p, pos => (p pos).map f
 
 @[inline]
-def seq {s ε α β} (p : Parser s ε (α → β)) (q : Unit → Parser s ε α) : Parser s ε β
-  | it =>
-    match p it with
-    | .ok f it' h => (q () it').trans h |>.map f
+def mapConst {s strict ε α β} (a : α) : Parser s strict ε β → Parser s strict ε α
+  | p, pos => Functor.mapConst a (p pos)
+
+@[inline]
+def seq {s strict ε α β} (p : Parser s strict ε (α → β)) (q : Unit → Parser s strict ε α) : Parser s strict ε β
+  | pos =>
+    match p pos with
+    | .ok f pos' h => (q () pos').trans h |>.map f
     | .error e => .error e
     | .fatal e => .fatal e
 
 @[inline]
-def seqLeft {s ε α β} (p : Parser s ε α) (q : Unit → Parser s ε β) : Parser s ε α
-  | it =>
-    match p it with
-    | .ok a it' h => (q () it').trans h |>.map (fun _ => a)
+def seqLeft {s strict ε α β} (p : Parser s strict ε α) (q : Unit → Parser s strict ε β) : Parser s strict ε α
+  | pos =>
+    match p pos with
+    | .ok a pos' h => (q () pos').trans h |>.map (fun _ => a)
     | .error e => .error e
     | .fatal e => .fatal e
 
 @[inline]
-def seqRight {s ε α β} (p : Parser s ε α) (q : Unit → Parser s ε β) : Parser s ε β
-  | it =>
-    match p it with
-    | .ok _ it' h => (q () it').trans h
+def seqRight {s strict ε α β} (p : Parser s strict ε α) (q : Unit → Parser s strict ε β) : Parser s strict ε β
+  | pos =>
+    match p pos with
+    | .ok _ pos' h => (q () pos').trans h
     | .error e => .error e
     | .fatal e => .fatal e
 
 @[inline]
-def hOrElse {s₁ s₂ ε α} (p : Parser s₁ ε α) (q : Unit → Parser s₂ ε α) : Parser (s₁ && s₂) ε α
-  | it =>
-    match p it with
-    | .ok a it' h => .ok a it' (h.imp (by simp_all))
-    | .error _ => (q () it).imp (by simp)
+def hOrElse {s strict₁ strict₂ ε α} (p : Parser s strict₁ ε α) (q : Unit → Parser s strict₂ ε α) : Parser s (strict₁ && strict₂) ε α
+  | pos =>
+    match p pos with
+    | .ok a pos' h => .ok a pos' (h.imp (by simp_all))
+    | .error _ => (q () pos).imp (by simp)
     | .fatal e => .fatal e
 
 @[inline]
-def orElse {s ε α} (p : Parser s ε α) (q : Unit → Parser s ε α) : Parser s ε α
-  | it =>
-    match p it with
-    | .ok a it' h => .ok a it' h
-    | .error _ => q () it
+def orElse {s strict ε α} (p : Parser s strict ε α) (q : Unit → Parser s strict ε α) : Parser s strict ε α
+  | pos =>
+    match p pos with
+    | .ok a pos' h => .ok a pos' h
+    | .error _ => q () pos
     | .fatal e => .fatal e
 
 @[inline]
-def throw {s ε α} (e : ε) : Parser s ε α := fun _ => .error e
+def throw {s strict ε α} (e : ε) : Parser s strict ε α := fun _ => .error e
 
 @[inline]
-def tryCatch {s ε α} (p : Parser s ε α) (handle : ε → Parser s ε α) : Parser s ε α
-  | it =>
-    match p it with
-    | .ok a it' h => .ok a it' h
-    | .error e => handle e it
+def tryCatch {s strict ε α} (p : Parser s strict ε α) (handle : ε → Parser s strict ε α) : Parser s strict ε α
+  | pos =>
+    match p pos with
+    | .ok a pos' h => .ok a pos' h
+    | .error e => handle e pos
     | .fatal e => .fatal e
 
 @[inline]
-def bindOr {s₁ s₂ ε α β} (p : Parser s₁ ε α) (f : α → Parser s₂ ε β) : Parser (s₂ || s₁) ε β
-  | it =>
-    match p it with
-    | .ok a it' h => (f a it').transOr h
+def bindOr {s strict₁ strict₂ ε α β} (p : Parser s strict₁ ε α) (f : α → Parser s strict₂ ε β) : Parser s (strict₁ || strict₂) ε β
+  | pos =>
+    match p pos with
+    | .ok a pos' h => ((f a pos').transOr h).cast (by grind)
     | .error e => .error e
     | .fatal e => .fatal e
 
 @[inline]
-def bind {s ε α β} (p : Parser s ε α) (f : α → Parser s ε β) : Parser s ε β
-  | it =>
-    match p it with
-    | .ok a it' h => (f a it').trans h
+def bind {s strict ε α β} (p : Parser s strict ε α) (f : α → Parser s strict ε β) : Parser s strict ε β
+  | pos =>
+    match p pos with
+    | .ok a pos' h => (f a pos').trans h
     | .error e => .error e
     | .fatal e => .fatal e
 
 @[inline]
-def pure {ε α} (a : α) : Parser false ε α
-  | it => .ok a it (Nat.le_refl _)
+def pure {s ε α} (a : α) : Parser s false ε α
+  | pos => .ok a pos (Nat.le_refl _)
 
 @[inline]
-instance {s ε} : Functor (Parser s ε) where
+instance {s strict ε} : Functor (Parser s strict ε) where
   map := map
 
 @[inline]
-instance {s ε} : Seq (Parser s ε) where
+instance {s strict ε} : Seq (Parser s strict ε) where
   seq := seq
 
 @[inline]
-instance {s ε} : SeqLeft (Parser s ε) where
+instance {s strict ε} : SeqLeft (Parser s strict ε) where
   seqLeft := seqLeft
 
 @[inline]
-instance {s ε} : SeqRight (Parser s ε) where
+instance {s strict ε} : SeqRight (Parser s strict ε) where
   seqRight := seqRight
 
 @[inline]
-instance {s₁ s₂ ε α} : HOrElse (Parser s₁ ε α) (Parser s₂ ε α) (Parser (s₁ && s₂) ε α) where
+instance {s strict₁ strict₂ ε α} : HOrElse (Parser s strict₁ ε α) (Parser s strict₂ ε α) (Parser s (strict₁ && strict₂) ε α) where
   hOrElse := hOrElse
 
 @[inline]
-instance {s ε α} : OrElse (Parser s ε α) where
+instance {s strict ε α} : OrElse (Parser s strict ε α) where
   orElse := orElse
 
 @[inline]
-instance {s ε} : MonadExceptOf ε (Parser s ε) where
+instance {s strict ε} : MonadExceptOf ε (Parser s strict ε) where
   throw := throw
   tryCatch := tryCatch
 
 @[inline]
-instance {s ε} : Bind (Parser s ε) where
+instance {s strict ε} : Bind (Parser s strict ε) where
   bind := bind
 
 @[inline]
-instance {ε} : Pure (Parser false ε) where
+instance {s ε} : Pure (Parser s false ε) where
   pure := pure
 
 @[inline]
-instance {ε} : Monad (Parser false ε) where
+instance {s ε} : Monad (Parser s false ε) where
   bind := bind
 
 end Parser
