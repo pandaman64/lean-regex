@@ -6,7 +6,7 @@ import Regex.Regex.OptimizationInfo
 
 set_option autoImplicit false
 
-open String (Iterator)
+open String (ValidPos Slice)
 open Regex.Data (Expr)
 
 /--
@@ -31,12 +31,12 @@ This is a lower-level function that powers the higher-level capture operations.
 
 * `self`: The regex to match against
 * `bufferSize`: Size of the buffer to store capture groups
-* `it`: String iterator pointing to the current position in the input string
-* Returns: An optional buffer containing the matched capture groups, or `none` if no match is found
+* `p`: Valid position in the input string
+* Returns: A buffer containing the matched capture groups, or `none` if no match is found
 -/
-def captureNextBuf (self : Regex) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
+def captureNextBuf {s : String} (self : Regex) (bufferSize : Nat) (p : ValidPos s) : Option (Buffer s bufferSize) :=
   -- Skip to the next possible starting position
-  let start := self.optimizationInfo.findStart it
+  let start := self.optimizationInfo.findStart p
   if self.useBacktracker then
     Backtracker.captureNextBuf self.nfa self.wf bufferSize start
   else
@@ -46,12 +46,17 @@ def captureNextBuf (self : Regex) (bufferSize : Nat) (it : Iterator) : Option (B
 Searches for the next match in the input string.
 
 * `self`: The regex to match against
-* `it`: String iterator pointing to the current position in the input string
-* Returns: An optional substring representing the match, or `none` if no match is found
+* `p`: Valid position in the input string
+* Returns: A slice representing the match, or `none` if no match is found
 -/
-def searchNext (self : Regex) (it : Iterator) : Option Substring :=  do
-  let slots ← captureNextBuf self 2 it
-  pure ⟨it.toString, ←slots[0], ←slots[1]⟩
+def searchNext {s : String} (self : Regex) (p : ValidPos s) : Option Slice := do
+  let slots ← captureNextBuf self 2 p
+  let startPos ← slots[0]
+  let stopPos ← slots[1]
+  if h : startPos ≤ stopPos then
+    pure ⟨s, startPos, stopPos, h⟩
+  else
+    .none
 
 /--
 Constructs a `Regex` from a regular expression.

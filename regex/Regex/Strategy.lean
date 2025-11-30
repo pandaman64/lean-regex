@@ -2,59 +2,62 @@ import Regex.NFA
 
 set_option autoImplicit false
 
-open String (Pos)
+open String (ValidPos)
 
 namespace Regex
 
-structure Strategy where
+structure Strategy (s : String) where
   Update : Type
   empty : Update
-  write : Update → Nat → Pos.Raw → Update
+  write : Update → Nat → ValidPos s → Update
 
-abbrev Buffer (size : Nat) := Vector (Option Pos.Raw) size
+abbrev Buffer (s : String) (size : Nat) := Vector (Option (ValidPos s)) size
 
-def Buffer.empty {size : Nat} : Buffer size := Vector.replicate size none
+def Buffer.empty {s : String} {size : Nat} : Buffer s size := Vector.replicate size none
 
-def BufferStrategy (size : Nat) : Strategy where
-  Update := Buffer size
+def BufferStrategy (s : String) (size : Nat) : Strategy s where
+  Update := Buffer s size
   empty := Buffer.empty
   write buffer offset pos := Vector.setIfInBounds buffer offset pos
 
-instance {size} : Repr (BufferStrategy size).Update := inferInstanceAs (Repr (Vector (Option Pos.Raw) size))
+local instance {s} : Repr (ValidPos s) where
+  reprPrec p n := reprPrec p.offset n
 
-instance {size} : Inhabited (BufferStrategy size).Update := inferInstanceAs (Inhabited (Vector (Option Pos.Raw) size))
+instance {s size} : Repr (BufferStrategy s size).Update := inferInstanceAs (Repr (Vector (Option (ValidPos s)) size))
 
-instance {size} : DecidableEq (BufferStrategy size).Update := inferInstanceAs (DecidableEq (Vector (Option Pos.Raw) size))
+instance {s size} : Inhabited (BufferStrategy s size).Update := inferInstanceAs (Inhabited (Vector (Option (ValidPos s)) size))
 
-instance {size} : GetElem (BufferStrategy size).Update Nat (Option Pos.Raw) (fun _ i => i < size) :=
-  inferInstanceAs (GetElem (Vector (Option Pos.Raw) size) Nat (Option Pos.Raw) _)
+instance {s size} : DecidableEq (BufferStrategy s size).Update := inferInstanceAs (DecidableEq (Vector (Option (ValidPos s)) size))
 
-@[simp]
-theorem BufferStrategy.update_def {size : Nat} : (BufferStrategy size).Update = Buffer size := rfl
-
-@[simp]
-theorem BufferStrategy.empty_def {size : Nat} : (BufferStrategy size).empty = Buffer.empty := rfl
+instance {s size} : GetElem (BufferStrategy s size).Update Nat (Option (ValidPos s)) (fun _ i => i < size) :=
+  inferInstanceAs (GetElem (Vector (Option (ValidPos s)) size) Nat (Option (ValidPos s)) _)
 
 @[simp]
-theorem BufferStrategy.write_def {size buffer offset pos} :
-  (BufferStrategy size).write buffer offset pos = Vector.setIfInBounds buffer offset pos := rfl
+theorem BufferStrategy.update_def {s size} : (BufferStrategy s size).Update = Buffer s size := rfl
+
+@[simp]
+theorem BufferStrategy.empty_def {s size} : (BufferStrategy s size).empty = Buffer.empty := rfl
+
+@[simp]
+theorem BufferStrategy.write_def {s size buffer offset pos} :
+  (BufferStrategy s size).write buffer offset pos = Vector.setIfInBounds buffer offset pos := rfl
 
 /--
 This strategy is inefficient and used only for proofs.
 -/
-def HistoryStrategy : Strategy where
-  Update := List (Nat × Pos.Raw)
+def HistoryStrategy (s : String) : Strategy s where
+  Update := List (Nat × ValidPos s)
   empty := []
   write update offset pos := update ++ [(offset, pos)]
 
 @[simp]
-theorem HistoryStrategy.update_def : HistoryStrategy.Update = List (Nat × Pos.Raw) := rfl
+theorem HistoryStrategy.update_def {s} : (HistoryStrategy s).Update = List (Nat × ValidPos s) := rfl
 
 @[simp]
-theorem HistoryStrategy.empty_def : HistoryStrategy.empty = [] := rfl
+theorem HistoryStrategy.empty_def {s} : (HistoryStrategy s).empty = [] := rfl
 
 @[simp]
-theorem HistoryStrategy.write_def {update : List (Nat × Pos.Raw)} {offset : Nat} {pos : Pos.Raw} :
-  HistoryStrategy.write update offset pos = update ++ [(offset, pos)] := rfl
+theorem HistoryStrategy.write_def {s update offset pos} :
+  (HistoryStrategy s).write update offset pos = update.append [(offset, pos)] := rfl
 
 end Regex

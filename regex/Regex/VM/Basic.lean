@@ -14,11 +14,11 @@ open String (ValidPos)
 -/
 namespace Regex.VM
 
-structure SearchState (σ : Strategy) (nfa : NFA) where
+structure SearchState {s : String} (σ : Strategy s) (nfa : NFA) where
   states : SparseSet nfa.nodes.size
   updates : Vector σ.Update nfa.nodes.size
 
-abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
+abbrev εStack {s : String} (σ : Strategy s) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
 
 namespace εClosure
 
@@ -32,11 +32,11 @@ def writeUpdate (node : NFA.Node) : Bool :=
   | _ => false
 
 @[inline]
-def pushNext {s : String} (σ : Strategy) (nfa : NFA) (p : ValidPos s) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
+def pushNext {s : String} (σ : Strategy s) (nfa : NFA) (p : ValidPos s) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
   match node with
   | .epsilon state' => (update, ⟨state', inBounds⟩) :: stack
   | .split state₁ state₂ => (update, ⟨state₁, inBounds.1⟩) :: (update, ⟨state₂, inBounds.2⟩) :: stack
-  | .save offset state' => (σ.write update offset p.offset, ⟨state', inBounds⟩) :: stack
+  | .save offset state' => (σ.write update offset p, ⟨state', inBounds⟩) :: stack
   | .anchor a state' =>
     if a.test p then
       (update, ⟨state', inBounds⟩) :: stack
@@ -55,7 +55,7 @@ Visit all ε-transitions from the states in the stack, updating `next.states` wh
 match is found.
 -/
 -- Once we have the new compiler, we may want to test specialization by `@[specialize σ]`.
-def εClosure {s : String} (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s)
+def εClosure {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s)
   (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa) :
   Option σ.Update × SearchState σ nfa :=
   match stack with
@@ -79,7 +79,7 @@ termination_by (next.states.measure, stack)
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
-def stepChar {s : String} (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) (ne : p ≠ s.endValidPos) (currentUpdates : Vector σ.Update nfa.nodes.size)
+def stepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) (ne : p ≠ s.endValidPos) (currentUpdates : Vector σ.Update nfa.nodes.size)
   (next : SearchState σ nfa) (state : Fin nfa.nodes.size) :
   Option σ.Update × SearchState σ nfa :=
   let state' : Option (Fin nfa.nodes.size) :=
@@ -106,7 +106,7 @@ def stepChar {s : String} (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (p :
 For all states in `current`, make a transition on the current character of `it` and traverse
 ε-closures from the resulting states.
 -/
-def eachStepChar {s : String} (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) (ne : p ≠ s.endValidPos)
+def eachStepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) (ne : p ≠ s.endValidPos)
   (current : SearchState σ nfa) (next : SearchState σ nfa) :
   Option σ.Update × SearchState σ nfa :=
   go 0 (Nat.zero_le _) next
@@ -131,7 +131,7 @@ where
         else
           go (i + 1) hlt result.2
 
-def captureNext {s : String} (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) : Option σ.Update :=
+def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) : Option σ.Update :=
   let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
   let (matched, current) := εClosure σ nfa wf p .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
   go p matched current ⟨.empty, updates⟩
@@ -153,7 +153,7 @@ where
           go (p.next h) matched' stepped.2 ⟨current.states.clear, current.updates⟩
   termination_by p
 
-def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : ValidPos s) : Option (Buffer bufferSize) :=
-  captureNext (BufferStrategy bufferSize) nfa wf p
+def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : ValidPos s) : Option (Buffer s bufferSize) :=
+  captureNext (BufferStrategy s bufferSize) nfa wf p
 
 end Regex.VM
