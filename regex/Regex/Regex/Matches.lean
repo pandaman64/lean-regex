@@ -49,6 +49,15 @@ theorem lt_next?_some' {s : Slice} {m m' : Matches haystack} (h : m.next? = some
   unfold next? at h
   grind
 
+theorem str_eq_of_next?_some {s : Slice} {m m' : Matches haystack} (h : m.next? = some (s, m')) :
+  s.str = haystack := by
+  unfold next? at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Option.some.injEq, Prod.mk.injEq] at h
+  next h' =>
+    simpa [←h] using searchNext_str_eq_some h'
+
 def lt (m m' : Matches haystack) : Prop := m.currentPos < m'.currentPos
 
 instance : LT (Matches haystack) := ⟨lt⟩
