@@ -225,7 +225,7 @@ def RegexTest.run (test : RegexTest) (backtracker : Bool) : Except String TestRe
     match test.matchLimit with
     | .some limit => allCaptures.take limit
     | .none => allCaptures
-  let positions := captures.map (·.map (·.map (fun s => (s.startPos, s.stopPos))))
+  let positions := captures.map (·.map (·.map (fun s => (s.startInclusive.offset, s.endExclusive.offset))))
   if test.matches.size != positions.size then
     throw s!"expected {test.matches}, got {positions}"
   else
