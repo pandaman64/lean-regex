@@ -8,11 +8,11 @@ set_option autoImplicit false
 In this file, we treat an NFA as a collection of instructions and give a small-step operational semantics.
 -/
 
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex.NFA
 
-inductive Step (nfa : NFA) (lb : Nat) : Nat → Iterator → Nat → Iterator → Option (Nat × String.Pos.Raw) → Prop where
+inductive Step {s : String} (nfa : NFA) (lb : Nat) : Nat → ValidPos s → Nat → ValidPos s → Option (Nat × ValidPos s) → Prop where
   | epsilon {i j it} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .epsilon j) (v : it.Valid) :
     Step nfa lb i it j it .none
   | anchor {i j it a} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .anchor a j) (v : it.Valid) (h : a.test it) :
