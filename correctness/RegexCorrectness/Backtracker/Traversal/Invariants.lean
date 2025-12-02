@@ -1,11 +1,11 @@
 import Regex.Strategy
-import RegexCorrectness.Data.BoundedIterator
+import RegexCorrectness.Data.BVPos
 import RegexCorrectness.Backtracker.Basic
 import RegexCorrectness.Backtracker.Path
 
 set_option autoImplicit false
 
-open Regex.Data (BitMatrix BoundedIterator)
+open Regex.Data (BitMatrix BVPos)
 open String (Pos Iterator)
 open Regex.NFA (Step)
 

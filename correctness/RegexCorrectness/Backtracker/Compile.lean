@@ -1,4 +1,4 @@
-import RegexCorrectness.Data.BoundedIterator
+import RegexCorrectness.Data.BVPos
 import RegexCorrectness.Backtracker.Traversal
 import RegexCorrectness.NFA.Semantics
 

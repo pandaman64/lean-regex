@@ -1,4 +1,4 @@
-import RegexCorrectness.Data.BoundedIterator
+import RegexCorrectness.Data.BVPos
 import RegexCorrectness.NFA.Semantics.Path
 
 set_option autoImplicit false
