@@ -3,19 +3,21 @@ import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
+open String (ValidPos)
+
 namespace Regex.NFA.Compile.ProofData
 
 namespace Empty
 
-variable [Empty] {lb it j it' update}
+variable [Empty] {s : String} {lb} {p p' : ValidPos s} {j update}
 
-theorem not_step_start : ¬nfa'.Step lb nfa'.start it j it' update := by
+theorem not_step_start : ¬nfa'.Step lb nfa'.start p j p' update := by
   have : nfa'[nfa'.start]'(by simp [size_eq, start_eq]) = .fail := by
     simp [start_eq, get_eq]
   intro step
   cases step <;> simp [this] at *
 
-theorem not_path_start : ¬nfa'.Path lb nfa'.start it j it' update := by
+theorem not_path_start : ¬nfa'.Path lb nfa'.start p j p' update := by
   intro path
   cases path with
   | last step => exact not_step_start step
@@ -25,11 +27,11 @@ end Empty
 
 namespace Epsilon
 
-variable [Epsilon] {it j it' update}
+variable [Epsilon] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  j = next ∧ it' = it ∧ update = .none ∧ it.Valid := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ p' = p ∧ update = .none := by
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .epsilon next := by
@@ -37,13 +39,13 @@ theorem step_start_iff :
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-  . intro ⟨hj, hit, hupdate, v⟩
+  . intro ⟨hj, hp, hupdate⟩
     simp_all
-    exact .epsilon (by simp [start_eq]) lt this v
+    exact .epsilon (by simp [start_eq]) lt this
 
 theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start it j it' update ↔
-  j = next ∧ it' = it ∧ update = [] ∧ it.Valid := by
+  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ p' = p ∧ update = [] := by
   apply Iff.intro
   . intro path
     cases path with
@@ -55,19 +57,19 @@ theorem path_start_iff (next_lt : next < nfa.nodes.size) :
       simp [step] at rest
       have ge := rest.ge
       omega
-  . intro ⟨hj, hit, hupdate, v⟩
+  . intro ⟨hj, hp, hupdate⟩
     simp_all
-    exact .last (step_start_iff.mpr ⟨rfl, rfl, rfl, v⟩)
+    exact .last (step_start_iff.mpr ⟨rfl, rfl, rfl⟩)
 
 end Epsilon
 
 namespace Anchor
 
-variable [Anchor] {it j it' update}
+variable [Anchor] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  j = next ∧ it' = it ∧ update = .none ∧ it.Valid ∧ anchor.test it := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ p' = p ∧ update = .none ∧ anchor.test p := by
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .anchor anchor next := by
@@ -75,13 +77,13 @@ theorem step_start_iff :
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-  . intro ⟨hj, hit, hupdate, v, hcond⟩
+  . intro ⟨hj, hp, hupdate, hcond⟩
     simp_all
-    exact .anchor (by simp [start_eq]) lt this v hcond
+    exact .anchor (by simp [start_eq]) lt this hcond
 
 theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start it j it' update ↔
-  j = next ∧ it' = it ∧ update = [] ∧ it.Valid ∧ anchor.test it := by
+  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ p' = p ∧ update = [] ∧ anchor.test p := by
   apply Iff.intro
   . intro path
     cases path with
@@ -93,37 +95,37 @@ theorem path_start_iff (next_lt : next < nfa.nodes.size) :
       simp [step] at rest
       have ge := rest.ge
       omega
-  . intro ⟨hj, hit, hupdate, v, hcond⟩
+  . intro ⟨hj, hp, hupdate, hcond⟩
     simp_all
-    exact .last (step_start_iff.mpr ⟨rfl, rfl, rfl, v, hcond⟩)
+    exact .last (step_start_iff.mpr ⟨rfl, rfl, rfl, hcond⟩)
 
 end Anchor
 
 namespace Char
 
-variable [Char] {it j it' update}
+variable [Char] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  ∃ l r, j = next ∧ it' = it.next ∧ update = .none ∧ it.ValidFor l (c :: r) := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ update = .none ∧ ∃ ne, p' = p.next ne ∧ p.get ne = c := by
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .char c next := by
     simp [start_eq, get_eq]
   apply Iff.intro
   . intro step
-    cases step
-    case char l c r ge lt vf hn =>
-      simp_all
-      exact ⟨l, r, this.1 ▸ vf⟩
-    all_goals simp_all
-  . intro ⟨l, r, hj, hit, hupdate, vf⟩
+    grind
+  . intro ⟨hj, hupdate, ne, hp, hget⟩
     simp_all
-    exact .char (by simp [start_eq]) lt this vf
+    exact .char (by simp [start_eq]) lt this ne hget
 
 theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start it j it' update ↔
-  ∃ l r, j = next ∧ it' = it.next ∧ update = [] ∧ it.ValidFor l (c :: r) := by
+  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ update = [] ∧ ∃ ne, p' = p.next ne ∧ p.get ne = c := by
+  have lt : nfa'.start < nfa'.nodes.size := by
+    simp [size_eq, start_eq]
+  have : nfa'[nfa'.start] = .char c next := by
+    simp [start_eq, get_eq]
   apply Iff.intro
   . intro path
     cases path with
@@ -134,38 +136,38 @@ theorem path_start_iff (next_lt : next < nfa.nodes.size) :
       simp [step_start_iff] at step
       simp [step] at rest
       have ge := rest.ge
-      omega
-  . intro ⟨l, r, hj, hit, hupdate, vf⟩
-    simp_all
-    exact .last (step_start_iff.mpr ⟨l, r, rfl, rfl, rfl, vf⟩)
+      grind
+  . intro ⟨hj, hupdate, ne, hp, hget⟩
+    simp [hj, hupdate]
+    exact .last (step_start_iff.mpr ⟨rfl, rfl, ne, hp, hget⟩)
 
 end Char
 
 namespace Classes
 
-variable [Classes] {it j it' update}
+variable [Classes] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  ∃ l c r, j = next ∧ it' = it.next ∧ update = .none ∧ it.ValidFor l (c :: r) ∧ c ∈ cs := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ update = .none ∧ ∃ ne, p' = p.next ne ∧ p.get ne ∈ cs := by
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .sparse cs next := by
     simp [start_eq, get_eq]
   apply Iff.intro
   . intro step
-    cases step
-    case sparse l c r cs ge lt mem vf hn =>
-      simp [hn] at this
-      exact ⟨l, c, r, this.2, rfl, rfl, vf, this.1 ▸ mem⟩
-    all_goals simp_all
-  . intro ⟨l, c, r, hj, hit, hupdate, vf, mem⟩
+    grind
+  . intro ⟨hj, hupdate, ne, hp, mem⟩
     simp_all
-    exact .sparse (by simp [start_eq]) lt this vf mem
+    exact .sparse (by simp [start_eq]) lt this ne mem
 
 theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start it j it' update ↔
-  ∃ l c r, j = next ∧ it' = it.next ∧ update = [] ∧ it.ValidFor l (c :: r) ∧ c ∈ cs := by
+  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+  j = next ∧ update = [] ∧ ∃ ne, p' = p.next ne ∧ p.get ne ∈ cs := by
+  have lt : nfa'.start < nfa'.nodes.size := by
+    simp [size_eq, start_eq]
+  have : nfa'[nfa'.start] = .sparse cs next := by
+    simp [start_eq, get_eq]
   apply Iff.intro
   . intro path
     cases path with
@@ -176,20 +178,20 @@ theorem path_start_iff (next_lt : next < nfa.nodes.size) :
       simp [step_start_iff] at step
       simp [step] at rest
       have ge := rest.ge
-      omega
-  . intro ⟨l, c, r, hj, hit, hupdate, vf, mem⟩
-    simp_all
-    exact .last (step_start_iff.mpr ⟨l, c, r, rfl, rfl, rfl, vf, mem⟩)
+      grind
+  . intro ⟨hj, hupdate, ne, hp, mem⟩
+    simp [hj, hupdate]
+    exact .last (step_start_iff.mpr ⟨rfl, rfl, ne, hp, mem⟩)
 
 end Classes
 
 namespace Group
 
-variable [Group] {it j it' update}
+variable [Group] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  j = nfaExpr.start ∧ it' = it ∧ update = .some (2 * tag, it.pos) ∧ it.Valid := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  j = nfaExpr.start ∧ p' = p ∧ update = .some (2 * tag, p) := by
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_lt_expr', start_eq]
   have : nfa'[nfa'.start] = .save (2 * tag) nfaExpr.start := by
@@ -197,13 +199,13 @@ theorem step_start_iff :
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-  . intro ⟨hj, hit, hupdate, v⟩
+  . intro ⟨hj, hp, hupdate⟩
     simp_all
-    exact .save (ge_pushRegex_start rfl) lt this v
+    exact .save (ge_pushRegex_start rfl) lt this
 
 theorem step_close_iff :
-  nfa'.Step nfa.nodes.size nfaClose.start it j it' update ↔
-  j = next ∧ it' = it ∧ update = .some (2 * tag + 1, it.pos) ∧ it.Valid := by
+  nfa'.Step nfa.nodes.size nfaClose.start p j p' update ↔
+  j = next ∧ p' = p ∧ update = .some (2 * tag + 1, p) := by
   have lt : nfaClose.start < nfa'.nodes.size := by
     simp [nfaClose, size_lt]
   have : nfa'[nfaClose.start] = .save (2 * tag + 1) next := by
@@ -211,19 +213,19 @@ theorem step_close_iff :
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-  . intro ⟨hj, hit, hupdate, v⟩
+  . intro ⟨hj, hp, hupdate⟩
     simp_all
-    exact .save (by simp [nfaClose]) lt this v
+    exact .save (by simp [nfaClose]) lt this
 
 end Group
 
 namespace Alternate
 
-variable [Alternate] {it j it' update}
+variable [Alternate] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  (j = nfa₁.start ∨ j = nfa₂.start) ∧ it' = it ∧ update = .none ∧ it.Valid := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  (j = nfa₁.start ∨ j = nfa₂.start) ∧ p' = p ∧ update = .none := by
   have ge : nfa.nodes.size ≤ nfa'.start := ge_pushRegex_start rfl
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_lt₂, start_eq]
@@ -231,24 +233,24 @@ theorem step_start_iff :
   apply Iff.intro
   . intro step
     cases step <;> simp_all
-  . intro ⟨hj, hit, hupdate, v⟩
+  . intro ⟨hj, hp, hupdate⟩
     cases hj with
     | inl hj =>
       simp_all
-      exact .splitLeft ge lt this v
+      exact .splitLeft ge lt this
     | inr hj =>
       simp_all
-      exact .splitRight ge lt this v
+      exact .splitRight ge lt this
 
 end Alternate
 
 namespace Star
 
-variable [Star] {it j it' update}
+variable [Star] {s : String} {lb} {p p' : ValidPos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start it j it' update ↔
-  (j = nfaExpr.start ∨ j = next) ∧ it' = it ∧ update = .none ∧ it.Valid := by
+  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  (j = nfaExpr.start ∨ j = next) ∧ p' = p ∧ update = .none := by
   have ge : nfa.nodes.size ≤ nfa'.start := ge_pushRegex_start rfl
   have lt : nfa'.start < nfa'.nodes.size := by
     simp [size_lt, start_eq]
@@ -258,18 +260,18 @@ theorem step_start_iff :
   apply Iff.intro
   . intro step
     cases step <;> grind
-  . intro ⟨hj, hit, hupdate, v⟩
+  . intro ⟨hj, hp, hupdate⟩
     cases hj with
     | inl hj =>
       simp_all
       split at this
-      . exact .splitLeft ge lt this v
-      . exact .splitRight ge lt this v
+      . exact .splitLeft ge lt this
+      . exact .splitRight ge lt this
     | inr hj =>
       simp_all
       split at this
-      . exact .splitRight ge lt this v
-      . exact .splitLeft ge lt this v
+      . exact .splitRight ge lt this
+      . exact .splitLeft ge lt this
 
 end Star
 
