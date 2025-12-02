@@ -76,6 +76,58 @@ def isWordChar (ch : Char) : Bool :=
 
 end Char
 
+-- These theorems are backported from https://github.com/leanprover/lean4/pull/11289
+namespace String
+
+theorem Slice.Pos.le_of_not_lt {s : Slice} {p q : s.Pos} : ¬q < p → p ≤ q := by
+  simp [Slice.Pos.le_iff, Slice.Pos.lt_iff, Pos.Raw.le_iff, Pos.Raw.lt_iff]
+
+theorem Slice.Pos.ne_endPos_of_lt {s : Slice} {p q : s.Pos} : p < q → p ≠ s.endPos := by
+  have := q.isValidForSlice.le_utf8ByteSize
+  simp [lt_iff, Pos.ext_iff, Pos.Raw.lt_iff, Pos.Raw.ext_iff]
+  omega
+
+theorem Slice.Pos.next_le_of_lt {s : Slice} {p q : s.Pos} {h} : p < q → p.next h ≤ q := by
+  -- Things like this will become a lot simpler once we have the `Splits` machinery developed,
+  -- but this is `String.Basic`, so we have to suffer a little.
+  refine fun hpq => le_of_not_lt (fun hq => ?_)
+  have := q.isUTF8FirstByte_byte (h := ne_endPos_of_lt hq)
+  rw [byte, getUTF8Byte, String.getUTF8Byte] at this
+  simp only [Pos.Raw.byteIdx_offsetBy] at this
+  have h₁ : q.offset.byteIdx = p.offset.byteIdx + (q.offset.byteIdx - p.offset.byteIdx) := by
+    simp [lt_iff, Pos.Raw.lt_iff] at hpq
+    omega
+  have h₂ : q.offset.byteIdx - p.offset.byteIdx < (p.get h).utf8Size := by
+    simp [lt_iff, Pos.Raw.lt_iff] at hq
+    omega
+  conv at this => congr; arg 2; rw [h₁, ← Nat.add_assoc]
+  rw [← ByteArray.getElem_extract (start := s.startInclusive.offset.byteIdx + p.offset.byteIdx)
+    (stop := s.startInclusive.offset.byteIdx + p.offset.byteIdx + (p.get h).utf8Size)] at this
+  · simp only [← utf8Encode_get_eq_extract, List.utf8Encode_singleton] at this
+    have h₃ := List.getElem_toByteArray (l := utf8EncodeChar (p.get h))
+      (i := q.offset.byteIdx - p.offset.byteIdx) (h := by simpa)
+    rw [h₃, UInt8.isUTF8FirstByte_getElem_utf8EncodeChar] at this
+    simp only [lt_iff, Pos.Raw.lt_iff] at hpq
+    omega
+  · simp only [ByteArray.size_extract, size_bytes]
+    rw [Nat.min_eq_left]
+    · omega
+    · have := (p.next h).str.isValid.le_utf8ByteSize
+      simpa [Nat.add_assoc] using this
+
+theorem Slice.Pos.ofSlice_le_iff {s : String} {p : s.toSlice.Pos} {q : s.ValidPos} :
+    p.ofSlice ≤ q ↔ p ≤ q.toSlice := Iff.rfl
+
+@[simp]
+theorem ValidPos.toSlice_lt_toSlice_iff {s : String} {p q : s.ValidPos} :
+    p.toSlice < q.toSlice ↔ p < q := Iff.rfl
+
+theorem ValidPos.next_le_of_lt {s : String} {p q : s.ValidPos} {h} : p < q → p.next h ≤ q := by
+  rw [next, Slice.Pos.ofSlice_le_iff, ← ValidPos.toSlice_lt_toSlice_iff]
+  exact Slice.Pos.next_le_of_lt
+
+end String
+
 namespace String.ValidPos
 
 open Char
@@ -233,11 +285,6 @@ theorem wellFounded_gt : WellFounded (fun (p : ValidPosPlusOne s) q => q < p) :=
 instance : WellFoundedRelation (ValidPosPlusOne s) where
   rel p q := q < p
   wf := wellFounded_gt
-
--- example {s : String} (p : ValidPosPlusOne s) : Nat :=
---   match p with
---   | .validPos pos => 1
---   | .sentinel _ => 2
 
 end ValidPosPlusOne
 
