@@ -83,7 +83,7 @@ theorem εClosure'_of_path {nfa : NFA} {i j it it' updates} (wf : nfa.WellFormed
     subst hit
     exact εClosure'.single step
   | @more i it j it' k it'' update₁ update₂ step rest ih =>
-    match step.it_eq_or_next with
+    match step.eq_or_next with
     | .inl hit' =>
       subst hit hit'
       simp at ih

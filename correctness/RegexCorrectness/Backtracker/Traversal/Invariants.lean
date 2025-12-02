@@ -352,7 +352,7 @@ theorem of_step_closure {bit₀ : BoundedIterator startIdx maxIdx} (wf : nfa.Wel
     let bit' : BoundedIterator startIdx maxIdx := ⟨it', ge', le', eq'⟩
 
     have reaches' : bit₀.Reaches bit' := by
-      match step.it_eq_or_next with
+      match step.eq_or_next with
       | .inl eq =>
         have eq : bit' = bit := by
           simp [BoundedIterator.ext_iff, bit', ←eqit, eq]
