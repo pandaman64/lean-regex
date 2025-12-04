@@ -9,17 +9,17 @@ namespace Regex.NFA
 
 variable {s : String} {nfa : NFA} {next e result lb} {pos pos' : ValidPos s} {i j update}
 
-@[grind ->]
+@[grind →]
 theorem Step.eq_or_lt_of_pushNode {node} (step : (nfa.pushNode node).Step lb i pos j pos' update) :
   i = nfa.nodes.size ∨ i < nfa.nodes.size ∧ nfa.Step lb i pos j pos' update := by
   grind
 
-@[grind ->]
+@[grind →]
 theorem Step.eq_or_lt_of_pushRegex (step : (nfa.pushRegex next e).Step lb i pos j pos' update) :
   nfa.nodes.size ≤ i ∨ i < nfa.nodes.size ∧ nfa.Step lb i pos j pos' update := by
   fun_induction pushRegex <;> grind [pushRegex_size_lt]
 
-@[grind ->]
+@[grind →]
 theorem Step.eq_or_ge_of_pushRegex
   (step : (nfa.pushRegex next e).Step nfa.nodes.size i pos j pos' update) :
   j = next ∨ nfa.nodes.size ≤ j := by

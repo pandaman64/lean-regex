@@ -315,6 +315,12 @@ theorem ne_endValidPos_of_lt {s : String} {pos pos' : ValidPos s} (lt : pos < po
   have : pos'.offset ≤ s.endValidPos.offset := pos'.isValid.le_rawEndPos
   exact Nat.not_le_of_lt (eq ▸ lt) this
 
+@[grind ., simp]
+theorem ne_next {s : String} {pos : ValidPos s} {ne : pos ≠ s.endValidPos} : pos ≠ pos.next ne := by
+  intro eq
+  have : pos.next ne < pos.next ne := eq ▸ pos.lt_next
+  exact (Nat.lt_irrefl _ this).elim
+
 def posRevInduction.{u} {s : String} {motive : ValidPos s → Sort u}
   (endValidPos : motive s.endValidPos)
   (next : ∀ p : ValidPos s, (h : p ≠ s.endValidPos) → motive (p.next h) → motive p)

@@ -160,7 +160,7 @@ def maxTag (nfa : NFA) : Nat :=
     | .save tag _ => accum.max tag
     | _ => accum
 
-@[grind ->]
+@[grind →]
 theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = .save tag next) :
   tag ≤ nfa.maxTag := by
   unfold maxTag
