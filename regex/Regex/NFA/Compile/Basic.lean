@@ -10,22 +10,24 @@ def pushNode (nfa : NFA) (node : Node) : NFA :=
   let nodes := nfa.nodes.push node
   ⟨nodes, start⟩
 
-@[simp]
+@[simp, grind =]
 theorem pushNode_size {nfa : NFA} {node : Node} :
   (nfa.pushNode node).nodes.size = nfa.nodes.size + 1 := by
   simp [pushNode]
 
+@[grind =]
 theorem pushNode_get_lt {nfa : NFA} {node : Node}
   (i : Nat) (h : i < nfa.nodes.size) :
   (nfa.pushNode node)[i]'(Nat.lt_trans h (by simp only [pushNode_size, Nat.lt_add_one])) = nfa[i] := by
   simp [pushNode, get_eq_nodes_get]
   rw [Array.getElem_push_lt]
 
-@[simp]
+@[simp, grind =]
 theorem pushNode_get_eq {nfa : NFA} {node : Node} :
   (nfa.pushNode node)[nfa.nodes.size] = node := by
   simp [pushNode, get_eq_nodes_get]
 
+@[grind =]
 theorem pushNode_get {nfa : NFA} {node : Node}
   (i : Nat) (h : i < (nfa.pushNode node).nodes.size) :
   (nfa.pushNode node)[i]'h = if h' : i < nfa.nodes.size then nfa[i]'h' else node := by
@@ -34,7 +36,7 @@ theorem pushNode_get {nfa : NFA} {node : Node}
   | inl lt => simp [lt, pushNode_get_lt _ lt]
   | inr eq => simp [eq]
 
-@[simp]
+@[simp, grind =]
 theorem pushNode_start_eq {nfa : NFA} {node : Node} : (nfa.pushNode node).start = nfa.nodes.size := rfl
 
 /--

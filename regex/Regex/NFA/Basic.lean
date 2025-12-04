@@ -150,6 +150,7 @@ def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
 instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
   getElem nfa i h := get nfa i h
 
+@[grind =]
 theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) :
   nfa[i] = nfa.nodes[i] := rfl
 
@@ -159,6 +160,7 @@ def maxTag (nfa : NFA) : Nat :=
     | .save tag _ => accum.max tag
     | _ => accum
 
+@[grind ->]
 theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = .save tag next) :
   tag ≤ nfa.maxTag := by
   unfold maxTag

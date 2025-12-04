@@ -33,24 +33,30 @@ namespace Step
 
 variable {s : String} {nfa nfa' : NFA} {lb lb'} {p p' : ValidPos s} {i j k update}
 
+@[grind ->]
 theorem ge (step : nfa.Step lb i p j p' update) : lb ≤ i := by
   cases step <;> assumption
 
+@[grind ->]
 theorem lt (step : nfa.Step lb i p j p' update) : i < nfa.nodes.size := by
   cases step <;> assumption
 
+@[grind ->]
 theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i p j p' update) : j < nfa.nodes.size := by
   have inBounds := wf.inBounds ⟨i, step.lt⟩
   cases step <;> simp_all [Node.inBounds]
 
+@[grind ->]
 theorem eq_or_next (step : nfa.Step lb i p j p' update) : p' = p ∨ ∃ ne : p ≠ s.endValidPos, p' = p.next ne := by
   cases step <;> simp_all
 
+@[grind ->]
 theorem le (step : nfa.Step lb i p j p' update) : p ≤ p' := by
   match step.eq_or_next with
   | .inl eq => exact eq ▸ ValidPos.le_refl _
   | .inr ⟨_, eq⟩ => exact ValidPos.le_of_lt (eq ▸ ValidPos.lt_next p)
 
+@[grind .]
 theorem cast (step : nfa.Step lb i p j p' update)
   {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
   nfa'.Step lb i p j p' update := by
@@ -63,6 +69,7 @@ theorem cast (step : nfa.Step lb i p j p' update)
   | char ge _ eq ne eq' => exact .char ge lt (h ▸ eq) ne eq'
   | sparse ge _ eq ne mem => exact .sparse ge lt (h ▸ eq) ne mem
 
+@[grind .]
 theorem liftBound' (ge : lb' ≤ i) (step : nfa.Step lb i p j p' update) :
   nfa.Step lb' i p j p' update := by
   cases step with
@@ -74,10 +81,12 @@ theorem liftBound' (ge : lb' ≤ i) (step : nfa.Step lb i p j p' update) :
   | char _ lt eq ne eq' => exact .char ge lt eq ne eq'
   | sparse _ lt eq ne mem => exact .sparse ge lt eq ne mem
 
+@[grind .]
 theorem liftBound (le : lb' ≤ lb) (step : nfa.Step lb i p j p' update) :
   nfa.Step lb' i p j p' update :=
   step.liftBound' (Nat.le_trans le step.ge)
 
+@[grind =]
 theorem iff_done {lt : i < nfa.nodes.size} (eq : nfa[i] = .done) :
   nfa.Step lb i p j p' update ↔ False := by
   apply Iff.intro
@@ -85,34 +94,42 @@ theorem iff_done {lt : i < nfa.nodes.size} (eq : nfa[i] = .done) :
     cases step <;> simp_all
   . simp
 
+@[grind =]
 theorem iff_fail {lt : i < nfa.nodes.size} (eq : nfa[i] = .fail) :
   nfa.Step lb i p j p' update ↔ False := by
   grind
 
+@[grind =>]
 theorem iff_epsilon {next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .epsilon next) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ j = next ∧ p' = p ∧ update = .none := by
   grind
 
+@[grind =>]
 theorem iff_anchor {anchor next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .anchor anchor next) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ j = next ∧ p' = p ∧ update = .none ∧ anchor.test p := by
   grind
 
+@[grind =>]
 theorem iff_split {next₁ next₂} {lt : i < nfa.nodes.size} (eq : nfa[i] = .split next₁ next₂) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ (j = next₁ ∨ j = next₂) ∧ p' = p ∧ update = .none := by
   grind
 
+@[grind =>]
 theorem iff_save {offset next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .save offset next) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ j = next ∧ p' = p ∧ update = .some (offset, p) := by
   grind
 
+@[grind =>]
 theorem iff_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next) :
   nfa.Step lb i p j p' update ↔ ∃ ne, lb ≤ i ∧ j = next ∧ p' = p.next ne ∧ update = .none ∧ p.get ne = c := by
   grind
 
+@[grind =>]
 theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next) :
   nfa.Step lb i p j p' update ↔ ∃ ne, lb ≤ i ∧ j = next ∧ p' = p.next ne ∧ update = .none ∧ p.get ne ∈ cs := by
   grind
 
+@[grind ->]
 theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i p j p' update) :
   nfa.Step 1 i p j p' update := by
   cases Nat.eq_zero_or_pos i with
@@ -137,21 +154,25 @@ namespace Path
 
 variable {s : String} {nfa nfa' : NFA} {lb lb'} {p p' p'' : ValidPos s} {i j k updates updates₁ updates₂}
 
+@[grind ->]
 theorem ge (path : nfa.Path lb i p j p' updates) : lb ≤ i := by
   cases path with
   | last step => exact step.ge
   | more step => exact step.ge
 
+@[grind ->]
 theorem lt (path : nfa.Path lb i p j p' updates) : i < nfa.nodes.size := by
   cases path with
   | last step => exact step.lt
   | more step => exact step.lt
 
+@[grind ->]
 theorem lt_right (wf : nfa.WellFormed) (path : nfa.Path lb i p j p' updates) : j < nfa.nodes.size := by
   induction path with
   | last step => exact step.lt_right wf
   | more _ _ ih => exact ih
 
+@[grind ->]
 theorem le (path : nfa.Path lb i p j p' updates) : p ≤ p' := by
   induction path with
   | last step => exact step.le
@@ -160,6 +181,7 @@ theorem le (path : nfa.Path lb i p j p' updates) : p ≤ p' := by
 /--
 A simpler casting procedure where the equality can be proven easily, e.g., when casting to a larger NFA.
 -/
+@[grind =>]
 theorem cast (eq : ∀ i, lb ≤ i → (_ : i < nfa.nodes.size) → ∃ _ : i < nfa'.nodes.size, nfa[i] = nfa'[i])
   (path : nfa.Path lb i p j p' updates) :
   nfa'.Path lb i p j p' updates := by
@@ -174,6 +196,7 @@ theorem cast (eq : ∀ i, lb ≤ i → (_ : i < nfa.nodes.size) → ∃ _ : i < 
 /--
 A casting procedure that transports a path from a larger NFA to a smaller NFA.
 -/
+@[grind ->]
 theorem cast' (lt : i < nfa.nodes.size) (size_le : nfa.nodes.size ≤ nfa'.nodes.size) (wf : nfa.WellFormed)
   (eq : ∀ i, lb ≤ i → (lt : i < nfa.nodes.size) → nfa'[i]'(Nat.lt_of_lt_of_le lt size_le) = nfa[i])
   (path : nfa'.Path lb i p j p' updates) :
@@ -185,12 +208,14 @@ theorem cast' (lt : i < nfa.nodes.size) (size_le : nfa.nodes.size ≤ nfa'.nodes
     have rest := ih (step.lt_right wf)
     exact .more step rest
 
+@[grind .]
 theorem liftBound (le : lb' ≤ lb) (path : nfa.Path lb i p j p' updates) :
   nfa.Path lb' i p j p' updates := by
   induction path with
   | last step => exact .last (step.liftBound le)
   | more step _ ih => exact .more (step.liftBound le) ih
 
+@[grind .]
 theorem liftBound' (ge : lb' ≤ i)
   (inv : ∀ {p p' : ValidPos s} {i j update}, lb' ≤ i → lb ≤ j → nfa.Step lb i p j p' update → lb' ≤ j)
   (path : nfa.Path lb i p j p' updates) :
@@ -199,6 +224,7 @@ theorem liftBound' (ge : lb' ≤ i)
   | last step => exact .last (step.liftBound' ge)
   | more step rest ih => exact .more (step.liftBound' ge) (ih (inv ge rest.ge step))
 
+@[grind .]
 theorem trans (path₁ : nfa.Path lb i p j p' updates₁) (path₂ : nfa.Path lb j p' k p'' updates₂) :
   nfa.Path lb i p k p'' (updates₁ ++ updates₂) := by
   induction path₁ with
@@ -209,6 +235,7 @@ theorem trans (path₁ : nfa.Path lb i p j p' updates₁) (path₂ : nfa.Path lb
     simp
     exact .more step (ih path₂)
 
+@[grind ->]
 theorem compile_liftBound {e nfa} (eq : compile e = nfa) (path : nfa.Path 0 i p j p' updates) :
   nfa.Path 1 i p j p' updates := by
   induction path with

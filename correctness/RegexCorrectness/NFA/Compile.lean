@@ -160,6 +160,7 @@ end Star
 end Compile.ProofData
 
 open Compile.ProofData in
+@[grind =>]
 theorem ge_pushRegex_start {nfa next e result} (eq : pushRegex nfa next e = result) :
   nfa.nodes.size ≤ result.start := by
   induction e generalizing nfa next result with
