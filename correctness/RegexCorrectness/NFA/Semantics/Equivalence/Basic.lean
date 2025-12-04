@@ -3,17 +3,18 @@ import RegexCorrectness.Data.Expr.Semantics
 set_option autoImplicit false
 
 open Regex.Data (CaptureGroups)
+open String (ValidPos)
 
 namespace Regex.NFA
 
-inductive EquivUpdate : CaptureGroups → List (Nat × String.Pos.Raw) → Prop where
+inductive EquivUpdate {s : String} : CaptureGroups s → List (Nat × ValidPos s) → Prop where
   | empty : EquivUpdate .empty []
   | group {groups updates tag first last} (eqv : EquivUpdate groups updates) :
     EquivUpdate (.group tag first last groups) ((2 * tag, first) :: updates ++ [(2 * tag + 1, last)])
   | concat {groups₁ groups₂ updates₁ updates₂} (eqv₁ : EquivUpdate groups₁ updates₁) (eqv₂ : EquivUpdate groups₂ updates₂) :
     EquivUpdate (.concat groups₁ groups₂) (updates₁ ++ updates₂)
 
-theorem EquivUpdate.mem_groups_of_mem_updates {groups updates offset pos}
+theorem EquivUpdate.mem_groups_of_mem_updates {s : String} {groups : CaptureGroups s} {updates : List (Nat × ValidPos s)} {offset : Nat} {pos : ValidPos s}
   (h : (offset, pos) ∈ updates) (eqv : EquivUpdate groups updates) :
   ∃ tag first last, (tag, first, last) ∈ groups ∧ (offset = 2 * tag ∨ offset = 2 * tag + 1) := by
   induction eqv with
