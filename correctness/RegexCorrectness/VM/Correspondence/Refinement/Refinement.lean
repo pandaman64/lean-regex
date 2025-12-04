@@ -6,8 +6,7 @@ set_option autoImplicit false
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.Strategy (materializeUpdates)
-open String (Iterator)
-open String.Pos (Raw)
+open String (ValidPos)
 
 /-
 The correctness proofs use the refined versions of the VM functions to track all updates to the
@@ -17,8 +16,8 @@ This files estabilishes the correspondence between the refined and actual VM fun
 -/
 namespace Regex.VM
 
-variable {nfa : NFA} {wf : nfa.WellFormed} {bufferSize : Nat} {it : Iterator}
-  {matchedH : Option (List (Nat × Raw))} {matchedB : Option (Buffer bufferSize)}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {bufferSize : Nat} {pos : ValidPos s}
+  {matchedH : Option (List (Nat × ValidPos s))} {matchedB : Option (Buffer bufferSize)}
   {nextH : SearchState HistoryStrategy nfa} {nextB : SearchState (BufferStrategy bufferSize) nfa}
   {stackH : εStack HistoryStrategy nfa} {stackB : εStack (BufferStrategy bufferSize) nfa}
 
