@@ -22,7 +22,7 @@ namespace BVPos
 
 variable {s : String} {startPos : ValidPos s}
 
-def refl {s : String} (startPos : ValidPos s) : BVPos startPos :=
+def start {s : String} (startPos : ValidPos s) : BVPos startPos :=
   ⟨startPos, ValidPos.le_refl _⟩
 
 def index (bp : BVPos startPos) : Fin (startPos.remainingBytes + 1) :=
@@ -83,8 +83,28 @@ instance : LE (BVPos startPos) := ⟨fun bp₁ bp₂ => bp₁.current ≤ bp₂.
 
 theorem le_iff {bp₁ bp₂ : BVPos startPos} : bp₁ ≤ bp₂ ↔ bp₁.current ≤ bp₂.current := Iff.rfl
 
+theorem le_refl (bp : BVPos startPos) : bp ≤ bp := ValidPos.le_refl _
+
 theorem le_trans {bp₁ bp₂ bp₃ : BVPos startPos} (le₁₂ : bp₁ ≤ bp₂) (le₂₃ : bp₂ ≤ bp₃) : bp₁ ≤ bp₃ :=
   ValidPos.le_trans le₁₂ le₂₃
+
+theorem le_of_lt {bp₁ bp₂ : BVPos startPos} (lt : bp₁ < bp₂) : bp₁ ≤ bp₂ :=
+  ValidPos.le_of_lt lt
+
+theorem not_le_of_lt {bp₁ bp₂ : BVPos startPos} (lt : bp₁ < bp₂) : ¬bp₂ ≤ bp₁ := by
+  intro le
+  exact Nat.not_le_of_lt lt le
+
+theorem not_lt_of_le {bp₁ bp₂ : BVPos startPos} (le : bp₂ ≤ bp₁) : ¬bp₁ < bp₂ := by
+  intro lt
+  exact Nat.not_le_of_lt lt le
+
+theorem lt_or_eq_of_le {bp₁ bp₂ : BVPos startPos} (le : bp₁ ≤ bp₂) : bp₁ < bp₂ ∨ bp₁ = bp₂ := by
+  cases Nat.lt_or_eq_of_le le with
+  | inl lt => exact .inl lt
+  | inr eq => exact .inr (by ext; exact eq)
+
+theorem le_endBVPos (bp : BVPos startPos) : bp ≤ s.endBVPos startPos := bp.current.isValid.le_rawEndPos
 
 end BVPos
 

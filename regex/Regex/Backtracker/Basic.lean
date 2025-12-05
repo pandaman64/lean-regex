@@ -70,7 +70,7 @@ def captureNextAux {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellForm
 termination_by (nfa.nodes.size * (startPos.remainingBytes + 1) + 1 - visited.popcount, stack)
 
 def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s) : Option σ.Update :=
-  go (.refl startPos) (BitMatrix.zero _ _)
+  go (BVPos.start startPos) (BitMatrix.zero _ _)
 where
   go (pos : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Option σ.Update :=
   match captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] with

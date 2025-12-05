@@ -51,7 +51,7 @@ theorem concat_nfaPath {i j : Nat} (isLt : i < nfa.nodes.size)
   | @more i it' j it'' k it''' update₂ update₂' step path ih =>
     exact ih (update₁ := update₁ ++ List.ofOption update₂) path.lt (path₁.more step rfl) (by simp [equpdate])
 
-theorem of_nfaPath (path : nfa.Path 0 nfa.start pos i pos' update) :
+theorem of_nfaPath {i : Nat} (path : nfa.Path 0 nfa.start pos i pos' update) :
   Path nfa wf pos pos' ⟨i, path.lt_right wf⟩ update := by
   have path₁ : Path nfa wf pos pos ⟨nfa.start, wf.start_lt⟩ [] := .init
   exact path₁.concat_nfaPath wf.start_lt path (by simp)
