@@ -55,12 +55,12 @@ theorem char_pos {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h
   rw! [pushNext, hn]
   simp [h, hc]
 
-theorem char_neg {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : pos = s.endBVPos startPos ∨ ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ≠ c) :
+theorem char_neg {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ≠ c) :
   pushNext σ nfa wf startPos stack update state pos = stack := by
   rw! [pushNext, hn]
   match h with
   | .inl h => simp [h]
-  | .inr ⟨hnext, hc⟩ => simp [hnext, hc]
+  | .inr ⟨ne, hc⟩ => simp [ne, hc]
 
 theorem sparse_pos {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : pos ≠ s.endBVPos startPos) (hc : pos.get h ∈ cs) :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
@@ -68,12 +68,12 @@ theorem sparse_pos {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse
   rw! [pushNext, hn]
   simp [h, hc]
 
-theorem sparse_neg {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : pos = s.endBVPos startPos ∨ ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ∉ cs) :
+theorem sparse_neg {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∉ cs) :
   pushNext σ nfa wf startPos stack update state pos = stack := by
   rw! [pushNext, hn]
   match h with
   | .inl h => simp [h]
-  | .inr ⟨hnext, hc⟩ => simp [hnext, hc]
+  | .inr ⟨ne, hc⟩ => simp [ne, hc]
 
 theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
   {motive : List (StackEntry σ nfa startPos) → σ.Update → Fin nfa.nodes.size → BVPos startPos → Prop}
@@ -94,11 +94,11 @@ theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos
   (char_pos : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (c : Char) (state' : Fin nfa.nodes.size),
     nfa[state] = .char c state' → (h : pos ≠ s.endBVPos startPos) → pos.get h = c → motive stack update state pos)
   (char_neg : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (c : Char) (state' : Fin nfa.nodes.size),
-    nfa[state] = .char c state' → (pos = s.endBVPos startPos ∨ ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ≠ c) → motive stack update state pos)
+    nfa[state] = .char c state' → (pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ≠ c) → motive stack update state pos)
   (sparse_pos : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
     nfa[state] = .sparse cs state' → (h : pos ≠ s.endBVPos startPos) → pos.get h ∈ cs → motive stack update state pos)
   (sparse_neg : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
-    nfa[state] = .sparse cs state' → (pos = s.endBVPos startPos ∨ ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ∉ cs) → motive stack update state pos)
+    nfa[state] = .sparse cs state' → (pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∉ cs) → motive stack update state pos)
   : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos),
     motive stack update state pos :=
   fun stack update state pos =>
@@ -122,27 +122,27 @@ theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos
         anchor_neg stack update state pos a ⟨state', isLt⟩ hn ht
     | .char c state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      if h : ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext = c then
+      if h : ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne = c then
         char_pos stack update state pos c ⟨state', isLt⟩ hn h.1 h.2
       else
-        have h' : pos = s.endBVPos startPos ∨ ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ≠ c := by
-          if hnext : pos = s.endBVPos startPos then
-            exact .inl hnext
+        have h' : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ≠ c := by
+          if ne : pos = s.endBVPos startPos then
+            exact .inl ne
           else
-            simp only [ne_eq, hnext, not_false_eq_true, exists_true_left] at h
-            exact .inr ⟨hnext, h⟩
+            simp only [ne_eq, ne, not_false_eq_true, exists_true_left] at h
+            exact .inr ⟨ne, h⟩
         char_neg stack update state pos c ⟨state', isLt⟩ hn h'
     | .sparse cs state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      if h : ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ∈ cs then
+      if h : ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∈ cs then
         sparse_pos stack update state pos cs ⟨state', isLt⟩ hn h.1 h.2
       else
-        have h' : pos = s.endBVPos startPos ∨ ∃ hnext : pos ≠ s.endBVPos startPos, pos.get hnext ∉ cs := by
-          if hnext : pos = s.endBVPos startPos then
-            exact .inl hnext
+        have h' : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∉ cs := by
+          if eq : pos = s.endBVPos startPos then
+            exact .inl eq
           else
-            simp only [ne_eq, hnext, not_false_eq_true, exists_true_left] at h
-            exact .inr ⟨hnext, h⟩
+            simp only [ne_eq, eq, not_false_eq_true, exists_true_left] at h
+            exact .inr ⟨eq, h⟩
         sparse_neg stack update state pos cs ⟨state', isLt⟩ hn h'
 
 end captureNextAux.pushNext

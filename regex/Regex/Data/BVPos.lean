@@ -43,6 +43,15 @@ def next (bp : BVPos startPos) (h : bp ≠ s.endBVPos startPos) : BVPos startPos
   have le' : startPos ≤ current' := ValidPos.le_of_lt (Nat.lt_of_le_of_lt bp.le bp.current.lt_next)
   ⟨current', le'⟩
 
+@[simp, grind =]
+theorem next_current {bp : BVPos startPos} (ne : bp ≠ s.endBVPos startPos) :
+  (bp.next ne).current = bp.current.next (ne_end_iff_current_ne_end.mp ne) := by
+  simp [next]
+
+@[simp, grind =]
+theorem endBVPos_current : (s.endBVPos startPos).current = s.endValidPos := by
+  simp [String.endBVPos]
+
 def nextn (bp : BVPos startPos) (n : Nat) : BVPos startPos :=
   match n with
   | 0 => bp
@@ -69,6 +78,13 @@ theorem wellFounded_gt : WellFounded (fun (p : BVPos startPos) q => q < p) :=
 instance : WellFoundedRelation (BVPos startPos) where
   rel p q := q < p
   wf := wellFounded_gt
+
+instance : LE (BVPos startPos) := ⟨fun bp₁ bp₂ => bp₁.current ≤ bp₂.current⟩
+
+theorem le_iff {bp₁ bp₂ : BVPos startPos} : bp₁ ≤ bp₂ ↔ bp₁.current ≤ bp₂.current := Iff.rfl
+
+theorem le_trans {bp₁ bp₂ bp₃ : BVPos startPos} (le₁₂ : bp₁ ≤ bp₂) (le₂₃ : bp₂ ≤ bp₃) : bp₁ ≤ bp₃ :=
+  ValidPos.le_trans le₁₂ le₂₃
 
 end BVPos
 
