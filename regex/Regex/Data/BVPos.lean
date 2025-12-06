@@ -106,6 +106,10 @@ theorem lt_or_eq_of_le {bp₁ bp₂ : BVPos startPos} (le : bp₁ ≤ bp₂) : b
 
 theorem le_endBVPos (bp : BVPos startPos) : bp ≤ s.endBVPos startPos := bp.current.isValid.le_rawEndPos
 
+theorem lt_next_iff_lt_or_eq {bp₁ bp₂ : BVPos startPos} (h : bp₂ ≠ s.endBVPos startPos) :
+  bp₁ < bp₂.next h ↔ bp₁ < bp₂ ∨ bp₁ = bp₂ :=
+  Iff.trans (ValidPos.lt_next_iff_lt_or_eq (ne_end_iff_current_ne_end.mp h)) (or_congr Iff.rfl BVPos.ext_iff.symm)
+
 end BVPos
 
 end Regex.Data

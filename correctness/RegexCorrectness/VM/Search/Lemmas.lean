@@ -99,9 +99,8 @@ theorem SearchState.MemOfPathInv.preserves {s nfa wf pos₀ pos current next ne}
   intro k update path
   cases path with
   | init le cls => exact εClosure.mem_next h₂ (eachStepChar.lower_bound stepped h₁ lb) cls
-  | @more i j k pos' _ update₁ update₂ update₃ prev step cls equpdate eqit =>
-    -- TODO: we need ValidPos.next_inj
-    have : pos = pos' := by sorry
+  | @more i j k pos' _ update₁ update₂ update₃ prev step cls equpdate eqpos =>
+    have : pos = pos' := ValidPos.next_inj eqpos
     subst pos'
     have mem : i ∈ current.states := inv i update₁ prev
     have mem' : k ∈ stepped.2.states :=
@@ -116,9 +115,7 @@ theorem NeDoneOfPathInv.preserves {s nfa wf pos₀ pos ne} {expanded : Option (L
   (inv : NeDoneOfPathInv nfa wf pos₀ pos) :
   NeDoneOfPathInv nfa wf pos₀ (pos.next ne) := by
   intro pos' state update le path
-  have : pos' ≤ pos ∨ pos' = pos.next ne := by
-    sorry
-  cases this with
+  cases ValidPos.le_or_eq_of_le_next le with
   | inl le => exact inv pos' state update le path
   | inr eq =>
     have mem := memOfPath state update (eq ▸ path)

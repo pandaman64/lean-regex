@@ -1,74 +1,3 @@
--- namespace String
-
--- theorem _root_.List.asString_cons {c : Char} {cs : List Char} :
---   (c :: cs).asString = [c].asString ++ cs.asString := by
---   simp [←List.asString_append]
-
--- theorem Pos.Raw.utf8GetAux_utf8Size_le_utf8Encode_size (cs₁ cs₂ cs₃ : List Char) (i p : Pos.Raw)
---   (eq₁ : i = cs₁.asString.endPos) (eq₂ : p = (cs₁ ++ cs₂).asString.endPos) (lt : 0 < cs₃.length) (v : p.IsValid (cs₁ ++ cs₂ ++ cs₃).asString) :
---   (Pos.Raw.utf8GetAux (cs₂ ++ cs₃) i p).utf8Size ≤ cs₃.asString.utf8ByteSize := by
---   match cs₂, cs₃, lt with
---   | [], c :: cs₃, _ =>
---     simp only [List.append_nil] at eq₂
---     simp only [← eq₂] at eq₁
---     simp only [List.nil_append, eq₁, utf8GetAux, ↓reduceIte, ge_iff_le]
---     rw [List.asString_cons, String.utf8ByteSize_append, ←String.singleton_eq, String.utf8ByteSize_singleton]
---     exact Nat.le_add_right _ _
---   | c :: cs₂, cs₃, lt =>
---     have ne : i ≠ p := by
---       refine Pos.Raw.ne_of_lt ?_
---       simp only [eq₁, endPos, eq₂, List.asString_append, utf8ByteSize_append, mk_lt_mk, Nat.lt_add_right_iff_pos]
---       rw [List.asString_cons, String.utf8ByteSize_append, ←String.singleton_eq, String.utf8ByteSize_singleton]
---       exact Nat.lt_of_lt_of_le c.utf8Size_pos (by grind)
---     simp only [List.cons_append, utf8GetAux, ne, ↓reduceIte, ge_iff_le]
---     exact utf8GetAux_utf8Size_le_utf8Encode_size (cs₁ ++ [c]) cs₂ cs₃ (i + c) p (by simp [eq₁, endPos, ←String.singleton_eq, Pos.Raw.ext_iff]) (by simpa using eq₂) lt (by simpa using v)
-
--- theorem Pos.Raw.next_le_endPos {s : String} {p : Pos.Raw} (v : p.IsValid s) (h : p ≠ s.endPos) : p.next s ≤ s.endPos := by
---   have ⟨m₁, m₂, eq₁, eq₂⟩ := Pos.Raw.isValid_iff_exists_append.mp v
---   have lt : 0 < m₂.length := by
---     apply Nat.zero_lt_of_ne_zero
---     intro eq
---     have eq' : m₂ = "" := String.data_eq_nil_iff.mp (List.eq_nil_iff_length_eq_zero.mpr (by simpa using eq))
---     simp_all
---   have le := Pos.Raw.utf8GetAux_utf8Size_le_utf8Encode_size [] m₁.data m₂.data 0 p rfl (by simpa using eq₂) lt (by simpa [←eq₁] using v)
---   have eq : (utf8GetAux (m₁.data ++ m₂.data) 0 p) = p.get s := by
---     congr
---     simp [eq₁]
---   rw [eq] at le
---   simp only [next, le_iff, byteIdx_add_char, byteIdx_endPos, ge_iff_le]
---   calc p.byteIdx + (get s p).utf8Size
---     _ ≤ p.byteIdx + m₂.data.asString.utf8ByteSize := by grind
---     _ ≤ m₁.endPos.byteIdx + m₂.data.asString.utf8ByteSize := by grind
---     _ ≤ s.utf8ByteSize := by simp [eq₁]
-
--- theorem Pos.Raw.utf8GetAux_eq_default_of_not_valid (cs₁ cs₂ : List Char) (i p : Pos.Raw)
---   (eq : i = cs₁.asString.endPos)
---   (h : i.IsValid (cs₁ ++ cs₂).asString) (h' : ¬p.IsValid (cs₁ ++ cs₂).asString) :
---   Pos.Raw.utf8GetAux cs₂ i p = default := by
---   fun_induction Pos.Raw.utf8GetAux generalizing cs₁
---   next => rfl
---   next => grind
---   next c cs₂ i p ne ih =>
---     have eq' : i + c = (cs₁ ++ [c]).asString.endPos := by
---       simp [eq, String.endPos, Pos.Raw.ext_iff, ←String.singleton_eq_asString]
---     have h : IsValid (cs₁ ++ [c] ++ cs₂).asString (i + c) := by
---       rw [Pos.Raw.isValid_iff_exists_append]
---       exists (cs₁ ++ [c]).asString, cs₂.asString
---       refine ⟨List.asString_append, ?_⟩
---       simp [eq, ←String.singleton_eq_asString, String.endPos, Pos.Raw.ext_iff]
---     exact ih (cs₁ ++ [c]) eq' h (by simpa using h')
-
--- theorem Pos.Raw.get_eq_default_of_not_valid {p : Pos.Raw} {s : String} (h : ¬p.IsValid s) : p.get s = default :=
---   Pos.Raw.utf8GetAux_eq_default_of_not_valid [] s.data 0 p rfl Pos.Raw.isValid_zero (by simpa using h)
-
--- theorem next_le_endPos (s : String) (p : Pos.Raw) (lt : p < s.endPos) : p.next s ≤ s.endPos := by
---   if v : p.IsValid s then
---     exact Pos.Raw.next_le_endPos v (ne_of_apply_ne Pos.Raw.byteIdx (Nat.ne_of_lt lt))
---   else
---     simpa [Pos.Raw.next, Pos.Raw.get_eq_default_of_not_valid v] using Nat.succ_le_of_lt lt
-
--- end String
-
 namespace Char
 
 def isWordChar (ch : Char) : Bool :=
@@ -162,37 +91,100 @@ def find (pos : ValidPos s) (p : Char → Bool) :=
     find (pos.next hn) p
 termination_by pos
 
--- theorem next'_eq_next (it : Iterator) (h : it.hasNext) : it.next' h = it.next := by
---   simp [next', next]
+end String.ValidPos
 
--- theorem next_toString (it : Iterator) : it.next.toString = it.toString := by
---   simp [next, toString]
+namespace String.ValidPos
 
--- theorem next_le_endPos (it : Iterator) (h : it.hasNext) : (it.next' h).pos ≤ (it.next' h).toString.endPos := by
---   have lt : it.pos < it.toString.endPos := by
---     simp [hasNext] at h
---     exact h
---   simp [next'_eq_next, next_toString]
---   exact String.next_le_endPos it.toString it.pos lt
+theorem ne_endValidPos_of_lt {s : String} {pos pos' : ValidPos s} (lt : pos < pos') : pos ≠ s.endValidPos := by
+  intro eq
+  have : pos'.offset ≤ s.endValidPos.offset := pos'.isValid.le_rawEndPos
+  exact Nat.not_le_of_lt (eq ▸ lt) this
 
--- theorem lt_next (it : Iterator) : it.pos < it.next.pos := by
---   simp [pos, next]
---   exact String.Pos.Raw.byteIdx_lt_byteIdx_next _ _
+@[grind ., simp]
+theorem ne_next {s : String} {pos : ValidPos s} {ne : pos ≠ s.endValidPos} : pos ≠ pos.next ne := by
+  intro eq
+  have : pos.next ne < pos.next ne := eq ▸ pos.lt_next
+  exact (Nat.lt_irrefl _ this).elim
 
--- theorem next_le_four (it : Iterator) : it.next.pos.byteIdx ≤ it.pos.byteIdx + 4 := by
---   show it.pos.byteIdx + Char.utf8Size (it.pos.get it.toString) ≤ it.pos.byteIdx + 4
---   simp [Char.utf8Size_le_four]
+def posRevInduction.{u} {s : String} {motive : ValidPos s → Sort u}
+  (endValidPos : motive s.endValidPos)
+  (next : ∀ p : ValidPos s, (h : p ≠ s.endValidPos) → motive (p.next h) → motive p)
+  (p : ValidPos s) : motive p :=
+  if h : p = s.endValidPos then
+    h ▸ endValidPos
+  else
+    next p h (posRevInduction endValidPos next (p.next h))
+  termination_by p
 
--- @[simp]
--- theorem next'_remainingBytes_lt {it : Iterator} {h : it.hasNext} : (it.next' h).remainingBytes < it.remainingBytes := by
---   simp only [hasNext, byteIdx_endPos, decide_eq_true_eq] at h
---   simp only [remainingBytes, next', Pos.Raw.next'_eq, Pos.Raw.next, byteIdx_endPos,
---     Pos.Raw.byteIdx_add_char]
---   have : (Pos.Raw.get it.s it.i).utf8Size > 0 := Char.utf8Size_pos _
---   grind
+theorem splits_of_next {s l r : String} {p : ValidPos s} {h : p ≠ s.endValidPos}
+  (sp : (p.next h).Splits (l ++ singleton (p.get h)) r) : p.Splits l (singleton (p.get h) ++ r) where
+  eq_append := by simp only [sp.eq_append, String.append_assoc]
+  offset_eq_rawEndPos := by simpa [offset_next, Pos.Raw.ext_iff] using sp.offset_eq_rawEndPos
 
--- theorem curr'_eq_curr {it : Iterator} {h : it.hasNext} : it.curr' h = it.curr := by
---   simp [curr', curr]
+theorem splits_get_singleton {s l r : String} {c : Char} {p : ValidPos s} (sp : p.Splits l (singleton c ++ r)) :
+  p.get sp.ne_endValidPos_of_singleton = c := by
+  obtain ⟨r', h⟩ := sp.exists_eq_singleton_append sp.ne_endValidPos_of_singleton
+  simp only [singleton_append_inj] at h
+  exact h.1.symm
+
+theorem lt_or_eq_of_le {s : String} {p p' : ValidPos s} (le : p ≤ p') : p < p' ∨ p = p' := by
+  cases Nat.lt_or_eq_of_le le with
+  | inl lt => exact .inl lt
+  | inr eq => exact .inr (by simp [ValidPos.ext_iff, Pos.Raw.ext_iff, eq])
+
+theorem Splits.exists_eq_append_left_of_lt {s l r : String} {p p' : ValidPos s} (sp : p.Splits l r) (lt : p' < p) :
+  ∃ l₁ l₂, l = l₁ ++ l₂ ∧ p'.Splits l₁ (l₂ ++ r) := by
+  induction p' using posRevInduction with
+  | endValidPos => exact (Nat.not_lt_of_le p.isValid.le_rawEndPos lt).elim
+  | next p' h ih =>
+    have : p'.next h < p ∨ p'.next h = p := lt_or_eq_of_le (next_le_of_lt lt)
+    cases this with
+    | inl lt' =>
+      obtain ⟨l₁, l₂, rfl, sp'⟩ := ih lt'
+      obtain ⟨l₁, rfl⟩ := sp'.exists_eq_append_singleton
+      refine ⟨l₁, singleton (p'.get h) ++ l₂, by rw [String.append_assoc], ?_⟩
+      simpa only [String.append_assoc] using splits_of_next sp'
+    | inr eq =>
+      subst eq
+      obtain ⟨l, rfl⟩ := sp.exists_eq_append_singleton
+      exact ⟨l, singleton (p'.get h), rfl, splits_of_next sp⟩
+
+theorem next_inj {s} {pos pos' : ValidPos s} {h : pos ≠ s.endValidPos} {h' : pos' ≠ s.endValidPos}
+  (eq : pos.next h = pos'.next h') :
+  pos = pos' := by
+  have eq' := (pos.splits_next h).eq_left (eq ▸ pos'.splits_next h')
+  simp only [append_singleton, push_inj] at eq'
+  exact ValidPos.ext (Eq.trans (eq'.1 ▸ pos.splits.offset_eq_rawEndPos) (pos'.splits.offset_eq_rawEndPos).symm)
+
+theorem lt_of_le_of_ne {s} {pos pos' : ValidPos s} (le : pos ≤ pos') (ne : pos ≠ pos') : pos < pos' :=
+  Nat.lt_of_le_of_ne le (by simpa [ValidPos.ext_iff, Pos.Raw.ext_iff] using ne)
+
+theorem le_of_lt_next {s} {pos pos' : ValidPos s} {h' : pos' ≠ s.endValidPos} (lt : pos < pos'.next h') : pos ≤ pos' :=
+  Decidable.by_contra (fun nle => Nat.not_lt_of_le (ValidPos.next_le_of_lt (Nat.lt_of_not_le nle)) lt)
+
+theorem le_or_eq_of_le_next {s} {pos pos' : ValidPos s} {h' : pos' ≠ s.endValidPos} (le : pos ≤ pos'.next h') :
+  pos ≤ pos' ∨ pos = pos'.next h' :=
+  Decidable.byCases
+    (fun (eq : pos = pos'.next h') => .inr eq)
+    (fun (ne : pos ≠ pos'.next h') => .inl (le_of_lt_next (lt_of_le_of_ne le ne)))
+
+theorem le_next_iff {s} {pos pos' : ValidPos s} {h' : pos' ≠ s.endValidPos} :
+  pos ≤ pos'.next h' ↔ pos ≤ pos' ∨ pos = pos'.next h' := by
+  refine ⟨le_or_eq_of_le_next, ?_⟩
+  intro h
+  cases h with
+  | inl le => exact le_trans le (le_of_lt pos'.lt_next)
+  | inr eq => exact eq ▸ le_refl _
+
+theorem lt_next_iff {s} {pos pos' : ValidPos s} {h' : pos' ≠ s.endValidPos} : pos < pos'.next h' ↔ pos ≤ pos' :=
+  ⟨le_of_lt_next, fun le => Nat.lt_of_le_of_lt le pos'.lt_next⟩
+
+theorem le_iff_lt_or_eq {s} {pos pos' : ValidPos s} : pos ≤ pos' ↔ pos < pos' ∨ pos = pos' :=
+  Iff.trans Nat.le_iff_lt_or_eq (or_congr Iff.rfl (by simp [ValidPos.ext_iff, Pos.Raw.ext_iff]))
+
+theorem lt_next_iff_lt_or_eq {s} {pos pos' : ValidPos s} (h' : pos' ≠ s.endValidPos) :
+  pos < pos'.next h' ↔ pos < pos' ∨ pos = pos' :=
+  lt_next_iff.trans le_iff_lt_or_eq
 
 end String.ValidPos
 

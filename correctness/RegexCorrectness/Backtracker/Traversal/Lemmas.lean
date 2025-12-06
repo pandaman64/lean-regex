@@ -90,9 +90,7 @@ theorem preservesAux {result} (haux : captureNextAux (HistoryStrategy s) nfa wf 
   refine ⟨inv.closure.preserves haux isNone, ?_⟩
   intro state' bvpos' le₀'
   rw [inv.mem_iff_of_aux_none haux isNone le₀ state' bvpos' le₀']
-  have {bvposPrev} : bvposPrev < bvpos.next ne ↔ bvposPrev < bvpos ∨ bvposPrev = bvpos := by
-    sorry
-  grind
+  grind [BVPos.lt_next_iff_lt_or_eq]
 
 theorem mem_iff_path_of_aux_none_endBVPos {result}
   (haux : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, s.endBVPos startPos⟩] = result)
