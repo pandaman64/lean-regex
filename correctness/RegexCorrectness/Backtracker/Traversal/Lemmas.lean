@@ -13,9 +13,9 @@ variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} 
   {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
 theorem mem_or_path_of_mem_of_none {result} (hres : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩] = result)
-  (isNone : result.1 = .none) (le₀ : bvpos₀ ≤ bvpos) :
-  VisitedInv wf bvpos₀ bvpos le₀ visited result.2 :=
-  visited_inv_of_none hres isNone (VisitedInv.rfl le₀) (StackInv.intro bvpos)
+  (isNone : result.1 = .none) :
+  VisitedInv wf bvpos₀ bvpos visited result.2 :=
+  visited_inv_of_none hres isNone (VisitedInv.rfl wf bvpos₀ bvpos) (StackInv.intro bvpos)
 
 theorem PathClosure.preserves {result} (hres : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩] = result)
   (isNone : result.1 = .none) (cls : PathClosure bvpos₀ visited) :
@@ -44,7 +44,7 @@ theorem mem_iff_mem_or_path_of_none {result} (hres : captureNextAux (HistoryStra
   result.2.get state bvpos'.index ↔ visited.get state bvpos'.index ∨ ∃ update, Path nfa wf bvpos.current bvpos'.current state update := by
   apply Iff.intro
   . intro mem
-    exact mem_or_path_of_mem_of_none hres isNone le₀ state bvpos' le₀' mem
+    exact mem_or_path_of_mem_of_none hres isNone state bvpos' le₀' mem
   . intro h
     match h with
     | .inl mem => exact hres ▸ mem_of_mem_visited mem
@@ -94,19 +94,19 @@ theorem preservesAux {result} (haux : captureNextAux (HistoryStrategy s) nfa wf 
     sorry
   grind
 
--- TODO: replace bvpos and rename
-theorem mem_iff_path_of_aux_none_of_not_hasNext {result} (haux : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩] = result)
-  (isNone : result.1 = .none) (le₀ : bvpos₀ ≤ bvpos) (eq : bvpos = s.endBVPos startPos) (inv : Inv wf bvpos₀ bvpos visited)
+theorem mem_iff_path_of_aux_none_endBVPos {result}
+  (haux : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, s.endBVPos startPos⟩] = result)
+  (isNone : result.1 = .none) (inv : Inv wf bvpos₀ (s.endBVPos startPos) visited)
   (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (le₀' : bvpos₀ ≤ bvpos') :
-  result.2.get state' bvpos'.index ↔ ∃ (bvposPrev : BVPos startPos) (update : List (Nat × ValidPos s)), bvpos₀ ≤ bvposPrev ∧ Path nfa wf bvposPrev.current bvpos'.current state' update := by
-  rw [inv.mem_iff_of_aux_none haux isNone le₀ state' bvpos' le₀']
+  result.2.get state' bvpos'.index ↔
+    ∃ (bvposPrev : BVPos startPos) (update : List (Nat × ValidPos s)), bvpos₀ ≤ bvposPrev ∧ Path nfa wf bvposPrev.current bvpos'.current state' update := by
+  rw [inv.mem_iff_of_aux_none haux isNone bvpos₀.le_endBVPos state' bvpos' le₀']
   apply Iff.intro
   . intro h
     match h with
     | .inl ⟨bvposPrev, update, le, lt, path⟩ => exact ⟨bvposPrev, update, le, path⟩
-    | .inr ⟨update, path⟩ => exact ⟨bvpos, update, le₀, path⟩
-  . subst bvpos
-    intro ⟨bvpos, update, le, path⟩
+    | .inr ⟨update, path⟩ => exact ⟨s.endBVPos startPos, update, bvpos₀.le_endBVPos, path⟩
+  . intro ⟨bvpos, update, le, path⟩
     cases BVPos.lt_or_eq_of_le bvpos.le_endBVPos with
     | inl lt => exact .inl ⟨bvpos, update, le, lt, path⟩
     | inr eq => exact .inr ⟨update, eq ▸ path⟩
@@ -128,13 +128,15 @@ theorem ne_done_of_path_of_none (hres : go (HistoryStrategy s) nfa wf startPos b
     have inv' : Inv wf bvpos₀ (bvpos.next ne) visited' := inv.preservesAux haux rfl ne le₀
     have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
     exact ih hres (BVPos.le_trans le₀ (BVPos.le_of_lt (BVPos.lt_next ne))) inv' ndinv'
-  | not_found_end bvpos visited visited' haux ne =>
-    rw [captureNext.go_not_found_end haux ne] at hres
+  | not_found_end bvpos visited visited' haux eq =>
+    rw [captureNext.go_not_found_end haux eq] at hres
+    simp only [ne_eq, Decidable.not_not] at eq
+    subst bvpos
 
     intro bvpos' bvpos'' state update le₀' path hn
     have le₀'' : bvpos₀ ≤ bvpos'' := BVPos.le_trans le₀' path.le
     have mem : visited'.get state bvpos''.index :=
-      (inv.mem_iff_path_of_aux_none_of_not_hasNext haux rfl le₀ sorry state bvpos'' le₀'').mpr ⟨bvpos', update, le₀', path⟩
+      (inv.mem_iff_path_of_aux_none_endBVPos haux rfl state bvpos'' le₀'').mpr ⟨bvpos', update, le₀', path⟩
 
     have ndinv' : NotDoneInv visited' := captureNextAux.not_done_of_none haux rfl ndinv
     exact ndinv' state bvpos'' mem hn

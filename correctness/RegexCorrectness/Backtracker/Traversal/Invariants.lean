@@ -369,11 +369,10 @@ end
 
 section
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bvpos₀ bvpos : BVPos startPos} {le₀ : bvpos₀ ≤ bvpos}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bvpos₀ bvpos : BVPos startPos}
   {visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
--- TODO: do we actually need the le₀ here?
-def VisitedInv (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) (_ : bvpos₀ ≤ bvpos) (visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop :=
+def VisitedInv (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) (visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop :=
   ∀ (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos),
     bvpos₀ ≤ bvpos' →
     visited'.get state' bvpos'.index →
@@ -381,14 +380,14 @@ def VisitedInv (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) (_ : bvpo
 
 namespace VisitedInv
 
-theorem rfl {wf : nfa.WellFormed} {bvpos₀ bvpos : BVPos startPos} (le₀ : bvpos₀ ≤ bvpos) : VisitedInv wf bvpos₀ bvpos le₀ visited visited := by
+theorem rfl (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) : VisitedInv wf bvpos₀ bvpos visited visited := by
   intro state bvpos _ hmem
   exact .inl hmem
 
 theorem preserves {bvpos' : BVPos startPos} {state : Fin nfa.nodes.size}
-  (inv : VisitedInv wf bvpos₀ bvpos le₀ visited visited')
+  (inv : VisitedInv wf bvpos₀ bvpos visited visited')
   (update : List (Nat × ValidPos s)) (path : Path nfa wf bvpos.current bvpos'.current state update) :
-  VisitedInv wf bvpos₀ bvpos le₀ visited (visited'.set state bvpos'.index) := by
+  VisitedInv wf bvpos₀ bvpos visited (visited'.set state bvpos'.index) := by
   intro state' bvpos'' le' hmem
   simp [visited'.get_set] at hmem
   match hmem with
@@ -403,8 +402,8 @@ end VisitedInv
 
 theorem visited_inv_of_none {result} (hres : captureNextAux (HistoryStrategy s) nfa wf startPos visited' stack = result)
   (isNone : result.1 = .none)
-  (vinv : VisitedInv wf bvpos₀ bvpos le₀ visited visited') (stinv : StackInv wf bvpos stack) :
-  VisitedInv wf bvpos₀ bvpos le₀ visited result.2 := by
+  (vinv : VisitedInv wf bvpos₀ bvpos visited visited') (stinv : StackInv wf bvpos stack) :
+  VisitedInv wf bvpos₀ bvpos visited result.2 := by
   induction visited', stack using captureNextAux.induct' (HistoryStrategy s) nfa wf startPos with
   | base visited =>
     simp [captureNextAux_base] at hres
