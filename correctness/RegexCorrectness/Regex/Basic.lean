@@ -9,7 +9,7 @@ import RegexCorrectness.Regex.OptimizationInfo
 set_option autoImplicit false
 
 open Regex.Data (Expr)
-open String (Pos Iterator)
+open String (ValidPos)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
 namespace Regex
@@ -22,6 +22,8 @@ def IsSearchRegex (re : Regex) : Prop :=
     re.optimizationInfo = .fromExpr (.group 0 e)
 
 namespace IsSearchRegex
+
+variable {s : String} {re : Regex} {bufferSize : Nat} {pos : ValidPos s} {matched : Buffer s bufferSize}
 
 theorem of_fromExpr {e : Expr} (h : Expr.Disjoint (.group 0 e)) : IsSearchRegex (.fromExpr (.group 0 e)) := by
   simp [fromExpr]
@@ -59,88 +61,84 @@ theorem maxTag_eq {re : Regex} (s : IsSearchRegex re) : re.maxTag = re.nfa.maxTa
 theorem optimizationInfo_eq {re : Regex} (s : IsSearchRegex re) : re.optimizationInfo = .fromExpr s.expr :=
   s.choose_spec.2.2.2
 
+@[grind →]
 theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
   simp [s.maxTag_eq]
   show 2 * 0 < re.nfa.maxTag
   apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
   simp [expr, Expr.tags]
 
-theorem captureNextBuf_soundness' {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
-  (s : IsSearchRegex re) (v : it.Valid) :
-  ∃ it' it'' groups,
-    it'.toString = it.toString ∧
-    it.pos ≤ it'.pos ∧
-    s.expr.Captures it' it'' groups ∧
+@[grind →]
+theorem lt_of_mem_tags {re : Regex} {tag : Nat} (s : IsSearchRegex re) (h : tag ∈ s.expr.tags) :
+  2 * tag < re.maxTag :=
+  s.maxTag_eq ▸ NFA.lt_of_mem_tags_compile s.nfa_eq.symm h
+
+theorem captureNextBuf_soundness' (h : re.captureNextBuf bufferSize pos = .some matched)
+  (s : IsSearchRegex re) :
+  ∃ pos' pos'' groups,
+    pos ≤ pos' ∧
+    s.expr.Captures pos' pos'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched := by
   if bt : re.useBacktracker then
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
-    have ⟨it', it'', groups, eqs, le, c, eqv⟩ := Backtracker.captureNext_soundness s.disj h (OptimizationInfo.valid_findStart_of_valid v)
-    exact ⟨it', it'', groups, by grind, Nat.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
+    have ⟨pos', pos'', groups, le, c, eqv⟩ := Backtracker.captureNext_soundness s.disj h
+    exact ⟨pos', pos'', groups, ValidPos.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
   else
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
-    have ⟨it', it'', groups, eqs, le, c, eqv⟩ := VM.captureNext_soundness s.disj h (OptimizationInfo.valid_findStart_of_valid v)
-    exact ⟨it', it'', groups, by grind, Nat.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
+    have ⟨pos', pos'', groups, le, c, eqv⟩ := VM.captureNext_soundness s.disj h
+    exact ⟨pos', pos'', groups, ValidPos.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
 
-theorem captureNextBuf_soundness {re bufferSize it matched} (h : re.captureNextBuf bufferSize it = .some matched)
-  (s : IsSearchRegex re) (v : it.Valid) (le : 2 ≤ bufferSize) :
-  ∃ it' it'' groups,
-    it'.toString = it.toString ∧
-    it.pos ≤ it'.pos ∧
-    s.expr.Captures it' it'' groups ∧
+theorem captureNextBuf_soundness (h : re.captureNextBuf bufferSize pos = .some matched)
+  (s : IsSearchRegex re) (le : 2 ≤ bufferSize) :
+  ∃ pos' pos'' groups,
+    pos ≤ pos' ∧
+    s.expr.Captures pos' pos'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
-    matched[0] = .some it'.pos ∧
-    matched[1] = .some it''.pos := by
-  have ⟨it', it'', groups, eqs, le', c, eqv⟩ := captureNextBuf_soundness' h s v
-  refine ⟨it', it'', groups, eqs, le', c, eqv, ?_⟩
+    matched[0] = .some pos' ∧
+    matched[1] = .some pos'' := by
+  have ⟨pos', pos'', groups, le, c, eqv⟩ := captureNextBuf_soundness' h s
+  refine ⟨pos', pos'', groups, le, c, eqv, ?_⟩
 
   cases c with
   | @group _ _ groups' _ _ c' =>
     simp [materializeRegexGroups, EquivMaterializedUpdate] at eqv
     have eqv := eqv 0
-    have h₁ : 0 < bufferSize := Nat.lt_of_lt_of_le (by decide) le
-    have h₂ : 1 < bufferSize := Nat.lt_of_lt_of_le (by decide) le
-    simp [h₁, h₂] at eqv
-    exact ⟨eqv.1.symm, eqv.2.symm⟩
+    grind
 
-theorem captureNextBuf_completeness' {re bufferSize it} (h : re.captureNextBuf bufferSize it = .none)
-  (s : IsSearchRegex re) (v : it.Valid) (it' it'' : Iterator) (groups : Data.CaptureGroups)
-  (eqs : it'.toString = it.toString) (le : it.pos ≤ it'.pos) (c : s.expr.Captures it' it'' groups) :
+theorem captureNextBuf_completeness' (h : re.captureNextBuf bufferSize pos = .none)
+  (isr : IsSearchRegex re) (pos' pos'' : ValidPos s) (groups : Data.CaptureGroups s)
+  (le : pos ≤ pos') (c : isr.expr.Captures pos' pos'' groups) :
   False := by
-  have : it'.pos < (re.optimizationInfo.findStart it).pos ∨ (re.optimizationInfo.findStart it).pos ≤ it'.pos :=
+  have : pos' < re.optimizationInfo.findStart pos ∨ re.optimizationInfo.findStart pos ≤ pos' :=
     Nat.lt_or_ge _ _
   cases this with
-  | inl lt => exact OptimizationInfo.findStart_completeness s.optimizationInfo_eq v eqs le lt c
+  | inl lt => exact OptimizationInfo.findStart_completeness isr.optimizationInfo_eq le lt c
   | inr ge =>
     if bt : re.useBacktracker then
-      simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
-      exact Backtracker.captureNext_completeness' h (OptimizationInfo.valid_findStart_of_valid v) it' it'' groups (by grind) ge c
+      simp only [captureNextBuf, bt, ↓reduceIte, isr.nfa_eq] at h
+      exact Backtracker.captureNext_completeness' h pos' pos'' groups ge c
     else
-      simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
-      exact VM.captureNext_completeness' h (OptimizationInfo.valid_findStart_of_valid v) it' it'' groups (by grind) ge c
+      simp only [captureNextBuf, bt, Bool.false_eq_true, ↓reduceIte, isr.nfa_eq] at h
+      exact VM.captureNext_completeness' h pos' pos'' groups ge c
 
-theorem captureNextBuf_completeness {re bufferSize it} (h : re.captureNextBuf bufferSize it = .none)
-  (s : IsSearchRegex re) (v : it.Valid) :
-  ¬∃ it' it'' groups,
-    it'.toString = it.toString ∧
-    it.pos ≤ it'.pos ∧
-    s.expr.Captures it' it'' groups := by
+theorem captureNextBuf_completeness (h : re.captureNextBuf bufferSize pos = .none) (isr : IsSearchRegex re) :
+  ¬∃ pos' pos'' groups,
+    pos ≤ pos' ∧
+    isr.expr.Captures pos' pos'' groups := by
   grind [captureNextBuf_completeness']
 
-theorem searchNext_some {re it str} (h : re.searchNext it = .some str)
-  (s : IsSearchRegex re) (v : it.Valid) :
-  ∃ it' it'' groups,
-    it'.toString = it.toString ∧
-    it.pos ≤ it'.pos ∧
-    s.expr.Captures it' it'' groups ∧
-    str.startPos = it'.pos ∧
-    str.stopPos = it''.pos := by
+theorem searchNext_some {slice} (h : re.searchNext pos = .some slice) (isr : IsSearchRegex re) :
+  ∃ pos' pos'' groups,
+    pos ≤ pos' ∧
+    isr.expr.Captures pos' pos'' groups ∧
+    slice.startInclusive = (searchNext_str_eq_some h ▸ pos') ∧
+    slice.endExclusive = (searchNext_str_eq_some h ▸ pos'') := by
   simp [Regex.searchNext] at h
-  match h' : re.captureNextBuf 2 it with
+  match h' : re.captureNextBuf 2 pos with
   | .none => simp [h'] at h
   | .some matched =>
-    have ⟨it', it'', groups, eqs, le, c, eqv, eq₁, eq₂⟩ := captureNextBuf_soundness h' s v (Nat.le_refl _)
-    simp [h', eq₁, eq₂] at h
-    exact ⟨it', it'', groups, eqs, le, c, by simp [←h]⟩
+    have ⟨pos', pos'', groups, le, c, eqv, eq₁, eq₂⟩ := captureNextBuf_soundness h' isr (Nat.le_refl _)
+    exact ⟨pos', pos'', groups, le, c, by grind, by grind⟩
 
 end IsSearchRegex
 

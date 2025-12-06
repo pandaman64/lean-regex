@@ -3,74 +3,77 @@ import Regex.Data.String
 
 set_option autoImplicit false
 
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex.Syntax.Parser.Combinators
 
 @[macro_inline]
-def anyCharOrElse {ε} (unexpectedEof : ε) : Parser.LT ε Char
-  | it =>
-    if hn : it.hasNext then
-      .ok (it.curr' hn) (it.next' hn) Iterator.next'_remainingBytes_lt
+def anyCharOrElse {s ε} (unexpectedEof : ε) : Parser.LT s ε Char
+  | pos =>
+    if hn : pos ≠ s.endValidPos then
+      .ok (pos.get hn) (pos.next hn) pos.lt_next
     else
       .error unexpectedEof
 
 @[macro_inline]
-def testP {ε} (f : Char → Bool) : Parser.LE ε Bool
-  | it =>
-    if hn : it.hasNext then
-      let b := f (it.curr' hn)
+def testP {s ε} (f : Char → Bool) : Parser.LE s ε Bool
+  | pos =>
+    if hn : pos ≠ s.endValidPos then
+      let b := f (pos.get hn)
       if b then
-        .ok b (it.next' hn) (Nat.le_of_lt Iterator.next'_remainingBytes_lt)
+        .ok b (pos.next hn) (ValidPos.le_of_lt pos.lt_next)
       else
         pure false
     else
       pure false
 
 @[macro_inline]
-def test {ε} (c : Char) : Parser.LE ε Bool :=
+def test {s ε} (c : Char) : Parser.LE s ε Bool :=
   testP (· = c)
 
 @[macro_inline]
-def charOrElse {ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char → ε) : Parser.LT ε Char
-  | it =>
-    anyCharOrElse unexpectedEof it |>.guard fun c' =>
+def charOrElse {s ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char → ε) : Parser.LT s ε Char
+  | pos =>
+    anyCharOrElse unexpectedEof pos |>.guard fun c' =>
       if c = c' then .ok c else .error (unexpectedChar c')
 
-def foldl {ε α β} (init : β) (f : β → α → β) (p : Parser.LT ε α) : Parser.LE ε β :=
-  fun it =>
-    match p it with
-    | .ok a it' h => ((foldl (f init a) f p it').transOr h).weaken
-    | .error _ => pure init
-    | .fatal e => .fatal e
+def foldlAux {s ε α β} (init : β) (f : β → α → β) (p : Parser.LT s ε α) (pos : ValidPos s) : Result.LE pos ε β :=
+  match p pos with
+  | .ok a pos' h => ((foldlAux (f init a) f p pos').transOr h).weaken
+  | .error _ => pure init
+  | .fatal e => .fatal e
+termination_by pos
+
+def foldl {s ε α β} (init : β) (f : β → α → β) (p : Parser.LT s ε α) : Parser.LE s ε β :=
+  foldlAux init f p
 
 @[inline]
-def foldl1 {ε α} (f : α → α → α) (p : Parser.LT ε α) : Parser.LT ε α :=
+def foldl1 {s ε α} (f : α → α → α) (p : Parser.LT s ε α) : Parser.LT s ε α :=
   p.bindOr fun a => foldl a f p
 
 @[inline]
-def many1 {ε α} (p : Parser.LT ε α) : Parser.LT ε (Array α) :=
+def many1 {s ε α} (p : Parser.LT s ε α) : Parser.LT s ε (Array α) :=
   p.bindOr fun a => foldl #[a] (fun acc a => acc.push a) p
 
 @[inline]
-def betweenOr {s₁ s₂ s₃ ε α β γ} (l : Parser s₁ ε α) (r : Parser s₃ ε γ) (m : Parser s₂ ε β) : Parser (s₁ || s₂ || s₃) ε β :=
-  (l.bindOr fun _ => m.bindOr fun x => r.mapConst x).cast (by decide +revert)
+def betweenOr {s strict₁ strict₂ strict₃ ε α β γ} (l : Parser s strict₁ ε α) (r : Parser s strict₃ ε γ) (m : Parser s strict₂ ε β) : Parser s (strict₁ || strict₂ || strict₃) ε β :=
+  (l.bindOr fun _ => m.bindOr fun x => r.mapConst x).cast (by grind)
 
-def foldlNAux {s ε α β} (init : β) (f : β → α → β) (p : Parser s ε α) (n : Nat) (it : Iterator) : Result (n ≠ 0 && s) it ε β :=
+def foldlNAux {s strict ε α β} (init : β) (f : β → α → β) (p : Parser s strict ε α) (n : Nat) (pos : ValidPos s) : Result (n ≠ 0 && strict) pos ε β :=
   match n with
   | 0 => (Result.pure init).imp (by simp)
   | n' + 1 =>
-    match p it with
-    | .ok a it' h => foldlNAux (f init a) f p n' it' |>.transOr h |>.imp (by simp_all)
+    match p pos with
+    | .ok a pos' h => foldlNAux (f init a) f p n' pos' |>.transOr h |>.imp (by simp_all)
     | .error e => .error e
     | .fatal e => .fatal e
 
 @[inline]
-def foldlN {s ε α β} (init : β) (f : β → α → β) (p : Parser s ε α) (n : Nat) : Parser (n ≠ 0 && s) ε β
-  | it => foldlNAux init f p n it
+def foldlN {s strict ε α β} (init : β) (f : β → α → β) (p : Parser s strict ε α) (n : Nat) : Parser s (n ≠ 0 && strict) ε β
+  | pos => foldlNAux init f p n pos
 
 @[inline]
-def foldlPos {ε α β} (init : β) (f : β → α → β) (p : Parser.LT ε α) (n : Nat) [NeZero n] : Parser.LT ε β :=
+def foldlPos {s ε α β} (init : β) (f : β → α → β) (p : Parser.LT s ε α) (n : Nat) [NeZero n] : Parser.LT s ε β :=
   foldlN init f p n |>.cast (by simp [NeZero.ne])
 
 end Regex.Syntax.Parser.Combinators

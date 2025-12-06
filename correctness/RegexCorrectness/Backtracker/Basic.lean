@@ -1,249 +1,203 @@
 import Regex.Backtracker
+import Mathlib.Tactic.DepRewrite
 
 set_option autoImplicit false
 
-open Regex.Data (BitMatrix BoundedIterator)
+open Regex.Data (BitMatrix BVPos)
+open String (ValidPos)
 
 namespace Regex.Backtracker
 
 namespace captureNextAux.pushNext
 
-variable {σ : Strategy} {nfa : NFA} {wf : nfa.WellFormed} {startIdx maxIdx : Nat} {stack : List (StackEntry σ nfa startIdx maxIdx)} {update : σ.Update} {state : Fin nfa.nodes.size} {it : BoundedIterator startIdx maxIdx}
+variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed}
+  {startPos : ValidPos s} {stack : List (StackEntry σ nfa startPos)} {update : σ.Update} {state : Fin nfa.nodes.size} {pos : BVPos startPos}
 
-theorem done (hn : nfa[state] = .done) : pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  simp at hn
-  simp
-  split <;> simp_all
+theorem done (hn : nfa[state] = .done) : pushNext σ nfa wf startPos stack update state pos = stack := by
+  rw! [pushNext, hn]
 
-theorem fail (hn : nfa[state] = .fail) : pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem epsilonFin {state' : Fin nfa.nodes.size} (hn : nfa[state] = .epsilon state') :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, state', it⟩ :: stack := by
-  unfold pushNext
-  split <;> simp_all
+theorem fail (hn : nfa[state] = .fail) : pushNext σ nfa wf startPos stack update state pos = stack := by
+  rw! [pushNext, hn]
 
 theorem epsilon {state' : Nat} (hn : nfa[state] = .epsilon state') :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, ⟨state', isLt⟩, it⟩ :: stack := by
-  rw [epsilonFin (state' := ⟨state', wf.inBounds' state hn⟩) hn]
-
-theorem splitFin {state₁ state₂ : Fin nfa.nodes.size} (hn : nfa[state] = .split state₁ state₂) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, state₁, it⟩ :: ⟨update, state₂, it⟩ :: stack := by
-  unfold pushNext
-  split <;> simp_all
+  pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos⟩ :: stack := by
+  rw! [pushNext, hn]
 
 theorem split {state₁ state₂ : Nat} (hn : nfa[state] = .split state₁ state₂) :
   haveI isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, ⟨state₁, isLt.1⟩, it⟩ :: ⟨update, ⟨state₂, isLt.2⟩, it⟩ :: stack := by
-  rw [splitFin (state₁ := ⟨state₁, (wf.inBounds' state hn).1⟩) (state₂ := ⟨state₂, (wf.inBounds' state hn).2⟩) hn]
+  pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state₁, isLt.1⟩, pos⟩ :: ⟨update, ⟨state₂, isLt.2⟩, pos⟩ :: stack := by
+  rw! [pushNext, hn]
 
 theorem saveFin {offset : Nat} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .save offset state') :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨σ.write update offset it.pos, state', it⟩ :: stack := by
-  unfold pushNext
-  split <;> simp_all
+  pushNext σ nfa wf startPos stack update state pos = ⟨σ.write update offset pos.current, state', pos⟩ :: stack := by
+  rw! [pushNext, hn]
 
 theorem save {offset state' : Nat} (hn : nfa[state] = .save offset state') :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨σ.write update offset it.pos, ⟨state', isLt⟩, it⟩ :: stack := by
-  rw [saveFin (offset := offset) (state' := ⟨state', wf.inBounds' state hn⟩) hn]
+  pushNext σ nfa wf startPos stack update state pos = ⟨σ.write update offset pos.current, ⟨state', isLt⟩, pos⟩ :: stack := by
+  rw! [pushNext, hn]
 
-theorem anchor_posFin {a : Data.Anchor} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .anchor a state') (h : Data.Anchor.test it.it a) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, state', it⟩ :: stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem anchor_pos {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : Data.Anchor.test it.it a) :
+theorem anchor_pos {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : Data.Anchor.test pos.current a) :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, ⟨state', isLt⟩, it⟩ :: stack := by
-  rw [anchor_posFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h]
+  pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos⟩ :: stack := by
+  rw! [pushNext, hn]
+  simp [h]
 
-theorem anchor_negFin {a : Data.Anchor} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .anchor a state') (h : ¬Data.Anchor.test it.it a) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  split <;> simp_all
+theorem anchor_neg {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : ¬Data.Anchor.test pos.current a) :
+  pushNext σ nfa wf startPos stack update state pos = stack := by
+  rw! [pushNext, hn]
+  simp [h]
 
-theorem anchor_neg {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : ¬Data.Anchor.test it.it a) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  rw [anchor_negFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h]
-
-theorem char_posFin {c : Char} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .char c state') (h : it.hasNext) (hc : it.curr h = c) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, state', it.next h⟩ :: stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem char_pos {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : it.hasNext) (hc : it.curr h = c) :
+theorem char_pos {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : pos ≠ s.endBVPos startPos) (hc : pos.get h = c) :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, ⟨state', isLt⟩, it.next h⟩ :: stack := by
-  rw [char_posFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h hc]
+  pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos.next h⟩ :: stack := by
+  rw! [pushNext, hn]
+  simp [h, hc]
 
-theorem char_negFin {c : Char} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .char c state') (h : it.hasNext) (hc : ¬it.curr h = c) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem char_endFin {c : Char} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .char c state') (h : ¬it.hasNext) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem char_neg {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : ¬it.hasNext ∨ ∃ hnext : it.hasNext, ¬it.curr hnext = c) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
+theorem char_neg {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ≠ c) :
+  pushNext σ nfa wf startPos stack update state pos = stack := by
+  rw! [pushNext, hn]
   match h with
-  | .inl h => rw [char_endFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h]
-  | .inr ⟨hnext, hc⟩ => rw [char_negFin (state' := ⟨state', wf.inBounds' state hn⟩) hn hnext hc]
+  | .inl h => simp [h]
+  | .inr ⟨ne, hc⟩ => simp [ne, hc]
 
-theorem sparse_posFin {cs : Data.Classes} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .sparse cs state') (h : it.hasNext) (hc : it.curr h ∈ cs) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, state', it.next h⟩ :: stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem sparse_pos {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : it.hasNext) (hc : it.curr h ∈ cs) :
+theorem sparse_pos {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : pos ≠ s.endBVPos startPos) (hc : pos.get h ∈ cs) :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-  pushNext σ nfa wf startIdx maxIdx stack update state it = ⟨update, ⟨state', isLt⟩, it.next h⟩ :: stack := by
-  rw [sparse_posFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h hc]
+  pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos.next h⟩ :: stack := by
+  rw! [pushNext, hn]
+  simp [h, hc]
 
-theorem sparse_negFin {cs : Data.Classes} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .sparse cs state') (h : it.hasNext) (hc : ¬it.curr h ∈ cs) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem sparse_endFin {cs : Data.Classes} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .sparse cs state') (h : ¬it.hasNext) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
-  unfold pushNext
-  split <;> simp_all
-
-theorem sparse_neg {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : ¬it.hasNext ∨ ∃ hnext : it.hasNext, ¬it.curr hnext ∈ cs) :
-  pushNext σ nfa wf startIdx maxIdx stack update state it = stack := by
+theorem sparse_neg {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∉ cs) :
+  pushNext σ nfa wf startPos stack update state pos = stack := by
+  rw! [pushNext, hn]
   match h with
-  | .inl h => rw [sparse_endFin (state' := ⟨state', wf.inBounds' state hn⟩) hn h]
-  | .inr ⟨hnext, hc⟩ => rw [sparse_negFin (state' := ⟨state', wf.inBounds' state hn⟩) hn hnext hc]
+  | .inl h => simp [h]
+  | .inr ⟨ne, hc⟩ => simp [ne, hc]
 
-theorem fun_cases' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx maxIdx : Nat)
-  {motive : List (StackEntry σ nfa startIdx maxIdx) → σ.Update → Fin nfa.nodes.size → BoundedIterator startIdx maxIdx → Prop}
-  (done : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx),
-    nfa[state] = .done → motive stack update state it)
-  (fail : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx),
-    nfa[state] = .fail → motive stack update state it)
-  (epsilon : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (state' : Fin nfa.nodes.size),
-    nfa[state] = .epsilon state' → motive stack update state it)
-  (split : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (state₁ state₂ : Fin nfa.nodes.size),
-    nfa[state] = .split state₁ state₂ → motive stack update state it)
-  (save : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (offset : Nat) (state' : Fin nfa.nodes.size),
-    nfa[state] = .save offset state' → motive stack update state it)
-  (anchor_pos : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (a : Data.Anchor) (state' : Fin nfa.nodes.size),
-    nfa[state] = .anchor a state' → a.test it.it → motive stack update state it)
-  (anchor_neg : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (a : Data.Anchor) (state' : Fin nfa.nodes.size),
-    nfa[state] = .anchor a state' → ¬a.test it.it → motive stack update state it)
-  (char_pos : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (c : Char) (state' : Fin nfa.nodes.size),
-    nfa[state] = .char c state' → (h : it.hasNext) → it.curr h = c → motive stack update state it)
-  (char_neg : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (c : Char) (state' : Fin nfa.nodes.size),
-    nfa[state] = .char c state' → (¬it.hasNext ∨ ∃ hnext : it.hasNext, ¬it.curr hnext = c) → motive stack update state it)
-  (sparse_pos : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
-    nfa[state] = .sparse cs state' → (h : it.hasNext) → it.curr h ∈ cs → motive stack update state it)
-  (sparse_neg : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
-    nfa[state] = .sparse cs state' → (¬it.hasNext ∨ ∃ hnext : it.hasNext, ¬it.curr hnext ∈ cs) → motive stack update state it)
-  : ∀ (stack : List (StackEntry σ nfa startIdx maxIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx),
-    motive stack update state it :=
-  fun stack update state it =>
+theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
+  {motive : List (StackEntry σ nfa startPos) → σ.Update → Fin nfa.nodes.size → BVPos startPos → Prop}
+  (done : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos),
+    nfa[state] = .done → motive stack update state pos)
+  (fail : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos),
+    nfa[state] = .fail → motive stack update state pos)
+  (epsilon : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (state' : Fin nfa.nodes.size),
+    nfa[state] = .epsilon state' → motive stack update state pos)
+  (split : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (state₁ state₂ : Fin nfa.nodes.size),
+    nfa[state] = .split state₁ state₂ → motive stack update state pos)
+  (save : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (offset : Nat) (state' : Fin nfa.nodes.size),
+    nfa[state] = .save offset state' → motive stack update state pos)
+  (anchor_pos : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (a : Data.Anchor) (state' : Fin nfa.nodes.size),
+    nfa[state] = .anchor a state' → a.test pos.current → motive stack update state pos)
+  (anchor_neg : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (a : Data.Anchor) (state' : Fin nfa.nodes.size),
+    nfa[state] = .anchor a state' → ¬a.test pos.current → motive stack update state pos)
+  (char_pos : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (c : Char) (state' : Fin nfa.nodes.size),
+    nfa[state] = .char c state' → (h : pos ≠ s.endBVPos startPos) → pos.get h = c → motive stack update state pos)
+  (char_neg : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (c : Char) (state' : Fin nfa.nodes.size),
+    nfa[state] = .char c state' → (pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ≠ c) → motive stack update state pos)
+  (sparse_pos : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
+    nfa[state] = .sparse cs state' → (h : pos ≠ s.endBVPos startPos) → pos.get h ∈ cs → motive stack update state pos)
+  (sparse_neg : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (cs : Data.Classes) (state' : Fin nfa.nodes.size),
+    nfa[state] = .sparse cs state' → (pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∉ cs) → motive stack update state pos)
+  : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos),
+    motive stack update state pos :=
+  fun stack update state pos =>
     match hn : nfa[state] with
-    | .done => done stack update state it hn
-    | .fail => fail stack update state it hn
+    | .done => done stack update state pos hn
+    | .fail => fail stack update state pos hn
     | .epsilon state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      epsilon stack update state it ⟨state', isLt⟩ hn
+      epsilon stack update state pos ⟨state', isLt⟩ hn
     | .split state₁ state₂ =>
       have isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
-      split stack update state it ⟨state₁, isLt.1⟩ ⟨state₂, isLt.2⟩ hn
+      split stack update state pos ⟨state₁, isLt.1⟩ ⟨state₂, isLt.2⟩ hn
     | .save offset state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      save stack update state it offset ⟨state', isLt⟩ hn
+      save stack update state pos offset ⟨state', isLt⟩ hn
     | .anchor a state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      if ht : a.test it.it then
-        anchor_pos stack update state it a ⟨state', isLt⟩ hn ht
+      if ht : a.test pos.current then
+        anchor_pos stack update state pos a ⟨state', isLt⟩ hn ht
       else
-        anchor_neg stack update state it a ⟨state', isLt⟩ hn ht
+        anchor_neg stack update state pos a ⟨state', isLt⟩ hn ht
     | .char c state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      if h : ∃ hnext : it.hasNext, it.curr hnext = c then
-        char_pos stack update state it c ⟨state', isLt⟩ hn h.1 h.2
+      if h : ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne = c then
+        char_pos stack update state pos c ⟨state', isLt⟩ hn h.1 h.2
       else
-        have h' : ¬it.hasNext ∨ ∃ hnext : it.hasNext, ¬it.curr hnext = c := by
-          if hnext : it.hasNext then
-            simp [hnext] at h
-            exact .inr ⟨hnext, h⟩
+        have h' : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ≠ c := by
+          if ne : pos = s.endBVPos startPos then
+            exact .inl ne
           else
-            exact .inl hnext
-        char_neg stack update state it c ⟨state', isLt⟩ hn h'
+            simp only [ne_eq, ne, not_false_eq_true, exists_true_left] at h
+            exact .inr ⟨ne, h⟩
+        char_neg stack update state pos c ⟨state', isLt⟩ hn h'
     | .sparse cs state' =>
       have isLt : state' < nfa.nodes.size := wf.inBounds' state hn
-      if h : ∃ hnext : it.hasNext, it.curr hnext ∈ cs then
-        sparse_pos stack update state it cs ⟨state', isLt⟩ hn h.1 h.2
+      if h : ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∈ cs then
+        sparse_pos stack update state pos cs ⟨state', isLt⟩ hn h.1 h.2
       else
-        have h' : ¬it.hasNext ∨ ∃ hnext : it.hasNext, ¬it.curr hnext ∈ cs := by
-          if hnext : it.hasNext then
-            simp [hnext] at h
-            exact .inr ⟨hnext, h⟩
+        have h' : pos = s.endBVPos startPos ∨ ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∉ cs := by
+          if eq : pos = s.endBVPos startPos then
+            exact .inl eq
           else
-            exact .inl hnext
-        sparse_neg stack update state it cs ⟨state', isLt⟩ hn h'
+            simp only [ne_eq, eq, not_false_eq_true, exists_true_left] at h
+            exact .inr ⟨eq, h⟩
+        sparse_neg stack update state pos cs ⟨state', isLt⟩ hn h'
 
 end captureNextAux.pushNext
 
-theorem captureNextAux.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx maxIdx : Nat)
-  (motive : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) → List (StackEntry σ nfa startIdx maxIdx) → Prop)
-  (base : ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)), motive visited [])
-  (visited : ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (stack' : List (StackEntry σ nfa startIdx maxIdx)),
-    visited.get state it.index →
+theorem captureNextAux.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
+  (motive : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) → List (StackEntry σ nfa startPos) → Prop)
+  (base : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)), motive visited [])
+  (visited : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (stack' : List (StackEntry σ nfa startPos)),
+    visited.get state pos.index →
     motive visited stack' →
-    motive visited (⟨update, state, it⟩ :: stack'))
-  (done : ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (stack' : List (StackEntry σ nfa startIdx maxIdx)),
-    ¬visited.get state it.index →
+    motive visited (⟨update, state, pos⟩ :: stack'))
+  (done : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (stack' : List (StackEntry σ nfa startPos)),
+    ¬visited.get state pos.index →
     nfa[state] = .done →
-    motive visited (⟨update, state, it⟩ :: stack'))
-  (next : ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (update : σ.Update) (state : Fin nfa.nodes.size) (it : BoundedIterator startIdx maxIdx) (stack' : List (StackEntry σ nfa startIdx maxIdx)),
-    ¬visited.get state it.index →
+    motive visited (⟨update, state, pos⟩ :: stack'))
+  (next : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (stack' : List (StackEntry σ nfa startPos)),
+    ¬visited.get state pos.index →
     nfa[state] ≠ .done →
-    motive (visited.set state it.index) (pushNext σ nfa wf startIdx maxIdx stack' update state it) →
-    motive visited (⟨update, state, it⟩ :: stack'))
-  : ∀ (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (stack : List (StackEntry σ nfa startIdx maxIdx)), motive visited stack :=
-  captureNextAux.induct σ nfa wf startIdx maxIdx motive
+    motive (visited.set state pos.index) (pushNext σ nfa wf startPos stack' update state pos) →
+    motive visited (⟨update, state, pos⟩ :: stack'))
+  : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (stack : List (StackEntry σ nfa startPos)), motive visited stack :=
+  captureNextAux.induct σ nfa wf startPos motive
     base
     visited
-    (fun visited update state it stack' hmem _ hn => done visited update state it stack' hmem (by simpa using hn))
-    (fun visited update state it stack' hmem _ hn ih => next visited update state it stack' hmem (by simpa using hn) ih)
+    (fun visited update state bvpos stack' hmem _ hn => done visited update state bvpos stack' hmem (by simpa using hn))
+    (fun visited update state bvpos stack' hmem _ hn ih => next visited update state bvpos stack' hmem (by simpa using hn) ih)
 
 /-
 Simplification lemmas for `captureNextAux`.
 -/
 section
 
-variable {σ nfa wf startIdx maxIdx visited}
+variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)}
 
 theorem captureNextAux_base :
-  captureNextAux σ nfa wf startIdx maxIdx visited [] = (.none, visited) := by
+  captureNextAux σ nfa wf startPos visited [] = (.none, visited) := by
   simp [captureNextAux]
 
-theorem captureNextAux_visited {update state it stack'} (mem : visited.get state it.index) :
-  captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it⟩ :: stack') = captureNextAux σ nfa wf startIdx maxIdx visited stack' := by
+theorem captureNextAux_visited {update state pos stack'} (mem : visited.get state pos.index) :
+  captureNextAux σ nfa wf startPos visited (⟨update, state, pos⟩ :: stack') = captureNextAux σ nfa wf startPos visited stack' := by
   conv =>
     lhs
     unfold captureNextAux
     simp [mem]
 
-theorem captureNextAux_done {update state it stack'} (mem : ¬visited.get state it.index) (hn : nfa[state] = .done) :
-  captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it⟩ :: stack') = (.some update, visited.set state it.index) := by
+theorem captureNextAux_done {update state pos stack'} (mem : ¬visited.get state pos.index) (hn : nfa[state] = .done) :
+  captureNextAux σ nfa wf startPos visited (⟨update, state, pos⟩ :: stack') = (.some update, visited.set state pos.index) := by
   simp at hn
   conv =>
     lhs
     unfold captureNextAux
     simp [mem, hn]
 
-theorem captureNextAux_next {update state it stack'} (mem : ¬visited.get state it.index) (hn : nfa[state] ≠ .done) :
-  captureNextAux σ nfa wf startIdx maxIdx visited (⟨update, state, it⟩ :: stack') = captureNextAux σ nfa wf startIdx maxIdx (visited.set state it.index) (captureNextAux.pushNext σ nfa wf startIdx maxIdx stack' update state it) := by
+theorem captureNextAux_next {update state pos stack'} (mem : ¬visited.get state pos.index) (hn : nfa[state] ≠ .done) :
+  captureNextAux σ nfa wf startPos visited (⟨update, state, pos⟩ :: stack') = captureNextAux σ nfa wf startPos (visited.set state pos.index) (captureNextAux.pushNext σ nfa wf startPos stack' update state pos) := by
   simp at hn
   conv =>
     lhs
@@ -252,68 +206,46 @@ theorem captureNextAux_next {update state it stack'} (mem : ¬visited.get state 
 
 end
 
-theorem captureNext.go.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (startIdx maxIdx : Nat)
-  (motive : (bit : BoundedIterator startIdx maxIdx) → BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx) → Prop)
-  (found : ∀ (bit : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) (update : σ.Update) (visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)),
-    captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.some update, visited') →
-    motive bit visited)
-  (not_found_next : ∀ (bit : BoundedIterator startIdx maxIdx) (visited visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)),
-    captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.none, visited') →
-    (h : bit.hasNext) →
-    (ih : motive (bit.next h) visited') →
-    motive bit visited)
-  (not_found_end : ∀ (bit : BoundedIterator startIdx maxIdx) (visited visited' : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)),
-    captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.none, visited') →
-    ¬bit.hasNext →
-    motive bit visited)
-  (bit : BoundedIterator startIdx maxIdx) (visited : BitMatrix nfa.nodes.size (maxIdx + 1 - startIdx)) :
-  motive bit visited :=
-  captureNext.go.induct σ nfa wf startIdx maxIdx motive
-    found
-    (fun bit visited visited' hres h _ ih => not_found_next bit visited visited' hres h ih)
-    not_found_end
-    bit visited
+theorem captureNext.go.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
+  (motive : (pos : BVPos startPos) → BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) → Prop)
+  (found : ∀ (pos : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (update : σ.Update) (visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)),
+    captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.some update, visited') →
+    motive pos visited)
+  (not_found_next : ∀ (pos : BVPos startPos) (visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)),
+    captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.none, visited') →
+    (h : pos ≠ s.endBVPos startPos) →
+    (ih : motive (pos.next h) visited') →
+    motive pos visited)
+  (not_found_end : ∀ (pos : BVPos startPos) (visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)),
+    captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.none, visited') →
+    ¬pos ≠ s.endBVPos startPos →
+    motive pos visited)
+  (pos : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) :
+  motive pos visited :=
+  captureNext.go.induct σ nfa wf startPos motive
+    found not_found_next not_found_end pos visited
 
 /-
 Simplification lemmas for `captureNext.go`.
 -/
 section
 
-variable {σ nfa wf startIdx maxIdx bit visited}
+variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed}
+  {startPos : ValidPos s} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {pos : BVPos startPos}
 
-theorem captureNext.go_found {update visited'} (h : captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.some update, visited')) :
-  captureNext.go σ nfa wf startIdx maxIdx bit visited = .some update := by
-  unfold captureNext.go
-  split <;> simp_all
+theorem captureNext.go_found {update visited'} (h : captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.some update, visited')) :
+  captureNext.go σ nfa wf startPos pos visited = .some update := by
+  rw [captureNext.go, h]
 
-theorem captureNext.go_not_found_next {visited'} (h : captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.none, visited')) (h' : bit.hasNext) :
-  captureNext.go σ nfa wf startIdx maxIdx bit visited = captureNext.go σ nfa wf startIdx maxIdx (bit.next h') visited' := by
-  conv =>
-    lhs
-    unfold captureNext.go
-  split <;> simp_all
+theorem captureNext.go_not_found_next {visited'} (h : captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.none, visited')) (h' : pos ≠ s.endBVPos startPos) :
+  captureNext.go σ nfa wf startPos pos visited = captureNext.go σ nfa wf startPos (pos.next h') visited' := by
+  rw [captureNext.go, h]
+  simp [h']
 
-theorem captureNext.go_not_found_end {visited'} (h : captureNextAux σ nfa wf startIdx maxIdx visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, bit⟩] = (.none, visited')) (h' : ¬bit.hasNext) :
-  captureNext.go σ nfa wf startIdx maxIdx bit visited = .none := by
-  unfold captureNext.go
-  split <;> simp_all
-
-end
-
-/-
-Simplification lemmas for `captureNext`.
--/
-section
-
-variable {σ nfa wf it}
-
-theorem captureNext_le (le : it.pos ≤ it.toString.endPos) :
-  captureNext σ nfa wf it = (captureNext.go σ nfa wf it.pos.byteIdx it.toString.endPos.byteIdx ⟨it, Nat.le_refl _, le, rfl⟩ (BitMatrix.zero _ _)) := by
-  simp [captureNext, le]
-
-theorem captureNext_not_le (h : ¬it.pos ≤ it.toString.endPos) :
-  captureNext σ nfa wf it = .none := by
-  simp [captureNext, h]
+theorem captureNext.go_not_found_end {visited'} (h : captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.none, visited')) (h' : ¬pos ≠ s.endBVPos startPos) :
+  captureNext.go σ nfa wf startPos pos visited = .none := by
+  rw [captureNext.go, h]
+  simp [h']
 
 end
 

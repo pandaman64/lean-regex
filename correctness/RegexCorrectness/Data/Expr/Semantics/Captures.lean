@@ -4,72 +4,33 @@ import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex.Data
 
-inductive Expr.Captures : Iterator → Iterator → CaptureGroups → Expr → Prop where
-  | char {it l c r} (vf : it.ValidFor l (c :: r)) : Expr.Captures it it.next .empty (.char c)
-  | sparse {it l c r cs} (vf : it.ValidFor l (c :: r)) (h : c ∈ cs) : Expr.Captures it it.next .empty (.classes cs)
-  | epsilon {it} (v : it.Valid) : Expr.Captures it it .empty .epsilon
-  | anchor {it anchor} (v : it.Valid) (h : anchor.test it) : Expr.Captures it it .empty (.anchor anchor)
-  | group {it it' groups tag e} (cap : Expr.Captures it it' groups e) :
-    Expr.Captures it it' (.group tag it.pos it'.pos groups) (.group tag e)
-  | alternateLeft {it it' groups e₁ e₂} (cap : Expr.Captures it it' groups e₁) :
-    Expr.Captures it it' groups (.alternate e₁ e₂)
-  | alternateRight {it it' groups e₁ e₂} (cap : Expr.Captures it it' groups e₂) :
-    Expr.Captures it it' groups (.alternate e₁ e₂)
-  | concat {it it' it'' groups₁ groups₂ e₁ e₂} (cap₁ : Expr.Captures it it' groups₁ e₁) (cap₂ : Expr.Captures it' it'' groups₂ e₂) :
-    Expr.Captures it it'' (.concat groups₁ groups₂) (.concat e₁ e₂)
-  | starEpsilon {it greedy e} (v : it.Valid) : Expr.Captures it it .empty (.star greedy e)
-  | starConcat {it it' it'' groups₁ groups₂ greedy e} (cap₁ : Expr.Captures it it' groups₁ e) (cap₂ : Expr.Captures it' it'' groups₂ (.star greedy e)) :
-    Expr.Captures it it'' (.concat groups₁ groups₂) (.star greedy e)
+inductive Expr.Captures {s : String} : ValidPos s → ValidPos s → CaptureGroups s→ Expr → Prop where
+  | char {p c} (ne : p ≠ s.endValidPos) (eq : p.get ne = c) : Expr.Captures p (p.next ne) .empty (.char c)
+  | sparse {p cs} (ne : p ≠ s.endValidPos) (h : p.get ne ∈ cs) : Expr.Captures p (p.next ne) .empty (.classes cs)
+  | epsilon {p} : Expr.Captures p p .empty .epsilon
+  | anchor {p anchor} (h : anchor.test p) : Expr.Captures p p .empty (.anchor anchor)
+  | group {p p' groups tag e} (cap : Expr.Captures p p' groups e) :
+    Expr.Captures p p' (.group tag p p' groups) (.group tag e)
+  | alternateLeft {p p' groups e₁ e₂} (cap : Expr.Captures p p' groups e₁) :
+    Expr.Captures p p' groups (.alternate e₁ e₂)
+  | alternateRight {p p' groups e₁ e₂} (cap : Expr.Captures p p' groups e₂) :
+    Expr.Captures p p' groups (.alternate e₁ e₂)
+  | concat {p p' p'' groups₁ groups₂ e₁ e₂} (cap₁ : Expr.Captures p p' groups₁ e₁) (cap₂ : Expr.Captures p' p'' groups₂ e₂) :
+    Expr.Captures p p'' (.concat groups₁ groups₂) (.concat e₁ e₂)
+  | starEpsilon {p greedy e} : Expr.Captures p p .empty (.star greedy e)
+  | starConcat {p p' p'' groups₁ groups₂ greedy e} (cap₁ : Expr.Captures p p' groups₁ e) (cap₂ : Expr.Captures p' p'' groups₂ (.star greedy e)) :
+    Expr.Captures p p'' (.concat groups₁ groups₂) (.star greedy e)
 
 namespace Expr.Captures
 
-theorem validL {it it' groups e} (c : Expr.Captures it it' groups e) : it.Valid := by
+theorem le {s} {p p' : ValidPos s} {groups e} (c : Expr.Captures p p' groups e) : p ≤ p' := by
   induction c with
-  | char vf => exact vf.valid
-  | sparse vf => exact vf.valid
-  | epsilon v => exact v
-  | anchor v h => exact v
-  | group _ ih => exact ih
-  | alternateLeft _ ih => exact ih
-  | alternateRight _ ih => exact ih
-  | concat _ _ ih₁ => exact ih₁
-  | starEpsilon v => exact v
-  | starConcat _ _ ih₁ => exact ih₁
-
-theorem validR {it it' groups e} (c : Expr.Captures it it' groups e) : it'.Valid := by
-  induction c with
-  | char vf => exact vf.next.valid
-  | sparse vf => exact vf.next.valid
-  | epsilon v => exact v
-  | anchor v h => exact v
-  | group _ ih => exact ih
-  | alternateLeft _ ih => exact ih
-  | alternateRight _ ih => exact ih
-  | concat _ _ _ ih₂ => exact ih₂
-  | starEpsilon v => exact v
-  | starConcat _ _ _ ih₂ => exact ih₂
-
-theorem toString_eq {it it' groups e} (c : Expr.Captures it it' groups e) : it'.toString = it.toString := by
-  induction c with
-  | char => simp [String.Iterator.next]
-  | sparse => simp [String.Iterator.next]
-  | epsilon v => rfl
-  | anchor v h => rfl
-  | group _ ih => exact ih
-  | alternateLeft _ ih => exact ih
-  | alternateRight _ ih => exact ih
-  | concat _ _ ih₁ ih₂ => rw [ih₂, ih₁]
-  | starEpsilon => rfl
-  | starConcat _ _ ih₁ ih₂ => rw [ih₂, ih₁]
-
-theorem le_pos {it it' groups e} (c : Expr.Captures it it' groups e) : it.pos ≤ it'.pos := by
-  induction c with
-  | char vf => simp [vf.next.pos, vf.pos]
-  | sparse vf => simp [vf.next.pos, vf.pos]
+  | char vf => exact ValidPos.le_of_lt (ValidPos.lt_next _)
+  | sparse vf => exact ValidPos.le_of_lt (ValidPos.lt_next _)
   | epsilon => exact Nat.le_refl _
   | anchor => exact Nat.le_refl _
   | group _ ih => exact ih

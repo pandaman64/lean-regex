@@ -3,14 +3,14 @@ import RegexCorrectness.Data.Expr.Semantics
 set_option autoImplicit false
 
 open Regex.Data (Expr CaptureGroups)
-open String (Iterator)
+open String (ValidPos)
 
 namespace RegexCorrectness.Spec
 
 /--
 The search problem regex engines intend to solve.
 
-Intuitively, the problem is to find a substring that matches the regex (`e`) after the current position (`it`).
+Intuitively, the problem is to find a substring that matches the regex (`e`) after the current position (`pos`).
 
 We are interested in the following two properties:
 
@@ -23,14 +23,10 @@ In other words, we prove that the regex engines are decision procedures of this 
 -/
 /-
 TODOs:
-* complete the proofs
 * the third property is the uniqueness of the match.
   In other words, the returned match must be the first one (and greedy/longest based on the chosen semantics)
 -/
-def SearchProblem (e : Expr) (it : Iterator) : Prop :=
-  ∃ (it' it'' : Iterator) (groups : CaptureGroups),
-    it'.toString = it.toString ∧
-    it.pos ≤ it'.pos ∧
-    e.Captures it' it'' groups
+def SearchProblem {s : String} (e : Expr) (pos : ValidPos s) : Prop :=
+  ∃ (pos' pos'' : ValidPos s) (groups : CaptureGroups s), pos ≤ pos' ∧ e.Captures pos' pos'' groups
 
 end RegexCorrectness.Spec

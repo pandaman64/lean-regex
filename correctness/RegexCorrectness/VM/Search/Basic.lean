@@ -6,100 +6,79 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (Pos Iterator)
+open String (ValidPos)
 
 namespace Regex.VM
 
-theorem captureNext.go.induct' (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed)
-  (motive : Iterator → Option σ.Update → SearchState σ nfa → SearchState σ nfa → Prop)
-  (not_found : ∀ it matched current next,
-    it.atEnd →
-    motive it matched current next)
-  (found : ∀ it matched current next,
-    ¬it.atEnd →
+variable {s : String}
+
+theorem captureNext.go.induct' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed)
+  (motive : ValidPos s → Option σ.Update → SearchState σ nfa → SearchState σ nfa → Prop)
+  (not_found : ∀ matched current next,
+    motive s.endValidPos matched current next)
+  (found : ∀ pos matched current next,
+    pos ≠ s.endValidPos →
     current.states.isEmpty →
     matched.isSome →
-    motive it matched current next)
-  (ind_not_found : ∀ it matched current next,
-    let stepped := eachStepChar σ nfa wf it current next
-    let expanded := εClosure σ nfa wf it.next .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
-    ¬it.atEnd →
+    motive pos matched current next)
+  (ind_not_found : ∀ pos matched current next ne,
+    let stepped := eachStepChar σ nfa wf pos ne current next
+    let expanded := εClosure σ nfa wf (pos.next ne) .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
     matched = .none →
     stepped.1 = .none →
-    motive it.next expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩ →
-    motive it matched current next)
-  (ind_found : ∀ it matched current next,
-    let stepped := eachStepChar σ nfa wf it current next
-    ¬it.atEnd →
+    motive (pos.next ne) expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩ →
+    motive pos matched current next)
+  (ind_found : ∀ pos matched current next ne,
+    let stepped := eachStepChar σ nfa wf pos ne current next
     (matched.isSome → ¬current.states.isEmpty) →
     matched.isSome ∨ stepped.1.isSome →
-    motive it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩ →
-    motive it matched current next)
-  (it : Iterator) (matched : Option σ.Update) (current next : SearchState σ nfa) :
-  motive it matched current next :=
+    motive (pos.next ne) (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩ →
+    motive pos matched current next)
+  (pos : ValidPos s) (matched : Option σ.Update) (current next : SearchState σ nfa) :
+  motive pos matched current next :=
   captureNext.go.induct σ nfa wf motive
-    (fun it matched current next atEnd => not_found it matched current next atEnd)
-    (fun it matched current next atEnd h =>
-      found it matched current next atEnd (by simp at h; exact h.1) (by simp at h; exact h.2))
-    (fun it matched current next atEnd h₁ h₂ ih => by
-      let stepped := eachStepChar σ nfa wf it current next
-      let expanded := εClosure σ nfa wf it .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
+    (fun matched current next => not_found matched current next)
+    (fun pos matched current next ne h =>
+      found pos matched current next ne (by grind) (by grind))
+    (fun pos matched current next ne h₁ h₂ ih => by
+      let stepped := eachStepChar σ nfa wf pos ne current next
+      let expanded := εClosure σ nfa wf pos .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
       rw [Option.isNone_iff_eq_none, Option.orElse_eq_none] at h₂
-      exact ind_not_found it matched current next atEnd h₂.2 h₂.1 ih)
-    (fun it matched current next atEnd h₁ h₂ ih => by
-      let stepped := eachStepChar σ nfa wf it current next
-      rw [Bool.and_comm] at h₁
-      simp at h₁
-      have h₂' : matched.isSome ∨ stepped.1.isSome := by
-        match matched with
-        | .none =>
-          simp at h₂
-          exact .inr (Option.isSome_iff_ne_none.mpr h₂)
-        | .some _ => exact .inl (by simp)
-      exact ind_found it matched current next atEnd (by simpa using h₁) h₂' ih)
-    it matched current next
+      exact ind_not_found pos matched current next ne h₂.2 h₂.1 ih)
+    (fun pos matched current next ne h₁ h₂ ih => by
+      let stepped := eachStepChar σ nfa wf pos ne current next
+      exact ind_found pos matched current next ne (by grind) (by grind [Option.isSome_iff_ne_none]) ih)
+    pos matched current next
 
 section
 
-@[simp]
-theorem captureNext.go_not_found {σ nfa wf it matched current next} (atEnd : it.atEnd) :
-  captureNext.go σ nfa wf it matched current next = matched := by
-  simp [captureNext.go, atEnd]
+@[simp, grind =]
+theorem captureNext.go_not_found {σ nfa wf matched current next} :
+  captureNext.go σ nfa wf s.endValidPos matched current next = matched := by
+  grind [captureNext.go]
 
-@[simp]
-theorem captureNext.go_found {σ nfa wf it matched current next}
-  (atEnd : ¬it.atEnd) (isEmpty : current.states.isEmpty) (isSome : matched.isSome) :
-  captureNext.go σ nfa wf it matched current next = matched := by
-  simp [captureNext.go, atEnd, isEmpty, isSome]
+@[simp, grind =]
+theorem captureNext.go_found {σ nfa wf pos matched current next}
+  (ne : pos ≠ s.endValidPos) (isEmpty : current.states.isEmpty) (isSome : matched.isSome) :
+  captureNext.go σ nfa wf pos matched current next = matched := by
+  grind [captureNext.go]
 
-@[simp]
-theorem captureNext.go_ind_not_found {σ nfa wf it matched current next} (stepped expanded)
-  (eq₁ : stepped = eachStepChar σ nfa wf it current next)
-  (eq₂ : expanded = εClosure σ nfa wf it.next .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)])
-  (atEnd : ¬it.atEnd) (isNone₁ : matched = .none) (isNone₂ : stepped.1 = .none) :
-  captureNext.go σ nfa wf it matched current next =
-  captureNext.go σ nfa wf it.next expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩ := by
-  conv =>
-    lhs
-    unfold captureNext.go
-    simp [atEnd, isNone₁, isNone₂, ←eq₁, ←eq₂]
+@[simp, grind =>]
+theorem captureNext.go_ind_not_found {σ : Strategy s} {nfa wf pos matched current next ne} (stepped expanded)
+  (eq₁ : stepped = eachStepChar σ nfa wf pos ne current next)
+  (eq₂ : expanded = εClosure σ nfa wf (pos.next ne) .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)])
+  (isNone₁ : matched = .none) (isNone₂ : stepped.1 = .none) :
+  captureNext.go σ nfa wf pos matched current next =
+  captureNext.go σ nfa wf (pos.next ne) expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩ := by
+  grind [captureNext.go]
 
-@[simp]
-theorem captureNext.go_ind_found {σ nfa wf it matched current next} (stepped)
-  (eq : stepped = eachStepChar σ nfa wf it current next)
-  (atEnd : ¬it.atEnd) (hemp : matched.isSome → ¬current.states.isEmpty) (isSome : matched.isSome ∨ stepped.1.isSome) :
-  captureNext.go σ nfa wf it matched current next =
-  captureNext.go σ nfa wf it.next (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩ := by
-  have h' : (current.states.isEmpty && matched.isSome) = false := by
-    rw [Bool.and_comm]
-    simpa using hemp
-  conv =>
-    lhs
-    unfold captureNext.go
-  simp only [atEnd, Bool.false_eq_true, ↓reduceIte, h', ←eq, Option.orElse_eq_orElse, Option.isNone_iff_eq_none, ite_eq_right_iff]
-  intro h
-  simp at h
-  simp [h] at isSome
+@[simp, grind →]
+theorem captureNext.go_ind_found {σ : Strategy s} {nfa wf pos matched current next ne} (stepped)
+  (eq : stepped = eachStepChar σ nfa wf pos ne current next)
+  (hemp : matched.isSome → ¬current.states.isEmpty) (isSome : matched.isSome ∨ stepped.1.isSome) :
+  captureNext.go σ nfa wf pos matched current next =
+  captureNext.go σ nfa wf (pos.next ne) (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩ := by
+  grind [captureNext.go, Option.orElse_eq_orElse, Option.isNone_iff_eq_none]
 
 end
 

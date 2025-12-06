@@ -2,207 +2,209 @@ import Regex.Syntax.Parser.Combinators.Rel
 
 set_option autoImplicit false
 
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex.Syntax.Parser.Combinators
 
-inductive Result (s : Bool) (it : Iterator) (ε α : Type) where
-  | ok : α → (it' : Iterator) → Rel s it' it → Result s it ε α
-  | error : ε → Result s it ε α
-  | fatal : ε → Result s it ε α
+variable {s : String}
+
+inductive Result (strict : Bool) (p : ValidPos s) (ε α : Type) where
+  | ok : α → (p' : ValidPos s) → Rel strict p' p → Result strict p ε α
+  | error : ε → Result strict p ε α
+  | fatal : ε → Result strict p ε α
 
 namespace Result
 
-abbrev LE (it : Iterator) (ε α : Type) := Result false it ε α
+abbrev LE (p : ValidPos s) (ε α : Type) := Result false p ε α
 
-abbrev LT (it : Iterator) (ε α : Type) := Result true it ε α
+abbrev LT (p : ValidPos s) (ε α : Type) := Result true p ε α
 
 @[inline]
-def imp {s₁ s₂ : Bool} {it ε α} (h : s₂ → s₁) : Result s₁ it ε α → Result s₂ it ε α
-  | .ok a it' h' => .ok a it' (h'.imp h)
+def imp {strict₁ strict₂ : Bool} {p : ValidPos s} {ε α} (h : strict₂ → strict₁) : Result strict₁ p ε α → Result strict₂ p ε α
+  | .ok a pos' h' => .ok a pos' (h'.imp h)
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def transOr {s₁ s₂ it it' ε α} (h : Rel s₂ it' it) : Result s₁ it' ε α → Result (s₁ || s₂) it ε α
-  | .ok a it'' h' => .ok a it'' (Rel.transOr h' h)
+def transOr {strict₁ strict₂ : Bool} {p p' : ValidPos s} {ε α} (h : Rel strict₂ p' p) : Result strict₁ p' ε α → Result (strict₁ || strict₂) p ε α
+  | .ok a pos'' h' => .ok a pos'' (Rel.transOr h' h)
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def trans {s it it' ε α} (h : Rel s it it') : Result s it ε α → Result s it' ε α
-  | .ok a it'' h' => .ok a it'' (Rel.trans h' h)
+def trans {strict : Bool} {p p' : ValidPos s} {ε α} (h : Rel strict p p') : Result strict p ε α → Result strict p' ε α
+  | .ok a pos'' h' => .ok a pos'' (Rel.trans h' h)
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def cast {s₁ s₂ it ε α} (h : s₁ = s₂) (res : Result s₁ it ε α) : Result s₂ it ε α :=
+def cast {strict₁ strict₂ : Bool} {p : ValidPos s} {ε α} (h : strict₁ = strict₂) (res : Result strict₁ p ε α) : Result strict₂ p ε α :=
   res.imp (by simp [h])
 
 @[inline]
-def weaken {s it ε α} (res : Result s it ε α) : Result false it ε α :=
+def weaken {strict : Bool} {p : ValidPos s} {ε α} (res : Result strict p ε α) : Result false p ε α :=
   res.imp (by simp)
 
 @[inline]
-def toExcept {s it ε α} (res : Result s it ε α) : Except ε α :=
+def toExcept {strict : Bool} {p : ValidPos s} {ε α} (res : Result strict p ε α) : Except ε α :=
   match res with
   | .ok a _ _ => .ok a
   | .error e => .error e
   | .fatal e => .error e
 
 @[inline]
-def opt {s it ε α} : Result s it ε α → Result false it ε (Option α)
-  | .ok a it' h => .ok (.some a) it' h.weaken
-  | .error _ => .ok .none it (Nat.le_refl _)
+def opt {strict : Bool} {p : ValidPos s} {ε α} : Result strict p ε α → Result false p ε (Option α)
+  | .ok a p' h => .ok (.some a) p' h.weaken
+  | .error _ => .ok .none p (Nat.le_refl _)
   | .fatal e => .fatal e
 
 @[inline]
-def complete {s it ε α} (expectedEof : ε) : Result s it ε α → Result s it ε α
-  | .ok a it' h =>
-    if it'.atEnd then
-      .ok a it' h
+def complete {strict : Bool} {p : ValidPos s} {ε α} (expectedEof : ε) : Result strict p ε α → Result strict p ε α
+  | .ok a p' h =>
+    if p' == s.endValidPos then
+      .ok a p' h
     else
       .error expectedEof
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def commit {s it ε α} : Result s it ε α → Result s it ε α
-  | .ok a it' h => .ok a it' h
+def commit {strict : Bool} {p : ValidPos s} {ε α} : Result strict p ε α → Result strict p ε α
+  | .ok a p' h => .ok a p' h
   | .error e => .fatal e
   | .fatal e => .fatal e
 
 @[inline]
-def guard {s it ε α β} (f : α → Except ε β) : Result s it ε α → Result s it ε β
-  | .ok a it' h =>
+def guard {strict : Bool} {p : ValidPos s} {ε α β} (f : α → Except ε β) : Result strict p ε α → Result strict p ε β
+  | .ok a p' h =>
     match f a with
-    | .ok b => .ok b it' h
+    | .ok b => .ok b p' h
     | .error e => .error e
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def map' {s it ε α β} (f : α → (it' : Iterator) → Rel s it' it → β) : Result s it ε α → Result s it ε β
-  | .ok a it' h => .ok (f a it' h) it' h
+def map' {strict : Bool} {p : ValidPos s} {ε α β} (f : α → (p' : ValidPos s) → Rel strict p' p → β) : Result strict p ε α → Result strict p ε β
+  | .ok a p' h => .ok (f a p' h) p' h
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def map {s it ε α β} (f : α → β) : Result s it ε α → Result s it ε β :=
+def map {strict : Bool} {p : ValidPos s} {ε α β} (f : α → β) : Result strict p ε α → Result strict p ε β :=
   map' fun a _ _ => f a
 
 @[inline]
-def seq {s it ε α β} (mf : Result s it ε (α → β)) (mx : Unit → Result s it ε α) : Result s it ε β :=
+def seq {strict : Bool} {p : ValidPos s} {ε α β} (mf : Result strict p ε (α → β)) (mx : Unit → Result strict p ε α) : Result strict p ε β :=
   match mf with
   | .ok f _ _ =>
     match mx () with
-    | .ok a it'' h' => .ok (f a) it'' h'
+    | .ok a p'' h' => .ok (f a) p'' h'
     | .error e => .error e
     | .fatal e => .fatal e
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def seqLeft {s it ε α β} (mx : Result s it ε α) (my : Unit → Result s it ε β) : Result s it ε α :=
+def seqLeft {strict : Bool} {p : ValidPos s} {ε α β} (mx : Result strict p ε α) (my : Unit → Result strict p ε β) : Result strict p ε α :=
   match mx with
   | .ok a _ _ =>
     match my () with
-    | .ok _ it'' h' => .ok a it'' h'
+    | .ok _ p'' h' => .ok a p'' h'
     | .error e => .error e
     | .fatal e => .fatal e
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def seqRight {s it ε α β} (mx : Result s it ε α) (my : Unit → Result s it ε β) : Result s it ε β :=
+def seqRight {strict : Bool} {p : ValidPos s} {ε α β} (mx : Result strict p ε α) (my : Unit → Result strict p ε β) : Result strict p ε β :=
   match mx with
   | .ok _ _ _ =>
     match my () with
-    | .ok b it'' h' => .ok b it'' h'
+    | .ok b p'' h' => .ok b p'' h'
     | .error e => .error e
     | .fatal e => .fatal e
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def hOrElse {s₁ s₂ it ε α} (mx : Result s₁ it ε α) (my : Unit → Result s₂ it ε α) : Result (s₁ && s₂) it ε α :=
+def hOrElse {strict₁ strict₂ : Bool} {p : ValidPos s} {ε α} (mx : Result strict₁ p ε α) (my : Unit → Result strict₂ p ε α) : Result (strict₁ && strict₂) p ε α :=
   match mx with
-  | .ok a it' h => .ok a it' (h.imp (by simp_all))
+  | .ok a p' h => .ok a p' (h.imp (by simp_all))
   | .error _ => (my ()).imp (by simp)
   | .fatal e => .fatal e
 
 @[inline]
-def orElse {s it ε α} : Result s it ε α → (Unit → Result s it ε α) → Result s it ε α
-  | .ok a it' h, _ => .ok a it' h
+def orElse {strict : Bool} {p : ValidPos s} {ε α} : Result strict p ε α → (Unit → Result strict p ε α) → Result strict p ε α
+  | .ok a p' h, _ => .ok a p' h
   | .error _, b => b ()
   | .fatal e, _ => .fatal e
 
 @[inline]
-def throw {s it ε α} (e : ε) : Result s it ε α := .error e
+def throw {strict : Bool} {p : ValidPos s} {ε α} (e : ε) : Result strict p ε α := .error e
 
 @[inline]
-def tryCatch {s it ε α} (mx : Result s it ε α) (handle : ε → Result s it ε α) : Result s it ε α :=
+def tryCatch {strict : Bool} {p : ValidPos s} {ε α} (mx : Result strict p ε α) (handle : ε → Result strict p ε α) : Result strict p ε α :=
   match mx with
-  | .ok a it' h => .ok a it' h
+  | .ok a p' h => .ok a p' h
   | .error e => handle e
   | .fatal e => .fatal e
 
 @[inline]
-def bind' {s₁ s₂ it ε α β} (mx : Result s₁ it ε α) (f : α → (it' : Iterator) → Rel s₁ it' it → Result s₂ it' ε β) : Result (s₁ || s₂) it ε β :=
+def bind' {strict₁ strict₂ : Bool} {p : ValidPos s} {ε α β} (mx : Result strict₁ p ε α) (f : α → (p' : ValidPos s) → Rel strict₁ p' p → Result strict₂ p' ε β) : Result (strict₁ || strict₂) p ε β :=
   match mx with
-  | .ok a it' h => (f a it' h).transOr h |>.cast (Bool.or_comm _ _)
+  | .ok a p' h => (f a p' h).transOr h |>.cast (Bool.or_comm _ _)
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def bind {s it ε α β} (mx : Result s it ε α) (f : α → Result s it ε β) : Result s it ε β :=
+def bind {strict : Bool} {p : ValidPos s} {ε α β} (mx : Result strict p ε α) (f : α → Result strict p ε β) : Result strict p ε β :=
   match mx with
   | .ok a _ _ => f a
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
-def pure {it ε α} (a : α) : LE it ε α := .ok a it (Nat.le_refl _)
+def pure {p : ValidPos s} {ε α} (a : α) : LE p ε α := .ok a p (Nat.le_refl _)
 
 @[inline]
-instance {s it ε} : Functor (Result s it ε) where
+instance {strict : Bool} {p : ValidPos s} {ε} : Functor (Result strict p ε) where
   map := map
 
 @[inline]
-instance {s it ε} : Seq (Result s it ε) where
+instance {strict : Bool} {p : ValidPos s} {ε} : Seq (Result strict p ε) where
   seq := seq
 
 @[inline]
-instance {s it ε} : SeqLeft (Result s it ε) where
+instance {strict : Bool} {p : ValidPos s} {ε} : SeqLeft (Result strict p ε) where
 seqLeft := seqLeft
 
 @[inline]
-instance {s it ε} : SeqRight (Result s it ε) where
+instance {strict : Bool} {p : ValidPos s} {ε} : SeqRight (Result strict p ε) where
   seqRight := seqRight
 
 @[inline]
-instance {s₁ s₂ it ε α} : HOrElse (Result s₁ it ε α) (Result s₂ it ε α) (Result (s₁ && s₂) it ε α) where
+instance {strict₁ strict₂ : Bool} {p : ValidPos s} {ε α} : HOrElse (Result strict₁ p ε α) (Result strict₂ p ε α) (Result (strict₁ && strict₂) p ε α) where
   hOrElse := hOrElse
 
 @[inline]
-instance {s it ε α} : OrElse (Result s it ε α) where
+instance {strict : Bool} {p : ValidPos s} {ε α} : OrElse (Result strict p ε α) where
   orElse := orElse
 
 @[inline]
-instance {s it ε} : MonadExceptOf ε (Result s it ε) where
+instance {strict : Bool} {p : ValidPos s} {ε} : MonadExceptOf ε (Result strict p ε) where
   throw := throw
   tryCatch := tryCatch
 
 @[inline]
-instance {s it ε} : Bind (Result s it ε) where
+instance {strict : Bool} {p : ValidPos s} {ε} : Bind (Result strict p ε) where
   bind := bind
 
 @[inline]
-instance {it ε} : Pure (LE it ε) where
+instance {p : ValidPos s} {ε} : Pure (LE p ε) where
   pure := pure
 
 @[inline]
-instance {it ε} : Monad (LE it ε) where
+instance {p : ValidPos s} {ε} : Monad (LE p ε) where
   bind := bind
 
 end Result

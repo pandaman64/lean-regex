@@ -1,19 +1,22 @@
 import Regex.Data.Expr
 import RegexCorrectness.Data.Expr.Semantics
 
+open String (ValidPos)
+
 namespace Regex.Data.Expr
 
-theorem empty_of_captures_of_nullOnly {it it' groups e} (c : Expr.Captures it it' groups e) (h : e.nullOnly) :
-  it' = it := by
+theorem empty_of_captures_of_nullOnly {s} {p p' : ValidPos s} {groups e} (c : Expr.Captures p p' groups e) (h : e.nullOnly) :
+  p' = p := by
   induction c <;> grind [nullOnly]
 
 open Std in
-theorem curr_of_captures_of_firstChars_some {it it' groups e n cs} (c : Expr.Captures it it' groups e) (h : e.firstChars n = .some cs) :
-  cs.contains it.curr := by
+theorem contains_get_of_captures_of_firstChars_some {s} {p p' : ValidPos s} {groups e n cs} {ne : p ≠ s.endValidPos}
+  (c : Expr.Captures p p' groups e) (h : e.firstChars n = .some cs) :
+  cs.contains (p.get ne) := by
   revert cs
   induction c with
   | sparse | epsilon | anchor | starEpsilon | starConcat => simp [firstChars]
-  | char vf => simp_all [vf.curr, firstChars, Option.bind_eq_some_iff]
+  | char => simp_all [firstChars, Option.bind_eq_some_iff]
   | group _ _ => simp_all [firstChars, Option.bind_eq_some_iff]
   | alternateLeft c₁ ih =>
     intro cs h
@@ -32,7 +35,9 @@ theorem curr_of_captures_of_firstChars_some {it it' groups e n cs} (c : Expr.Cap
     simp [firstChars] at h
     split at h
     all_goals simp [Option.bind_eq_some_iff] at h
-    next h' => exact empty_of_captures_of_nullOnly c₁ h' ▸ ih₂ h.1
+    next h' =>
+      obtain rfl := empty_of_captures_of_nullOnly c₁ h'
+      exact ih₂ h.1
     next => exact ih₁ h.1
 
 end Regex.Data.Expr

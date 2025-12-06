@@ -1,8 +1,9 @@
 import Regex.Data.Expr
+import Regex.Data.String
 import Lean.ToExpr
 
 open Regex.Data (Expr)
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex
 
@@ -20,10 +21,10 @@ namespace OptimizationInfo
 def fromExpr (expr : Expr) : OptimizationInfo :=
   { firstChars := expr.firstChars (maxSize := 8) |>.map Std.HashSet.toArray }
 
-def findStart (self : OptimizationInfo) (it : Iterator) : Iterator :=
+def findStart {s : String} (self : OptimizationInfo) (pos : ValidPos s) : ValidPos s :=
   match self.firstChars with
-  | .some cs => it.find (cs.contains ·)
-  | .none => it
+  | .some cs => pos.find (cs.contains ·)
+  | .none => pos
 
 end OptimizationInfo
 

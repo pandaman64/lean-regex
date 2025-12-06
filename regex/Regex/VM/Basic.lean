@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (Pos Iterator)
+open String (ValidPos)
 
 /-
   The following implementation is heavily inspired by burntsushi's regex-lite crate.
@@ -14,11 +14,11 @@ open String (Pos Iterator)
 -/
 namespace Regex.VM
 
-structure SearchState (σ : Strategy) (nfa : NFA) where
+structure SearchState {s : String} (σ : Strategy s) (nfa : NFA) where
   states : SparseSet nfa.nodes.size
   updates : Vector σ.Update nfa.nodes.size
 
-abbrev εStack (σ : Strategy) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
+abbrev εStack {s : String} (σ : Strategy s) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
 
 namespace εClosure
 
@@ -32,13 +32,13 @@ def writeUpdate (node : NFA.Node) : Bool :=
   | _ => false
 
 @[inline]
-def pushNext (σ : Strategy) (nfa : NFA) (it : Iterator) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
+def pushNext {s : String} (σ : Strategy s) (nfa : NFA) (p : ValidPos s) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
   match node with
   | .epsilon state' => (update, ⟨state', inBounds⟩) :: stack
   | .split state₁ state₂ => (update, ⟨state₁, inBounds.1⟩) :: (update, ⟨state₂, inBounds.2⟩) :: stack
-  | .save offset state' => (σ.write update offset it.pos, ⟨state', inBounds⟩) :: stack
+  | .save offset state' => (σ.write update offset p, ⟨state', inBounds⟩) :: stack
   | .anchor a state' =>
-    if a.test it then
+    if a.test p then
       (update, ⟨state', inBounds⟩) :: stack
     else
       stack
@@ -55,14 +55,14 @@ Visit all ε-transitions from the states in the stack, updating `next.states` wh
 match is found.
 -/
 -- Once we have the new compiler, we may want to test specialization by `@[specialize σ]`.
-def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
+def εClosure {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s)
   (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa) :
   Option σ.Update × SearchState σ nfa :=
   match stack with
   | [] => (matched, next)
   | (update, state) :: stack' =>
     if mem : state ∈ next.states then
-      εClosure σ nfa wf it matched next stack'
+      εClosure σ nfa wf p matched next stack'
     else
       match h : next with
       | ⟨states, updates⟩ =>
@@ -70,27 +70,27 @@ def εClosure (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
         let matched' := if node.isDone then matched <|> update else matched
         let states' := states.insert state mem
         let updates' := if εClosure.writeUpdate node then updates.set state update else updates
-        let stack'' := εClosure.pushNext σ nfa it node (wf.inBounds state) update stack'
+        let stack'' := εClosure.pushNext σ nfa p node (wf.inBounds state) update stack'
         have : states'.measure < states.measure := SparseSet.lt_measure_insert' mem
-        εClosure σ nfa wf it matched' ⟨states', updates'⟩ stack''
+        εClosure σ nfa wf p matched' ⟨states', updates'⟩ stack''
 termination_by (next.states.measure, stack)
 
 /--
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
-def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (currentUpdates : Vector σ.Update nfa.nodes.size)
+def stepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) (ne : p ≠ s.endValidPos) (currentUpdates : Vector σ.Update nfa.nodes.size)
   (next : SearchState σ nfa) (state : Fin nfa.nodes.size) :
   Option σ.Update × SearchState σ nfa :=
   let state' : Option (Fin nfa.nodes.size) :=
     match hn : nfa[state] with
     | .char c state' =>
-      if it.curr = c then
+      if p.get ne = c then
         .some ⟨state', wf.inBounds' state hn⟩
       else
         .none
     | .sparse cs state' =>
-      if it.curr ∈ cs then
+      if p.get ne ∈ cs then
         .some ⟨state', wf.inBounds' state hn⟩
       else
         .none
@@ -98,7 +98,7 @@ def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (
   match state' with
   | .some state' =>
     let update := currentUpdates[state]
-    εClosure σ nfa wf it.next .none next [(update, state')]
+    εClosure σ nfa wf (p.next ne) .none next [(update, state')]
   | .none =>
     (.none, next)
 
@@ -106,7 +106,7 @@ def stepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) (
 For all states in `current`, make a transition on the current character of `it` and traverse
 ε-closures from the resulting states.
 -/
-def eachStepChar (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator)
+def eachStepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) (ne : p ≠ s.endValidPos)
   (current : SearchState σ nfa) (next : SearchState σ nfa) :
   Option σ.Update × SearchState σ nfa :=
   go 0 (Nat.zero_le _) next
@@ -123,7 +123,7 @@ where
         -- is prioritized over the paths through the later nodes.
         (.none, next)
       else
-        let result := stepChar σ nfa wf it current.updates next state
+        let result := stepChar σ nfa wf p ne current.updates next state
         if result.1.isSome then
           -- Early-stop iteration when we found a path to `.done` after stepping from `state`
           -- since the path will be prioritized over the paths through the later nodes.
@@ -131,28 +131,29 @@ where
         else
           go (i + 1) hlt result.2
 
-def captureNext (σ : Strategy) (nfa : NFA) (wf : nfa.WellFormed) (it : Iterator) : Option σ.Update :=
+def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : ValidPos s) : Option σ.Update :=
   let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
-  let (matched, current) := εClosure σ nfa wf it .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
-  go it matched current ⟨.empty, updates⟩
+  let (matched, current) := εClosure σ nfa wf p .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
+  go p matched current ⟨.empty, updates⟩
 where
-  go (it : Iterator) (matched : Option σ.Update) (current next : SearchState σ nfa) :
+  go (p : ValidPos s) (matched : Option σ.Update) (current next : SearchState σ nfa) :
     Option σ.Update :=
-    if it.atEnd then
+    if h : p = s.endValidPos then
       matched
     else
       if current.states.isEmpty && matched.isSome then
         matched
       else
-        let stepped := eachStepChar σ nfa wf it current next
+        let stepped := eachStepChar σ nfa wf p h current next
         let matched' := stepped.1 <|> matched
         if matched'.isNone then
-          let expanded := εClosure σ nfa wf it.next .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
-          go it.next expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩
+          let expanded := εClosure σ nfa wf (p.next h) .none stepped.2 [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
+          go (p.next h) expanded.1 expanded.2 ⟨current.states.clear, current.updates⟩
         else
-          go it.next matched' stepped.2 ⟨current.states.clear, current.updates⟩
+          go (p.next h) matched' stepped.2 ⟨current.states.clear, current.updates⟩
+  termination_by p
 
-def captureNextBuf (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (it : Iterator) : Option (Buffer bufferSize) :=
-  captureNext (BufferStrategy bufferSize) nfa wf it
+def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : ValidPos s) : Option (Buffer s bufferSize) :=
+  captureNext (BufferStrategy s bufferSize) nfa wf p
 
 end Regex.VM

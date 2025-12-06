@@ -7,42 +7,44 @@ set_option autoImplicit false
 open Regex.Syntax.Parser (Ast)
 open Regex.Syntax.Parser.Combinators
 open Regex.Data (Anchor PerlClass PerlClassKind Class Classes Expr)
-open String (Iterator)
+open String (ValidPos)
 
 namespace Regex.Syntax.Parser
 
-def anyCharOrError : Parser.LT Error Char :=
+variable {s : String}
+
+def anyCharOrError : Parser.LT s Error Char :=
   anyCharOrElse .unexpectedEof
 
-def charOrError (c : Char) : Parser.LT Error Char :=
+def charOrError (c : Char) : Parser.LT s Error Char :=
   charOrElse c .unexpectedEof .unexpectedChar
 
-def digit : Parser.LT Error Nat :=
+def digit : Parser.LT s Error Nat :=
   anyCharOrError
   |>.guard fun c =>
     if c.isDigit then .ok (c.toNat - '0'.toNat)
     else .error (.unexpectedChar c)
 
-def number : Parser.LT Error Nat :=
+def number : Parser.LT s Error Nat :=
   foldl1 (fun n d => 10 * n + d) digit
 
-def hexDigit : Parser.LT Error Nat :=
+def hexDigit : Parser.LT s Error Nat :=
   anyCharOrError |>.guard fun c =>
     if c.isDigit then .ok (c.toNat - '0'.toNat)
     else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10)
     else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10)
     else .error (.unexpectedChar c)
 
-def hexNumberN (n : Nat) [NeZero n] : Parser.LT Error Nat :=
+def hexNumberN (n : Nat) [NeZero n] : Parser.LT s Error Nat :=
   foldlPos 0 (fun n d => 16 * n + d) hexDigit n
 
 def specialCharacters := "[](){*+?|^$.\\"
 
-def escapedChar : Parser.LT Error (Char ⊕ PerlClass) :=
+def escapedChar : Parser.LT s Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
     ((Sum.inl <$> (simple <|> hex2 <|> hex4)) <|> (Sum.inr <$> perlClass)).commit
 where
-  simple : Parser.LT Error Char :=
+  simple : Parser.LT s Error Char :=
     anyCharOrError
     |>.guard fun c =>
       match c with
@@ -60,12 +62,12 @@ where
           pure c
         else
           throw (.unexpectedEscapedChar c)
-  hex2 : Parser.LT Error Char :=
+  hex2 : Parser.LT s Error Char :=
     charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit
   -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
-  hex4 : Parser.LT Error Char :=
+  hex4 : Parser.LT s Error Char :=
     charOrError 'u' *> (Char.ofNat <$> hexNumberN 4).commit
-  perlClass : Parser.LT Error PerlClass :=
+  perlClass : Parser.LT s Error PerlClass :=
     anyCharOrError
     |>.guard fun c =>
       match c with
@@ -82,27 +84,27 @@ def escapedCharToAst (c : Char ⊕ PerlClass) : Ast :=
   | .inl c => .char c
   | .inr cls => .perl cls
 
-def plainChar : Parser.LT Error Char :=
+def plainChar : Parser.LT s Error Char :=
   anyCharOrError.guard fun c =>
     if specialCharacters.contains c then throw (.unexpectedChar c)
     else .ok c
 
-def anchor : Parser.LT Error Ast :=
+def anchor : Parser.LT s Error Ast :=
   (charOrError '^' |>.mapConst (.anchor .start))
   <|> (charOrError '$' |>.mapConst (.anchor .eos))
   <|> (charOrError '\\' *> charOrError 'b' |>.mapConst (.anchor .wordBoundary))
   <|> (charOrError '\\' *> charOrError 'B' |>.mapConst (.anchor .nonWordBoundary))
 
-def dot : Parser.LT Error Ast :=
+def dot : Parser.LT s Error Ast :=
   charOrError '.' |>.mapConst .dot
 
-def charInClass : Parser.LT Error (Char ⊕ PerlClass) :=
+def charInClass : Parser.LT s Error (Char ⊕ PerlClass) :=
   escapedChar <|> (anyCharOrError.guard fun c =>
     if c = ']' ∨ c = '\\' then throw (.unexpectedChar c)
     else .ok (.inl c)
   )
 
-def range : Parser.LT Error Class :=
+def range : Parser.LT s Error Class :=
   ((Prod.mk <$> charInClass) <*> (charOrError '-' *> charInClass))
   |>.guard fun (f, s) => do
     let f ← expectsChar f
@@ -117,7 +119,7 @@ where
     | .inl c => .ok c
     | .inr cls => .error (.unexpectedPerlClassInRange cls)
 
-def singleClass : Parser.LT Error Class :=
+def singleClass : Parser.LT s Error Class :=
   range <|> (charToClass <$> charInClass)
 where
   charToClass (c : Char ⊕ PerlClass) : Class :=
@@ -125,14 +127,14 @@ where
     | .inl c => .single c
     | .inr cls => .perl cls
 
-def classes : Parser.LT Error Ast :=
+def classes : Parser.LT s Error Ast :=
   betweenOr (charOrError '[') (charOrError ']').commit (.commit do
     let negated ← test '^'
     let classes ← (many1 singleClass).weaken
     pure (Ast.classes ⟨negated, classes⟩)
   )
 
-def repetitionInner : Parser.LT Error (Nat × Option Nat) :=
+def repetitionInner : Parser.LT s Error (Nat × Option Nat) :=
   (charOrError '*' |>.mapConst (0, .none))
   <|> (charOrError '+' |>.mapConst (1, .none))
   <|> (charOrError '?' |>.mapConst (0, .some 1))
@@ -151,12 +153,12 @@ def repetitionInner : Parser.LT Error (Nat × Option Nat) :=
       pure (min, .some min) -- {N} represents N repetitions
   ))
 
-def repetitionOp : Parser.LT Error (Nat × Option Nat × Bool) :=
+def repetitionOp : Parser.LT s Error (Nat × Option Nat × Bool) :=
   repetitionInner.bindOr fun (min, max) => do
     let nonGreedy ← test '?'
     pure (min, max, !nonGreedy)
 
-def nonCapturing : Parser.LT Error Unit :=
+def nonCapturing : Parser.LT s Error Unit :=
   charOrError '?' *> charOrError ':' |>.mapConst ()
 
 /-
@@ -171,71 +173,77 @@ like types indexed by a `Nat` to work. I found it more convenient to just duplic
 -/
 mutual
 
-def group (it : Iterator) : Result.LT it Error Ast :=
-  (charOrError '(' it)
-  |>.bind' fun _ it' h =>
-    (nonCapturing.opt it'
-    |>.bind' fun nonCapturing it'' h' =>
-      have : Rel.LT it'' it := Trans.trans h' h
-      regex it''
-      |>.bind' fun ast it''' _ =>
+def group (pos : ValidPos s) : Result.LT pos Error Ast :=
+  (charOrError '(' pos)
+  |>.bind' fun _ pos' h =>
+    (nonCapturing.opt pos'
+    |>.bind' fun nonCapturing pos'' h' =>
+      have : Rel.LT pos'' pos := Trans.trans h' h
+      regex pos''
+      |>.bind' fun ast pos''' _ =>
         let ast := if nonCapturing.isSome then ast else .group ast
-        Functor.mapConst ast (charOrError ')' it''')).commit
-termination_by (it.remainingBytes, 0)
+        Functor.mapConst ast (charOrError ')' pos''')).commit
+termination_by (pos, 0)
 
-def primary (it : Iterator) : Result.LT it Error Ast :=
-  group it
-  <|> classes it
-  <|> dot it
-  <|> (anchor it)
-  <|> (escapedCharToAst <$> escapedChar it)
-  <|> (.char <$> plainChar it)
-termination_by (it.remainingBytes, 10)
+def primary (pos : ValidPos s) : Result.LT pos Error Ast :=
+  group pos
+  <|> classes pos
+  <|> dot pos
+  <|> (anchor pos)
+  <|> (escapedCharToAst <$> escapedChar pos)
+  <|> (.char <$> plainChar pos)
+termination_by (pos, 10)
 
-def repetition1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
-  (repetitionOp it |>.bind' fun (min, max, greedy) it' _ => repetition1 (.repeat min max greedy ast) it').weaken
+def repetition1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
+  (repetitionOp pos |>.bind' fun (min, max, greedy) pos' _ => repetition1 (.repeat min max greedy ast) pos').weaken
   <|> pure ast
-termination_by (it.remainingBytes, 20)
+termination_by (pos, 20)
 
-def repetition (it : Iterator) : Result.LT it Error Ast :=
-  primary it |>.bind' fun ast it' _ => repetition1 ast it'
-termination_by (it.remainingBytes, 21)
+def repetition (pos : ValidPos s) : Result.LT pos Error Ast :=
+  primary pos |>.bind' fun ast pos' _ => repetition1 ast pos'
+termination_by (pos, 21)
 
-def concat1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
-  (repetition it |>.bind' fun ast' it' _ => concat1 (.concat ast ast') it').weaken
+def concat1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
+  (repetition pos |>.bind' fun ast' pos' _ => concat1 (.concat ast ast') pos').weaken
   <|> pure ast
-termination_by (it.remainingBytes, 30)
+termination_by (pos, 30)
 
-def concat (it : Iterator) : Result.LE it Error Ast :=
-  (repetition it |>.bind' fun ast it' _ => concat1 ast it').weaken
+def concat (pos : ValidPos s) : Result.LE pos Error Ast :=
+  (repetition pos |>.bind' fun ast pos' _ => concat1 ast pos').weaken
   <|> pure .epsilon
-termination_by (it.remainingBytes, 31)
+termination_by (pos, 31)
 
-def alternate1 (ast : Ast) (it : Iterator) : Result.LE it Error Ast :=
-  (charOrError '|' it |>.bind' fun _ it' h =>
-    concat it' |>.bind' fun ast' it'' h' =>
-      have : Rel.LT it'' it := Trans.trans h' h
-      alternate1 (.alternate ast ast') it''
+def alternate1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
+  (charOrError '|' pos |>.bind' fun _ pos' h =>
+    concat pos' |>.bind' fun ast' pos'' h' =>
+      have : Rel.LT pos'' pos := Trans.trans h' h
+      alternate1 (.alternate ast ast') pos''
   ).weaken
   <|> pure ast
-termination_by (it.remainingBytes, 40)
+termination_by (pos, 40)
 
-def alternate (it : Iterator) : Result.LE it Error Ast :=
-  concat it |>.bind' fun ast it' _ => alternate1 ast it'
-termination_by (it.remainingBytes, 41)
+def alternate (pos : ValidPos s) : Result.LE pos Error Ast :=
+  concat pos |>.bind' fun ast pos' _ => alternate1 ast pos'
+termination_by (pos, 41)
 decreasing_by
   . simp [Prod.lex_def]
-  . simp [Prod.lex_def]
-    exact Nat.lt_or_eq_of_le (by assumption)
+  . rename_i h
+    simp [Prod.lex_def]
+    cases Nat.lt_or_eq_of_le h with
+    | inl h => exact .inl h
+    | inr h =>
+      apply Or.inr
+      ext
+      exact h.symm
 
-def regex (it : Iterator) : Result.LE it Error Ast :=
-  alternate it |>.weaken
-termination_by (it.remainingBytes, 100)
+def regex (pos : ValidPos s) : Result.LE pos Error Ast :=
+  alternate pos |>.weaken
+termination_by (pos, 100)
 
 end
 
 def parseAst (input : String) : Except Error Ast :=
-  regex input.mkIterator
+  regex input.startValidPos
   |>.complete .expectedEof
   |>.toExcept
 
