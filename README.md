@@ -21,14 +21,14 @@ Add lean-regex to your Lean project by adding the following to your `lakefile.to
 [[require]]
 name = "Regex"
 git = "https://github.com/pandaman64/lean-regex"
-rev = "v4.20.0"
+rev = "v4.26.0-rc2"
 subDir = "regex"
 ```
 
 or
 
 ```lean
-require Regex from git "https://github.com/pandaman64/lean-regex.git" @ "v4.20.0" / "regex"
+require Regex from git "https://github.com/pandaman64/lean-regex.git" @ "v4.26.0-rc2" / "regex"
 ```
 
 to your `lakefile.lean`.
@@ -45,11 +45,11 @@ def dateRegexExample := re! r"\d{4}-\d{2}-\d{2}"
 def allMatches := dateRegexExample.findAll
   "2025-05-24: Something happened\\n2025-05-26: Another thing happened"
 
--- #["2025-05-24".toSubstring, "2025-05-26".toSubstring]
-#eval allMatches
+-- #["2025-05-24", "2025-05-26"]
+#eval allMatches.map (·.copy)
 
 -- #[{ byteIdx := 0 }, { byteIdx := 32 }]
-#eval allMatches.map (·.startPos)
+#eval allMatches.map (·.startInclusive.offset)
 
 -- Capture groups
 def groupRegexExample := re! r"(a+)(b*)"
@@ -92,10 +92,30 @@ Splits a string using regex matches as breakpoints:
 
 #["", "1", "2", "3"]
 
-Note the empty substring due to the match "a" at the beginning of the input:
+Note the empty slice due to the match "a" at the beginning of the input:
 "a1aa2aaa3" = "" ++ "a" ++ "1" ++ "aa" ++ "2" ++ "aaa" ++ "3"
 -/
-#eval utilityRegexExample.split haystack
+#eval (utilityRegexExample.split haystack).map (·.copy)
+
+def transformRegexExample := re! r"(a+)(b*)|(c+)"
+
+def countString (name : String) (input : Option String.Slice) : String :=
+  input.map (·.copy)
+    |>.map (fun s => toString s.length ++ name)
+    |>.getD ""
+
+def countTransform {haystack} (captures : Regex.CapturedGroups haystack) : String :=
+  let as := captures.get 1 |> countString "a"
+  let bs := captures.get 2 |> countString "b"
+  let cs := captures.get 3 |> countString "c"
+  as ++ bs ++ cs
+
+-- "1a0b 2a0b 2a1b 1c 2c"
+#eval transformRegexExample.transformAll "a aa aab c cc" countTransform
+
+-- Transforming matches into a fixed string is also available using `.replace` and `.replaceAll`.
+#guard transformRegexExample.transformAll "a aa aab c cc" (fun _ => ".")
+     = transformRegexExample.replaceAll   "a aa aab c cc" "."
 ```
 
 For more details, please check [the API reference](https://pandaman64.github.io/lean-regex/Regex.html).
