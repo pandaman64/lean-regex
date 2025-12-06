@@ -68,7 +68,7 @@ theorem captures_of_next?_some (h : self.next? = .some (captured, self')) (isr :
         . intro index p₁ p₂ le
           have hbufsize : captured.buffer.size = self.regex.maxTag + 1 := by grind
           if lt : 2 * index + 1 < self.regex.maxTag + 1 then
-            simp [eqv.eq index lt p₁ p₂, ←h.1, CapturedGroups.get, Option.bind_eq_some_iff, le]
+            simp [eqv.eq index lt p₁ p₂, CapturedGroups.get, ←h.1, Option.bind_eq_some_iff]
             grind
           else
             have : self.regex.maxTag ≤ 2 * index := by grind

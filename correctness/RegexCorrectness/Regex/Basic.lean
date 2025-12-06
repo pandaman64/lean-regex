@@ -94,8 +94,8 @@ theorem captureNextBuf_soundness (h : re.captureNextBuf bufferSize pos = .some m
     pos ≤ pos' ∧
     s.expr.Captures pos' pos'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
-    matched[0] = .some pos' ∧
-    matched[1] = .some pos'' := by
+    matched[0] = .validPos pos' ∧
+    matched[1] = .validPos pos'' := by
   have ⟨pos', pos'', groups, le, c, eqv⟩ := captureNextBuf_soundness' h s
   refine ⟨pos', pos'', groups, le, c, eqv, ?_⟩
 

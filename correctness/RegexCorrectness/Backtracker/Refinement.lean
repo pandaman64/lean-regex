@@ -6,7 +6,7 @@ set_option autoImplicit false
 open Regex (NFA)
 open Regex.Data (BitMatrix BVPos)
 open Regex.Strategy (materializeUpdates)
-open String (ValidPos)
+open String (ValidPos ValidPosPlusOne)
 namespace Regex.Backtracker
 
 variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bufferSize : Nat}

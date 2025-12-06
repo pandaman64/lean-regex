@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy
-open String (ValidPos)
+open String (ValidPos ValidPosPlusOne)
 
 namespace Regex.NFA
 
@@ -97,8 +97,7 @@ where
       match h : materializeRegexGroups g₂ tag with
       | .some (first, last) =>
         have := (eqv₂ tag).1 h₁
-        simp [h] at this
-        simp [←this]
+        grind
       | .none =>
         have := (eqv₂ tag).1 h₁
         simp [h] at this
@@ -108,8 +107,7 @@ where
       match h : materializeRegexGroups g₂ tag with
       | .some (first, last) =>
         have := (eqv₂ tag).2 h₂
-        simp [h] at this
-        simp [←this]
+        grind
       | .none =>
         have := (eqv₂ tag).2 h₂
         simp [h] at this

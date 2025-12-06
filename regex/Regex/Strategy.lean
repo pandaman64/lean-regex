@@ -2,7 +2,7 @@ import Regex.NFA
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (ValidPos ValidPosPlusOne)
 
 namespace Regex
 
@@ -11,26 +11,26 @@ structure Strategy (s : String) where
   empty : Update
   write : Update → Nat → ValidPos s → Update
 
-abbrev Buffer (s : String) (size : Nat) := Vector (Option (ValidPos s)) size
+abbrev Buffer (s : String) (size : Nat) := Vector (ValidPosPlusOne s) size
 
-def Buffer.empty {s : String} {size : Nat} : Buffer s size := Vector.replicate size none
+def Buffer.empty {s : String} {size : Nat} : Buffer s size := Vector.replicate size (.sentinel s)
 
 def BufferStrategy (s : String) (size : Nat) : Strategy s where
   Update := Buffer s size
   empty := Buffer.empty
-  write buffer offset pos := Vector.setIfInBounds buffer offset pos
+  write buffer offset pos := Vector.setIfInBounds buffer offset (ValidPosPlusOne.validPos pos)
 
 local instance {s} : Repr (ValidPos s) where
   reprPrec p n := reprPrec p.offset n
 
-instance {s size} : Repr (BufferStrategy s size).Update := inferInstanceAs (Repr (Vector (Option (ValidPos s)) size))
+instance {s size} : Repr (BufferStrategy s size).Update := inferInstanceAs (Repr (Vector (ValidPosPlusOne s) size))
 
-instance {s size} : Inhabited (BufferStrategy s size).Update := inferInstanceAs (Inhabited (Vector (Option (ValidPos s)) size))
+instance {s size} : Inhabited (BufferStrategy s size).Update := inferInstanceAs (Inhabited (Vector (ValidPosPlusOne s) size))
 
-instance {s size} : DecidableEq (BufferStrategy s size).Update := inferInstanceAs (DecidableEq (Vector (Option (ValidPos s)) size))
+instance {s size} : DecidableEq (BufferStrategy s size).Update := inferInstanceAs (DecidableEq (Vector (ValidPosPlusOne s) size))
 
-instance {s size} : GetElem (BufferStrategy s size).Update Nat (Option (ValidPos s)) (fun _ i => i < size) :=
-  inferInstanceAs (GetElem (Vector (Option (ValidPos s)) size) Nat (Option (ValidPos s)) _)
+instance {s size} : GetElem (BufferStrategy s size).Update Nat (ValidPosPlusOne s) (fun _ i => i < size) :=
+  inferInstanceAs (GetElem (Vector (ValidPosPlusOne s) size) Nat (ValidPosPlusOne s) _)
 
 @[simp]
 theorem BufferStrategy.update_def {s size} : (BufferStrategy s size).Update = Buffer s size := rfl
@@ -40,7 +40,7 @@ theorem BufferStrategy.empty_def {s size} : (BufferStrategy s size).empty = Buff
 
 @[simp]
 theorem BufferStrategy.write_def {s size buffer offset pos} :
-  (BufferStrategy s size).write buffer offset pos = Vector.setIfInBounds buffer offset pos := rfl
+  (BufferStrategy s size).write buffer offset pos = Vector.setIfInBounds buffer offset (ValidPosPlusOne.validPos pos) := rfl
 
 /--
 This strategy is inefficient and used only for proofs.
