@@ -18,9 +18,9 @@ and the `loop` variant extracts the first iteration and the remaining loop.
 -/
 inductive Loop {s : String} : ValidPos s → ValidPos s → List (Nat × ValidPos s) → Prop where
   | last {pos} (step : nfa'.Step nfa.nodes.size nfa'.start pos next pos .none) : Loop pos pos []
-  | loop {it it' it'' update₁ update₂}
-    (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start it nfaPlaceholder.start it' update₁)
-    (loop : Loop it' it'' update₂) : Loop it it'' (update₁ ++ update₂)
+  | loop {pos pos' pos'' update₁ update₂}
+    (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update₁)
+    (loop : Loop pos' pos'' update₂) : Loop pos pos'' (update₁ ++ update₂)
 
 theorem Loop.introAux {s : String} {pos pos' : ValidPos s} {i j update}
   (lt : i < nfa'.nodes.size) (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) (eqj : j = next)
@@ -94,8 +94,8 @@ theorem Loop.introAux {s : String} {pos pos' : ValidPos s} {i j update}
       split at ih'
       next eqj =>
         match ih' with
-        | .inl ⟨step', hit, hupdate⟩ =>
-          simp [hit, hupdate, eqj] at *
+        | .inl ⟨step', hpos, hupdate⟩ =>
+          simp [hpos, hupdate, eqj] at *
           refine ⟨pos', List.ofOption update₁, ?_, [], .last step', by simp⟩
           simp [nfaPlaceholder]
 
@@ -125,8 +125,8 @@ theorem Loop.intro {s : String} {pos pos' : ValidPos s} {update}
   have loop := introAux wf'.start_lt wf next_lt rfl path
   simp at loop
   match loop with
-  | .inl ⟨step, hit, hupdate⟩ =>
-    simp [hit, hupdate] at *
+  | .inl ⟨step, hpos, hupdate⟩ =>
+    simp [hpos, hupdate] at *
     exact .last step
   | .inr ⟨pos'', update₁, path, update₂, loop, equ⟩ => exact equ ▸ Loop.loop path loop
 

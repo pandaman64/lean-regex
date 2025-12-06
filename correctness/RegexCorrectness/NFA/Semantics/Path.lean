@@ -246,11 +246,11 @@ theorem compile_liftBound {e nfa} (eq : compile e = nfa) (path : nfa.Path 0 i p 
 If a property is closed under a single step, then it is closed under a path.
 -/
 theorem of_step_closure {lb} (motive : Nat → ValidPos s → Prop) (closure : ∀ i p j p' update, motive i p → nfa.Step lb i p j p' update → motive j p')
-  {i it j it' update} (base : motive i it) (path : nfa.Path lb i it j it' update) :
-  motive j it' := by
+  {i p j p' update} (base : motive i p) (path : nfa.Path lb i p j p' update) :
+  motive j p' := by
   induction path with
-  | @last i it j it' update step => exact closure i it j it' update base step
-  | @more i it j it' k it'' update₁ _ step _ ih => exact ih (closure i it j it' update₁ base step)
+  | @last i p j p' update step => exact closure i p j p' update base step
+  | @more i p j p' k p'' update₁ _ step _ ih => exact ih (closure i p j p' update₁ base step)
 
 end Path
 

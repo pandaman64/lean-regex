@@ -329,7 +329,7 @@ variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos : ValidPos s}
 Intuition: given that we reached `i₀` (from `nfa.start`) with `pos₀` and `update₀`, the εClosure
 traversal first puts states reachable from `i₀` into the stack with an appropriate update list.
 Next, the traversal pops the states from the stack and writes them to `next`, recording the update
-list to `updates` for the necessary states. Since we only care about ε-transitions, the iterator
+list to `updates` for the necessary states. Since we only care about ε-transitions, the position
 doesn't change during the traversal.
 
 At the end of the traversal, we can guarantee that all states in `next` were already in `states₀` or

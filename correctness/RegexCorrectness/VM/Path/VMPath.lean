@@ -33,13 +33,13 @@ theorem more_εStep {update₁ update₂}
   nfa.VMPath wf pos₀ pos j (update₁ ++ List.ofOption update₂) := by
   cases prev with
   | init le cls => exact .init le (cls.snoc step)
-  | more prev step' cls hupdate eqit => exact .more prev step' (cls.snoc (eqit ▸ step)) (by simp [hupdate]) eqit
+  | more prev step' cls hupdate eqpos => exact .more prev step' (cls.snoc (eqpos ▸ step)) (by simp [hupdate]) eqpos
 
 theorem more_charStep {update} (prev : nfa.VMPath wf pos₀ pos i update) (step : nfa.CharStep pos i j) :
   nfa.VMPath wf pos₀ (pos.next step.ne) j update := by
   cases prev with
   | init le cls => exact .more (.init le cls) step .base (by simp) rfl
-  | more prev step' cls hupdate eqit => exact .more (.more prev step' cls hupdate eqit) step .base (by simp) rfl
+  | more prev step' cls hupdate eqpos => exact .more (.more prev step' cls hupdate eqpos) step .base (by simp) rfl
 
 theorem more_step {j : Nat} {update₁ update₂}
   (prev : nfa.VMPath wf pos₀ pos i update₁) (step : nfa.Step 0 i pos j pos' update₂) :

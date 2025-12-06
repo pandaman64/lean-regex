@@ -179,7 +179,7 @@ theorem captureNext.go.ne_done_of_path_of_none {s nfa wf pos₀ pos matched curr
     simp at this
 
 /--
-If `captureNext` returns `.none`, then there is no path from `nfa.start` to a `.done` state after `it`.
+If `captureNext` returns `.none`, then there is no path from `nfa.start` to a `.done` state after `pos`.
 -/
 theorem captureNext.ne_done_of_path_of_none {s nfa wf pos} (h : captureNext (HistoryStrategy s) nfa wf pos = .none) :
   ∀ pos' state update, nfa.VMPath wf pos pos' state update → nfa[state] ≠ .done := by

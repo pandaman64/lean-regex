@@ -24,7 +24,7 @@ theorem EquivUpdate.materialize {e : Expr} {n : Nat} {pos pos' : ValidPos s} {gr
   | char | sparse | epsilon | anchor | starEpsilon =>
     cases eqv with
     | empty => simp [EquivMaterializedUpdate]
-  | @group it it' groups tag e c ih =>
+  | @group pos pos' groups tag e c ih =>
     simp [Expr.Disjoint] at disj
     cases eqv with
     | @group groups updates _ _ _ eqv =>

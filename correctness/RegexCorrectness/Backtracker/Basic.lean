@@ -167,8 +167,8 @@ theorem captureNextAux.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : 
   captureNextAux.induct σ nfa wf startPos motive
     base
     visited
-    (fun visited update state it stack' hmem _ hn => done visited update state it stack' hmem (by simpa using hn))
-    (fun visited update state it stack' hmem _ hn ih => next visited update state it stack' hmem (by simpa using hn) ih)
+    (fun visited update state bvpos stack' hmem _ hn => done visited update state bvpos stack' hmem (by simpa using hn))
+    (fun visited update state bvpos stack' hmem _ hn ih => next visited update state bvpos stack' hmem (by simpa using hn) ih)
 
 /-
 Simplification lemmas for `captureNextAux`.

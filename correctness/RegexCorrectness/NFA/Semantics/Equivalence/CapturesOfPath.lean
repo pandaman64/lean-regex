@@ -31,10 +31,10 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     simp [←eqnext, nfaClose] at ge
     have : next < pd.nfa.nodes.size := next_lt
     omega
-  | @more i it j itm k it'' update updates step rest  =>
-    have ⟨hj, hit, hupdate⟩ := step_start_iff.mp step
+  | @more i pos j posm k pos'' update updates step rest  =>
+    have ⟨hj, hpos, hupdate⟩ := step_start_iff.mp step
     simp [hupdate]
-    simp [hj, hit] at rest
+    simp [hj, hpos] at rest
 
     have rest := castToExpr wf next_lt rest
     have next_lt_close : next < nfaClose.nodes.size := by
@@ -44,7 +44,7 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     have ne_next : next ≠ nfaClose.start := by
       simp [nfaClose]
       exact Nat.ne_of_lt next_lt
-    have ⟨itm, updateExpr, updateClose, equ, pathExpr, pathClose⟩ :=
+    have ⟨posm, updateExpr, updateClose, equ, pathExpr, pathClose⟩ :=
       rest.path_next_of_ne (result := nfaExpr) rfl next_lt_close ge_expr_start ne_next
 
     have wf_close := wf_close wf next_lt
@@ -54,9 +54,9 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
       simp [nfaClose, get_close_expr, get_close]
     cases pathClose with
     | last step =>
-      have ⟨_, hit, hupdate⟩ := step_close_iff.mp (step.cast this)
-      rw [←hit] at c
-      simp [equ, hupdate, ←hit]
+      have ⟨_, hpos, hupdate⟩ := step_close_iff.mp (step.cast this)
+      rw [←hpos] at c
+      simp [equ, hupdate, ←hpos]
       exact ⟨.group tag pos pos' groupExpr, .group eqv, .group c⟩
     | more step rest =>
       have ⟨hj, _, _⟩ := step_close_iff.mp (step.cast this)
@@ -87,22 +87,22 @@ theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.altern
     have : next < nfa₁.start := Nat.lt_of_lt_of_le next_lt (ge_pushRegex_start rfl)
     have : next < nfa₂.start := Nat.lt_of_lt_of_le (Nat.lt_trans next_lt nfa₁_property) (ge_pushRegex_start rfl)
     omega
-  | @more i it j itm k it'' update updates step rest =>
-    have ⟨hj, hit, hupdate⟩ := step_start_iff.mp step
+  | @more i pos j posm k pos'' update updates step rest =>
+    have ⟨hj, hpos, hupdate⟩ := step_start_iff.mp step
     simp [hupdate]
     cases hj with
     | inl hj =>
-      simp [hj, hit] at rest
+      simp [hj, hpos] at rest
       have rest := castTo₁ wf next_lt rest
       have ⟨groups, eqv, c⟩ := ih₁ rfl wf next_lt rest
       exact ⟨groups, eqv, .alternateLeft c⟩
     | inr hj =>
-      simp [hj, hit] at rest
+      simp [hj, hpos] at rest
 
       have rest := castTo₂ wf next_lt rest
       have rest : nfa₂.Path nfa₁.nodes.size nfa₂.start pos next pos' updates := by
         apply rest.liftBound' (ge_pushRegex_start rfl)
-        intro i it j it' update gei gej step
+        intro i pos j pos' update gei gej step
         cases (step.liftBound' gei).eq_or_ge_of_pushRegex with
         | inl eq =>
           have : nfa.nodes.size ≤ next := show nfa.nodes.size ≤ pd.next from eq ▸ gej
@@ -168,7 +168,7 @@ theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy 
   have loop := Loop.intro wf next_lt path
   apply captures_of_path.star_of_loop (greedy := greedy) loop
 
-  intro it it' update path
+  intro pos pos' update path
   have path := castToExpr wf path
   have wf_placeholder := wf_placeholder wf
   exact ih rfl wf_placeholder wf_placeholder.start_lt path

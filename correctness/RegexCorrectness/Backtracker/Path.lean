@@ -47,8 +47,8 @@ theorem concat_nfaPath {i j : Nat} (isLt : i < nfa.nodes.size)
   (path₁ : Path nfa wf pos pos' ⟨i, isLt⟩ update₁) (path₂ : nfa.Path 0 i pos' j pos'' update₂) (equpdate : update₃ = update₁ ++ update₂) :
   Path nfa wf pos pos'' ⟨j, path₂.lt_right wf⟩ update₃ := by
   induction path₂ generalizing update₁ with
-  | @last i it' j it'' update step => exact path₁.more step equpdate
-  | @more i it' j it'' k it''' update₂ update₂' step path ih =>
+  | @last i pos' j pos'' update step => exact path₁.more step equpdate
+  | @more i pos' j pos'' k pos''' update₂ update₂' step path ih =>
     exact ih (update₁ := update₁ ++ List.ofOption update₂) path.lt (path₁.more step rfl) (by simp [equpdate])
 
 theorem of_nfaPath {i : Nat} (path : nfa.Path 0 nfa.start pos i pos' update) :

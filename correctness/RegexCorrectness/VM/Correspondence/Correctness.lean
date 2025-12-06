@@ -52,8 +52,8 @@ theorem captureNext_completeness {s e bufferSize pos}
 def decideSearchProblem {s : String} (e : Expr) (pos : ValidPos s) (disj : e.Disjoint) : Decidable (SearchProblem e pos) :=
   match hresB : captureNext (BufferStrategy s 0) (NFA.compile e) NFA.compile_wf pos with
   | .some _ => .isTrue <|
-    have ⟨it', it'', groups, le, c, _⟩ := captureNext_soundness disj hresB
-    ⟨it', it'', groups, le, c⟩
+    have ⟨pos', pos'', groups, le, c, _⟩ := captureNext_soundness disj hresB
+    ⟨pos', pos'', groups, le, c⟩
   | .none => .isFalse (captureNext_completeness hresB)
 
 end Regex.VM

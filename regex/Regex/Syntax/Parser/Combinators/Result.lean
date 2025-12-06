@@ -21,19 +21,19 @@ abbrev LT (p : ValidPos s) (ε α : Type) := Result true p ε α
 
 @[inline]
 def imp {strict₁ strict₂ : Bool} {p : ValidPos s} {ε α} (h : strict₂ → strict₁) : Result strict₁ p ε α → Result strict₂ p ε α
-  | .ok a it' h' => .ok a it' (h'.imp h)
+  | .ok a pos' h' => .ok a pos' (h'.imp h)
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
 def transOr {strict₁ strict₂ : Bool} {p p' : ValidPos s} {ε α} (h : Rel strict₂ p' p) : Result strict₁ p' ε α → Result (strict₁ || strict₂) p ε α
-  | .ok a it'' h' => .ok a it'' (Rel.transOr h' h)
+  | .ok a pos'' h' => .ok a pos'' (Rel.transOr h' h)
   | .error e => .error e
   | .fatal e => .fatal e
 
 @[inline]
 def trans {strict : Bool} {p p' : ValidPos s} {ε α} (h : Rel strict p p') : Result strict p ε α → Result strict p' ε α
-  | .ok a it'' h' => .ok a it'' (Rel.trans h' h)
+  | .ok a pos'' h' => .ok a pos'' (Rel.trans h' h)
   | .error e => .error e
   | .fatal e => .fatal e
 

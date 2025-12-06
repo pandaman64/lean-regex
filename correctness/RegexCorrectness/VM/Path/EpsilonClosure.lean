@@ -82,21 +82,21 @@ theorem εClosure'.snoc {nfa : NFA} {s : String} {pos : ValidPos s} {i j k updat
   cls.trans (εClosure'.single step)
 
 theorem εClosure'_of_path {nfa : NFA} {s : String} {pos : ValidPos s} {i j pos' updates}
-  (wf : nfa.WellFormed) (hit : pos = pos') (path : nfa.Path 0 i pos j pos' updates) :
+  (wf : nfa.WellFormed) (hpos : pos = pos') (path : nfa.Path 0 i pos j pos' updates) :
   nfa.εClosure' pos ⟨i, path.lt⟩ ⟨j, path.lt_right wf⟩ updates := by
   induction path with
   | last step =>
-    subst hit
+    subst hpos
     exact εClosure'.single step
-  | @more i it j it' k it'' update₁ update₂ step rest ih =>
+  | @more i pos j pos' k pos'' update₁ update₂ step rest ih =>
     match step.eq_or_next with
-    | .inl hit' =>
-      subst hit hit'
+    | .inl hpos' =>
+      subst hpos hpos'
       simp at ih
       exact .step (by simp [εStep', step]) ih
-    | .inr ⟨_, hit'⟩ =>
-      subst hit hit'
-      exact ((Nat.not_le_of_lt it.lt_next) rest.le).elim
+    | .inr ⟨_, hpos'⟩ =>
+      subst hpos hpos'
+      exact ((Nat.not_le_of_lt pos.lt_next) rest.le).elim
 
 theorem εClosure'_iff_path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (pos : ValidPos s) (updates : List (Nat × ValidPos s)) :
   nfa.εClosure' pos i j updates ↔ (i = j ∧ updates = []) ∨ nfa.Path 0 i pos j pos updates := by

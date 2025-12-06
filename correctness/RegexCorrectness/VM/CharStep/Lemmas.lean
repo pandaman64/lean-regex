@@ -258,7 +258,7 @@ theorem not_done_of_none (result) (h : eachStepChar (HistoryStrategy s) nfa wf p
   simp [eachStepChar] at h
   exact go.not_done_of_none result h isNone invCurrent invNext
 
--- Intended usage: given `inv : current.MemOfPathInv nfa wf it₀ it`, if there is a VMPath for `it.next`. We cases on the path.
+-- Intended usage: given `inv : current.MemOfPathInv nfa wf pos₀ pos`, if there is a VMPath for `pos.next ne`. We cases on the path.
 -- If that results in a char step and εClosure, we can use this theorem to show that the state is in `next'.states`.
 theorem mem_of_step_of_none (result) (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = result)
   (isNone : result.1 = .none)

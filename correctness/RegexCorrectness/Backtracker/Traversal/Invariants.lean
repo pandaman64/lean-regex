@@ -297,11 +297,11 @@ theorem step_closure {bvpos₀ bvpos : BVPos startPos} {result} (hres : captureN
       intro state₁ bvpos₁ state₂ bvpos₂ update' le hmem step
       match cinv state₁ bvpos₁ state₂ bvpos₂ update' le hmem step with
       | .inl hmem' => exact .inl hmem'
-      | .inr ⟨entry, hmem', eqstate, eqit⟩ =>
+      | .inr ⟨entry, hmem', eqstate, eqbvpos⟩ =>
         simp at hmem'
         cases hmem' with
-        | inl eq => simp [eq, ←eqstate, ←eqit, mem]
-        | inr hmem' => exact .inr ⟨entry, hmem', eqstate, eqit⟩
+        | inl eq => simp [eq, ←eqstate, ←eqbvpos, mem]
+        | inr hmem' => exact .inr ⟨entry, hmem', eqstate, eqbvpos⟩
     exact ih hres cinv' (stinv.preserves' [] (by simp) (by simp))
   | done visited update state bvpos stack' mem hn =>
     simp [captureNextAux_done mem hn] at hres
