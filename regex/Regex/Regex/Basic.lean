@@ -6,7 +6,7 @@ import Regex.Regex.OptimizationInfo
 
 set_option autoImplicit false
 
-open String (ValidPos Slice)
+open String (ValidPos ValidPosPlusOne Slice)
 open Regex.Data (Expr)
 
 /--
@@ -51,10 +51,12 @@ Searches for the next match in the input string.
 -/
 def searchNext {s : String} (self : Regex) (p : ValidPos s) : Option Slice := do
   let slots ← captureNextBuf self 2 p
-  let startPos ← slots[0]
-  let stopPos ← slots[1]
-  if h : startPos ≤ stopPos then
-    pure ⟨s, startPos, stopPos, h⟩
+  let startPos := slots[0]
+  let stopPos := slots[1]
+  if h : stopPos.isValid && startPos ≤ stopPos then
+    have isStopPosValid : stopPos.isValid := by grind
+    have h' : startPos.isValid := ValidPosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
+    pure ⟨s, startPos.asValidPos h', stopPos.asValidPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
   else
     .none
 
@@ -65,8 +67,7 @@ theorem searchNext_str_eq_some {s : String} {self : Regex} {p : ValidPos s} {s' 
   (h : searchNext self p = some s') :
   s'.str = s := by
   simp [searchNext, Option.bind_eq_some_iff] at h
-  obtain ⟨_, _, _, _, _, _, _, eq⟩ := h
-  simp [←eq]
+  grind
 
 /--
 Constructs a `Regex` from a regular expression.

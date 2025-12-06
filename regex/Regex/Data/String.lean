@@ -209,7 +209,7 @@ def validPos (p : ValidPos s) : ValidPosPlusOne s :=
 def sentinel (s : String) : ValidPosPlusOne s :=
   ⟨s.rawEndPos.offsetBy ⟨1⟩, .inr rfl⟩
 
-@[elab_as_elim]
+@[elab_as_elim, cases_eliminator]
 def rec'.{u} {motive : ValidPosPlusOne s → Sort u}
   (validPos : (p : ValidPos s) → motive (validPos p))
   (sentinel : motive (sentinel s))
@@ -231,6 +231,7 @@ instance : Inhabited (ValidPosPlusOne s) := ⟨.validPos s.startValidPos⟩
 def isValid (p : ValidPosPlusOne s) : Bool :=
   p.offset ≠ s.rawEndPos.offsetBy ⟨1⟩
 
+@[grind _=_]
 theorem isValid_iff_isValid (p : ValidPosPlusOne s) : p.isValid ↔ p.offset.IsValid s := by
   cases p.isValidOrPlusOne with
   | inl h =>
@@ -294,6 +295,105 @@ theorem wellFounded_gt : WellFounded (fun (p : ValidPosPlusOne s) q => q < p) :=
 instance : WellFoundedRelation (ValidPosPlusOne s) where
   rel p q := q < p
   wf := wellFounded_gt
+
+def le (p₁ p₂ : ValidPosPlusOne s) : Prop :=
+  p₁.offset ≤ p₂.offset
+
+instance : LE (ValidPosPlusOne s) := ⟨le⟩
+
+@[grind =]
+theorem le_iff {p₁ p₂ : ValidPosPlusOne s} : p₁ ≤ p₂ ↔ p₁.offset ≤ p₂.offset :=
+  Iff.rfl
+
+@[simp, grind =]
+theorem validPos_le_validPos_iff {p₁ p₂ : ValidPos s} : ValidPosPlusOne.validPos p₁ ≤ ValidPosPlusOne.validPos p₂ ↔ p₁ ≤ p₂ :=
+  Iff.rfl
+
+instance {s : String} (p₁ p₂ : ValidPosPlusOne s) : Decidable (p₁ ≤ p₂) :=
+  decidable_of_iff' _ le_iff
+
+theorem isValid_of_isValid_of_le {p₁ p₂ : ValidPosPlusOne s} (h : p₂.isValid) (le : p₁ ≤ p₂) : p₁.isValid := by
+  cases p₁.isValidOrPlusOne with
+  | inl h₁ => simpa [p₁.isValid_iff_isValid] using h₁
+  | inr h₁ =>
+    rw [p₂.isValid_iff_isValid] at h
+    have le' : p₂.offset ≤ s.rawEndPos := h.le_rawEndPos
+    have le'' : s.rawEndPos.offsetBy ⟨1⟩ ≤ s.rawEndPos := h₁ ▸ Pos.Raw.le_trans le le'
+    simp [Pos.Raw.le_iff] at le''
+    grind
+
+@[grind .]
+theorem validPos_inj {p₁ p₂ : ValidPos s} (h : ValidPosPlusOne.validPos p₁ = ValidPosPlusOne.validPos p₂) : p₁ = p₂ := by
+  simp only [validPos, ValidPosPlusOne.mk.injEq] at h
+  exact ValidPos.ext h
+
+def or (p₁ p₂ : ValidPosPlusOne s) : ValidPosPlusOne s :=
+  if p₁.isValid then
+    p₁
+  else
+    p₂
+
+def orElse (p₁ : ValidPosPlusOne s) (p₂ : Unit → ValidPosPlusOne s) : ValidPosPlusOne s :=
+  if p₁.isValid then
+    p₁
+  else
+    p₂ ()
+
+instance : OrElse (ValidPosPlusOne s) := ⟨orElse⟩
+
+@[simp, grind =]
+theorem orElse_eq_or {p₁ : ValidPosPlusOne s} {p₂} : p₁.orElse p₂ = p₁.or (p₂ ()) := by
+  grind [orElse, or]
+
+@[simp, grind =]
+theorem hOrElse_eq_orElse {p₁ : ValidPosPlusOne s} {p₂} : HOrElse.hOrElse p₁ p₂ = p₁.orElse p₂ := rfl
+
+@[simp, grind =]
+theorem or_valid {p₁ p₂ : ValidPosPlusOne s} (h : p₁.isValid) : p₁.or p₂ = p₁ := by
+  simp [or, h]
+
+@[simp, grind =]
+theorem or_not_valid {p₁ p₂ : ValidPosPlusOne s} (h : ¬p₁.isValid) : p₁.or p₂ = p₂ := by
+  simp [or, h]
+
+@[simp, grind =]
+theorem isValid_validPos {p : ValidPos s} : (ValidPosPlusOne.validPos p).isValid = true :=
+  (isValid_iff_isValid (.validPos p)).mpr p.isValid
+
+@[simp, grind =]
+theorem not_isValid_sentinel {s : String} : (ValidPosPlusOne.sentinel s).isValid = false := by
+  simp [sentinel, isValid]
+@[simp, grind =]
+theorem sentinel_or {p₁ p₂ : ValidPosPlusOne s} (h : p₁ = .sentinel s) : p₁.or p₂ = p₂ := by
+  grind
+
+@[simp, grind =>]
+theorem validPos_or {p₁ p₂ : ValidPosPlusOne s} (h : p₁ = .validPos p) : p₁.or p₂ = p₁ := by
+  grind
+
+@[simp, grind =]
+theorem or_sentinel {p₁ p₂ : ValidPosPlusOne s} (h : p₂ = .sentinel s) : p₁.or p₂ = p₁ := by
+  cases p₁ with
+  | validPos p => simp
+  | sentinel => simp [h]
+
+@[grind .]
+theorem validPos_ne_sentinel {p : ValidPos s} : ValidPosPlusOne.validPos p ≠ ValidPosPlusOne.sentinel s := by
+  intro eq
+  have : isValid (.validPos p) = isValid (.sentinel s) := by grind
+  simp at this
+
+@[simp, grind =]
+theorem or_self {p : ValidPosPlusOne s} : p.or p = p := by
+  cases p with
+  | validPos p => simp
+  | sentinel => simp
+
+@[simp, grind =]
+theorem asValidPos_validPos {p : ValidPos s} : (ValidPosPlusOne.validPos p).asValidPos (by grind) = p := rfl
+
+@[simp, grind =]
+theorem validPos_asValidPos {p : ValidPosPlusOne s} {h : p.isValid} : (ValidPosPlusOne.validPos (p.asValidPos h)) = p := rfl
 
 end ValidPosPlusOne
 

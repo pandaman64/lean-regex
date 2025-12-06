@@ -8,9 +8,6 @@ namespace Regex
 
 variable {haystack : String}
 
-local instance : Repr (ValidPos haystack) where
-  reprPrec p n := reprPrec p.offset n
-
 /--
 A structure representing the capture groups from a regex match.
 
@@ -18,7 +15,7 @@ Contains the original string (haystack) and a buffer of positions marking
 the start and end of each capture group.
 -/
 structure CapturedGroups (haystack : String) where
-  buffer : Array (Option (ValidPos haystack))
+  buffer : Array (ValidPosPlusOne haystack)
 deriving Repr, DecidableEq, Inhabited
 
 /--
@@ -29,10 +26,12 @@ Gets a specific capture group as a substring.
 * Returns: An optional substring representing the capture group, or `none` if the group didn't participate in the match
 -/
 def CapturedGroups.get (self : CapturedGroups haystack) (index : Nat) : Option Slice := do
-  let start ← (← self.buffer[2 * index]?)
-  let stop ← (← self.buffer[2 * index + 1]?)
-  if h : start ≤ stop then
-    return ⟨haystack, start, stop, h⟩
+  let start ← self.buffer[2 * index]?
+  let stop ← self.buffer[2 * index + 1]?
+  if h : stop.isValid && start ≤ stop then
+    have isStopPosValid : stop.isValid := by grind
+    have isStartPosValid : start.isValid := ValidPosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
+    return ⟨haystack, start.asValidPos isStartPosValid, stop.asValidPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
   else
     throw ()
 
