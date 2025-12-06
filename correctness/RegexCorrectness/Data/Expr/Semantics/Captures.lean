@@ -27,7 +27,7 @@ inductive Expr.Captures {s : String} : ValidPos s → ValidPos s → CaptureGrou
 
 namespace Expr.Captures
 
-theorem le_pos {s} {p p' : ValidPos s} {groups e} (c : Expr.Captures p p' groups e) : p ≤ p' := by
+theorem le {s} {p p' : ValidPos s} {groups e} (c : Expr.Captures p p' groups e) : p ≤ p' := by
   induction c with
   | char vf => exact ValidPos.le_of_lt (ValidPos.lt_next _)
   | sparse vf => exact ValidPos.le_of_lt (ValidPos.lt_next _)
