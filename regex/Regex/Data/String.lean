@@ -227,11 +227,28 @@ def rec'.{u} {motive : ValidPosPlusOne s → Sort u}
 
 instance : Inhabited (ValidPosPlusOne s) := ⟨.validPos s.startValidPos⟩
 
+@[inline]
 def isValid (p : ValidPosPlusOne s) : Bool :=
-  p.offset.isValid s
+  p.offset ≠ s.rawEndPos.offsetBy ⟨1⟩
+
+theorem isValid_iff_isValid (p : ValidPosPlusOne s) : p.isValid ↔ p.offset.IsValid s := by
+  cases p.isValidOrPlusOne with
+  | inl h =>
+    have ne : p.offset ≠ s.rawEndPos.offsetBy ⟨1⟩ :=
+      have le : p.offset.byteIdx ≤ s.utf8ByteSize := h.le_utf8ByteSize
+      have lt : p.offset.byteIdx < 1 + s.utf8ByteSize := by grind
+      Pos.Raw.ne_of_lt (by simpa [Pos.Raw.lt_iff] using lt)
+    simpa only [isValid, h, decide_eq_true_iff, iff_true] using ne
+  | inr h =>
+    have nv : ¬Pos.Raw.IsValid s (s.rawEndPos.offsetBy ⟨1⟩) := by
+      intro v
+      have := v.le_rawEndPos
+      simp [Pos.Raw.le_iff] at this
+      grind
+    simpa [isValid, h]
 
 def asValidPos (p : ValidPosPlusOne s) (h : p.isValid) : ValidPos s :=
-  ⟨p.offset, Pos.Raw.isValid_eq_true_iff.mp h⟩
+  ⟨p.offset, p.isValid_iff_isValid.mp h⟩
 
 def lt (p₁ p₂ : ValidPosPlusOne s) : Prop :=
   p₁.offset < p₂.offset
