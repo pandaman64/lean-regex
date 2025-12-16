@@ -3,7 +3,7 @@ import Regex.Data.String
 
 set_option autoImplicit false
 
-open String (Pos.Raw Pos ValidPosPlusOne Slice)
+open String (Pos.Raw Pos PosPlusOne Slice)
 
 namespace Regex
 
@@ -14,7 +14,7 @@ Provides a stateful iterator for finding all regex matches in a haystack string.
 -/
 structure Matches (haystack : String) where
   regex : Regex
-  currentPos : ValidPosPlusOne haystack
+  currentPos : PosPlusOne haystack
 deriving Repr
 
 namespace Matches
@@ -34,7 +34,7 @@ def next? (self : Matches haystack) : Option (Slice × Matches haystack) :=
     | .none => .none
     | .some s =>
       have eq : s.str = haystack := searchNext_str_eq_some h'
-      let nextPos := .validPos (eq ▸ s.endExclusive)
+      let nextPos := .pos (eq ▸ s.endExclusive)
       let next :=
         if self.currentPos < nextPos then
           { self with currentPos := nextPos }
@@ -67,7 +67,7 @@ theorem lt_next?_some {s : Slice} {m m' : Matches haystack} (h : m.next? = some 
   lt_next?_some' h
 
 theorem wellFounded_gt : WellFounded (fun (p : Matches haystack) q => q < p) :=
-  InvImage.wf Matches.currentPos ValidPosPlusOne.wellFounded_gt
+  InvImage.wf Matches.currentPos PosPlusOne.wellFounded_gt
 
 instance : WellFoundedRelation (Matches haystack) where
   rel p q := q < p
@@ -93,4 +93,4 @@ Creates a new `Matches` iterator for a regex pattern and input string.
 * Returns: A `Matches` iterator positioned at the start of the string
 -/
 def Regex.matches (regex : Regex) (s : String) : Matches s :=
-  { regex := regex, currentPos := s.startValidPosPlusOne }
+  { regex := regex, currentPos := s.startPosPlusOne }

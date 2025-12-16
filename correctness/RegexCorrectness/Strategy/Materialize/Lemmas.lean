@@ -4,7 +4,7 @@ import RegexCorrectness.Data.Expr.Semantics
 
 set_option autoImplicit false
 
-open String (Pos ValidPosPlusOne)
+open String (Pos PosPlusOne)
 open Regex.Data (CaptureGroups)
 
 namespace Regex.Strategy
@@ -61,12 +61,12 @@ theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {pos pos' : Pos s} {g
 @[simp]
 theorem materializeUpdatesAux_snoc {n accum updates offset} {pos : Pos s} :
   materializeUpdatesAux n accum (updates ++ [(offset, pos)]) =
-  (materializeUpdatesAux n accum updates).setIfInBounds offset (.validPos pos) := by
+  (materializeUpdatesAux n accum updates).setIfInBounds offset (.pos pos) := by
   induction updates generalizing accum with
   | nil => simp [materializeUpdatesAux]
   | cons _ _ ih => simp [materializeUpdatesAux, ih]
 
-theorem materializeUpdatesAux_swap {n : Nat} {accum : Vector (ValidPosPlusOne s) n} {updates : List (Nat × Pos s)} {offset₁ pos₁ offset₂ pos₂}
+theorem materializeUpdatesAux_swap {n : Nat} {accum : Vector (PosPlusOne s) n} {updates : List (Nat × Pos s)} {offset₁ pos₁ offset₂ pos₂}
   (ne : offset₁ ≠ offset₂) :
   materializeUpdatesAux n accum ((offset₁, pos₁) :: (offset₂, pos₂) :: updates) =
   materializeUpdatesAux n accum ((offset₂, pos₂) :: (offset₁, pos₁) :: updates) := by
@@ -86,7 +86,7 @@ theorem materializeUpdatesAux_swap {n : Nat} {accum : Vector (ValidPosPlusOne s)
 theorem materializeUpdatesAux_cons_of_not_in {n accum updates offset} {pos : Pos s}
   (h : ∀ offset' pos', (offset', pos') ∈ updates → offset ≠ offset') :
   materializeUpdatesAux n accum ((offset, pos) :: updates) =
-  (materializeUpdatesAux n accum updates).setIfInBounds offset (.validPos pos) := by
+  (materializeUpdatesAux n accum updates).setIfInBounds offset (.pos pos) := by
   induction updates generalizing accum with
   | nil => simp [materializeUpdatesAux]
   | cons head updates ih =>
@@ -102,16 +102,16 @@ theorem materializeUpdatesAux_cons_of_not_in {n accum updates offset} {pos : Pos
     rfl
 
 @[simp]
-theorem materializeUpdatesAux_nil {n : Nat} {accum : Vector (ValidPosPlusOne s) n} :
+theorem materializeUpdatesAux_nil {n : Nat} {accum : Vector (PosPlusOne s) n} :
   materializeUpdatesAux n accum [] = accum := rfl
 
-theorem materializeUpdatesAux_append {n : Nat} {accum : Vector (ValidPosPlusOne s) n} {updates₁ updates₂ : List (Nat × Pos s)} :
+theorem materializeUpdatesAux_append {n : Nat} {accum : Vector (PosPlusOne s) n} {updates₁ updates₂ : List (Nat × Pos s)} :
   materializeUpdatesAux n accum (updates₁ ++ updates₂) = materializeUpdatesAux n (materializeUpdatesAux n accum updates₁) updates₂ := by
   induction updates₁ generalizing accum with
   | nil => simp
   | cons head tail ih => simp [materializeUpdatesAux, ih]
 
-theorem materializeUpdatesAux_getElem {n : Nat} {accum : Vector (ValidPosPlusOne s) n} {updates : List (Nat × Pos s)} {offset : Nat} (h : offset < n) :
+theorem materializeUpdatesAux_getElem {n : Nat} {accum : Vector (PosPlusOne s) n} {updates : List (Nat × Pos s)} {offset : Nat} (h : offset < n) :
   (materializeUpdatesAux n accum updates)[offset] =
   ((materializeUpdatesAux n (Vector.replicate n (.sentinel s)) updates)[offset] <|> accum[offset]) := by
   induction updates generalizing accum with
@@ -124,7 +124,7 @@ theorem materializeUpdates_empty {n} : @materializeUpdates s n [] = Vector.repli
 @[simp]
 theorem materializeUpdates_snoc {n : Nat} {updates : List (Nat × Pos s)} {offset : Nat} {pos : Pos s} :
   materializeUpdates n (updates ++ [(offset, pos)]) =
-  (materializeUpdates n updates).setIfInBounds offset (.validPos pos) := by
+  (materializeUpdates n updates).setIfInBounds offset (.pos pos) := by
   simp [materializeUpdates]
 
 theorem materializeUpdates_append_getElem {n : Nat} {updates₁ updates₂ : List (Nat × Pos s)} {offset : Nat} (h : offset < n) :

@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy
-open String (Pos ValidPosPlusOne)
+open String (Pos PosPlusOne)
 
 namespace Regex.NFA
 

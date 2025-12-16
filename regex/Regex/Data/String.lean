@@ -137,50 +137,49 @@ end String.Pos
 
 namespace String
 
--- TODO: rename to `PosPlusOne`
 @[ext]
-structure ValidPosPlusOne (s : String) where
+structure PosPlusOne (s : String) where
   offset : Pos.Raw
   isValidOrPlusOne : offset.IsValid s ∨ offset = s.rawEndPos.offsetBy ⟨1⟩
 deriving Repr, DecidableEq
 
-namespace ValidPosPlusOne
+namespace PosPlusOne
 
 variable {s : String}
 
 -- Doesn't seem to work at the moment
 @[match_pattern]
-def validPos (p : Pos s) : ValidPosPlusOne s :=
+def pos (p : Pos s) : PosPlusOne s :=
   ⟨p.offset, .inl p.isValid⟩
 
 @[match_pattern]
-def sentinel (s : String) : ValidPosPlusOne s :=
+def sentinel (s : String) : PosPlusOne s :=
   ⟨s.rawEndPos.offsetBy ⟨1⟩, .inr rfl⟩
 
 @[elab_as_elim, cases_eliminator]
-def rec'.{u} {motive : ValidPosPlusOne s → Sort u}
-  (validPos : (p : Pos s) → motive (validPos p))
+def rec'.{u} {motive : PosPlusOne s → Sort u}
+  (pos : (p : Pos s) → motive (pos p))
   (sentinel : motive (sentinel s))
-  (p : ValidPosPlusOne s) : motive p :=
+  (p : PosPlusOne s) : motive p :=
   if h : p.offset = s.rawEndPos.offsetBy ⟨1⟩ then
     have eq : p = .sentinel s := by
-      simp [ValidPosPlusOne.ext_iff, h, ValidPosPlusOne.sentinel]
+      simp [PosPlusOne.ext_iff, h, PosPlusOne.sentinel]
     eq ▸ sentinel
   else
     have h' : p.offset.IsValid s := by
       cases p.isValidOrPlusOne with
       | inl h => exact h
       | inr h => contradiction
-    validPos ⟨p.offset, h'⟩
+    pos ⟨p.offset, h'⟩
 
-instance : Inhabited (ValidPosPlusOne s) := ⟨.validPos s.startPos⟩
+instance : Inhabited (PosPlusOne s) := ⟨pos s.startPos⟩
 
 @[inline]
-def isValid (p : ValidPosPlusOne s) : Bool :=
+def isValid (p : PosPlusOne s) : Bool :=
   p.offset ≠ s.rawEndPos.offsetBy ⟨1⟩
 
 @[grind _=_]
-theorem isValid_iff_isValid (p : ValidPosPlusOne s) : p.isValid ↔ p.offset.IsValid s := by
+theorem isValid_iff_isValid (p : PosPlusOne s) : p.isValid ↔ p.offset.IsValid s := by
   cases p.isValidOrPlusOne with
   | inl h =>
     have ne : p.offset ≠ s.rawEndPos.offsetBy ⟨1⟩ :=
@@ -196,40 +195,40 @@ theorem isValid_iff_isValid (p : ValidPosPlusOne s) : p.isValid ↔ p.offset.IsV
       grind
     simpa [isValid, h]
 
-def asPos (p : ValidPosPlusOne s) (h : p.isValid) : Pos s :=
+def asPos (p : PosPlusOne s) (h : p.isValid) : Pos s :=
   ⟨p.offset, p.isValid_iff_isValid.mp h⟩
 
-def lt (p₁ p₂ : ValidPosPlusOne s) : Prop :=
+def lt (p₁ p₂ : PosPlusOne s) : Prop :=
   p₁.offset < p₂.offset
 
-instance : LT (ValidPosPlusOne s) := ⟨lt⟩
+instance : LT (PosPlusOne s) := ⟨lt⟩
 
-theorem lt_iff {p₁ p₂ : ValidPosPlusOne s} : p₁ < p₂ ↔ p₁.offset < p₂.offset :=
+theorem lt_iff {p₁ p₂ : PosPlusOne s} : p₁ < p₂ ↔ p₁.offset < p₂.offset :=
   Iff.rfl
 
-instance {s : String} (p₁ p₂ : ValidPosPlusOne s) : Decidable (p₁ < p₂) :=
+instance {s : String} (p₁ p₂ : PosPlusOne s) : Decidable (p₁ < p₂) :=
   decidable_of_iff' _ lt_iff
 
-def next (p : ValidPosPlusOne s) (h : p.isValid) : ValidPosPlusOne s :=
+def next (p : PosPlusOne s) (h : p.isValid) : PosPlusOne s :=
   let vp := p.asPos h
   if h' : vp ≠ s.endPos then
-    .validPos (vp.next h')
+    pos (vp.next h')
   else
     .sentinel s
 
-theorem lt_sentinel_of_valid {p : ValidPosPlusOne s} (h : p.isValid) : p < .sentinel s :=
+theorem lt_sentinel_of_valid {p : PosPlusOne s} (h : p.isValid) : p < .sentinel s :=
   Nat.lt_of_le_of_lt (p.asPos h).isValid.le_rawEndPos (by simp [sentinel])
 
 @[simp, grind →]
-theorem lt_next (p : ValidPosPlusOne s) (h : p.isValid) : p < p.next h := by
+theorem lt_next (p : PosPlusOne s) (h : p.isValid) : p < p.next h := by
   fun_cases next
   next vp ne => exact Pos.lt_next (p := p.asPos h) (h := ne)
   next => exact lt_sentinel_of_valid h
 
-def remainingBytes (p : ValidPosPlusOne s) : Nat :=
+def remainingBytes (p : PosPlusOne s) : Nat :=
   s.rawEndPos.byteIdx + 1 - p.offset.byteIdx
 
-theorem lt_iff_remainingBytes_lt {p₁ p₂ : ValidPosPlusOne s} : p₁ < p₂ ↔ p₂.remainingBytes < p₁.remainingBytes := by
+theorem lt_iff_remainingBytes_lt {p₁ p₂ : PosPlusOne s} : p₁ < p₂ ↔ p₂.remainingBytes < p₁.remainingBytes := by
   simp only [lt_iff, Pos.Raw.lt_iff, remainingBytes, byteIdx_rawEndPos]
   have : p₂.offset.byteIdx ≤ s.utf8ByteSize + 1 := by
     cases p₂.isValidOrPlusOne with
@@ -237,30 +236,30 @@ theorem lt_iff_remainingBytes_lt {p₁ p₂ : ValidPosPlusOne s} : p₁ < p₂ �
     | inr h => simp [h, Nat.add_comm]
   grind
 
-theorem wellFounded_gt : WellFounded (fun (p : ValidPosPlusOne s) q => q < p) := by
+theorem wellFounded_gt : WellFounded (fun (p : PosPlusOne s) q => q < p) := by
   simpa [lt_iff_remainingBytes_lt] using InvImage.wf remainingBytes Nat.lt_wfRel.wf
 
-instance : WellFoundedRelation (ValidPosPlusOne s) where
+instance : WellFoundedRelation (PosPlusOne s) where
   rel p q := q < p
   wf := wellFounded_gt
 
-def le (p₁ p₂ : ValidPosPlusOne s) : Prop :=
+def le (p₁ p₂ : PosPlusOne s) : Prop :=
   p₁.offset ≤ p₂.offset
 
-instance : LE (ValidPosPlusOne s) := ⟨le⟩
+instance : LE (PosPlusOne s) := ⟨le⟩
 
 @[grind =]
-theorem le_iff {p₁ p₂ : ValidPosPlusOne s} : p₁ ≤ p₂ ↔ p₁.offset ≤ p₂.offset :=
+theorem le_iff {p₁ p₂ : PosPlusOne s} : p₁ ≤ p₂ ↔ p₁.offset ≤ p₂.offset :=
   Iff.rfl
 
 @[simp, grind =]
-theorem validPos_le_validPos_iff {p₁ p₂ : Pos s} : ValidPosPlusOne.validPos p₁ ≤ ValidPosPlusOne.validPos p₂ ↔ p₁ ≤ p₂ :=
+theorem pos_le_pos_iff {p₁ p₂ : Pos s} : pos p₁ ≤ pos p₂ ↔ p₁ ≤ p₂ :=
   Iff.rfl
 
-instance {s : String} (p₁ p₂ : ValidPosPlusOne s) : Decidable (p₁ ≤ p₂) :=
+instance {s : String} (p₁ p₂ : PosPlusOne s) : Decidable (p₁ ≤ p₂) :=
   decidable_of_iff' _ le_iff
 
-theorem isValid_of_isValid_of_le {p₁ p₂ : ValidPosPlusOne s} (h : p₂.isValid) (le : p₁ ≤ p₂) : p₁.isValid := by
+theorem isValid_of_isValid_of_le {p₁ p₂ : PosPlusOne s} (h : p₂.isValid) (le : p₁ ≤ p₂) : p₁.isValid := by
   cases p₁.isValidOrPlusOne with
   | inl h₁ => simpa [p₁.isValid_iff_isValid] using h₁
   | inr h₁ =>
@@ -271,82 +270,82 @@ theorem isValid_of_isValid_of_le {p₁ p₂ : ValidPosPlusOne s} (h : p₂.isVal
     grind
 
 @[grind .]
-theorem validPos_inj {p₁ p₂ : Pos s} (h : ValidPosPlusOne.validPos p₁ = ValidPosPlusOne.validPos p₂) : p₁ = p₂ := by
-  simp only [validPos, ValidPosPlusOne.mk.injEq] at h
+theorem pos_inj {p₁ p₂ : Pos s} (h : pos p₁ = pos p₂) : p₁ = p₂ := by
+  simp only [pos, PosPlusOne.mk.injEq] at h
   exact Pos.ext h
 
-def or (p₁ p₂ : ValidPosPlusOne s) : ValidPosPlusOne s :=
+def or (p₁ p₂ : PosPlusOne s) : PosPlusOne s :=
   if p₁.isValid then
     p₁
   else
     p₂
 
-def orElse (p₁ : ValidPosPlusOne s) (p₂ : Unit → ValidPosPlusOne s) : ValidPosPlusOne s :=
+def orElse (p₁ : PosPlusOne s) (p₂ : Unit → PosPlusOne s) : PosPlusOne s :=
   if p₁.isValid then
     p₁
   else
     p₂ ()
 
-instance : OrElse (ValidPosPlusOne s) := ⟨orElse⟩
+instance : OrElse (PosPlusOne s) := ⟨orElse⟩
 
 @[simp, grind =]
-theorem orElse_eq_or {p₁ : ValidPosPlusOne s} {p₂} : p₁.orElse p₂ = p₁.or (p₂ ()) := by
+theorem orElse_eq_or {p₁ : PosPlusOne s} {p₂} : p₁.orElse p₂ = p₁.or (p₂ ()) := by
   grind [orElse, or]
 
 @[simp, grind =]
-theorem hOrElse_eq_orElse {p₁ : ValidPosPlusOne s} {p₂} : HOrElse.hOrElse p₁ p₂ = p₁.orElse p₂ := rfl
+theorem hOrElse_eq_orElse {p₁ : PosPlusOne s} {p₂} : HOrElse.hOrElse p₁ p₂ = p₁.orElse p₂ := rfl
 
 @[simp, grind =]
-theorem or_valid {p₁ p₂ : ValidPosPlusOne s} (h : p₁.isValid) : p₁.or p₂ = p₁ := by
+theorem or_valid {p₁ p₂ : PosPlusOne s} (h : p₁.isValid) : p₁.or p₂ = p₁ := by
   simp [or, h]
 
 @[simp, grind =]
-theorem or_not_valid {p₁ p₂ : ValidPosPlusOne s} (h : ¬p₁.isValid) : p₁.or p₂ = p₂ := by
+theorem or_not_valid {p₁ p₂ : PosPlusOne s} (h : ¬p₁.isValid) : p₁.or p₂ = p₂ := by
   simp [or, h]
 
 @[simp, grind =]
-theorem isValid_validPos {p : Pos s} : (ValidPosPlusOne.validPos p).isValid = true :=
-  (isValid_iff_isValid (.validPos p)).mpr p.isValid
+theorem isValid_pos {p : Pos s} : (pos p).isValid = true :=
+  (isValid_iff_isValid (pos p)).mpr p.isValid
 
 @[simp, grind =]
-theorem not_isValid_sentinel {s : String} : (ValidPosPlusOne.sentinel s).isValid = false := by
+theorem not_isValid_sentinel {s : String} : (PosPlusOne.sentinel s).isValid = false := by
   simp [sentinel, isValid]
 
 @[simp, grind =]
-theorem sentinel_or {p₁ p₂ : ValidPosPlusOne s} (h : p₁ = .sentinel s) : p₁.or p₂ = p₂ := by
+theorem sentinel_or {p₁ p₂ : PosPlusOne s} (h : p₁ = .sentinel s) : p₁.or p₂ = p₂ := by
   grind
 
 @[simp, grind =>]
-theorem validPos_or {p₁ p₂ : ValidPosPlusOne s} (h : p₁ = .validPos p) : p₁.or p₂ = p₁ := by
+theorem pos_or {p₁ p₂ : PosPlusOne s} (h : p₁ = pos p) : p₁.or p₂ = p₁ := by
   grind
 
 @[simp, grind =]
-theorem or_sentinel {p₁ p₂ : ValidPosPlusOne s} (h : p₂ = .sentinel s) : p₁.or p₂ = p₁ := by
+theorem or_sentinel {p₁ p₂ : PosPlusOne s} (h : p₂ = .sentinel s) : p₁.or p₂ = p₁ := by
   cases p₁ with
-  | validPos p => simp
+  | pos p => simp
   | sentinel => simp [h]
 
 @[grind .]
-theorem validPos_ne_sentinel {p : Pos s} : ValidPosPlusOne.validPos p ≠ ValidPosPlusOne.sentinel s := by
+theorem pos_ne_sentinel {p : Pos s} : pos p ≠ PosPlusOne.sentinel s := by
   intro eq
-  have : isValid (.validPos p) = isValid (.sentinel s) := by grind
+  have : isValid (pos p) = isValid (.sentinel s) := by grind
   simp at this
 
 @[simp, grind =]
-theorem or_self {p : ValidPosPlusOne s} : p.or p = p := by
+theorem or_self {p : PosPlusOne s} : p.or p = p := by
   cases p with
-  | validPos p => simp
+  | pos p => simp
   | sentinel => simp
 
 @[simp, grind =]
-theorem asValidPos_validPos {p : Pos s} : (ValidPosPlusOne.validPos p).asPos (by grind) = p := rfl
+theorem asPos_pos {p : Pos s} : (pos p).asPos (by grind) = p := rfl
 
 @[simp, grind =]
-theorem validPos_asPos {p : ValidPosPlusOne s} {h : p.isValid} : (ValidPosPlusOne.validPos (p.asPos h)) = p := rfl
+theorem pos_asPos {p : PosPlusOne s} {h : p.isValid} : (pos (p.asPos h)) = p := rfl
 
-end ValidPosPlusOne
+end PosPlusOne
 
-def startValidPosPlusOne (s : String) : ValidPosPlusOne s :=
-  .validPos s.startPos
+def startPosPlusOne (s : String) : PosPlusOne s :=
+  .pos s.startPos
 
 end String

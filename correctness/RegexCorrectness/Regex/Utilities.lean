@@ -16,7 +16,7 @@ theorem find_str_eq_some (h : re.find haystack = .some slice) :
 
 theorem captures_of_find_some  (h : re.find haystack = .some slice)
   (isr : re.IsSearchRegex) :
-  Matches.Spec isr haystack haystack.startValidPosPlusOne slice (find_str_eq_some h) := by
+  Matches.Spec isr haystack haystack.startPosPlusOne slice (find_str_eq_some h) := by
   simp only [find, Option.map_eq_some_iff, Prod.exists, exists_and_right, exists_eq_right] at h
   have ⟨_, h⟩ := h
   exact Matches.captures_of_next?_some h isr
@@ -43,7 +43,7 @@ theorem captures_of_mem_findAll (mem : slice ∈ re.findAll haystack) (isr : re.
   exact captures_of_mem_findAll.go (eq ▸ isr) (by grind) slice mem
 
 theorem captures_of_capture_some {captured} (h : re.capture haystack = .some captured) (isr : re.IsSearchRegex) :
-  captured.Spec isr haystack haystack.startValidPosPlusOne := by
+  captured.Spec isr haystack haystack.startPosPlusOne := by
   simp [Regex.capture] at h
   have ⟨_, h⟩ := h
   exact Captures.captures_of_next?_some h isr
