@@ -2,7 +2,7 @@ import Regex.Syntax.Parser.Combinators.Result
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Syntax.Parser.Combinators
 
@@ -11,7 +11,7 @@ Total parser combinators a la [idris2-parser](https://github.com/stefan-hoeck/id
 
 `s` controls whether the input is strictly decreasing.
 -/
-abbrev Parser (s strict ε α) := ∀ (p : ValidPos s), Result strict p ε α
+abbrev Parser (s strict ε α) := ∀ (p : Pos s), Result strict p ε α
 
 namespace Parser
 

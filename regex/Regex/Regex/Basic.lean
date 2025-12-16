@@ -6,7 +6,7 @@ import Regex.Regex.OptimizationInfo
 
 set_option autoImplicit false
 
-open String (ValidPos ValidPosPlusOne Slice)
+open String (Pos ValidPosPlusOne Slice)
 open Regex.Data (Expr)
 
 /--
@@ -34,7 +34,7 @@ This is a lower-level function that powers the higher-level capture operations.
 * `p`: Valid position in the input string
 * Returns: A buffer containing the matched capture groups, or `none` if no match is found
 -/
-def captureNextBuf {s : String} (self : Regex) (bufferSize : Nat) (p : ValidPos s) : Option (Buffer s bufferSize) :=
+def captureNextBuf {s : String} (self : Regex) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
   -- Skip to the next possible starting position
   let start := self.optimizationInfo.findStart p
   if self.useBacktracker then
@@ -49,7 +49,7 @@ Searches for the next match in the input string.
 * `p`: Valid position in the input string
 * Returns: A slice representing the match, or `none` if no match is found
 -/
-def searchNext {s : String} (self : Regex) (p : ValidPos s) : Option Slice := do
+def searchNext {s : String} (self : Regex) (p : Pos s) : Option Slice := do
   let slots ← captureNextBuf self 2 p
   let startPos := slots[0]
   let stopPos := slots[1]
@@ -63,7 +63,7 @@ def searchNext {s : String} (self : Regex) (p : ValidPos s) : Option Slice := do
 /--
 The slice returned by `searchNext` bundles the same string as the input string.
 -/
-theorem searchNext_str_eq_some {s : String} {self : Regex} {p : ValidPos s} {s' : Slice}
+theorem searchNext_str_eq_some {s : String} {self : Regex} {p : Pos s} {s' : Slice}
   (h : searchNext self p = some s') :
   s'.str = s := by
   simp [searchNext, Option.bind_eq_some_iff] at h

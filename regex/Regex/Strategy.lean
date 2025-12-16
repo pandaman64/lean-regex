@@ -2,14 +2,14 @@ import Regex.NFA
 
 set_option autoImplicit false
 
-open String (ValidPos ValidPosPlusOne)
+open String (Pos ValidPosPlusOne)
 
 namespace Regex
 
 structure Strategy (s : String) where
   Update : Type
   empty : Update
-  write : Update → Nat → ValidPos s → Update
+  write : Update → Nat → Pos s → Update
 
 abbrev Buffer (s : String) (size : Nat) := Vector (ValidPosPlusOne s) size
 
@@ -20,7 +20,7 @@ def BufferStrategy (s : String) (size : Nat) : Strategy s where
   empty := Buffer.empty
   write buffer offset pos := Vector.setIfInBounds buffer offset (ValidPosPlusOne.validPos pos)
 
-local instance {s} : Repr (ValidPos s) where
+local instance {s} : Repr (Pos s) where
   reprPrec p n := reprPrec p.offset n
 
 instance {s size} : Repr (BufferStrategy s size).Update := inferInstanceAs (Repr (Vector (ValidPosPlusOne s) size))
@@ -46,12 +46,12 @@ theorem BufferStrategy.write_def {s size buffer offset pos} :
 This strategy is inefficient and used only for proofs.
 -/
 def HistoryStrategy (s : String) : Strategy s where
-  Update := List (Nat × ValidPos s)
+  Update := List (Nat × Pos s)
   empty := []
   write update offset pos := update ++ [(offset, pos)]
 
 @[simp]
-theorem HistoryStrategy.update_def {s} : (HistoryStrategy s).Update = List (Nat × ValidPos s) := rfl
+theorem HistoryStrategy.update_def {s} : (HistoryStrategy s).Update = List (Nat × Pos s) := rfl
 
 @[simp]
 theorem HistoryStrategy.empty_def {s} : (HistoryStrategy s).empty = [] := rfl
