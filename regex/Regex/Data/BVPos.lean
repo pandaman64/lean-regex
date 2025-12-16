@@ -2,7 +2,7 @@ import Regex.Data.String
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Data
 
@@ -10,24 +10,24 @@ namespace Regex.Data
 A valid position in a string with a lower bound.
 -/
 @[ext]
-structure BVPos {s : String} (startPos : ValidPos s) where
-  current : ValidPos s
+structure BVPos {s : String} (startPos : Pos s) where
+  current : Pos s
   le : startPos ≤ current
 deriving DecidableEq
 
-def _root_.String.endBVPos (s : String) (startPos : ValidPos s) : BVPos startPos :=
-  ⟨s.endValidPos, startPos.isValid.le_rawEndPos⟩
+def _root_.String.endBVPos (s : String) (startPos : Pos s) : BVPos startPos :=
+  ⟨s.endPos, startPos.isValid.le_rawEndPos⟩
 
 namespace BVPos
 
-variable {s : String} {startPos : ValidPos s}
+variable {s : String} {startPos : Pos s}
 
-def start {s : String} (startPos : ValidPos s) : BVPos startPos :=
-  ⟨startPos, ValidPos.le_refl _⟩
+def start {s : String} (startPos : Pos s) : BVPos startPos :=
+  ⟨startPos, Pos.le_refl _⟩
 
 def index (bp : BVPos startPos) : Fin (startPos.remainingBytes + 1) :=
   have lt : startPos.offset.byteDistance bp.current.offset < startPos.remainingBytes + 1 := by
-    simp only [String.Pos.Raw.byteDistance, ValidPos.remainingBytes_eq]
+    simp only [String.Pos.Raw.byteDistance, Pos.remainingBytes_eq]
     have : bp.current.offset.byteIdx ≤ s.utf8ByteSize := bp.current.isValid.le_rawEndPos
     grind
   ⟨startPos.offset.byteDistance bp.current.offset, lt⟩
@@ -35,12 +35,12 @@ def index (bp : BVPos startPos) : Fin (startPos.remainingBytes + 1) :=
 theorem ne_iff_current_ne {bp₁ bp₂ : BVPos startPos} : bp₁ ≠ bp₂ ↔ bp₁.current ≠ bp₂.current := by
   grind [BVPos.ext]
 
-theorem ne_end_iff_current_ne_end {bp : BVPos startPos} : bp ≠ s.endBVPos startPos ↔ bp.current ≠ s.endValidPos := by
+theorem ne_end_iff_current_ne_end {bp : BVPos startPos} : bp ≠ s.endBVPos startPos ↔ bp.current ≠ s.endPos := by
   simp [ne_iff_current_ne, String.endBVPos]
 
 def next (bp : BVPos startPos) (h : bp ≠ s.endBVPos startPos) : BVPos startPos :=
   let current' := bp.current.next (ne_end_iff_current_ne_end.mp h)
-  have le' : startPos ≤ current' := ValidPos.le_of_lt (Nat.lt_of_le_of_lt bp.le bp.current.lt_next)
+  have le' : startPos ≤ current' := Nat.le_of_lt (Nat.lt_of_le_of_lt bp.le bp.current.lt_next)
   ⟨current', le'⟩
 
 @[simp, grind =]
@@ -49,7 +49,7 @@ theorem next_current {bp : BVPos startPos} (ne : bp ≠ s.endBVPos startPos) :
   simp [next]
 
 @[simp, grind =]
-theorem endBVPos_current : (s.endBVPos startPos).current = s.endValidPos := by
+theorem endBVPos_current : (s.endBVPos startPos).current = s.endPos := by
   simp [String.endBVPos]
 
 def nextn (bp : BVPos startPos) (n : Nat) : BVPos startPos :=
@@ -73,7 +73,7 @@ theorem lt_next {bp : BVPos startPos} (h : bp ≠ s.endBVPos startPos) : bp < bp
   bp.current.lt_next (h := ne_end_iff_current_ne_end.mp h)
 
 theorem wellFounded_gt : WellFounded (fun (p : BVPos startPos) q => q < p) :=
-  InvImage.wf BVPos.current ValidPos.wellFounded_gt
+  InvImage.wf BVPos.current Pos.wellFounded_gt
 
 instance : WellFoundedRelation (BVPos startPos) where
   rel p q := q < p
@@ -83,13 +83,13 @@ instance : LE (BVPos startPos) := ⟨fun bp₁ bp₂ => bp₁.current ≤ bp₂.
 
 theorem le_iff {bp₁ bp₂ : BVPos startPos} : bp₁ ≤ bp₂ ↔ bp₁.current ≤ bp₂.current := Iff.rfl
 
-theorem le_refl (bp : BVPos startPos) : bp ≤ bp := ValidPos.le_refl _
+theorem le_refl (bp : BVPos startPos) : bp ≤ bp := Pos.le_refl _
 
 theorem le_trans {bp₁ bp₂ bp₃ : BVPos startPos} (le₁₂ : bp₁ ≤ bp₂) (le₂₃ : bp₂ ≤ bp₃) : bp₁ ≤ bp₃ :=
-  ValidPos.le_trans le₁₂ le₂₃
+  Pos.le_trans le₁₂ le₂₃
 
 theorem le_of_lt {bp₁ bp₂ : BVPos startPos} (lt : bp₁ < bp₂) : bp₁ ≤ bp₂ :=
-  ValidPos.le_of_lt lt
+  Pos.le_of_lt lt
 
 theorem not_le_of_lt {bp₁ bp₂ : BVPos startPos} (lt : bp₁ < bp₂) : ¬bp₂ ≤ bp₁ := by
   intro le
@@ -108,7 +108,7 @@ theorem le_endBVPos (bp : BVPos startPos) : bp ≤ s.endBVPos startPos := bp.cur
 
 theorem lt_next_iff_lt_or_eq {bp₁ bp₂ : BVPos startPos} (h : bp₂ ≠ s.endBVPos startPos) :
   bp₁ < bp₂.next h ↔ bp₁ < bp₂ ∨ bp₁ = bp₂ :=
-  Iff.trans (ValidPos.lt_next_iff_lt_or_eq (ne_end_iff_current_ne_end.mp h)) (or_congr Iff.rfl BVPos.ext_iff.symm)
+  Iff.trans (Pos.lt_next_iff_lt_or_eq (ne_end_iff_current_ne_end.mp h)) (or_congr Iff.rfl BVPos.ext_iff.symm)
 
 end BVPos
 

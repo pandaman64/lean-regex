@@ -7,7 +7,7 @@ set_option autoImplicit false
 open Regex.Syntax.Parser (Ast)
 open Regex.Syntax.Parser.Combinators
 open Regex.Data (Anchor PerlClass PerlClassKind Class Classes Expr)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Syntax.Parser
 
@@ -173,7 +173,7 @@ like types indexed by a `Nat` to work. I found it more convenient to just duplic
 -/
 mutual
 
-def group (pos : ValidPos s) : Result.LT pos Error Ast :=
+def group (pos : Pos s) : Result.LT pos Error Ast :=
   (charOrError '(' pos)
   |>.bind' fun _ pos' h =>
     (nonCapturing.opt pos'
@@ -185,7 +185,7 @@ def group (pos : ValidPos s) : Result.LT pos Error Ast :=
         Functor.mapConst ast (charOrError ')' pos''')).commit
 termination_by (pos, 0)
 
-def primary (pos : ValidPos s) : Result.LT pos Error Ast :=
+def primary (pos : Pos s) : Result.LT pos Error Ast :=
   group pos
   <|> classes pos
   <|> dot pos
@@ -194,26 +194,26 @@ def primary (pos : ValidPos s) : Result.LT pos Error Ast :=
   <|> (.char <$> plainChar pos)
 termination_by (pos, 10)
 
-def repetition1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
+def repetition1 (ast : Ast) (pos : Pos s) : Result.LE pos Error Ast :=
   (repetitionOp pos |>.bind' fun (min, max, greedy) pos' _ => repetition1 (.repeat min max greedy ast) pos').weaken
   <|> pure ast
 termination_by (pos, 20)
 
-def repetition (pos : ValidPos s) : Result.LT pos Error Ast :=
+def repetition (pos : Pos s) : Result.LT pos Error Ast :=
   primary pos |>.bind' fun ast pos' _ => repetition1 ast pos'
 termination_by (pos, 21)
 
-def concat1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
+def concat1 (ast : Ast) (pos : Pos s) : Result.LE pos Error Ast :=
   (repetition pos |>.bind' fun ast' pos' _ => concat1 (.concat ast ast') pos').weaken
   <|> pure ast
 termination_by (pos, 30)
 
-def concat (pos : ValidPos s) : Result.LE pos Error Ast :=
+def concat (pos : Pos s) : Result.LE pos Error Ast :=
   (repetition pos |>.bind' fun ast pos' _ => concat1 ast pos').weaken
   <|> pure .epsilon
 termination_by (pos, 31)
 
-def alternate1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
+def alternate1 (ast : Ast) (pos : Pos s) : Result.LE pos Error Ast :=
   (charOrError '|' pos |>.bind' fun _ pos' h =>
     concat pos' |>.bind' fun ast' pos'' h' =>
       have : Rel.LT pos'' pos := Trans.trans h' h
@@ -222,7 +222,7 @@ def alternate1 (ast : Ast) (pos : ValidPos s) : Result.LE pos Error Ast :=
   <|> pure ast
 termination_by (pos, 40)
 
-def alternate (pos : ValidPos s) : Result.LE pos Error Ast :=
+def alternate (pos : Pos s) : Result.LE pos Error Ast :=
   concat pos |>.bind' fun ast pos' _ => alternate1 ast pos'
 termination_by (pos, 41)
 decreasing_by
@@ -236,14 +236,14 @@ decreasing_by
       ext
       exact h.symm
 
-def regex (pos : ValidPos s) : Result.LE pos Error Ast :=
+def regex (pos : Pos s) : Result.LE pos Error Ast :=
   alternate pos |>.weaken
 termination_by (pos, 100)
 
 end
 
 def parseAst (input : String) : Except Error Ast :=
-  regex input.startValidPos
+  regex input.startPos
   |>.complete .expectedEof
   |>.toExcept
 

@@ -7,14 +7,14 @@ set_option autoImplicit false
 namespace Regex.NFA
 
 open Regex.Data (Expr)
-open String (ValidPos)
+open String (Pos)
 
-variable {s : String} {nfa : NFA} {next e result} {pos pos' : ValidPos s} {update}
+variable {s : String} {nfa : NFA} {next e result} {pos pos' : Pos s} {update}
 
 theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : result.Path nfa.nodes.size result.start pos next pos' update)
-  (ih : ∀ {nfa : NFA} {next result} {pos pos' : ValidPos s} {update}, nfa.pushRegex next e = result →
+  (ih : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start pos next pos' update →
@@ -66,12 +66,12 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
 theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : result.Path nfa.nodes.size result.start pos next pos' update)
-  (ih₁ : ∀ {nfa : NFA} {next result} {pos pos' : ValidPos s} {update}, nfa.pushRegex next e₁ = result →
+  (ih₁ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e₁.Captures pos pos' groups)
-  (ih₂ : ∀ {nfa : NFA} {next result} {pos pos' : ValidPos s} {update}, nfa.pushRegex next e₂ = result →
+  (ih₂ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start pos next pos' update →
@@ -116,12 +116,12 @@ theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.altern
 theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : result.Path nfa.nodes.size result.start pos next pos' update)
-  (ih₁ : ∀ {nfa : NFA} {next result} {pos pos' : ValidPos s} {update}, nfa.pushRegex next e₁ = result →
+  (ih₁ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e₁.Captures pos pos' groups)
-  (ih₂ : ∀ {nfa : NFA} {next result} {pos pos' : ValidPos s} {update}, nfa.pushRegex next e₂ = result →
+  (ih₂ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start pos next pos' update →
@@ -142,7 +142,7 @@ theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e�
 
 open Compile.ProofData Star in
 theorem captures_of_path.star_of_loop [Star] {greedy} (loop : Loop pos pos' update)
-  (ih : ∀ {pos pos' : ValidPos s} {update},
+  (ih : ∀ {pos pos' : Pos s} {update},
     nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.star greedy e).Captures pos pos' groups := by
@@ -156,7 +156,7 @@ theorem captures_of_path.star_of_loop [Star] {greedy} (loop : Loop pos pos' upda
 theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : result.Path nfa.nodes.size result.start pos next pos' update)
-  (ih : ∀ {nfa : NFA} {next result} {pos pos' : ValidPos s} {update}, nfa.pushRegex next e = result →
+  (ih : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e = result →
     nfa.WellFormed →
     next < nfa.nodes.size →
     result.Path nfa.nodes.size result.start pos next pos' update →

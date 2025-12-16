@@ -8,7 +8,7 @@ open Regex (NFA)
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 open RegexCorrectness.Spec (SearchProblem)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.VM
 
@@ -33,7 +33,7 @@ theorem captureNext_soundness {s e bufferSize pos matchedB}
 
 theorem captureNext_completeness' {s e bufferSize pos}
   (hresB : captureNext (BufferStrategy s bufferSize) (NFA.compile e) NFA.compile_wf pos = .none)
-  (pos' pos'' : ValidPos s) (groups : CaptureGroups s) (le : pos ≤ pos') (c : e.Captures pos' pos'' groups) :
+  (pos' pos'' : Pos s) (groups : CaptureGroups s) (le : pos ≤ pos') (c : e.Captures pos' pos'' groups) :
   False := by
   match hresH : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos with
   | .some matchedH =>
@@ -49,7 +49,7 @@ theorem captureNext_completeness {s e bufferSize pos}
   grind [captureNext_completeness']
 
 -- NOTE: we don't make this an instance because there are multiple decision procedures
-def decideSearchProblem {s : String} (e : Expr) (pos : ValidPos s) (disj : e.Disjoint) : Decidable (SearchProblem e pos) :=
+def decideSearchProblem {s : String} (e : Expr) (pos : Pos s) (disj : e.Disjoint) : Decidable (SearchProblem e pos) :=
   match hresB : captureNext (BufferStrategy s 0) (NFA.compile e) NFA.compile_wf pos with
   | .some _ => .isTrue <|
     have ⟨pos', pos'', groups, le, c, _⟩ := captureNext_soundness disj hresB

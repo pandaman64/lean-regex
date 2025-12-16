@@ -3,18 +3,18 @@ import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 open String.Pos (Raw)
 
 -- Transition relations specialized for ε-closure traversal.
 namespace Regex.NFA
 
-def εStep' {s : String} (nfa : NFA) (pos : ValidPos s) (i j : Fin nfa.nodes.size) (update : Option (Nat × ValidPos s)) : Prop :=
+def εStep' {s : String} (nfa : NFA) (pos : Pos s) (i j : Fin nfa.nodes.size) (update : Option (Nat × Pos s)) : Prop :=
   nfa.Step 0 i pos j pos update
 
 section
 
-variable {s : String} {nfa : NFA} {pos : ValidPos s} {i j update}
+variable {s : String} {nfa : NFA} {pos : Pos s} {i j update}
 
 @[grind =]
 theorem εStep'.done (hn : nfa[i] = .done) :
@@ -58,16 +58,16 @@ theorem εStep'.sparse {cs} {next : Nat} (hn : nfa[i] = .sparse cs next) :
 
 end
 
-inductive εClosure' {s : String} (nfa : NFA) (pos : ValidPos s) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × ValidPos s) → Prop where
+inductive εClosure' {s : String} (nfa : NFA) (pos : Pos s) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × Pos s) → Prop where
   | base {i} : εClosure' nfa pos i i []
   | step {i j k update₁ update₂} (step : nfa.εStep' pos i j update₁) (rest : εClosure' nfa pos j k update₂) :
     εClosure' nfa pos i k (update₁ ::ₒ update₂)
 
-theorem εClosure'.single {nfa : NFA} {s : String} {pos : ValidPos s} {i j update} (step : nfa.εStep' pos i j update) :
+theorem εClosure'.single {nfa : NFA} {s : String} {pos : Pos s} {i j update} (step : nfa.εStep' pos i j update) :
   εClosure' nfa pos i j (List.ofOption update) := by
   simpa using εClosure'.step step .base
 
-theorem εClosure'.trans {nfa : NFA} {s : String} {pos : ValidPos s} {i j k update₁ update₂}
+theorem εClosure'.trans {nfa : NFA} {s : String} {pos : Pos s} {i j k update₁ update₂}
   (cls₁ : εClosure' nfa pos i j update₁) (cls₂ : εClosure' nfa pos j k update₂) :
   εClosure' nfa pos i k (update₁ ++ update₂) := by
   induction cls₁ with
@@ -76,12 +76,12 @@ theorem εClosure'.trans {nfa : NFA} {s : String} {pos : ValidPos s} {i j k upda
     simp
     exact .step step (ih cls₂)
 
-theorem εClosure'.snoc {nfa : NFA} {s : String} {pos : ValidPos s} {i j k update₁ update₂}
+theorem εClosure'.snoc {nfa : NFA} {s : String} {pos : Pos s} {i j k update₁ update₂}
   (cls : εClosure' nfa pos i j update₁) (step : nfa.εStep' pos j k update₂) :
   εClosure' nfa pos i k (update₁ ++ List.ofOption update₂) :=
   cls.trans (εClosure'.single step)
 
-theorem εClosure'_of_path {nfa : NFA} {s : String} {pos : ValidPos s} {i j pos' updates}
+theorem εClosure'_of_path {nfa : NFA} {s : String} {pos : Pos s} {i j pos' updates}
   (wf : nfa.WellFormed) (hpos : pos = pos') (path : nfa.Path 0 i pos j pos' updates) :
   nfa.εClosure' pos ⟨i, path.lt⟩ ⟨j, path.lt_right wf⟩ updates := by
   induction path with
@@ -98,7 +98,7 @@ theorem εClosure'_of_path {nfa : NFA} {s : String} {pos : ValidPos s} {i j pos'
       subst hpos hpos'
       exact ((Nat.not_le_of_lt pos.lt_next) rest.le).elim
 
-theorem εClosure'_iff_path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (pos : ValidPos s) (updates : List (Nat × ValidPos s)) :
+theorem εClosure'_iff_path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (pos : Pos s) (updates : List (Nat × Pos s)) :
   nfa.εClosure' pos i j updates ↔ (i = j ∧ updates = []) ∨ nfa.Path 0 i pos j pos updates := by
   apply Iff.intro
   . intro cls

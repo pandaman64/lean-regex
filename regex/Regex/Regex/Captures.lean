@@ -2,7 +2,7 @@ import Regex.Regex.Basic
 
 set_option autoImplicit false
 
-open String (ValidPos ValidPosPlusOne Slice)
+open String (Pos PosPlusOne Slice)
 
 namespace Regex
 
@@ -15,7 +15,7 @@ Contains the original string (haystack) and a buffer of positions marking
 the start and end of each capture group.
 -/
 structure CapturedGroups (haystack : String) where
-  buffer : Array (ValidPosPlusOne haystack)
+  buffer : Array (PosPlusOne haystack)
 deriving Repr, DecidableEq, Inhabited
 
 /--
@@ -30,8 +30,8 @@ def CapturedGroups.get (self : CapturedGroups haystack) (index : Nat) : Option S
   let stop ← self.buffer[2 * index + 1]?
   if h : stop.isValid && start ≤ stop then
     have isStopPosValid : stop.isValid := by grind
-    have isStartPosValid : start.isValid := ValidPosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-    return ⟨haystack, start.asValidPos isStartPosValid, stop.asValidPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
+    have isStartPosValid : start.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
+    return ⟨haystack, start.asPos isStartPosValid, stop.asPos isStopPosValid, PosPlusOne.le_iff.mp (by grind)⟩
   else
     throw ()
 
@@ -65,7 +65,7 @@ in a haystack string.
 -/
 structure Captures (haystack : String) where
   regex : Regex
-  currentPos : ValidPosPlusOne haystack
+  currentPos : PosPlusOne haystack
 deriving Repr
 
 namespace Captures
@@ -79,7 +79,7 @@ Gets the next match and its capture groups.
 -/
 def next? (self : Captures haystack) : Option (CapturedGroups haystack × Captures haystack) :=
   if h : self.currentPos.isValid then
-    match self.regex.captureNextBuf (self.regex.maxTag + 1) (self.currentPos.asValidPos h) with
+    match self.regex.captureNextBuf (self.regex.maxTag + 1) (self.currentPos.asPos h) with
     | .none => .none
     | .some buffer =>
       let groups : CapturedGroups haystack := ⟨buffer.toArray⟩
@@ -87,7 +87,7 @@ def next? (self : Captures haystack) : Option (CapturedGroups haystack × Captur
       | .none => .none
       | .some s =>
         have eq : s.str = haystack := CapturedGroups.get_str_eq_some h'
-        let nextPos := .validPos (eq ▸ s.endExclusive)
+        let nextPos := .pos (eq ▸ s.endExclusive)
         let next :=
           if self.currentPos < nextPos then
             { self with currentPos := nextPos }
@@ -120,7 +120,7 @@ theorem lt_next?_some {groups : CapturedGroups haystack} {c c' : Captures haysta
   lt_next?_some' h
 
 theorem wellFounded_gt : WellFounded (fun (p : Captures haystack) q => q < p) :=
-  InvImage.wf Captures.currentPos ValidPosPlusOne.wellFounded_gt
+  InvImage.wf Captures.currentPos PosPlusOne.wellFounded_gt
 
 instance : WellFoundedRelation (Captures haystack) where
   rel p q := q < p
@@ -146,4 +146,4 @@ Creates a new `Captures` iterator for a regex pattern and input string.
 * Returns: A `Captures` iterator positioned at the start of the string
 -/
 def Regex.captures (regex : Regex) (s : String) : Captures s :=
-  { regex := regex, currentPos := s.startValidPosPlusOne }
+  { regex := regex, currentPos := s.startPosPlusOne }

@@ -1,7 +1,7 @@
 import Regex.Regex.Matches
 import Regex.Regex.Captures
 
-open String (ValidPos Slice)
+open String (Pos Slice)
 
 namespace Regex
 
@@ -45,7 +45,7 @@ def transform (regex : Regex) (haystack : String) (transformer : CapturedGroups 
     match h' : g.get 0, Captures.zeroth_group_some_of_next?_some h with
     | some s, _ =>
       have eq : s.str = haystack := CapturedGroups.get_str_eq_some h'
-      ValidPos.extract haystack.startValidPos (s.startInclusive.cast eq) ++ transformer g ++ ValidPos.extract (s.endExclusive.cast eq) haystack.endValidPos
+      haystack.extract haystack.startPos (s.startInclusive.cast eq) ++ transformer g ++ haystack.extract (s.endExclusive.cast eq) haystack.endPos
   | none => haystack
 
 /--
@@ -57,17 +57,17 @@ Transforms all matches of a regex pattern using its capture groups.
 * Returns: The modified string, or the original string if no matches are found
 -/
 def transformAll (regex : Regex) (haystack : String) (transformer : CapturedGroups haystack → String) : String :=
-  go (regex.captures haystack) "" haystack.startValidPos
+  go (regex.captures haystack) "" haystack.startPos
 where
-  go (c : Captures haystack) (accum : String) (endPos : ValidPos haystack) : String :=
+  go (c : Captures haystack) (accum : String) (endPos : Pos haystack) : String :=
     match h : c.next? with
     | some (g, c') =>
       match h' : g.get 0, Captures.zeroth_group_some_of_next?_some h with
       | some s, _ =>
         have eq : s.str = haystack := CapturedGroups.get_str_eq_some h'
-        go c' (accum ++ ValidPos.extract endPos (s.startInclusive.cast eq) ++ transformer g) (s.endExclusive.cast eq)
+        go c' (accum ++ haystack.extract endPos (s.startInclusive.cast eq) ++ transformer g) (s.endExclusive.cast eq)
     | none =>
-      accum ++ ValidPos.extract endPos haystack.endValidPos
+      accum ++ haystack.extract endPos haystack.endPos
   termination_by c
 
 /--
@@ -167,9 +167,9 @@ Splits a string using regex matches as breakpoints.
 * Returns: an array containing the substrings in between the regex matches
 -/
 def split (regex : Regex) (haystack : String) : Array Slice :=
-  go (regex.matches haystack) #[] haystack.startValidPos
+  go (regex.matches haystack) #[] haystack.startPos
 where
-  go (m : Matches haystack) (accum : Array Slice) (endPos : ValidPos haystack) : Array Slice :=
+  go (m : Matches haystack) (accum : Array Slice) (endPos : Pos haystack) : Array Slice :=
     match h : m.next? with
     | some (s, m') =>
       have eq : s.str = haystack := Matches.str_eq_of_next?_some h
@@ -180,7 +180,7 @@ where
         -- This should never happen
         go m' accum (s.endExclusive.cast eq)
     | none =>
-      accum.push (haystack.replaceStart endPos)
+      accum.push (haystack.sliceFrom endPos)
   termination_by m
 
 end Regex

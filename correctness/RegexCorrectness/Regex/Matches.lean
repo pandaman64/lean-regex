@@ -3,7 +3,7 @@ import RegexCorrectness.Regex.Basic
 
 set_option autoImplicit false
 
-open String (ValidPos ValidPosPlusOne Slice)
+open String (Pos PosPlusOne Slice)
 
 namespace Regex.Matches
 
@@ -16,9 +16,9 @@ The slice returned by `Matches` functions conforms to the spec if and only if:
 - The slice starts after the start position
 - There is a regex match spanning the slice
 -/
-def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : ValidPosPlusOne haystack) (slice : Slice) (eqs : slice.str = haystack) : Prop :=
+def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : PosPlusOne haystack) (slice : Slice) (eqs : slice.str = haystack) : Prop :=
   ∃ isValid pos pos' groups,
-    startPos.asValidPos isValid ≤ pos ∧
+    startPos.asPos isValid ≤ pos ∧
     s.expr.Captures pos pos' groups ∧
     slice.startInclusive = eqs ▸ pos ∧
     slice.endExclusive = eqs ▸ pos'

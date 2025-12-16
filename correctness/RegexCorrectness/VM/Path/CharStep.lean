@@ -2,19 +2,19 @@ import RegexCorrectness.NFA.Semantics.Path
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA
 
-def CharStep {s : String} (nfa : NFA) (pos : ValidPos s) (i j : Fin nfa.nodes.size) : Prop :=
-  ∃ ne : pos ≠ s.endValidPos, nfa.Step 0 i pos j (pos.next ne) .none
+def CharStep {s : String} (nfa : NFA) (pos : Pos s) (i j : Fin nfa.nodes.size) : Prop :=
+  ∃ ne : pos ≠ s.endPos, nfa.Step 0 i pos j (pos.next ne) .none
 
 namespace CharStep
 
-variable {s : String} {nfa : NFA} {pos : ValidPos s} {i j : Fin nfa.nodes.size}
+variable {s : String} {nfa : NFA} {pos : Pos s} {i j : Fin nfa.nodes.size}
 
 @[grind →]
-theorem ne (step : nfa.CharStep pos i j) : pos ≠ s.endValidPos := by
+theorem ne (step : nfa.CharStep pos i j) : pos ≠ s.endPos := by
   grind [CharStep]
 
 @[grind →]
@@ -54,12 +54,12 @@ theorem save {offset next} (hn : nfa[i] = .save offset next) :
 
 @[simp, grind =>]
 theorem char {c next} (hn : nfa[i] = .char c next) :
-  nfa.CharStep pos i j ↔ ∃ ne : pos ≠ s.endValidPos, j = next ∧ pos.get ne = c := by
+  nfa.CharStep pos i j ↔ ∃ ne : pos ≠ s.endPos, j = next ∧ pos.get ne = c := by
   simp [CharStep, Step.iff_char hn]
 
 @[simp, grind =>]
 theorem sparse {cs next} (hn : nfa[i] = .sparse cs next) :
-  nfa.CharStep pos i j ↔ ∃ ne : pos ≠ s.endValidPos, j = next ∧ pos.get ne ∈ cs := by
+  nfa.CharStep pos i j ↔ ∃ ne : pos ≠ s.endPos, j = next ∧ pos.get ne ∈ cs := by
   simp [CharStep, Step.iff_sparse hn]
 
 @[grind .]

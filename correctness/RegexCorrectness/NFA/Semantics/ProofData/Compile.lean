@@ -3,11 +3,11 @@ import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA
 
-variable {s : String} {nfa : NFA} {next e result lb} {pos pos' : ValidPos s} {i j update}
+variable {s : String} {nfa : NFA} {next e result lb} {pos pos' : Pos s} {i j update}
 
 @[grind →]
 theorem Step.eq_or_lt_of_pushNode {node} (step : (nfa.pushNode node).Step lb i pos j pos' update) :

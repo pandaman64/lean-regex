@@ -3,7 +3,7 @@ import Regex.Data.String
 import Lean.ToExpr
 
 open Regex.Data (Expr)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex
 
@@ -21,9 +21,9 @@ namespace OptimizationInfo
 def fromExpr (expr : Expr) : OptimizationInfo :=
   { firstChars := expr.firstChars (maxSize := 8) |>.map Std.HashSet.toArray }
 
-def findStart {s : String} (self : OptimizationInfo) (pos : ValidPos s) : ValidPos s :=
+def findStart {s : String} (self : OptimizationInfo) (pos : Pos s) : Pos s :=
   match self.firstChars with
-  | .some cs => pos.find (cs.contains ·)
+  | .some cs => Regex.Data.String.find pos (cs.contains ·)
   | .none => pos
 
 end OptimizationInfo

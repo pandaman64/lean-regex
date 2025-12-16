@@ -7,11 +7,11 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos₀ pos pos' : ValidPos s} {i j : Fin nfa.nodes.size} {update : Option (Nat × ValidPos s)}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos₀ pos pos' : Pos s} {i j : Fin nfa.nodes.size} {update : Option (Nat × Pos s)}
 
 @[grind →]
 theorem Step.εStep_or_charStep {i j : Nat} (wf : nfa.WellFormed) (step : nfa.Step 0 i pos j pos' update) :
@@ -19,7 +19,7 @@ theorem Step.εStep_or_charStep {i j : Nat} (wf : nfa.WellFormed) (step : nfa.St
   (nfa.CharStep pos ⟨i, step.lt⟩ ⟨j, step.lt_right wf⟩ ∧ update = .none ∧ ∃ ne, pos' = pos.next ne) := by
   grind
 
-inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (pos₀ : ValidPos s) : ValidPos s → Fin nfa.nodes.size → List (Nat × ValidPos s) → Prop where
+inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (pos₀ : Pos s) : Pos s → Fin nfa.nodes.size → List (Nat × Pos s) → Prop where
   | init {pos i update} (le : pos₀ ≤ pos) (cls : nfa.εClosure' pos ⟨nfa.start, wf.start_lt⟩ i update) :
     VMPath nfa wf pos₀ pos i update
   | more {i j k pos pos' update₁ update₂ update₃} (prev : VMPath nfa wf pos₀ pos i update₁) (step : nfa.CharStep pos i j) (cls : nfa.εClosure' (pos.next step.ne) j k update₂)
@@ -120,7 +120,7 @@ The invariant for the soundness theorem.
 All states in `next.state` have a corresponding path from `nfa.start` to the state ending at `pos`,
 and their updates are written to `next.updates` when necessary.
 -/
-def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : ValidPos s) (next : SearchState (HistoryStrategy s) nfa) : Prop :=
+def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) (next : SearchState (HistoryStrategy s) nfa) : Prop :=
   ∀ i ∈ next.states,
     ∃ update,
       nfa.VMPath wf pos₀ pos i update ∧
@@ -136,7 +136,7 @@ The invariant for the completeness theorem. The invariant holds only when return
 
 For all paths ending at `pos`, the state must be tracked in `next.states`. We don't care about the updates for the completeness.
 -/
-def SearchState.MemOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : ValidPos s) (next : SearchState (HistoryStrategy s) nfa) : Prop :=
+def SearchState.MemOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) (next : SearchState (HistoryStrategy s) nfa) : Prop :=
   ∀ i update, nfa.VMPath wf pos₀ pos i update → i ∈ next.states
 
 /--
@@ -154,7 +154,7 @@ theorem SearchState.NotDoneInv.of_empty {σ : Strategy s} {nfa : NFA} {next : Se
 
 end Regex.VM
 
-theorem Regex.NFA.CharStep.write_update {s : String} {nfa : NFA} {pos : ValidPos s} {i j}
+theorem Regex.NFA.CharStep.write_update {s : String} {nfa : NFA} {pos : Pos s} {i j}
   (step : nfa.CharStep pos i j) : Regex.VM.εClosure.writeUpdate nfa[i] := by
   match step.char_or_sparse with
   | .inl ⟨c, next, eq⟩ => simp [Regex.VM.εClosure.writeUpdate, eq]

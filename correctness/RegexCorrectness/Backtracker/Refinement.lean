@@ -6,10 +6,10 @@ set_option autoImplicit false
 open Regex (NFA)
 open Regex.Data (BitMatrix BVPos)
 open Regex.Strategy (materializeUpdates)
-open String (ValidPos ValidPosPlusOne)
+open String (Pos PosPlusOne)
 namespace Regex.Backtracker
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bufferSize : Nat}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s} {bufferSize : Nat}
 
 def StackEntry.materialize (entryH : StackEntry (HistoryStrategy s) nfa startPos) : StackEntry (BufferStrategy s bufferSize) nfa startPos :=
   ⟨materializeUpdates bufferSize entryH.update, entryH.state, entryH.pos⟩
@@ -24,10 +24,10 @@ theorem materializeStack.nil : materializeStack [] = ([] : List (StackEntry (Buf
 theorem materializeStack.cons {entryH stackH} :
   materializeStack (entryH :: stackH) = (StackEntry.materialize entryH :: materializeStack stackH : List (StackEntry (BufferStrategy s bufferSize) nfa startPos)) := rfl
 
-def materializeResultAux (resultH : Option (List (Nat × ValidPos s)) × BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Option (Buffer s bufferSize) × BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) :=
+def materializeResultAux (resultH : Option (List (Nat × Pos s)) × BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Option (Buffer s bufferSize) × BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) :=
   ⟨resultH.1.map (materializeUpdates bufferSize), resultH.2⟩
 
-def materializeResult (resultH : Option (List (Nat × ValidPos s))) : Option (Buffer s bufferSize) :=
+def materializeResult (resultH : Option (List (Nat × Pos s))) : Option (Buffer s bufferSize) :=
   resultH.map (materializeUpdates bufferSize)
 
 theorem captureNextAux.pushNext.refines {s nfa wf startPos bufferSize stackH stackB updateH updateB state pos}

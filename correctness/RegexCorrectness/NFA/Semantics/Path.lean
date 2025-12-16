@@ -8,12 +8,12 @@ set_option autoImplicit false
 In this file, we treat an NFA as a collection of instructions and give a small-step operational semantics.
 -/
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA
 
 @[grind]
-inductive Step {s : String} (nfa : NFA) (lb : Nat) : Nat → ValidPos s → Nat → ValidPos s → Option (Nat × ValidPos s) → Prop where
+inductive Step {s : String} (nfa : NFA) (lb : Nat) : Nat → Pos s → Nat → Pos s → Option (Nat × Pos s) → Prop where
   | epsilon {i j p} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .epsilon j) :
     Step nfa lb i p j p .none
   | anchor {i j p a} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .anchor a j) (h : a.test p) :
@@ -24,14 +24,14 @@ inductive Step {s : String} (nfa : NFA) (lb : Nat) : Nat → ValidPos s → Nat 
     Step nfa lb i p j₂ p .none
   | save {i j p offset} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .save offset j) :
     Step nfa lb i p j p (.some (offset, p))
-  | char {i j p c} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .char c j) (ne : p ≠ s.endValidPos) (eq' : p.get ne = c) :
+  | char {i j p c} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .char c j) (ne : p ≠ s.endPos) (eq' : p.get ne = c) :
     Step nfa lb i p j (p.next ne) .none
-  | sparse {i j p cs} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .sparse cs j) (ne : p ≠ s.endValidPos) (mem : p.get ne ∈ cs):
+  | sparse {i j p cs} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .sparse cs j) (ne : p ≠ s.endPos) (mem : p.get ne ∈ cs):
     Step nfa lb i p j (p.next ne) .none
 
 namespace Step
 
-variable {s : String} {nfa nfa' : NFA} {lb lb'} {p p' : ValidPos s} {i j k update}
+variable {s : String} {nfa nfa' : NFA} {lb lb'} {p p' : Pos s} {i j k update}
 
 @[grind →]
 theorem ge (step : nfa.Step lb i p j p' update) : lb ≤ i := by
@@ -47,14 +47,14 @@ theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i p j p' update) : j 
   cases step <;> simp_all [Node.inBounds]
 
 @[grind →]
-theorem eq_or_next (step : nfa.Step lb i p j p' update) : p' = p ∨ ∃ ne : p ≠ s.endValidPos, p' = p.next ne := by
+theorem eq_or_next (step : nfa.Step lb i p j p' update) : p' = p ∨ ∃ ne : p ≠ s.endPos, p' = p.next ne := by
   cases step <;> simp_all
 
 @[grind →]
 theorem le (step : nfa.Step lb i p j p' update) : p ≤ p' := by
   match step.eq_or_next with
-  | .inl eq => exact eq ▸ ValidPos.le_refl _
-  | .inr ⟨_, eq⟩ => exact ValidPos.le_of_lt (eq ▸ ValidPos.lt_next p)
+  | .inl eq => exact eq ▸ Pos.le_refl _
+  | .inr ⟨_, eq⟩ => exact Pos.le_of_lt (eq ▸ Pos.lt_next)
 
 @[grind .]
 theorem cast (step : nfa.Step lb i p j p' update)
@@ -145,14 +145,14 @@ end Step
 A collection of steps in an NFA forms a path. The path must contain at least one step
 (which implies that the first state is greater than or equal to the lower bound).
 -/
-inductive Path {s : String} (nfa : NFA) (lb : Nat) : Nat → ValidPos s → Nat → ValidPos s → List (Nat × ValidPos s) → Prop where
+inductive Path {s : String} (nfa : NFA) (lb : Nat) : Nat → Pos s → Nat → Pos s → List (Nat × Pos s) → Prop where
   | last {i p j p' update} (step : Step nfa lb i p j p' update) : Path nfa lb i p j p' (List.ofOption update)
   | more {i p j p' k p'' update updates} (step : Step nfa lb i p j p' update) (rest : Path nfa lb j p' k p'' updates) :
     Path nfa lb i p k p'' (update ::ₒ updates)
 
 namespace Path
 
-variable {s : String} {nfa nfa' : NFA} {lb lb'} {p p' p'' : ValidPos s} {i j k updates updates₁ updates₂}
+variable {s : String} {nfa nfa' : NFA} {lb lb'} {p p' p'' : Pos s} {i j k updates updates₁ updates₂}
 
 @[grind →]
 theorem ge (path : nfa.Path lb i p j p' updates) : lb ≤ i := by
@@ -176,7 +176,7 @@ theorem lt_right (wf : nfa.WellFormed) (path : nfa.Path lb i p j p' updates) : j
 theorem le (path : nfa.Path lb i p j p' updates) : p ≤ p' := by
   induction path with
   | last step => exact step.le
-  | more step _ ih => exact ValidPos.le_trans step.le ih
+  | more step _ ih => exact Pos.le_trans step.le ih
 
 /--
 A simpler casting procedure where the equality can be proven easily, e.g., when casting to a larger NFA.
@@ -217,7 +217,7 @@ theorem liftBound (le : lb' ≤ lb) (path : nfa.Path lb i p j p' updates) :
 
 @[grind .]
 theorem liftBound' (ge : lb' ≤ i)
-  (inv : ∀ {p p' : ValidPos s} {i j update}, lb' ≤ i → lb ≤ j → nfa.Step lb i p j p' update → lb' ≤ j)
+  (inv : ∀ {p p' : Pos s} {i j update}, lb' ≤ i → lb ≤ j → nfa.Step lb i p j p' update → lb' ≤ j)
   (path : nfa.Path lb i p j p' updates) :
   nfa.Path lb' i p j p' updates := by
   induction path with
@@ -245,7 +245,7 @@ theorem compile_liftBound {e nfa} (eq : compile e = nfa) (path : nfa.Path 0 i p 
 /--
 If a property is closed under a single step, then it is closed under a path.
 -/
-theorem of_step_closure {lb} (motive : Nat → ValidPos s → Prop) (closure : ∀ i p j p' update, motive i p → nfa.Step lb i p j p' update → motive j p')
+theorem of_step_closure {lb} (motive : Nat → Pos s → Prop) (closure : ∀ i p j p' update, motive i p → nfa.Step lb i p j p' update → motive j p')
   {i p j p' update} (base : motive i p) (path : nfa.Path lb i p j p' update) :
   motive j p' := by
   induction path with

@@ -4,13 +4,13 @@ import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Data
 
-inductive Expr.Captures {s : String} : ValidPos s → ValidPos s → CaptureGroups s→ Expr → Prop where
-  | char {p c} (ne : p ≠ s.endValidPos) (eq : p.get ne = c) : Expr.Captures p (p.next ne) .empty (.char c)
-  | sparse {p cs} (ne : p ≠ s.endValidPos) (h : p.get ne ∈ cs) : Expr.Captures p (p.next ne) .empty (.classes cs)
+inductive Expr.Captures {s : String} : Pos s → Pos s → CaptureGroups s→ Expr → Prop where
+  | char {p c} (ne : p ≠ s.endPos) (eq : p.get ne = c) : Expr.Captures p (p.next ne) .empty (.char c)
+  | sparse {p cs} (ne : p ≠ s.endPos) (h : p.get ne ∈ cs) : Expr.Captures p (p.next ne) .empty (.classes cs)
   | epsilon {p} : Expr.Captures p p .empty .epsilon
   | anchor {p anchor} (h : anchor.test p) : Expr.Captures p p .empty (.anchor anchor)
   | group {p p' groups tag e} (cap : Expr.Captures p p' groups e) :
@@ -27,10 +27,10 @@ inductive Expr.Captures {s : String} : ValidPos s → ValidPos s → CaptureGrou
 
 namespace Expr.Captures
 
-theorem le {s} {p p' : ValidPos s} {groups e} (c : Expr.Captures p p' groups e) : p ≤ p' := by
+theorem le {s} {p p' : Pos s} {groups e} (c : Expr.Captures p p' groups e) : p ≤ p' := by
   induction c with
-  | char vf => exact ValidPos.le_of_lt (ValidPos.lt_next _)
-  | sparse vf => exact ValidPos.le_of_lt (ValidPos.lt_next _)
+  | char vf => exact Pos.le_of_lt Pos.lt_next
+  | sparse vf => exact Pos.le_of_lt Pos.lt_next
   | epsilon => exact Nat.le_refl _
   | anchor => exact Nat.le_refl _
   | group _ ih => exact ih

@@ -8,14 +8,14 @@ set_option autoImplicit false
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (εStep' εClosure' CharStep)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.VM
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos : ValidPos s} {ne : pos ≠ s.endValidPos}
-  {current : SearchState (HistoryStrategy s) nfa} {currentUpdates : Vector (List (Nat × ValidPos s)) nfa.nodes.size}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s} {ne : pos ≠ s.endPos}
+  {current : SearchState (HistoryStrategy s) nfa} {currentUpdates : Vector (List (Nat × Pos s)) nfa.nodes.size}
   {next : SearchState (HistoryStrategy s) nfa} {state : Fin nfa.nodes.size}
-  {matched' : Option (List (Nat × ValidPos s))} {next' : SearchState (HistoryStrategy s) nfa}
+  {matched' : Option (List (Nat × Pos s))} {next' : SearchState (HistoryStrategy s) nfa}
 
 namespace stepChar
 
@@ -78,7 +78,7 @@ theorem mem_next_of_stepChar {i j k update}
 
 theorem write_updates_of_mem_next {i k}
   (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
-  (ne : pos ≠ s.endValidPos) (mem : k ∈ next'.states) :
+  (ne : pos ≠ s.endPos) (mem : k ∈ next'.states) :
   k ∈ next.states ∨ ∃ j update',
     nfa.CharStep pos i j ∧
     nfa.εClosure' (pos.next ne) j k update' ∧
@@ -93,7 +93,7 @@ theorem write_updates_of_mem_next {i k}
 
 theorem inv {pos₀ idx} (hlt : idx < current.states.count)
   (h : stepChar (HistoryStrategy s) nfa wf pos ne current.updates next current.states[idx] = (matched', next'))
-  (ne : pos ≠ s.endValidPos)
+  (ne : pos ≠ s.endPos)
   (invCurrent : current.Inv nfa wf pos₀ pos)
   (invNext : next.Inv nfa wf pos₀ (pos.next ne)) :
   next'.Inv nfa wf pos₀ (pos.next ne) := by
@@ -152,7 +152,7 @@ theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (HistoryStrategy 
     exact ih h
 
 theorem go.inv {pos₀ idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = (matched', next'))
-  (ne : pos ≠ s.endValidPos)
+  (ne : pos ≠ s.endPos)
   (invCurrent : current.Inv nfa wf pos₀ pos)
   (invNext : next.Inv nfa wf pos₀ (pos.next ne)) :
   next'.Inv nfa wf pos₀ (pos.next ne) := by
@@ -245,7 +245,7 @@ theorem done_of_matched_some (h : eachStepChar (HistoryStrategy s) nfa wf pos ne
   go.done_of_matched_some h isSome'
 
 theorem inv_of_inv {pos₀ next next'} (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = (matched', next'))
-  (ne : pos ≠ s.endValidPos) (empty : next.states.isEmpty)
+  (ne : pos ≠ s.endPos) (empty : next.states.isEmpty)
   (inv : current.Inv nfa wf pos₀ pos) :
   next'.Inv nfa wf pos₀ (pos.next ne) := by
   simp [eachStepChar] at h

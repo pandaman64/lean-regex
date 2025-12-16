@@ -2,7 +2,7 @@ import Regex.Data.Expr
 import Mathlib.Data.Finset.Basic
 import RegexCorrectness.Data.Expr.Semantics.Captures
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Data.Expr
 
@@ -20,7 +20,7 @@ def Disjoint : Expr → Prop
 | .concat e₁ e₂ => e₁.Disjoint ∧ e₂.Disjoint
 | .star _greedy e => e.Disjoint
 
-theorem Captures.mem_tags_of_mem_groups {e : Expr} {s} {p p' : ValidPos s} {groups} (c : e.Captures p p' groups) :
+theorem Captures.mem_tags_of_mem_groups {e : Expr} {s} {p p' : Pos s} {groups} (c : e.Captures p p' groups) :
   ∀ tag first last, (tag, first, last) ∈ groups → tag ∈ e.tags := by
   intro tag first last mem
   induction c with

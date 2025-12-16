@@ -3,7 +3,7 @@ import Regex.Regex.Captures
 import Regex.Regex.Elab
 import Regex.Backtracker
 
-open String (Slice ValidPos Pos)
+open String (Slice Pos Pos)
 
 namespace Regex.Test
 
@@ -15,7 +15,7 @@ def slice (s : String) (startInclusive endExclusive : Nat)
   ⟨s, ⟨⟨startInclusive⟩, isValid₁⟩, ⟨⟨endExclusive⟩, isValid₂⟩, le⟩
 
 def cg {s : String} (ps : Array (Option Nat)) (isValid : ∀ p ∈ ps, (h : p.isSome) → Pos.Raw.IsValid s ⟨p.get h⟩ := by decide) : CapturedGroups s :=
-  ⟨ps.attach.map fun ⟨p, mem⟩ => match p with | .some p => .validPos ⟨⟨p⟩, isValid p mem (by grind)⟩ | .none => .sentinel s⟩
+  ⟨ps.attach.map fun ⟨p, mem⟩ => match p with | .some p => .pos ⟨⟨p⟩, isValid p mem (by grind)⟩ | .none => .sentinel s⟩
 
 deriving instance DecidableEq for Slice
 

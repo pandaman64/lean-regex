@@ -1,16 +1,16 @@
 import Regex.Data.Expr
 import RegexCorrectness.Data.Expr.Semantics
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Data.Expr
 
-theorem empty_of_captures_of_nullOnly {s} {p p' : ValidPos s} {groups e} (c : Expr.Captures p p' groups e) (h : e.nullOnly) :
+theorem empty_of_captures_of_nullOnly {s} {p p' : Pos s} {groups e} (c : Expr.Captures p p' groups e) (h : e.nullOnly) :
   p' = p := by
   induction c <;> grind [nullOnly]
 
 open Std in
-theorem contains_get_of_captures_of_firstChars_some {s} {p p' : ValidPos s} {groups e n cs} {ne : p ≠ s.endValidPos}
+theorem contains_get_of_captures_of_firstChars_some {s} {p p' : Pos s} {groups e n cs} {ne : p ≠ s.endPos}
   (c : Expr.Captures p p' groups e) (h : e.firstChars n = .some cs) :
   cs.contains (p.get ne) := by
   revert cs

@@ -3,13 +3,13 @@ import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA.Compile.ProofData
 
 namespace Empty
 
-variable [Empty] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Empty] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem not_step_start : ¬nfa'.Step lb nfa'.start p j p' update := by
   have : nfa'[nfa'.start]'(by simp [size_eq, start_eq]) = .fail := by
@@ -27,7 +27,7 @@ end Empty
 
 namespace Epsilon
 
-variable [Epsilon] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Epsilon] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
@@ -65,7 +65,7 @@ end Epsilon
 
 namespace Anchor
 
-variable [Anchor] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Anchor] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
@@ -103,7 +103,7 @@ end Anchor
 
 namespace Char
 
-variable [Char] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Char] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
@@ -145,7 +145,7 @@ end Char
 
 namespace Classes
 
-variable [Classes] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Classes] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
@@ -187,7 +187,7 @@ end Classes
 
 namespace Group
 
-variable [Group] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Group] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
@@ -221,7 +221,7 @@ end Group
 
 namespace Alternate
 
-variable [Alternate] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Alternate] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
@@ -246,7 +246,7 @@ end Alternate
 
 namespace Star
 
-variable [Star] {s : String} {lb} {p p' : ValidPos s} {j update}
+variable [Star] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
   nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔

@@ -3,12 +3,12 @@ import RegexCorrectness.NFA.Semantics.Path
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 open Regex.Data (BVPos)
 
 namespace Regex.Backtracker
 
-inductive Path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos : ValidPos s) : ValidPos s → Fin nfa.nodes.size → List (Nat × ValidPos s) → Prop where
+inductive Path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos s) : Pos s → Fin nfa.nodes.size → List (Nat × Pos s) → Prop where
   | init : Path nfa wf pos pos ⟨nfa.start, wf.start_lt⟩ []
   | more {i j : Fin nfa.nodes.size} {pos' pos'' update₁ update₂ update₃} (prev : Path nfa wf pos pos' i update₁) (step : nfa.Step 0 i pos' j pos'' update₂)
     (equpdate : update₃ = update₁ ++ List.ofOption update₂) :
@@ -16,14 +16,14 @@ inductive Path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos : ValidPos s)
 
 namespace Path
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos pos' pos'' : ValidPos s} {i j : Fin nfa.nodes.size}
-  {update update₁ update₂ update₃ : List (Nat × ValidPos s)}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos pos' pos'' : Pos s} {i j : Fin nfa.nodes.size}
+  {update update₁ update₂ update₃ : List (Nat × Pos s)}
 
 theorem le (path : Path nfa wf pos pos' i update) :
   pos ≤ pos' := by
   induction path with
-  | init => exact ValidPos.le_refl _
-  | more _ step _ ih => exact ValidPos.le_trans ih step.le
+  | init => exact Pos.le_refl _
+  | more _ step _ ih => exact Pos.le_trans ih step.le
 
 theorem eq_or_nfaPath (path : Path nfa wf pos pos' i update) :
   (pos' = pos ∧ i.val = nfa.start ∧ update = []) ∨
@@ -56,9 +56,9 @@ theorem of_nfaPath {i : Nat} (path : nfa.Path 0 nfa.start pos i pos' update) :
   have path₁ : Path nfa wf pos pos ⟨nfa.start, wf.start_lt⟩ [] := .init
   exact path₁.concat_nfaPath wf.start_lt path (by simp)
 
-def bvpos' {startPos : ValidPos s} {bvpos : BVPos startPos} {pos' i update}
+def bvpos' {startPos : Pos s} {bvpos : BVPos startPos} {pos' i update}
   (path : Path nfa wf bvpos.current pos' i update) : BVPos startPos :=
-  ⟨pos', ValidPos.le_trans bvpos.le path.le⟩
+  ⟨pos', Pos.le_trans bvpos.le path.le⟩
 
 end Path
 

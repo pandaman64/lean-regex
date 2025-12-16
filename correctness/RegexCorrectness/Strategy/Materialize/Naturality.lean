@@ -6,7 +6,7 @@ set_option autoImplicit false
 
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy
-open String (ValidPos ValidPosPlusOne)
+open String (Pos PosPlusOne)
 
 namespace Regex.NFA
 
@@ -16,7 +16,7 @@ variable {s : String}
 Under suitable conditions, the equivalence between capture groups and NFA buffer updates can be
 naturally transformed into a materialized version.
 -/
-theorem EquivUpdate.materialize {e : Expr} {n : Nat} {pos pos' : ValidPos s} {groups updates}
+theorem EquivUpdate.materialize {e : Expr} {n : Nat} {pos pos' : Pos s} {groups updates}
   (c : e.Captures pos pos' groups) (disj : e.Disjoint)
   (eqv : EquivUpdate groups updates) :
   EquivMaterializedUpdate (materializeRegexGroups groups) (materializeUpdates n updates) := by
@@ -86,7 +86,7 @@ theorem EquivUpdate.materialize {e : Expr} {n : Nat} {pos pos' : ValidPos s} {gr
       have ih₂ := ih₂ (by simp [Expr.Disjoint, disj]) eqv₂
       exact concat ih₁ ih₂
 where
-  concat {g₁ g₂ : CaptureGroups s} {u₁ u₂ : List (Nat × ValidPos s)}
+  concat {g₁ g₂ : CaptureGroups s} {u₁ u₂ : List (Nat × Pos s)}
     (eqv₁ : EquivMaterializedUpdate (materializeRegexGroups g₁) (materializeUpdates n u₁))
     (eqv₂ : EquivMaterializedUpdate (materializeRegexGroups g₂) (materializeUpdates n u₂)) :
     EquivMaterializedUpdate (materializeRegexGroups (.concat g₁ g₂)) (materializeUpdates n (u₁ ++ u₂)) := by

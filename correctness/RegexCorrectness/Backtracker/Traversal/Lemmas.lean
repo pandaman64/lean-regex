@@ -3,13 +3,13 @@ import RegexCorrectness.Backtracker.Traversal.Invariants
 set_option autoImplicit false
 
 open Regex.Data (BitMatrix BVPos)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Backtracker
 
 namespace captureNextAux
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bvpos₀ bvpos : BVPos startPos}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s} {bvpos₀ bvpos : BVPos startPos}
   {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
 theorem mem_or_path_of_mem_of_none {result} (hres : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩] = result)
@@ -27,7 +27,7 @@ theorem PathClosure.preserves {result} (hres : captureNextAux (HistoryStrategy s
 
 theorem mem_of_path_of_none {result} (hres : captureNextAux (HistoryStrategy s) nfa wf startPos visited [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩] = result)
   (isNone : result.1 = .none) (le₀ : bvpos₀ ≤ bvpos) (cls : PathClosure bvpos₀ visited)
-  (bvpos' : BVPos startPos) (state : Fin nfa.nodes.size) (update : List (Nat × ValidPos s)) (path : Path nfa wf bvpos.current bvpos'.current state update) :
+  (bvpos' : BVPos startPos) (state : Fin nfa.nodes.size) (update : List (Nat × Pos s)) (path : Path nfa wf bvpos.current bvpos'.current state update) :
   result.2.get state bvpos'.index := by
   have mem_start : result.2.get ⟨nfa.start, wf.start_lt⟩ bvpos.index := hres ▸ mem_stack_top ⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩ [] rfl
   match path.eq_or_nfaPath with
@@ -56,14 +56,14 @@ namespace captureNext.go
 
 open captureNextAux (StackInv NotDoneInv PathClosure)
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bvpos₀ bvpos : BVPos startPos} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s} {bvpos₀ bvpos : BVPos startPos} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
 structure Inv (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop where
   closure : PathClosure bvpos₀ visited
   mem_iff_path : ∀ (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos),
     bvpos₀ ≤ bvpos' →
     (visited.get state' bvpos'.index ↔
-      ∃ (bvposPrev : BVPos startPos) (update : List (Nat × ValidPos s)),
+      ∃ (bvposPrev : BVPos startPos) (update : List (Nat × Pos s)),
         bvpos₀ ≤ bvposPrev ∧ bvposPrev < bvpos ∧ Path nfa wf bvposPrev.current bvpos'.current state' update)
 
 namespace Inv
@@ -78,8 +78,8 @@ theorem mem_iff_of_aux_none {result} (haux : captureNextAux (HistoryStrategy s) 
   (isNone : result.1 = .none) (le₀ : bvpos₀ ≤ bvpos) (inv : Inv wf bvpos₀ bvpos visited)
   (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (le₀' : bvpos₀ ≤ bvpos') :
   result.2.get state' bvpos'.index ↔
-    (∃ (bvposPrev : BVPos startPos) (update : List (Nat × ValidPos s)), bvpos₀ ≤ bvposPrev ∧ bvposPrev < bvpos ∧ Path nfa wf bvposPrev.current bvpos'.current state' update) ∨
-      ∃ (update : List (Nat × ValidPos s)), Path nfa wf bvpos.current bvpos'.current state' update := by
+    (∃ (bvposPrev : BVPos startPos) (update : List (Nat × Pos s)), bvpos₀ ≤ bvposPrev ∧ bvposPrev < bvpos ∧ Path nfa wf bvposPrev.current bvpos'.current state' update) ∨
+      ∃ (update : List (Nat × Pos s)), Path nfa wf bvpos.current bvpos'.current state' update := by
   rw [captureNextAux.mem_iff_mem_or_path_of_none haux isNone le₀ inv.closure bvpos' state' le₀']
   rw [inv.mem_iff_path state' bvpos' le₀']
 
@@ -97,7 +97,7 @@ theorem mem_iff_path_of_aux_none_endBVPos {result}
   (isNone : result.1 = .none) (inv : Inv wf bvpos₀ (s.endBVPos startPos) visited)
   (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (le₀' : bvpos₀ ≤ bvpos') :
   result.2.get state' bvpos'.index ↔
-    ∃ (bvposPrev : BVPos startPos) (update : List (Nat × ValidPos s)), bvpos₀ ≤ bvposPrev ∧ Path nfa wf bvposPrev.current bvpos'.current state' update := by
+    ∃ (bvposPrev : BVPos startPos) (update : List (Nat × Pos s)), bvpos₀ ≤ bvposPrev ∧ Path nfa wf bvposPrev.current bvpos'.current state' update := by
   rw [inv.mem_iff_of_aux_none haux isNone bvpos₀.le_endBVPos state' bvpos' le₀']
   apply Iff.intro
   . intro h
@@ -114,7 +114,7 @@ end Inv
 theorem ne_done_of_path_of_none (hres : go (HistoryStrategy s) nfa wf startPos bvpos visited = .none)
   (le₀ : bvpos₀ ≤ bvpos)
   (inv : Inv wf bvpos₀ bvpos visited) (ndinv : NotDoneInv visited) :
-  ∀ (bvpos' bvpos'' : BVPos startPos) (state : Fin nfa.nodes.size) (update : List (Nat × ValidPos s)),
+  ∀ (bvpos' bvpos'' : BVPos startPos) (state : Fin nfa.nodes.size) (update : List (Nat × Pos s)),
     bvpos₀ ≤ bvpos' →
     Path nfa wf bvpos'.current bvpos''.current state update →
     nfa[state] ≠ .done := by

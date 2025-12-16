@@ -3,14 +3,14 @@ import Regex.Data.String
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Syntax.Parser.Combinators
 
 @[macro_inline]
 def anyCharOrElse {s ε} (unexpectedEof : ε) : Parser.LT s ε Char
   | pos =>
-    if hn : pos ≠ s.endValidPos then
+    if hn : pos ≠ s.endPos then
       .ok (pos.get hn) (pos.next hn) pos.lt_next
     else
       .error unexpectedEof
@@ -18,10 +18,10 @@ def anyCharOrElse {s ε} (unexpectedEof : ε) : Parser.LT s ε Char
 @[macro_inline]
 def testP {s ε} (f : Char → Bool) : Parser.LE s ε Bool
   | pos =>
-    if hn : pos ≠ s.endValidPos then
+    if hn : pos ≠ s.endPos then
       let b := f (pos.get hn)
       if b then
-        .ok b (pos.next hn) (ValidPos.le_of_lt pos.lt_next)
+        .ok b (pos.next hn) (Nat.le_of_lt pos.lt_next)
       else
         pure false
     else
@@ -37,7 +37,7 @@ def charOrElse {s ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char →
     anyCharOrElse unexpectedEof pos |>.guard fun c' =>
       if c = c' then .ok c else .error (unexpectedChar c')
 
-def foldlAux {s ε α β} (init : β) (f : β → α → β) (p : Parser.LT s ε α) (pos : ValidPos s) : Result.LE pos ε β :=
+def foldlAux {s ε α β} (init : β) (f : β → α → β) (p : Parser.LT s ε α) (pos : Pos s) : Result.LE pos ε β :=
   match p pos with
   | .ok a pos' h => ((foldlAux (f init a) f p pos').transOr h).weaken
   | .error _ => pure init
@@ -59,7 +59,7 @@ def many1 {s ε α} (p : Parser.LT s ε α) : Parser.LT s ε (Array α) :=
 def betweenOr {s strict₁ strict₂ strict₃ ε α β γ} (l : Parser s strict₁ ε α) (r : Parser s strict₃ ε γ) (m : Parser s strict₂ ε β) : Parser s (strict₁ || strict₂ || strict₃) ε β :=
   (l.bindOr fun _ => m.bindOr fun x => r.mapConst x).cast (by grind)
 
-def foldlNAux {s strict ε α β} (init : β) (f : β → α → β) (p : Parser s strict ε α) (n : Nat) (pos : ValidPos s) : Result (n ≠ 0 && strict) pos ε β :=
+def foldlNAux {s strict ε α β} (init : β) (f : β → α → β) (p : Parser s strict ε α) (n : Nat) (pos : Pos s) : Result (n ≠ 0 && strict) pos ε β :=
   match n with
   | 0 => (Result.pure init).imp (by simp)
   | n' + 1 =>

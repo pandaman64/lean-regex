@@ -9,7 +9,7 @@ import RegexCorrectness.Regex.OptimizationInfo
 set_option autoImplicit false
 
 open Regex.Data (Expr)
-open String (ValidPos)
+open String (Pos)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
 namespace Regex
@@ -23,7 +23,7 @@ def IsSearchRegex (re : Regex) : Prop :=
 
 namespace IsSearchRegex
 
-variable {s : String} {re : Regex} {bufferSize : Nat} {pos : ValidPos s} {matched : Buffer s bufferSize}
+variable {s : String} {re : Regex} {bufferSize : Nat} {pos : Pos s} {matched : Buffer s bufferSize}
 
 theorem of_fromExpr {e : Expr} (h : Expr.Disjoint (.group 0 e)) : IsSearchRegex (.fromExpr (.group 0 e)) := by
   simp [fromExpr]
@@ -82,11 +82,11 @@ theorem captureNextBuf_soundness' (h : re.captureNextBuf bufferSize pos = .some 
   if bt : re.useBacktracker then
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
     have ⟨pos', pos'', groups, le, c, eqv⟩ := Backtracker.captureNext_soundness s.disj h
-    exact ⟨pos', pos'', groups, ValidPos.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
+    exact ⟨pos', pos'', groups, Pos.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
   else
     simp [Regex.captureNextBuf, bt, s.nfa_eq] at h
     have ⟨pos', pos'', groups, le, c, eqv⟩ := VM.captureNext_soundness s.disj h
-    exact ⟨pos', pos'', groups, ValidPos.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
+    exact ⟨pos', pos'', groups, Pos.le_trans OptimizationInfo.findStart_le_pos le, c, eqv⟩
 
 theorem captureNextBuf_soundness (h : re.captureNextBuf bufferSize pos = .some matched)
   (s : IsSearchRegex re) (le : 2 ≤ bufferSize) :
@@ -94,8 +94,8 @@ theorem captureNextBuf_soundness (h : re.captureNextBuf bufferSize pos = .some m
     pos ≤ pos' ∧
     s.expr.Captures pos' pos'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matched ∧
-    matched[0] = .validPos pos' ∧
-    matched[1] = .validPos pos'' := by
+    matched[0] = .pos pos' ∧
+    matched[1] = .pos pos'' := by
   have ⟨pos', pos'', groups, le, c, eqv⟩ := captureNextBuf_soundness' h s
   refine ⟨pos', pos'', groups, le, c, eqv, ?_⟩
 
@@ -106,7 +106,7 @@ theorem captureNextBuf_soundness (h : re.captureNextBuf bufferSize pos = .some m
     grind
 
 theorem captureNextBuf_completeness' (h : re.captureNextBuf bufferSize pos = .none)
-  (isr : IsSearchRegex re) (pos' pos'' : ValidPos s) (groups : Data.CaptureGroups s)
+  (isr : IsSearchRegex re) (pos' pos'' : Pos s) (groups : Data.CaptureGroups s)
   (le : pos ≤ pos') (c : isr.expr.Captures pos' pos'' groups) :
   False := by
   have : pos' < re.optimizationInfo.findStart pos ∨ re.optimizationInfo.findStart pos ≤ pos' :=
