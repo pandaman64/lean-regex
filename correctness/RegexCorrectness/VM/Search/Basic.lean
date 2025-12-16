@@ -6,18 +6,18 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.VM
 
 variable {s : String}
 
 theorem captureNext.go.induct' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed)
-  (motive : ValidPos s → Option σ.Update → SearchState σ nfa → SearchState σ nfa → Prop)
+  (motive : Pos s → Option σ.Update → SearchState σ nfa → SearchState σ nfa → Prop)
   (not_found : ∀ matched current next,
-    motive s.endValidPos matched current next)
+    motive s.endPos matched current next)
   (found : ∀ pos matched current next,
-    pos ≠ s.endValidPos →
+    pos ≠ s.endPos →
     current.states.isEmpty →
     matched.isSome →
     motive pos matched current next)
@@ -34,7 +34,7 @@ theorem captureNext.go.induct' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellForme
     matched.isSome ∨ stepped.1.isSome →
     motive (pos.next ne) (stepped.1 <|> matched) stepped.2 ⟨current.states.clear, current.updates⟩ →
     motive pos matched current next)
-  (pos : ValidPos s) (matched : Option σ.Update) (current next : SearchState σ nfa) :
+  (pos : Pos s) (matched : Option σ.Update) (current next : SearchState σ nfa) :
   motive pos matched current next :=
   captureNext.go.induct σ nfa wf motive
     (fun matched current next => not_found matched current next)
@@ -54,12 +54,12 @@ section
 
 @[simp, grind =]
 theorem captureNext.go_not_found {σ nfa wf matched current next} :
-  captureNext.go σ nfa wf s.endValidPos matched current next = matched := by
+  captureNext.go σ nfa wf s.endPos matched current next = matched := by
   grind [captureNext.go]
 
 @[simp, grind =]
 theorem captureNext.go_found {σ nfa wf pos matched current next}
-  (ne : pos ≠ s.endValidPos) (isEmpty : current.states.isEmpty) (isSome : matched.isSome) :
+  (ne : pos ≠ s.endPos) (isEmpty : current.states.isEmpty) (isSome : matched.isSome) :
   captureNext.go σ nfa wf pos matched current next = matched := by
   grind [captureNext.go]
 

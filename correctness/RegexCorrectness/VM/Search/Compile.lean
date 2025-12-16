@@ -6,7 +6,7 @@ set_option autoImplicit false
 open Regex.Data (SparseSet CaptureGroups)
 open Regex (NFA)
 open Regex.NFA (EquivUpdate)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.VM
 
@@ -29,7 +29,7 @@ theorem captures_of_some_compile {s e pos₀ matched'} (h : captureNext (History
   exact ⟨pos, pos', groups, le, c, eqv⟩
 
 theorem not_captures_of_none_compile {s e pos} (h : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos = .none)
-  (pos' pos'' : ValidPos s) (groups : CaptureGroups s) (le : pos ≤ pos') :
+  (pos' pos'' : Pos s) (groups : CaptureGroups s) (le : pos ≤ pos') :
   ¬e.Captures pos' pos'' groups := by
   intro c
   let zero : Fin (NFA.compile e).nodes.size := ⟨0, NFA.lt_zero_size_compile rfl⟩

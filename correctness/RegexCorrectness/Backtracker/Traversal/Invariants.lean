@@ -6,7 +6,7 @@ import RegexCorrectness.Backtracker.Path
 set_option autoImplicit false
 
 open Regex.Data (BitMatrix BVPos)
-open String (ValidPos)
+open String (Pos)
 open Regex.NFA (Step)
 
 namespace Regex.Backtracker.captureNextAux
@@ -46,7 +46,7 @@ end
 
 section
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s}
   {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)} {update' visited'}
 
 def StackInv (wf : nfa.WellFormed) (bvpos : BVPos startPos) (stack : List (StackEntry (HistoryStrategy s) nfa startPos)) : Prop :=
@@ -156,11 +156,11 @@ end
 
 section
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s}
   {bvpos₀ : BVPos startPos} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
 def ClosureInv (bvpos₀ : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (stack : List (StackEntry (HistoryStrategy s) nfa startPos)) : Prop :=
-  ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos) (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : Option (Nat × ValidPos s)),
+  ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos) (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : Option (Nat × Pos s)),
     bvpos₀ ≤ bvpos →
     visited.get state bvpos.index →
     nfa.Step 0 state bvpos.current state' bvpos'.current update →
@@ -171,7 +171,7 @@ namespace ClosureInv
 -- Preservation of the non-visited cases
 theorem preserves' {entry stack'} (inv : ClosureInv bvpos₀ visited (entry :: stack))
   (nextEntries : List (StackEntry (HistoryStrategy s) nfa startPos)) (hstack : stack' = nextEntries ++ stack)
-  (hnext : ∀ (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : Option (Nat × ValidPos s)),
+  (hnext : ∀ (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : Option (Nat × Pos s)),
     nfa.Step 0 entry.state entry.pos.current state' bvpos'.current update →
     ∃ entry' ∈ nextEntries, entry'.state = state' ∧ entry'.pos = bvpos') :
   ClosureInv bvpos₀ (visited.set entry.state entry.pos.index) stack' := by
@@ -256,7 +256,7 @@ theorem preserves {stack update state bvpos} (wf : nfa.WellFormed) (inv : Closur
   | char_neg stack' update state bvpos c state' hn h =>
     rw [pushNext.char_neg hn h]
     apply inv.preserves' [] (by simp)
-    have {ne : bvpos.current ≠ s.endValidPos} : bvpos.current.get ne ≠ c := by
+    have {ne : bvpos.current ≠ s.endPos} : bvpos.current.get ne ≠ c := by
       match h with
       | .inl eq => simp [eq] at ne
       | .inr ⟨ne', hc⟩ => simpa [BVPos.get] using hc
@@ -272,7 +272,7 @@ theorem preserves {stack update state bvpos} (wf : nfa.WellFormed) (inv : Closur
   | sparse_neg stack' update state bvpos cs state' hn h =>
     rw [pushNext.sparse_neg hn h]
     apply inv.preserves' [] (by simp)
-    have {ne : bvpos.current ≠ s.endValidPos} : bvpos.current.get ne ∉ cs := by
+    have {ne : bvpos.current ≠ s.endPos} : bvpos.current.get ne ∉ cs := by
       match h with
       | .inl eq => simp [eq] at ne
       | .inr ⟨ne', hc⟩ => simpa [BVPos.get] using hc
@@ -311,14 +311,14 @@ theorem step_closure {bvpos₀ bvpos : BVPos startPos} {result} (hres : captureN
     exact ih hres (cinv.preserves wf hn) stinv.preserves
 
 def StepClosure (bvpos₀ : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop :=
-  ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos) (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : Option (Nat × ValidPos s)),
+  ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos) (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : Option (Nat × Pos s)),
     bvpos₀ ≤ bvpos →
     visited.get state bvpos.index →
     nfa.Step 0 state bvpos.current state' bvpos'.current update →
     visited.get state' bvpos'.index
 
 def PathClosure (bvpos₀ : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop :=
-  ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos) (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : List (Nat × ValidPos s)),
+  ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos) (state' : Fin nfa.nodes.size) (bvpos' : BVPos startPos) (update : List (Nat × Pos s)),
     bvpos₀ ≤ bvpos →
     visited.get state bvpos.index →
     nfa.Path 0 state bvpos.current state' bvpos'.current update →
@@ -331,12 +331,12 @@ theorem zero : PathClosure bvpos₀ (BitMatrix.zero nfa.nodes.size (startPos.rem
   simp at hmem
 
 theorem of_step_closure {bvpos₀ : BVPos startPos} (wf : nfa.WellFormed) (h : StepClosure bvpos₀ visited) : PathClosure bvpos₀ visited := by
-  let motive (i : Nat) (pos : ValidPos s) : Prop :=
+  let motive (i : Nat) (pos : Pos s) : Prop :=
     ∃ (isLt : i < nfa.nodes.size) (bvpos : BVPos startPos), bvpos₀ ≤ bvpos ∧ pos = bvpos.current ∧ visited.get ⟨i, isLt⟩ bvpos.index
   have cls i pos j pos' update (base : motive i pos) (step : nfa.Step 0 i pos j pos' update) : motive j pos' := by
     have ⟨_, bvpos, le, hbvpos, hmem⟩ := base
 
-    let bvpos' : BVPos startPos := ⟨pos', ValidPos.le_trans (hbvpos ▸ bvpos.le) step.le⟩
+    let bvpos' : BVPos startPos := ⟨pos', Pos.le_trans (hbvpos ▸ bvpos.le) step.le⟩
 
     have le₀' : bvpos₀ ≤ bvpos' := BVPos.le_trans le (BVPos.le_iff.mpr (hbvpos ▸ step.le))
     have visited' := h ⟨i, step.lt⟩ bvpos ⟨j, step.lt_right wf⟩ bvpos' update le hmem (by simp [←hbvpos, bvpos', step])
@@ -369,7 +369,7 @@ end
 
 section
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bvpos₀ bvpos : BVPos startPos}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s} {bvpos₀ bvpos : BVPos startPos}
   {visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
 def VisitedInv (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) (visited visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop :=
@@ -386,7 +386,7 @@ theorem rfl (wf : nfa.WellFormed) (bvpos₀ bvpos : BVPos startPos) : VisitedInv
 
 theorem preserves {bvpos' : BVPos startPos} {state : Fin nfa.nodes.size}
   (inv : VisitedInv wf bvpos₀ bvpos visited visited')
-  (update : List (Nat × ValidPos s)) (path : Path nfa wf bvpos.current bvpos'.current state update) :
+  (update : List (Nat × Pos s)) (path : Path nfa wf bvpos.current bvpos'.current state update) :
   VisitedInv wf bvpos₀ bvpos visited (visited'.set state bvpos'.index) := by
   intro state' bvpos'' le' hmem
   simp [visited'.get_set] at hmem
@@ -423,7 +423,7 @@ end
 
 section
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {bvpos₀ bvpos : BVPos startPos} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s} {bvpos₀ bvpos : BVPos startPos} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {stack : List (StackEntry (HistoryStrategy s) nfa startPos)}
 
 def NotDoneInv (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Prop :=
   ∀ (state : Fin nfa.nodes.size) (bvpos : BVPos startPos),

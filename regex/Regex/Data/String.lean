@@ -196,7 +196,7 @@ theorem isValid_iff_isValid (p : ValidPosPlusOne s) : p.isValid ↔ p.offset.IsV
       grind
     simpa [isValid, h]
 
-def asValidPos (p : ValidPosPlusOne s) (h : p.isValid) : Pos s :=
+def asPos (p : ValidPosPlusOne s) (h : p.isValid) : Pos s :=
   ⟨p.offset, p.isValid_iff_isValid.mp h⟩
 
 def lt (p₁ p₂ : ValidPosPlusOne s) : Prop :=
@@ -211,19 +211,19 @@ instance {s : String} (p₁ p₂ : ValidPosPlusOne s) : Decidable (p₁ < p₂) 
   decidable_of_iff' _ lt_iff
 
 def next (p : ValidPosPlusOne s) (h : p.isValid) : ValidPosPlusOne s :=
-  let vp := p.asValidPos h
+  let vp := p.asPos h
   if h' : vp ≠ s.endPos then
     .validPos (vp.next h')
   else
     .sentinel s
 
 theorem lt_sentinel_of_valid {p : ValidPosPlusOne s} (h : p.isValid) : p < .sentinel s :=
-  Nat.lt_of_le_of_lt (p.asValidPos h).isValid.le_rawEndPos (by simp [sentinel])
+  Nat.lt_of_le_of_lt (p.asPos h).isValid.le_rawEndPos (by simp [sentinel])
 
 @[simp, grind →]
 theorem lt_next (p : ValidPosPlusOne s) (h : p.isValid) : p < p.next h := by
   fun_cases next
-  next vp ne => exact Pos.lt_next (p := p.asValidPos h) (h := ne)
+  next vp ne => exact Pos.lt_next (p := p.asPos h) (h := ne)
   next => exact lt_sentinel_of_valid h
 
 def remainingBytes (p : ValidPosPlusOne s) : Nat :=
@@ -339,10 +339,10 @@ theorem or_self {p : ValidPosPlusOne s} : p.or p = p := by
   | sentinel => simp
 
 @[simp, grind =]
-theorem asValidPos_validPos {p : Pos s} : (ValidPosPlusOne.validPos p).asValidPos (by grind) = p := rfl
+theorem asValidPos_validPos {p : Pos s} : (ValidPosPlusOne.validPos p).asPos (by grind) = p := rfl
 
 @[simp, grind =]
-theorem validPos_asValidPos {p : ValidPosPlusOne s} {h : p.isValid} : (ValidPosPlusOne.validPos (p.asValidPos h)) = p := rfl
+theorem validPos_asPos {p : ValidPosPlusOne s} {h : p.isValid} : (ValidPosPlusOne.validPos (p.asPos h)) = p := rfl
 
 end ValidPosPlusOne
 

@@ -3,7 +3,7 @@ import RegexCorrectness.Regex.Basic
 
 set_option autoImplicit false
 
-open String (ValidPos ValidPosPlusOne Slice)
+open String (Pos ValidPosPlusOne Slice)
 open Regex.Strategy (materializeRegexGroups)
 
 namespace Regex.CapturedGroups
@@ -33,7 +33,7 @@ def materialize (self : CapturedGroups haystack) (groups : Data.CaptureGroups ha
 -/
 def Spec {re : Regex} (s : re.IsSearchRegex) (haystack : String) (startPos : ValidPosPlusOne haystack) (self : CapturedGroups haystack) : Prop :=
   ∃ isValid pos pos' le groups,
-    startPos.asValidPos isValid ≤ pos ∧
+    startPos.asPos isValid ≤ pos ∧
     s.expr.Captures pos pos' groups ∧
     self.get 0 = .some ⟨haystack, pos, pos', le⟩ ∧
     self.materialize groups

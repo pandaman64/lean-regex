@@ -2,7 +2,7 @@ import Regex.Regex.Basic
 
 set_option autoImplicit false
 
-open String (ValidPos ValidPosPlusOne Slice)
+open String (Pos ValidPosPlusOne Slice)
 
 namespace Regex
 
@@ -31,7 +31,7 @@ def CapturedGroups.get (self : CapturedGroups haystack) (index : Nat) : Option S
   if h : stop.isValid && start ≤ stop then
     have isStopPosValid : stop.isValid := by grind
     have isStartPosValid : start.isValid := ValidPosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-    return ⟨haystack, start.asValidPos isStartPosValid, stop.asValidPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
+    return ⟨haystack, start.asPos isStartPosValid, stop.asPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
   else
     throw ()
 
@@ -79,7 +79,7 @@ Gets the next match and its capture groups.
 -/
 def next? (self : Captures haystack) : Option (CapturedGroups haystack × Captures haystack) :=
   if h : self.currentPos.isValid then
-    match self.regex.captureNextBuf (self.regex.maxTag + 1) (self.currentPos.asValidPos h) with
+    match self.regex.captureNextBuf (self.regex.maxTag + 1) (self.currentPos.asPos h) with
     | .none => .none
     | .some buffer =>
       let groups : CapturedGroups haystack := ⟨buffer.toArray⟩

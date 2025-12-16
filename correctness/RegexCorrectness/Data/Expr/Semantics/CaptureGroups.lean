@@ -2,7 +2,7 @@ import Regex.Data.Expr
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Data
 
@@ -16,28 +16,28 @@ Groups captured by a regex match.
 -/
 inductive CaptureGroups (s : String) : Type where
   | empty : CaptureGroups s
-  | group (tag : Nat) (first last : ValidPos s) (rest : CaptureGroups s) : CaptureGroups s
+  | group (tag : Nat) (first last : Pos s) (rest : CaptureGroups s) : CaptureGroups s
   | concat (g₁ g₂ : CaptureGroups s) : CaptureGroups s
 
 namespace CaptureGroups
 
 variable {s : String}
 
-def mem (groups : CaptureGroups s) (group : Nat × ValidPos s × ValidPos s) : Prop :=
+def mem (groups : CaptureGroups s) (group : Nat × Pos s × Pos s) : Prop :=
   match groups with
   | .empty => False
   | .group tag first last rest => (tag = group.1 ∧ first = group.2.1 ∧ last = group.2.2) ∨ rest.mem group
   | .concat g₁ g₂ => g₁.mem group ∨ g₂.mem group
 
-instance : Membership (Nat × ValidPos s × ValidPos s) (CaptureGroups s) where
+instance : Membership (Nat × Pos s × Pos s) (CaptureGroups s) where
   mem := CaptureGroups.mem
 
 @[simp]
-theorem mem_empty {group : Nat × ValidPos s × ValidPos s} : group ∈ CaptureGroups.empty ↔ False := by
+theorem mem_empty {group : Nat × Pos s × Pos s} : group ∈ CaptureGroups.empty ↔ False := by
   simp [Membership.mem, mem]
 
 @[simp]
-theorem mem_group {group : Nat × ValidPos s × ValidPos s} {tag first last rest} :
+theorem mem_group {group : Nat × Pos s × Pos s} {tag first last rest} :
   group ∈ CaptureGroups.group tag first last rest ↔ (group = (tag, first, last) ∨ group ∈ rest) := by
   simp [Membership.mem, mem]
   apply Iff.intro
@@ -47,7 +47,7 @@ theorem mem_group {group : Nat × ValidPos s × ValidPos s} {tag first last rest
     cases h <;> simp [*]
 
 @[simp]
-theorem mem_concat {group : Nat × ValidPos s × ValidPos s} {g₁ g₂} : group ∈ CaptureGroups.concat g₁ g₂ ↔ (group ∈ g₁ ∨ group ∈ g₂) := by
+theorem mem_concat {group : Nat × Pos s × Pos s} {g₁ g₂} : group ∈ CaptureGroups.concat g₁ g₂ ↔ (group ∈ g₁ ∨ group ∈ g₂) := by
   simp [Membership.mem, mem]
 
 end CaptureGroups

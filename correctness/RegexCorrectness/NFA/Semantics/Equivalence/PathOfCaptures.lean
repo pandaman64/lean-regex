@@ -7,9 +7,9 @@ set_option autoImplicit false
 namespace Regex.NFA
 
 open Regex.Data (Expr CaptureGroups)
-open String (ValidPos)
+open String (Pos)
 
-variable {s : String} {nfa : NFA} {next e result} {pos pos' : ValidPos s} {groups : CaptureGroups s}
+variable {s : String} {nfa : NFA} {next e result} {pos pos' : Pos s} {groups : CaptureGroups s}
 
 theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)

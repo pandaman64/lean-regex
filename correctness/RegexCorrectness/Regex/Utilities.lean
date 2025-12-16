@@ -4,7 +4,7 @@ import RegexCorrectness.Regex.Captures
 
 set_option autoImplicit false
 
-open String (ValidPos Slice)
+open String (Pos Slice)
 
 namespace Regex
 

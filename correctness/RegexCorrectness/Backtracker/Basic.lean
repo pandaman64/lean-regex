@@ -4,14 +4,14 @@ import Mathlib.Tactic.DepRewrite
 set_option autoImplicit false
 
 open Regex.Data (BitMatrix BVPos)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.Backtracker
 
 namespace captureNextAux.pushNext
 
 variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed}
-  {startPos : ValidPos s} {stack : List (StackEntry σ nfa startPos)} {update : σ.Update} {state : Fin nfa.nodes.size} {pos : BVPos startPos}
+  {startPos : Pos s} {stack : List (StackEntry σ nfa startPos)} {update : σ.Update} {state : Fin nfa.nodes.size} {pos : BVPos startPos}
 
 theorem done (hn : nfa[state] = .done) : pushNext σ nfa wf startPos stack update state pos = stack := by
   rw! [pushNext, hn]
@@ -75,7 +75,7 @@ theorem sparse_neg {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse
   | .inl h => simp [h]
   | .inr ⟨ne, hc⟩ => simp [ne, hc]
 
-theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
+theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s)
   {motive : List (StackEntry σ nfa startPos) → σ.Update → Fin nfa.nodes.size → BVPos startPos → Prop}
   (done : ∀ (stack : List (StackEntry σ nfa startPos)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos),
     nfa[state] = .done → motive stack update state pos)
@@ -147,7 +147,7 @@ theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos
 
 end captureNextAux.pushNext
 
-theorem captureNextAux.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
+theorem captureNextAux.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s)
   (motive : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) → List (StackEntry σ nfa startPos) → Prop)
   (base : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)), motive visited [])
   (visited : ∀ (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (update : σ.Update) (state : Fin nfa.nodes.size) (pos : BVPos startPos) (stack' : List (StackEntry σ nfa startPos)),
@@ -175,7 +175,7 @@ Simplification lemmas for `captureNextAux`.
 -/
 section
 
-variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed} {startPos : ValidPos s} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)}
+variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed} {startPos : Pos s} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)}
 
 theorem captureNextAux_base :
   captureNextAux σ nfa wf startPos visited [] = (.none, visited) := by
@@ -206,7 +206,7 @@ theorem captureNextAux_next {update state pos stack'} (mem : ¬visited.get state
 
 end
 
-theorem captureNext.go.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : ValidPos s)
+theorem captureNext.go.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s)
   (motive : (pos : BVPos startPos) → BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) → Prop)
   (found : ∀ (pos : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) (update : σ.Update) (visited' : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)),
     captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.some update, visited') →
@@ -231,7 +231,7 @@ Simplification lemmas for `captureNext.go`.
 section
 
 variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed}
-  {startPos : ValidPos s} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {pos : BVPos startPos}
+  {startPos : Pos s} {visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)} {pos : BVPos startPos}
 
 theorem captureNext.go_found {update visited'} (h : captureNextAux σ nfa wf startPos visited [⟨σ.empty, ⟨nfa.start, wf.start_lt⟩, pos⟩] = (.some update, visited')) :
   captureNext.go σ nfa wf startPos pos visited = .some update := by

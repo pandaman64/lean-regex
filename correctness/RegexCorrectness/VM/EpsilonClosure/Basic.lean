@@ -9,7 +9,7 @@ set_option autoImplicit false
 open Regex.Data (SparseSet Anchor Classes)
 open Regex (NFA)
 open Regex.NFA (Node)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.VM.εClosure
 
@@ -17,7 +17,7 @@ namespace pushNext
 
 section
 
-variable {s : String} {σ : Strategy s} {nfa : NFA} {pos : ValidPos s} {node : Node} {inBounds : node.inBounds nfa.nodes.size} {update : σ.Update} {stack : εStack σ nfa}
+variable {s : String} {σ : Strategy s} {nfa : NFA} {pos : Pos s} {node : Node} {inBounds : node.inBounds nfa.nodes.size} {update : σ.Update} {stack : εStack σ nfa}
 
 @[grind =>]
 theorem epsilon {state' : Nat} (hn : node = .epsilon state') :
@@ -66,7 +66,7 @@ theorem sparse {cs : Classes} {state' : Nat} (hn : node = .sparse cs state') :
 
 end
 
-theorem fun_cases' {s : String} (σ : Strategy s) (nfa : NFA) (pos : ValidPos s)
+theorem fun_cases' {s : String} (σ : Strategy s) (nfa : NFA) (pos : Pos s)
   {motive : (node : Node) → node.inBounds nfa.nodes.size → σ.Update → εStack σ nfa → Prop}
   (epsilon : ∀ (update : σ.Update) (stack : εStack σ nfa) (state' : Nat) (inBounds : (Node.epsilon state').inBounds nfa.nodes.size),
     motive (Node.epsilon state') inBounds update stack)
@@ -110,7 +110,7 @@ end pushNext
 -- Cleaner version of the fuction induction principle
 -- It's crucial to annotate the types of the arguments of the branches. Otherwise, Lean consumse
 -- too much memory. See https://github.com/leanprover/lean4/issues/6753.
-theorem induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (pos : ValidPos s)
+theorem induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos s)
   (motive : Option σ.Update → SearchState σ nfa → εStack σ nfa → Prop)
   (base : ∀ (matched : Option σ.Update) (next : SearchState σ nfa), motive matched next [])
   (visited : ∀ (matched : Option σ.Update) (next : SearchState σ nfa) (update : σ.Update) (state : Fin nfa.nodes.size) (stack' : εStack σ nfa),
@@ -138,7 +138,7 @@ Simplification lemmas for `εClosure`.
 -/
 section
 
-variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed} {pos : ValidPos s}
+variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s}
   {matched : Option σ.Update} {next : SearchState σ nfa} {update : σ.Update} {state : Fin nfa.nodes.size} {stack' : εStack σ nfa}
 
 theorem base : εClosure σ nfa wf pos matched next [] = (matched, next) := by

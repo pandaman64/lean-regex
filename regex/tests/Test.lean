@@ -3,7 +3,7 @@ import Regex.Regex.Captures
 import Regex.Regex.Elab
 import Regex.Backtracker
 
-open String (Slice ValidPos Pos)
+open String (Slice Pos Pos)
 
 namespace Regex.Test
 

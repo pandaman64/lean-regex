@@ -3,7 +3,7 @@ import Regex.Data.String
 
 set_option autoImplicit false
 
-open String (Pos.Raw ValidPos ValidPosPlusOne Slice)
+open String (Pos.Raw Pos ValidPosPlusOne Slice)
 
 namespace Regex
 
@@ -30,7 +30,7 @@ Gets the next match in the input string.
 -/
 def next? (self : Matches haystack) : Option (Slice × Matches haystack) :=
   if h : self.currentPos.isValid then
-    match h' : self.regex.searchNext (self.currentPos.asValidPos h) with
+    match h' : self.regex.searchNext (self.currentPos.asPos h) with
     | .none => .none
     | .some s =>
       have eq : s.str = haystack := searchNext_str_eq_some h'

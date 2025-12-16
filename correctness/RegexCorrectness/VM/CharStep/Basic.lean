@@ -4,12 +4,12 @@ set_option autoImplicit false
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.VM
 
 set_option linter.unusedVariables false in
-theorem eachStepChar.go.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (pos : ValidPos s) (ne : pos ≠ s.endValidPos) (current : SearchState σ nfa)
+theorem eachStepChar.go.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos s) (ne : pos ≠ s.endPos) (current : SearchState σ nfa)
   (motive : (i : Nat) → i ≤ current.states.count → SearchState σ nfa → Prop)
   (base : ∀ next, motive current.states.count (Nat.le_refl _) next)
   (done : ∀ i hlt next (hn : nfa[current.states[i]] = .done), motive i (Nat.le_of_lt hlt) next)

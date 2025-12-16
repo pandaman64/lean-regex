@@ -3,7 +3,7 @@ import RegexCorrectness.NFA.Semantics.ProofData.Compile
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA.Compile.ProofData.Star
 
@@ -16,13 +16,13 @@ it must have looped `nfaExpr` before `n` times, followed by the last step from `
 A `Loop` term corresponds to such a loop. The `last` variant corresponds to the last step,
 and the `loop` variant extracts the first iteration and the remaining loop.
 -/
-inductive Loop {s : String} : ValidPos s → ValidPos s → List (Nat × ValidPos s) → Prop where
+inductive Loop {s : String} : Pos s → Pos s → List (Nat × Pos s) → Prop where
   | last {pos} (step : nfa'.Step nfa.nodes.size nfa'.start pos next pos .none) : Loop pos pos []
   | loop {pos pos' pos'' update₁ update₂}
     (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update₁)
     (loop : Loop pos' pos'' update₂) : Loop pos pos'' (update₁ ++ update₂)
 
-theorem Loop.introAux {s : String} {pos pos' : ValidPos s} {i j update}
+theorem Loop.introAux {s : String} {pos pos' : Pos s} {i j update}
   (lt : i < nfa'.nodes.size) (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) (eqj : j = next)
   (path : nfa'.Path nfa.nodes.size i pos j pos' update) :
   if i = nfa'.start then
@@ -117,7 +117,7 @@ theorem Loop.introAux {s : String} {pos pos' : ValidPos s} {i j update}
           exact step.liftBound' gt
         exact ⟨itm, update₁ ::ₒ update₃, update₄, .more step path', loop', by simp [equ]⟩
 
-theorem Loop.intro {s : String} {pos pos' : ValidPos s} {update}
+theorem Loop.intro {s : String} {pos pos' : Pos s} {update}
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : nfa'.Path nfa.nodes.size nfa'.start pos next pos' update) :
   Loop pos pos' update := by

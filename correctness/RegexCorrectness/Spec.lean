@@ -3,7 +3,7 @@ import RegexCorrectness.Data.Expr.Semantics
 set_option autoImplicit false
 
 open Regex.Data (Expr CaptureGroups)
-open String (ValidPos)
+open String (Pos)
 
 namespace RegexCorrectness.Spec
 
@@ -26,7 +26,7 @@ TODOs:
 * the third property is the uniqueness of the match.
   In other words, the returned match must be the first one (and greedy/longest based on the chosen semantics)
 -/
-def SearchProblem {s : String} (e : Expr) (pos : ValidPos s) : Prop :=
-  ∃ (pos' pos'' : ValidPos s) (groups : CaptureGroups s), pos ≤ pos' ∧ e.Captures pos' pos'' groups
+def SearchProblem {s : String} (e : Expr) (pos : Pos s) : Prop :=
+  ∃ (pos' pos'' : Pos s) (groups : CaptureGroups s), pos ≤ pos' ∧ e.Captures pos' pos'' groups
 
 end RegexCorrectness.Spec

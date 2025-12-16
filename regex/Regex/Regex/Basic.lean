@@ -56,7 +56,7 @@ def searchNext {s : String} (self : Regex) (p : Pos s) : Option Slice := do
   if h : stopPos.isValid && startPos ≤ stopPos then
     have isStopPosValid : stopPos.isValid := by grind
     have h' : startPos.isValid := ValidPosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-    pure ⟨s, startPos.asValidPos h', stopPos.asValidPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
+    pure ⟨s, startPos.asPos h', stopPos.asPos isStopPosValid, ValidPosPlusOne.le_iff.mp (by grind)⟩
   else
     .none
 

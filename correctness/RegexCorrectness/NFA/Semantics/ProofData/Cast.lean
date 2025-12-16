@@ -2,7 +2,7 @@ import RegexCorrectness.NFA.Semantics.ProofData.Basic
 
 set_option autoImplicit false
 
-open String (ValidPos)
+open String (Pos)
 
 namespace Regex.NFA
 
@@ -10,7 +10,7 @@ namespace Compile.ProofData
 
 namespace Group
 
-variable [Group] {s : String} {pos pos' : ValidPos s} {update}
+variable [Group] {s : String} {pos pos' : Pos s} {update}
 
 theorem castFromExpr (path : nfaExpr.Path nfaClose.nodes.size nfaExpr.start pos nfaClose.start pos' update) :
   nfa'.Path nfaClose.nodes.size nfaExpr.start pos nfaClose.start pos' update := by
@@ -30,7 +30,7 @@ end Group
 
 namespace Alternate
 
-variable [Alternate] {s : String} {pos pos' : ValidPos s} {update}
+variable [Alternate] {s : String} {pos pos' : Pos s} {update}
 
 theorem castFrom₁ (path : nfa₁.Path nfa.nodes.size nfa₁.start pos next pos' update) :
   nfa'.Path nfa.nodes.size nfa₁.start pos next pos' update := by
@@ -64,7 +64,7 @@ end Alternate
 
 namespace Concat
 
-variable [Concat] {s : String} {pos pos' : ValidPos s} {update}
+variable [Concat] {s : String} {pos pos' : Pos s} {update}
 
 theorem castFrom₂ (path : nfa₂.Path nfa.nodes.size nfa₂.start pos next pos' update) :
   nfa'.Path nfa.nodes.size nfa₂.start pos next pos' update := by
@@ -84,7 +84,7 @@ end Concat
 
 namespace Star
 
-variable [Star] {s : String} {pos pos' : ValidPos s} {update}
+variable [Star] {s : String} {pos pos' : Pos s} {update}
 
 theorem castFromExpr (path : nfaExpr.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update) :
   nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update := by
