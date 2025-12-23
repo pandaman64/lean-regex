@@ -16,8 +16,6 @@ inductive Error where
   | expectedEof
   | invalidCodePoint (n : Nat)
   | tooManyHexDigits (n : Nat)
-  | invalidHexChar (c : Char)
-  | unexpectedEndOfInput
 deriving Repr, Inhabited, DecidableEq
 
 instance : ToString Error where
@@ -32,7 +30,5 @@ instance : ToString Error where
     | .expectedEof => "expected EOF"
     | .invalidCodePoint n => s!"invalid code point: 0x{n.toDigits 16}"
     | .tooManyHexDigits n => s!"too many hex digits: {n}"
-    | .invalidHexChar c => s!"invalid hex character: {c}"
-    | .unexpectedEndOfInput => "unexpected end of input"
 
 end Regex.Syntax.Parser
