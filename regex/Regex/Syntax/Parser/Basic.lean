@@ -19,9 +19,6 @@ def anyCharOrError : Parser.LT s Error Char :=
 def charOrError (c : Char) : Parser.LT s Error Char :=
   charOrElse c .unexpectedEof .unexpectedChar
 
-def charOrErrorCommit (c : Char) : Parser.LT s Error Char :=
-  charOrElse c .unexpectedEndOfInput .unexpectedChar
-
 def digit : Parser.LT s Error Nat :=
   anyCharOrError
   |>.guard fun c =>
@@ -31,17 +28,12 @@ def digit : Parser.LT s Error Nat :=
 def number : Parser.LT s Error Nat :=
   foldl1 (fun n d => 10 * n + d) digit
 
-def hexDigit : Parser.LT s Error Nat
-  | pos =>
-    match anyCharOrError pos with
-    | .ok c pos' h =>
-      if c = '}' then .error (.unexpectedChar c)
-      else if c.isDigit then .ok (c.toNat - '0'.toNat) pos' h
-      else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10) pos' h
-      else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10) pos' h
-      else .fatal (.invalidHexChar c)
-    | .error e => .error e
-    | .fatal e => .fatal e
+def hexDigit : Parser.LT s Error Nat :=
+  anyCharOrError |>.guard fun c =>
+    if c.isDigit then .ok (c.toNat - '0'.toNat)
+    else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10)
+    else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10)
+    else .error (.unexpectedChar c)
 
 def hexNumberN (n : Nat) [NeZero n] : Parser.LT s Error Nat :=
   foldlPos 0 (fun n d => 16 * n + d) hexDigit n
@@ -75,14 +67,10 @@ where
     <|> (charOrError 'u' *> unicodeEscape.commit)
   unicodeEscape : Parser.LT s Error Char :=
     hexNumberVariable.guard fun n =>
-      if n > 0x10FFFF then
-        .error (.invalidCodePoint n)
-      else if n >= 0xD800 && n <= 0xDFFF then
-        .error (.invalidCodePoint n)
-      else
-        .ok (Char.ofNat n)
+      if n.isValidChar then .ok (Char.ofNat n)
+      else .error (.invalidCodePoint n)
   hexNumberVariable : Parser.LT s Error Nat :=
-    betweenOr (charOrError '{') (charOrErrorCommit '}').commit (.commit do
+    betweenOr (charOrError '{') (charOrError '}').commit (.commit do
     let digits ← (many1 hexDigit).weaken
       if digits.size > 6 then
         throw (.tooManyHexDigits digits.size)

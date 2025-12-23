@@ -184,12 +184,11 @@ private def test (input : String) (expected : Ast) : Bool :=
 #guard parseAst "\\u{1234567}" = .error (.tooManyHexDigits 7)
 
 -- Invalid hex characters
-#guard parseAst "\\u{GHIJ}" = .error (.invalidHexChar 'G')
-#eval parseAst "\\u{12.34}"
-#guard parseAst "\\u{12.34}" = .error (.invalidHexChar '.')
+#guard parseAst "\\u{GHIJ}" = .error (.unexpectedChar 'G')
+#guard parseAst "\\u{12.34}" = .error (.unexpectedChar '.')
 
 -- Missing closing brace
-#guard parseAst "\\u{1234" = .error (.unexpectedEndOfInput)
+#guard parseAst "\\u{1234" = .error (.unexpectedEof)
 
 -- Surrogate range (optional, depending on Lean's Char behavior)
 -- If Lean's Char.ofNat rejects surrogates, these should error:
