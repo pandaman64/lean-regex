@@ -19,6 +19,9 @@ def anyCharOrError : Parser.LT s Error Char :=
 def charOrError (c : Char) : Parser.LT s Error Char :=
   charOrElse c .unexpectedEof .unexpectedChar
 
+def charOrErrorCommit (c : Char) : Parser.LT s Error Char :=
+  charOrElse c .unexpectedEndOfInput .unexpectedChar
+
 def digit : Parser.LT s Error Nat :=
   anyCharOrError
   |>.guard fun c =>
@@ -28,12 +31,17 @@ def digit : Parser.LT s Error Nat :=
 def number : Parser.LT s Error Nat :=
   foldl1 (fun n d => 10 * n + d) digit
 
-def hexDigit : Parser.LT s Error Nat :=
-  anyCharOrError |>.guard fun c =>
-    if c.isDigit then .ok (c.toNat - '0'.toNat)
-    else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10)
-    else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10)
-    else .error (.unexpectedChar c)
+def hexDigit : Parser.LT s Error Nat
+  | pos =>
+    match anyCharOrError pos with
+    | .ok c pos' h =>
+      if c = '}' then .error (.unexpectedChar c)
+      else if c.isDigit then .ok (c.toNat - '0'.toNat) pos' h
+      else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10) pos' h
+      else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10) pos' h
+      else .fatal (.invalidHexChar c)
+    | .error e => .error e
+    | .fatal e => .fatal e
 
 def hexNumberN (n : Nat) [NeZero n] : Parser.LT s Error Nat :=
   foldlPos 0 (fun n d => 16 * n + d) hexDigit n
@@ -42,7 +50,7 @@ def specialCharacters := "[](){*+?|^$.\\"
 
 def escapedChar : Parser.LT s Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
-    ((Sum.inl <$> (simple <|> hex2 <|> hex4)) <|> (Sum.inr <$> perlClass)).commit
+    ((Sum.inl <$> (simple <|> hexEscape)) <|> (Sum.inr <$> perlClass)).commit
 where
   simple : Parser.LT s Error Char :=
     anyCharOrError
@@ -62,11 +70,26 @@ where
           pure c
         else
           throw (.unexpectedEscapedChar c)
-  hex2 : Parser.LT s Error Char :=
-    charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit
-  -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
-  hex4 : Parser.LT s Error Char :=
-    charOrError 'u' *> (Char.ofNat <$> hexNumberN 4).commit
+  hexEscape : Parser.LT s Error Char :=
+    (charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit)
+    <|> (charOrError 'u' *> unicodeEscape.commit)
+  unicodeEscape : Parser.LT s Error Char :=
+    hexNumberVariable.guard fun n =>
+      if n > 0x10FFFF then
+        .error (.invalidCodePoint n)
+      else if n >= 0xD800 && n <= 0xDFFF then
+        .error (.invalidCodePoint n)
+      else
+        .ok (Char.ofNat n)
+  hexNumberVariable : Parser.LT s Error Nat :=
+    betweenOr (charOrError '{') (charOrErrorCommit '}').commit (.commit do
+    let digits ← (many1 hexDigit).weaken
+      if digits.size > 6 then
+        throw (.tooManyHexDigits digits.size)
+      else
+        pure (digits.foldl (fun n d => 16 * n + d) 0)
+    )
+    <|> hexNumberN 4
   perlClass : Parser.LT s Error PerlClass :=
     anyCharOrError
     |>.guard fun c =>
