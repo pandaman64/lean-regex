@@ -33,16 +33,27 @@ private def test (input : String) (expected : Ast) : Bool :=
 #guard test "$" (.anchor .eos)
 #guard test "^abc$" (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
 
-#guard test "[abc]" (.classes ⟨false, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard test "[^abc]" (.classes ⟨true, #[.single 'a', .single 'b', .single 'c']⟩)
-#guard test "[a-z]" (.classes ⟨false, #[.range 'a' 'z']⟩)
-#guard test r"[\da]" (.classes ⟨false, #[.perl ⟨false, .digit⟩, .single 'a']⟩)
-#guard test "[-]" (.classes ⟨false, #[.single '-']⟩)
-#guard test "[a-]" (.classes ⟨false, #[.single 'a', .single '-']⟩)
+#guard test "[abc]" (.classes (.atom #[.single 'a', .single 'b', .single 'c']))
+#guard test "[^abc]" (.classes (.complement (.atom #[.single 'a', .single 'b', .single 'c'])))
+#guard test "[a-z]" (.classes (.atom #[.range 'a' 'z']))
+#guard test r"[\da]" (.classes (.atom #[.perl ⟨false, .digit⟩, .single 'a']))
+#guard test "[-]" (.classes (.atom #[.single '-']))
+#guard test "[a-]" (.classes (.atom #[.single 'a', .single '-']))
 -- special characters are allowed in classes
-#guard test r"[(){}*+?|^$.\--]" (.classes ⟨false, #[
+#guard test r"[(){}*+?|^$.\--]" (.classes (.atom (#[
   '(', ')', '{', '}', '*', '+', '?', '|', '^', '$', '.', '-', '-'
-].map .single⟩)
+].map .single)))
+#guard test "[[a]--[b]]" (.classes (.difference (.atom #[.single 'a']) (.atom #[.single 'b'])))
+#guard test "[[a]&&[b]]" (.classes (.intersection (.atom #[.single 'a']) (.atom #[.single 'b'])))
+#guard test "[[a]||[b]]" (.classes (.union (.atom #[.single 'a']) (.atom #[.single 'b'])))
+#guard test "[[^a]--[b]]" (.classes (.difference (.complement (.atom #[.single 'a'])) (.atom #[.single 'b'])))
+#guard test "[[a]--[^b]]" (.classes (.difference (.atom #[.single 'a']) (.complement (.atom #[.single 'b']))))
+#guard test "[[^a]--[^b]]" (.classes (.difference (.complement (.atom #[.single 'a'])) (.complement (.atom #[.single 'b']))))
+#guard test "[[a-zA-Z]--[aeiouAEIOU]]" (.classes
+  (.difference
+    (.atom #[.range 'a' 'z', .range 'A' 'Z'])
+    (.atom #[.single 'a', .single 'e', .single 'i', .single 'o', .single 'u',
+             .single 'A', .single 'E', .single 'I', .single 'O', .single 'U'])))
 
 #guard test "|" (.alternate .epsilon .epsilon)
 #guard test "a|" (.alternate (.char 'a') .epsilon)

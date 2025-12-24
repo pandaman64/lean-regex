@@ -40,16 +40,28 @@ def Class.mem (c : Char) : Class → Bool
   | Class.range s e => s ≤ c ∧ c ≤ e
   | Class.perl pc => pc.mem c
 
-structure Classes where
-  negated : Bool
-  classes : Array Class
+-- Algebraic data type for set operations
+inductive Classes where
+  | atom : Array Class → Classes
+  | complement : Classes → Classes
+  | union : Classes → Classes → Classes
+  | intersection : Classes → Classes → Classes
+  | difference : Classes → Classes → Classes
+  | symDiff : Classes → Classes → Classes
 deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
-def Classes.mem (c : Char) (cs : Classes) : Bool :=
-  if cs.negated then
-    cs.classes.all (fun cls => !cls.mem c)
-  else
-    cs.classes.any (fun cls => cls.mem c)
+-- Evaluation
+def Classes.mem (c : Char) (e : Classes): Bool :=
+  match e with
+  | .atom cls => cls.any (fun cl => cl.mem c)
+  | .complement e' => !e'.mem c
+  | .union e1 e2 => e1.mem c || e2.mem c
+  | .intersection e1 e2 => e1.mem c && e2.mem c
+  | .difference e1 e2 => e1.mem c && !e2.mem c
+  | .symDiff e1 e2 =>
+      let m1 := e1.mem c
+      let m2 := e2.mem c
+      (m1 || m2) && !(m1 && m2)
 
 instance : Membership Char Classes where
   mem cs c := cs.mem c
