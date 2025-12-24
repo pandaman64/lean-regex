@@ -42,7 +42,7 @@ def specialCharacters := "[](){*+?|^$.\\"
 
 def escapedChar : Parser.LT s Error (Char ⊕ PerlClass) :=
   charOrError '\\' *>
-    ((Sum.inl <$> (simple <|> hex2 <|> hex4)) <|> (Sum.inr <$> perlClass)).commit
+    ((Sum.inl <$> (simple <|> hexEscape)) <|> (Sum.inr <$> perlClass)).commit
 where
   simple : Parser.LT s Error Char :=
     anyCharOrError
@@ -62,11 +62,22 @@ where
           pure c
         else
           throw (.unexpectedEscapedChar c)
-  hex2 : Parser.LT s Error Char :=
-    charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit
-  -- TODO: support "\u{XXXX}" and "\u{XXXXX}"
-  hex4 : Parser.LT s Error Char :=
-    charOrError 'u' *> (Char.ofNat <$> hexNumberN 4).commit
+  hexEscape : Parser.LT s Error Char :=
+    (charOrError 'x' *> (Char.ofNat <$> hexNumberN 2).commit)
+    <|> (charOrError 'u' *> unicodeEscape.commit)
+  unicodeEscape : Parser.LT s Error Char :=
+    hexNumberVariable.guard fun n =>
+      if n.isValidChar then .ok (Char.ofNat n)
+      else .error (.invalidCodePoint n)
+  hexNumberVariable : Parser.LT s Error Nat :=
+    betweenOr (charOrError '{') (charOrError '}').commit (.commit do
+      let digits ← (many1 hexDigit).weaken
+      if digits.size > 6 then
+        throw (.tooManyHexDigits digits.size)
+      else
+        pure (digits.foldl (fun n d => 16 * n + d) 0)
+    )
+    <|> hexNumberN 4
   perlClass : Parser.LT s Error PerlClass :=
     anyCharOrError
     |>.guard fun c =>
