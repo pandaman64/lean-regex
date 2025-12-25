@@ -60,12 +60,12 @@ crazy/start-end-empty-rep,ok,
 crazy/start-end-empty-rep-rev,ok,
 crazy/neg-class-letter,ok,
 crazy/neg-class-letter-comma,ok,
-crazy/neg-class-letter-space,error,"expected '[^a[:space:]]' to compile, but it did not: expected EOF"
+crazy/neg-class-letter-space,error,"expected '[^a[:space:]]' to compile, but it did not: unsupported character class"
 crazy/neg-class-comma,ok,
-crazy/neg-class-space,error,"expected '[^[:space:]]' to compile, but it did not: expected EOF"
-crazy/neg-class-space-comma,error,"expected '[^,[:space:]]' to compile, but it did not: expected EOF"
-crazy/neg-class-comma-space,error,"expected '[^[:space:],]' to compile, but it did not: expected EOF"
-crazy/neg-class-ascii,error,"expected '[^[:alpha:]Z]' to compile, but it did not: expected EOF"
+crazy/neg-class-space,error,"expected '[^[:space:]]' to compile, but it did not: unsupported character class"
+crazy/neg-class-space-comma,error,"expected '[^,[:space:]]' to compile, but it did not: unsupported character class"
+crazy/neg-class-comma-space,error,"expected '[^[:space:],]' to compile, but it did not: unsupported character class"
+crazy/neg-class-ascii,error,"expected '[^[:alpha:]Z]' to compile, but it did not: unsupported character class"
 crazy/lazy-many-many,ok,
 crazy/lazy-many-optional,ok,
 crazy/lazy-one-many-many,ok,
@@ -398,7 +398,7 @@ regression/unsorted-binary-search-200,error,"expected '(?i-u)[A_]+' to compile, 
 regression/unicode-case-lower-nocase-flag,error,"expected '(?i)\p{Ll}+' to compile, but it did not: unexpected character: ?"
 regression/negated-char-class-100,error,"expected '(?i)[^x]' to compile, but it did not: unexpected character: ?"
 regression/negated-char-class-200,error,"expected '(?i)[^x]' to compile, but it did not: unexpected character: ?"
-regression/ascii-word-underscore,error,"expected '[[:word:]]' to compile, but it did not: expected EOF"
+regression/ascii-word-underscore,error,"expected '[[:word:]]' to compile, but it did not: unsupported character class"
 regression/captures-repeat,error,"expected '([a-f]){2}(?P<foo>[x-z])' to compile, but it did not: unexpected character: ?"
 regression/alt-in-alt-100,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }], got #[#[(some (0, 1))], #[(some (2, 2))], #[(some (2, 2))]]"
 regression/alt-in-alt-200,ok,
@@ -441,8 +441,8 @@ regression/stops,unsupported,
 regression/stops-ascii,unsupported,
 regression/adjacent-line-boundary-100,error,"expected '(?m)^(?:[^ ]+?)$' to compile, but it did not: unexpected character: ?"
 regression/adjacent-line-boundary-200,error,"expected '(?m)^(?:[^ ]+?)$' to compile, but it did not: unexpected character: ?"
-regression/anchored-prefix-100,error,"expected '^a[[:^space:]]' to compile, but it did not: expected EOF"
-regression/anchored-prefix-200,error,"expected '^a[[:^space:]]' to compile, but it did not: expected EOF"
+regression/anchored-prefix-100,error,"expected '^a[[:^space:]]' to compile, but it did not: unsupported character class"
+regression/anchored-prefix-200,error,"expected '^a[[:^space:]]' to compile, but it did not: unsupported character class"
 regression/anchored-prefix-300,ok,
 regression/aho-corasick-100,ok,
 regression/interior-anchor-capture,ok,
@@ -469,11 +469,11 @@ regression/captures-wrong-order,ok,
 regression/negated-unicode-word-boundary-dfa-fail,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"
 regression/missed-match,ok,
 regression/regex-to-glob,unsupported,
-regression/reverse-inner-plus-shorter-than-expected,ok,
+regression/reverse-inner-plus-shorter-than-expected,error,"expected '(?:(\d+)[:.])?(\d{1,2})[:.](\d{2})' to compile, but it did not: unsupported character class"
 regression/reverse-inner-short,ok,
 regression/prefilter-with-aho-corasick-standard-semantics,unsupported,
 regression/non-prefix-literal-quit-state,ok,
-regression/hir-optimization-out-of-order-class,error,"expected '^[[:alnum:]./-]+$' to compile, but it did not: expected EOF"
+regression/hir-optimization-out-of-order-class,error,"expected '^[[:alnum:]./-]+$' to compile, but it did not: unsupported character class"
 regression/improper-reverse-suffix-optimization,ok,
 set/basic10,unsupported,
 set/basic10-leftmost-first,unsupported,

@@ -19,16 +19,11 @@ def anyCharOrError : Parser.LT s Error Char :=
 def charOrError (c : Char) : Parser.LT s Error Char :=
   charOrElse c .unexpectedEof .unexpectedChar
 
-def stringOrError (str : String) (h : str ≠ "" := by decide) : Parser.LT s Error String :=
-  fun pos => go str.toList (by simp [h]) pos
-where
-  go (chars : List Char) (hne : chars ≠ []) (pos : Pos s) : Result.LT pos Error String :=
-    match chars, hne with
-    | [c], _ =>
-      (fun _ => str) <$> charOrError c pos
-    | c :: c' :: cs, _ =>
-      charOrError c pos |>.bind' fun _ pos' _ =>
-        go (c' :: cs) (by simp) pos'
+def stringOrError (str: String) (h: str ≠ "" := by decide): Parser.LT s Error String :=
+  match hc : str.toList with
+  | c :: cs =>
+    (cs.foldl (fun p c => p *> charOrError c) (charOrError c)).map fun _ => str
+  | [] => absurd hc (by simp_all)
 
 def digit : Parser.LT s Error Nat :=
   anyCharOrError
@@ -150,7 +145,7 @@ where
     | .inr cls => .perl cls
 
 def classesAtom : Parser.LT s Error Classes :=
-  ((many1 singleClass).map fun classes => Classes.atom classes)
+  singleClass.map Classes.atom
 
 def classOperator : Parser.LT s Error (Classes → Classes → Classes) :=
     (stringOrError "--" |>.mapConst Classes.difference)
@@ -170,6 +165,11 @@ def characterClasses (pos : Pos s) : Result.LT pos Error Classes :=
       |>.bind' fun classes pos3 _ =>
         (fun _ => classes.complement) <$> (charOrError ']').commit pos3
     ).weaken
+    <|>
+    (charOrError ':' pos1
+    |>.bind' fun _ _ _ =>
+      (Result.fatal .unsupportedCharacterClass : Result.LT _ Error Classes)
+    )
     <|>
     (seq pos1
     |>.bind' fun classes pos3 _ =>
@@ -208,10 +208,8 @@ termination_by (pos, 40)
 
 end
 
-
 def classes : Parser.LT s Error Ast :=
   fun pos => (characterClasses pos).map Ast.classes
-
 
 def repetitionInner : Parser.LT s Error (Nat × Option Nat) :=
   (charOrError '*' |>.mapConst (0, .none))

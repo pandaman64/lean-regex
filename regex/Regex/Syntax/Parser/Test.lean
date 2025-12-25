@@ -33,28 +33,30 @@ private def test (input : String) (expected : Ast) : Bool :=
 #guard test "$" (.anchor .eos)
 #guard test "^abc$" (.concat (.concat (.concat (.concat (.anchor .start) (.char 'a')) (.char 'b')) (.char 'c')) (.anchor .eos))
 
-#guard test "[abc]" (.classes (.atom #[.single 'a', .single 'b', .single 'c']))
-#guard test "[^abc]" (.classes (.complement (.atom #[.single 'a', .single 'b', .single 'c'])))
-#guard test "[a-z]" (.classes (.atom #[.range 'a' 'z']))
-#guard test r"[\da]" (.classes (.atom #[.perl ⟨false, .digit⟩, .single 'a']))
-#guard test "[-]" (.classes (.atom #[.single '-']))
-#guard test "[a-]" (.classes (.atom #[.single 'a', .single '-']))
+#guard test "[abc]" (.classes (.union (.union (.atom (.single 'a')) (.atom (.single 'b'))) (.atom (.single 'c'))))
+#guard test "[^abc]" (.classes (.complement (.union (.union (.atom (.single 'a')) (.atom (.single 'b'))) (.atom (.single 'c')))))
+#guard test "[a-z]" (.classes (.atom (.range 'a' 'z')))
+#guard test r"[\da]" (.classes (.union (.atom (.perl ⟨false, .digit⟩)) (.atom (.single 'a'))))
+#guard test "[-]" (.classes (.atom (.single '-')))
+#guard test "[a-]" (.classes (.union (.atom (.single 'a')) (.atom (.single '-'))))
 -- special characters are allowed in classes
-#guard test r"[(){}*+?|^$.\--]" (.classes (.atom (#[
-  '(', ')', '{', '}', '*', '+', '?', '|', '^', '$', '.', '-', '-'
-].map .single)))
-#guard test "[[a]--[b]]" (.classes (.difference (.atom #[.single 'a']) (.atom #[.single 'b'])))
-#guard test "[[a]&&[b]]" (.classes (.intersection (.atom #[.single 'a']) (.atom #[.single 'b'])))
-#guard test "[[a]||[b]]" (.classes (.union (.atom #[.single 'a']) (.atom #[.single 'b'])))
-#guard test "[[^a]--[b]]" (.classes (.difference (.complement (.atom #[.single 'a'])) (.atom #[.single 'b'])))
-#guard test "[[a]--[^b]]" (.classes (.difference (.atom #[.single 'a']) (.complement (.atom #[.single 'b']))))
-#guard test "[[^a]--[^b]]" (.classes (.difference (.complement (.atom #[.single 'a'])) (.complement (.atom #[.single 'b']))))
+#guard test r"[(){}*+?|^$.\--]" (
+  .classes ("){}*+?|^$.--".foldl (fun acc c => .union acc (.atom (.single c))) (.atom (.single '(')))
+)
+#guard test "[[a]--[b]]" (.classes (.difference (.atom (.single 'a')) (.atom (.single 'b'))))
+#guard test "[[a]&&[b]]" (.classes (.intersection (.atom (.single 'a')) (.atom (.single 'b'))))
+#guard test "[[a]||[b]]" (.classes (.union (.atom (.single 'a')) (.atom (.single 'b'))))
+#guard test "[[^a]--[b]]" (.classes (.difference (.complement (.atom (.single 'a'))) (.atom (.single 'b'))))
+#guard test "[[a]--[^b]]" (.classes (.difference (.atom (.single 'a')) (.complement (.atom (.single 'b')))))
+#guard test "[[^a]--[^b]]" (.classes (.difference (.complement (.atom (.single 'a'))) (.complement (.atom (.single 'b')))))
 #guard test "[[a-zA-Z]--[aeiouAEIOU]]" (.classes
   (.difference
-    (.atom #[.range 'a' 'z', .range 'A' 'Z'])
-    (.atom #[.single 'a', .single 'e', .single 'i', .single 'o', .single 'u',
-             .single 'A', .single 'E', .single 'I', .single 'O', .single 'U'])))
-
+    (.union
+      (.atom (.range 'a' 'z'))
+      (.atom (.range 'A' 'Z')))
+    ("eiouAEIOU".foldl (fun acc c => .union acc (.atom (.single c))) (.atom (.single 'a')))))
+#guard parseAst "[:.]" = .error .unsupportedCharacterClass
+#guard parseAst "[.:]" = .ok (.classes (.union (.atom (.single '.')) (.atom (.single ':'))))
 #guard test "|" (.alternate .epsilon .epsilon)
 #guard test "a|" (.alternate (.char 'a') .epsilon)
 #guard test "|a" (.alternate .epsilon (.char 'a'))

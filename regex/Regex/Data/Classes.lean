@@ -42,7 +42,7 @@ def Class.mem (c : Char) : Class → Bool
 
 -- Algebraic data type for set operations
 inductive Classes where
-  | atom : Array Class → Classes
+  | atom : Class → Classes
   | complement : Classes → Classes
   | union : Classes → Classes → Classes
   | intersection : Classes → Classes → Classes
@@ -53,7 +53,7 @@ deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 -- Evaluation
 def Classes.mem (c : Char) (e : Classes): Bool :=
   match e with
-  | .atom cls => cls.any (fun cl => cl.mem c)
+  | .atom cls => cls.mem c
   | .complement e' => !e'.mem c
   | .union e1 e2 => e1.mem c || e2.mem c
   | .intersection e1 e2 => e1.mem c && e2.mem c
