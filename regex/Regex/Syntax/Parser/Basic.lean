@@ -82,7 +82,7 @@ where
       else .error (.invalidCodePoint n)
   hexNumberVariable : Parser.LT s Error Nat :=
     betweenOr (charOrError '{') (charOrError '}').commit (.commit do
-    let digits ← (many1 hexDigit).weaken
+      let digits ← (many1 hexDigit).weaken
       if digits.size > 6 then
         throw (.tooManyHexDigits digits.size)
       else
