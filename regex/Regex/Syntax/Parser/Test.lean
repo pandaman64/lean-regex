@@ -49,10 +49,10 @@ private def test (input : String) (expected : Ast) : Bool :=
 #guard test "[[^a]--[b]]" (.classes (.difference (.complement (.atom (.single 'a'))) (.atom (.single 'b'))))
 #guard test "[[a]--[^b]]" (.classes (.difference (.atom (.single 'a')) (.complement (.atom (.single 'b')))))
 #guard test "[[^a]--[^b]]" (.classes (.difference (.complement (.atom (.single 'a'))) (.complement (.atom (.single 'b')))))
-#guard test "[a--b]" (.classes (.union (.atom (.single 'a')) (.atom (.range '-' 'b'))))
-#guard test "[^a--b]" (.classes (.complement (.union (.atom (.single 'a')) (.atom (.range '-' 'b')))))
-#guard test "[a--^b]" (.classes (.union (.union (.atom (.single 'a')) (.atom (.range '-' '^'))) (.atom (.single 'b'))))
-#guard test "[a&&b]" (.classes (.union (.union (.union (.atom (.single 'a' )) (.atom (.single '&'))) (.atom (.single '&'))) (.atom (.single 'b'))))
+#guard parseAst "[a--b]" = .error (.unexpectedChar 'b')
+#guard parseAst "[^a--b]" = .error (.unexpectedChar 'b')
+#guard parseAst "[a--^b]" = .error (.unexpectedChar '^')
+#guard parseAst "[a&&b]" = .error (.unexpectedChar 'b')
 #guard test "[[a-zA-Z]--[aeiouAEIOU]]" (.classes
   (.difference
     (.union

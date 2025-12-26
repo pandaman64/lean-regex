@@ -176,7 +176,7 @@ termination_by (pos, 20)
 def classesSeq1 (acc : Classes) (pos : Pos s) : Result.LE pos Error Classes :=
   (classesOperator pos
   |>.bind' fun op pos₁ h =>
-    characterClasses pos₁
+    (characterClasses pos₁).commit
     |>.bind' fun right pos₂ h2 =>
       have : Rel.LT pos₂ pos := Trans.trans h2 h
       classesSeq1 (op acc right) pos₂
