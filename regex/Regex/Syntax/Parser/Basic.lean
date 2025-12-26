@@ -19,12 +19,6 @@ def anyCharOrError : Parser.LT s Error Char :=
 def charOrError (c : Char) : Parser.LT s Error Char :=
   charOrElse c .unexpectedEof .unexpectedChar
 
-def stringOrError (str: String) (h: str ≠ "" := by decide): Parser.LT s Error String :=
-  match hc : str.toList with
-  | c :: cs =>
-    (cs.foldl (fun p c => p *> charOrError c) (charOrError c)).map fun _ => str
-  | [] => absurd hc (by simp_all)
-
 def digit : Parser.LT s Error Nat :=
   anyCharOrError
   |>.guard fun c =>
@@ -147,62 +141,59 @@ where
 def classesAtom : Parser.LT s Error Classes :=
   singleClass.map Classes.atom
 
-def classOperator : Parser.LT s Error (Classes → Classes → Classes) :=
-    (stringOrError "--" |>.mapConst Classes.difference)
-    <|> (stringOrError "&&" |>.mapConst Classes.intersection)
-    <|> (stringOrError "||" |>.mapConst Classes.union)
-    <|> (stringOrError "~~" |>.mapConst Classes.symDiff)
+def classesOperator : Parser.LT s Error (Classes → Classes → Classes) :=
+    (charOrError '-' *> charOrError '-' |>.mapConst Classes.difference)
+    <|> (charOrError '&' *> charOrError '&' |>.mapConst Classes.intersection)
+    <|> (charOrError '|' *> charOrError '|' |>.mapConst Classes.union)
+    <|> (charOrError '~' *> charOrError '~' |>.mapConst Classes.symDiff)
 
 mutual
 
 def characterClasses (pos : Pos s) : Result.LT pos Error Classes :=
-  (charOrError '[' pos
-  |>.bind' fun _ pos1 h1 =>
-    (charOrError '^' pos1
-    |>.bind' fun _ pos2 h2 =>
-      have : Rel.LT pos2 pos := Trans.trans h2 h1
-      seq pos2
-      |>.bind' fun classes pos3 _ =>
-        (fun _ => classes.complement) <$> (charOrError ']').commit pos3
-    ).weaken
+  charOrError '[' pos
+  |>.bind' (fun _ pos₁ h₁ => .commit $
+    ((charOrError ':' pos₁).bind (fun _ =>
+      (Result.fatal Error.unsupportedCharacterClass : Result.LT _ Error Classes)))
     <|>
-    (charOrError ':' pos1
-    |>.bind' fun _ _ _ =>
-      (Result.fatal .unsupportedCharacterClass : Result.LT _ Error Classes)
-    )
-    <|>
-    (seq pos1
-    |>.bind' fun classes pos3 _ =>
-      (fun _ => classes) <$> (charOrError ']').commit pos3
+    (test '^' pos₁).bind' (fun complement pos₂ h₂ =>
+      have : Rel.LT pos₂ pos := Trans.trans h₂ h₁
+      (classesSeq pos₂).map (fun classes =>
+        if complement then
+          classes.complement
+        else
+          classes
+      )
     )
   )
+  |>.bind' fun classes pos₃ _ =>
+    (charOrError ']' pos₃).commit.map fun _ => classes
 termination_by (pos, 10)
 
-def item (pos : Pos s) : Result.LT pos Error Classes :=
+def classesItem (pos : Pos s) : Result.LT pos Error Classes :=
   classesAtom pos <|> characterClasses pos
 termination_by (pos, 20)
 
-def seq1 (acc : Classes) (pos : Pos s) : Result.LE pos Error Classes :=
-  (classOperator pos
-  |>.bind' fun op pos1 h =>
-    characterClasses pos1
-    |>.bind' fun right pos2 h2 =>
-      have : Rel.LT pos2 pos := Trans.trans h2 h
-      seq1 (op acc right) pos2
+def classesSeq1 (acc : Classes) (pos : Pos s) : Result.LE pos Error Classes :=
+  (classesOperator pos
+  |>.bind' fun op pos₁ h =>
+    characterClasses pos₁
+    |>.bind' fun right pos₂ h2 =>
+      have : Rel.LT pos₂ pos := Trans.trans h2 h
+      classesSeq1 (op acc right) pos₂
   ).weaken
   <|>
-  (item pos
-  |>.bind' fun right pos1 _ =>
-    seq1 (Classes.union acc right) pos1
+  (classesItem pos
+  |>.bind' fun right pos₁ _ =>
+    classesSeq1 (Classes.union acc right) pos₁
   ).weaken
   <|>
   pure acc
 termination_by (pos, 30)
 
-def seq (pos : Pos s) : Result.LE pos Error Classes :=
-  (item pos
-  |>.bind' fun first pos1 _ =>
-    seq1 first pos1
+def classesSeq (pos : Pos s) : Result.LE pos Error Classes :=
+  (classesItem pos
+  |>.bind' fun first pos₁ _ =>
+    classesSeq1 first pos₁
   ).weaken.commit
 termination_by (pos, 40)
 

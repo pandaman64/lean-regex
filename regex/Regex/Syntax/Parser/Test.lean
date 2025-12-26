@@ -49,6 +49,10 @@ private def test (input : String) (expected : Ast) : Bool :=
 #guard test "[[^a]--[b]]" (.classes (.difference (.complement (.atom (.single 'a'))) (.atom (.single 'b'))))
 #guard test "[[a]--[^b]]" (.classes (.difference (.atom (.single 'a')) (.complement (.atom (.single 'b')))))
 #guard test "[[^a]--[^b]]" (.classes (.difference (.complement (.atom (.single 'a'))) (.complement (.atom (.single 'b')))))
+#guard test "[a--b]" (.classes (.union (.atom (.single 'a')) (.atom (.range '-' 'b'))))
+#guard test "[^a--b]" (.classes (.complement (.union (.atom (.single 'a')) (.atom (.range '-' 'b')))))
+#guard test "[a--^b]" (.classes (.union (.union (.atom (.single 'a')) (.atom (.range '-' '^'))) (.atom (.single 'b'))))
+#guard test "[a&&b]" (.classes (.union (.union (.union (.atom (.single 'a' )) (.atom (.single '&'))) (.atom (.single '&'))) (.atom (.single 'b'))))
 #guard test "[[a-zA-Z]--[aeiouAEIOU]]" (.classes
   (.difference
     (.union
@@ -57,6 +61,31 @@ private def test (input : String) (expected : Ast) : Bool :=
     ("eiouAEIOU".foldl (fun acc c => .union acc (.atom (.single c))) (.atom (.single 'a')))))
 #guard parseAst "[:.]" = .error .unsupportedCharacterClass
 #guard parseAst "[.:]" = .ok (.classes (.union (.atom (.single '.')) (.atom (.single ':'))))
+#guard test "[a-z&&[^aeiou]]" (.classes
+  (.intersection
+    (.atom (.range 'a' 'z'))
+    (.complement
+      ("eiou".foldl (fun acc c => .union acc (.atom (.single c))) (.atom (.single 'a'))))))
+#guard test "[[a]&&[b]||[c]--[d]~~[e]]" (.classes
+  (.symDiff
+    (.difference
+      (.union
+        (.intersection
+          (.atom (.single 'a'))
+          (.atom (.single 'b')))
+        (.atom (.single 'c')))
+      (.atom (.single 'd')))
+    (.atom (.single 'e'))))
+#guard test "[[a]&&[[b]||[c]]--[[d]~~[e]]]" (.classes
+  (.difference
+    (.intersection
+      (.atom (.single 'a'))
+      (.union
+        (.atom (.single 'b'))
+        (.atom (.single 'c'))))
+    (.symDiff
+      (.atom (.single 'd'))
+      (.atom (.single 'e')))))
 #guard test "|" (.alternate .epsilon .epsilon)
 #guard test "a|" (.alternate (.char 'a') .epsilon)
 #guard test "|a" (.alternate .epsilon (.char 'a'))

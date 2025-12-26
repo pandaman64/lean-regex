@@ -51,7 +51,7 @@ inductive Classes where
 deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 -- Evaluation
-def Classes.mem (c : Char) (e : Classes): Bool :=
+def Classes.mem (c : Char) (e : Classes) : Bool :=
   match e with
   | .atom cls => cls.mem c
   | .complement e' => !e'.mem c
