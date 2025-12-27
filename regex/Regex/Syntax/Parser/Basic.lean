@@ -111,7 +111,7 @@ def dot : Parser.LT s Error Ast :=
 
 def charInClass : Parser.LT s Error (Char ⊕ PerlClass) :=
   escapedChar <|> (anyCharOrError.guard fun c =>
-    if c = ']' ∨ c = '\\' then throw (.unexpectedChar c)
+    if c = '[' ∨ c = ']' ∨ c = '\\' then throw (.unexpectedChar c)
     else .ok (.inl c)
   )
 
@@ -138,12 +138,69 @@ where
     | .inl c => .single c
     | .inr cls => .perl cls
 
-def classes : Parser.LT s Error Ast :=
-  betweenOr (charOrError '[') (charOrError ']').commit (.commit do
-    let negated ← test '^'
-    let classes ← (many1 singleClass).weaken
-    pure (Ast.classes ⟨negated, classes⟩)
+def classesAtom : Parser.LT s Error Classes :=
+  singleClass.map Classes.atom
+
+def classesOperator : Parser.LT s Error (Classes → Classes → Classes) :=
+    (charOrError '-' *> charOrError '-' |>.mapConst Classes.difference)
+    <|> (charOrError '&' *> charOrError '&' |>.mapConst Classes.intersection)
+    <|> (charOrError '|' *> charOrError '|' |>.mapConst Classes.union)
+    <|> (charOrError '~' *> charOrError '~' |>.mapConst Classes.symDiff)
+
+mutual
+
+def characterClasses (pos : Pos s) : Result.LT pos Error Classes :=
+  charOrError '[' pos
+  |>.bind' (fun _ pos₁ h₁ => .commit $
+    ((charOrError ':' pos₁).bind (fun _ =>
+      (Result.fatal Error.unsupportedCharacterClass : Result.LT _ Error Classes)))
+    <|>
+    (test '^' pos₁).bind' (fun complement pos₂ h₂ =>
+      have : Rel.LT pos₂ pos := Trans.trans h₂ h₁
+      (classesSeq pos₂).map (fun classes =>
+        if complement then
+          classes.complement
+        else
+          classes
+      )
+    )
   )
+  |>.bind' fun classes pos₃ _ =>
+    (charOrError ']' pos₃).commit.map fun _ => classes
+termination_by (pos, 10)
+
+def classesItem (pos : Pos s) : Result.LT pos Error Classes :=
+  classesAtom pos <|> characterClasses pos
+termination_by (pos, 20)
+
+def classesSeq1 (acc : Classes) (pos : Pos s) : Result.LE pos Error Classes :=
+  (classesOperator pos
+  |>.bind' fun op pos₁ h =>
+    (characterClasses pos₁).commit
+    |>.bind' fun right pos₂ h2 =>
+      have : Rel.LT pos₂ pos := Trans.trans h2 h
+      classesSeq1 (op acc right) pos₂
+  ).weaken
+  <|>
+  (classesItem pos
+  |>.bind' fun right pos₁ _ =>
+    classesSeq1 (Classes.union acc right) pos₁
+  ).weaken
+  <|>
+  pure acc
+termination_by (pos, 30)
+
+def classesSeq (pos : Pos s) : Result.LE pos Error Classes :=
+  (classesItem pos
+  |>.bind' fun first pos₁ _ =>
+    classesSeq1 first pos₁
+  ).weaken.commit
+termination_by (pos, 40)
+
+end
+
+def classes : Parser.LT s Error Ast :=
+  fun pos => (characterClasses pos).map Ast.classes
 
 def repetitionInner : Parser.LT s Error (Nat × Option Nat) :=
   (charOrError '*' |>.mapConst (0, .none))

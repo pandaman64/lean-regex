@@ -65,8 +65,8 @@ def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
     let (index', r) := h.toRegexAux index
     (index', applyRepetitions min max greedy r)
   | .classes cs => (index, .classes cs)
-  | .perl pc => (index, .classes ⟨false, #[Class.perl pc]⟩)
-  | .dot => (index, .classes ⟨false, #[Class.beforeLineBreak, Class.afterLineBreak]⟩)
+  | .perl pc => (index, .classes (Classes.atom (Class.perl pc)))
+  | .dot => (index, .classes (.union (Classes.atom Class.beforeLineBreak) (Classes.atom Class.afterLineBreak)))
 
 def Ast.toRegex (ast : Ast) : Expr := (ast.toRegexAux 0).2
 
