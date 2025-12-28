@@ -229,6 +229,12 @@ def repetitionOp : Parser.LT s Error (Nat × Option Nat × Bool) :=
 def nonCapturing : Parser.LT s Error Unit :=
   charOrError '?' *> charOrError ':' |>.mapConst ()
 
+def flagsModifier : Parser.LT s Error Bool :=
+  charOrError '?' *> (
+    (charOrError 'i' |>.mapConst true)
+    <|> (charOrError '-' *> charOrError 'i' |>.mapConst false)
+  )
+
 /-
 The following definitions describe the recursive structure of the regex parser. We duplicate the
 loops in the grammar in several definitions like `repetition1` and `concat1` since our combinators
@@ -244,6 +250,11 @@ mutual
 def group (pos : Pos s) : Result.LT pos Error Ast :=
   (charOrError '(' pos)
   |>.bind' fun _ pos' h =>
+    (flagsModifier pos'
+    |>.bind' fun flagOpt pos'' _ =>
+      (charOrError ')' pos'').commit.map fun _ =>.flags flagOpt
+    )
+    <|>
     (nonCapturing.opt pos'
     |>.bind' fun nonCapturing pos'' h' =>
       have : Rel.LT pos'' pos := Trans.trans h' h
