@@ -1175,4 +1175,30 @@ def issue_84 := re! "(a){2}"
 
 end Regressions
 
+namespace CaseInsensitive
+
+-- Tests for case-insensitive matching with (?i) flag
+def hello := re! "(?i)hello"
+#guard hello.test "HELLO"
+#guard hello.test "hello"
+#guard hello.test "HeLLo"
+
+-- Greek sigma case folding tests (Σ, σ, ς are all equivalent under case folding)
+def sigma_upper := re! "(?i)Σ"
+#guard sigma_upper.test "Σ"
+#guard sigma_upper.test "σ"
+#guard sigma_upper.test "ς"
+
+def sigma_lower := re! "(?i)σ"
+#guard sigma_lower.test "Σ"
+#guard sigma_lower.test "σ"
+#guard sigma_lower.test "ς"
+
+def sigma_final := re! "(?i)ς"
+#guard sigma_final.test "Σ"
+#guard sigma_final.test "σ"
+#guard sigma_final.test "ς"
+
+end CaseInsensitive
+
 end Regex.Test
