@@ -31,6 +31,8 @@ private def test (input : String) (expected : Ast) : Bool :=
 
 #guard test "(?i)a" (.concat (.flags true) (.char 'a'))
 #guard test "(?-i)a" (.concat (.flags false) (.char 'a'))
+#guard test "(?i:a)" (.group (.concat (.flags true) (.char 'a')))
+#guard test "(?-i:a)" (.group (.concat (.flags false) (.char 'a')))
 
 #guard test "^" (.anchor .start)
 #guard test "$" (.anchor .eos)
