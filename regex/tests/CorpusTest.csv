@@ -463,7 +463,7 @@ regression/i429-11,unsupported,
 regression/i429-12,unsupported,
 regression/i969,unsupported,
 regression/fowler-basic154-unanchored,ok,
-regression/word-boundary-interact-poorly-with-literal-optimizations,error,"expected '(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))' to compile, but it did not: unexpected character: :"
+regression/word-boundary-interact-poorly-with-literal-optimizations,ok,
 regression/impossible-branch,ok,
 regression/captures-wrong-order,ok,
 regression/negated-unicode-word-boundary-dfa-fail,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"

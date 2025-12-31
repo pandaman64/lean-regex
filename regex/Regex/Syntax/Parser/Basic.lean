@@ -229,13 +229,17 @@ def repetitionOp : Parser.LT s Error (Nat × Option Nat × Bool) :=
 def isFlag : Parser.LE s Error Bool :=
   (charOrError '?').weaken.mapConst true <|> pure false
 
-def nonCapturing : Parser.LE s Error Bool :=
-  (charOrError ':').weaken.mapConst true <|> pure false
-
-def flagsModifier : Parser.LE s Error (Option Bool) :=
-  ((charOrError 'i').weaken |>.mapConst (some true))
-  <|> ((charOrError '-' *> charOrError 'i').weaken |>.mapConst (some false))
-  <|> pure none
+def flagModifierToNonCapturing : Parser.LE s Error (Bool × Option Bool) := do
+  let flagOpt ← flagsModifier
+  let nonCapturing ← nonCapturing
+  pure (nonCapturing, flagOpt)
+where
+  nonCapturing : Parser.LE s Error Bool :=
+    (charOrError ':').weaken.mapConst true <|> pure false
+  flagsModifier : Parser.LE s Error (Option Bool) :=
+    ((charOrError 'i').weaken |>.mapConst (some true))
+    <|> ((charOrError '-' *> charOrError 'i').weaken |>.mapConst (some false))
+    <|> pure none
 
 /-
 The following definitions describe the recursive structure of the regex parser. We duplicate the
@@ -255,20 +259,17 @@ def group (pos : Pos s) : Result.LT pos Error Ast :=
     isFlag pos₁
     |>.bind' fun hasFlag pos₂ h₁ =>
       if hasFlag then
-        flagsModifier pos₂
-        |>.bind' fun flagOpt pos₃ h₂ =>
-          nonCapturing pos₃
-          |>.bind' fun nonCapturing pos₄ h₃ =>
-            have : Rel.LT pos₄ pos := Trans.trans (Trans.trans (Trans.trans h₃ h₂) h₁) h
-            if nonCapturing then
-              regex pos₄ |>.bind' fun inn pos₅ _ =>
-                (charOrError ')' pos₅).commit.map fun _ => match flagOpt with
-                  | .some ci => .group (.concat (.flags ci) inn)
-                  | .none => inn
-            else
+        flagModifierToNonCapturing pos₂
+        |>.bind' fun option pos₃ h₂ =>
+          have : Rel.LT pos₃ pos := Trans.trans (Trans.trans h₂ h₁) h
+          match option with
+          | (true, flagOpt) =>
+            regex pos₃ |>.bind' fun inn pos₄ _ =>
               (charOrError ')' pos₄).commit.map fun _ => match flagOpt with
-                | .some ci => .flags ci
-                | .none => .epsilon
+                | .some ci => .group (.concat (.flags ci) inn)
+                | .none => inn
+          | (false, .some ci) => (charOrError ')' pos₃).commit.map fun _ => .flags ci
+          | (false, .none) => Result.fatal (Error.unexpectedChar '?')
       else
         have : Rel.LT pos₂ pos := Trans.trans h₁ h
         regex pos₂ |>.bind' fun inn pos₃ _ =>
