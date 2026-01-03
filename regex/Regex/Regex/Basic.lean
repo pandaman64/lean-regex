@@ -81,14 +81,23 @@ def fromExpr (expr : Expr) : Regex :=
   { nfa := nfa, wf := Regex.NFA.compile_wf, optimizationInfo := optimizationInfo }
 
 /--
-Parses a regular expression string into a `Regex` structure.
+Parses a regular expression string into a `Regex` structure with options.
+* `s`: The regular expression string to parse
+* `options`: Parsing options
+* Returns: Either a compiled `Regex` or a parsing error
+-/
+def parseAux (s : String) (options : Regex.Syntax.Parser.ParseOption) : Except Regex.Syntax.Parser.Error Regex := do
+  let expr ← Regex.Syntax.Parser.parseAux s options
+  return Regex.fromExpr expr
+
+/--
+Parses a regular expression string into a `Regex` structure with default options.
 
 * `s`: The regular expression string to parse
 * Returns: Either a compiled `Regex` or a parsing error
 -/
-def parse (s : String) : Except Regex.Syntax.Parser.Error Regex := do
-  let expr ← Regex.Syntax.Parser.parse s
-  return Regex.fromExpr expr
+def parse (s : String) : Except Regex.Syntax.Parser.Error Regex :=
+  parseAux s {}
 
 /--
 Parses a regular expression string into a `Regex` structure, panicking on parse error.
