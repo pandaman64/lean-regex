@@ -16,11 +16,7 @@ theorem charToCaseInsensitive_tags (c : Char) : (charToCaseInsensitive c).tags =
   case isFalse =>
     simp only [Expr.tags]
   case isTrue =>
-    apply Array.foldl_induction (fun (_: ℕ) (x: Expr) => x.tags = ∅)
-    · rfl
-    · intro acc char h_acc
-      simp [Expr.tags]
-      rw [h_acc]
+    simp only [Expr.tags]
 
 theorem charToCaseInsensitive_disjoint (c : Char) : Expr.Disjoint (charToCaseInsensitive c) := by
   simp only [charToCaseInsensitive]
@@ -28,11 +24,7 @@ theorem charToCaseInsensitive_disjoint (c : Char) : Expr.Disjoint (charToCaseIns
   case isFalse =>
     simp only [Expr.Disjoint]
   case isTrue =>
-    apply Array.foldl_induction (fun (_: ℕ) (x: Expr) => x.Disjoint)
-    · simp [Expr.Disjoint]
-    · intro acc char h_acc
-      simp [Expr.Disjoint]
-      exact ((fun a => h_acc) ∘ fun a => c) c
+    simp only [Expr.Disjoint]
 
 end Regex.Syntax.Parser
 

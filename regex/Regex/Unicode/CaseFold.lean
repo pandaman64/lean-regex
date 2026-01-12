@@ -5,15 +5,15 @@ set_option autoImplicit false
 namespace Regex.Unicode
 
 @[specialize]
-private def binarySearch (c : UInt32) (keys : Array UInt32) (lo hi : Nat) : Nat :=
+private def binarySearch {α} [Inhabited α] (c : UInt32) (values : Array α) (f : α → UInt32) (lo hi : Nat) : Nat :=
   if lo >= hi then lo
   else
     let mid := (lo + hi) / 2
     if lo = mid then lo
-    else if c < keys[mid]! then
-      binarySearch c keys lo mid
+    else if c < f values[mid]! then
+      binarySearch c values f lo mid
     else
-      binarySearch c keys mid hi
+      binarySearch c values f mid hi
 termination_by hi - lo
 
 private def parseCaseFoldTable (s : String) : Array (UInt32 × UInt32) := Id.run do
@@ -44,9 +44,7 @@ private def caseFoldData : String := include_str "../../data/Simple_Case_Folding
 private def caseFoldTableThunk : Thunk (Array (UInt32 × UInt32)) :=
   Thunk.mk fun _ => parseCaseFoldTable caseFoldData
 
-private def caseFoldTable : Array (UInt32 × UInt32) := caseFoldTableThunk.get
-
-private def caseFoldKeys : Array UInt32 := caseFoldTable.map (·.1)
+def caseFoldTable : Array (UInt32 × UInt32) := caseFoldTableThunk.get
 
 def getCaseFoldChar (c : Char) : Char :=
   if c.val < 0x41 then c
@@ -54,29 +52,31 @@ def getCaseFoldChar (c : Char) : Char :=
     Char.ofNat (c.toNat + 0x20)
   else if c.val < 0x80 then c
   else
-    let keys := caseFoldKeys
-    if keys.isEmpty then c
+    let table := caseFoldTable
+    if table.isEmpty then c
     else
-      let idx := binarySearch c.val keys 0 keys.size
-      if h : idx < caseFoldTable.size then
-        let (src, tgt) := caseFoldTable[idx]
+      let idx := binarySearch c.val table (·.1) 0 table.size
+      if h : idx < table.size then
+        let (src, tgt) := table[idx]
         if src == c.val then
           Char.ofNat tgt.toNat
         else c
       else c
 
-private def buildCaseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) := Id.run do
-  let mut result : Std.HashMap UInt32 (Array UInt32) := {}
-  for (src, tgt) in caseFoldTable do
-    match result[tgt]? with
-    | some arr => result := result.insert tgt (arr.push src)
-    | none => result := result.insert tgt #[tgt, src]
-  return result
+def insertCaseFoldEquiv (result : Std.HashMap UInt32 (Array UInt32)) (pair : UInt32 × UInt32) :
+    Std.HashMap UInt32 (Array UInt32) :=
+  let (src, tgt) := pair
+  match result[tgt]? with
+  | some arr => result.insert tgt (arr.push src)
+  | none => result.insert tgt #[tgt, src]
+
+def buildCaseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) :=
+  caseFoldTable.toList.foldl insertCaseFoldEquiv {}
 
 private def caseFoldEquivTableThunk : Thunk (Std.HashMap UInt32 (Array UInt32)) :=
   Thunk.mk fun _ => buildCaseFoldEquivTable
 
-private def caseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) := caseFoldEquivTableThunk.get
+def caseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) := caseFoldEquivTableThunk.get
 
 def getCaseFoldEquivChars (c : Char) : Array Char :=
   let folded := getCaseFoldChar c
@@ -84,7 +84,7 @@ def getCaseFoldEquivChars (c : Char) : Array Char :=
   | some arr => arr.map fun u => Char.ofNat u.toNat
   | none =>
     if folded == c then
-      #[c]
+      #[folded]
     else
       #[folded, c]
 

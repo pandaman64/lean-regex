@@ -50,8 +50,8 @@ def charToCaseInsensitive (c : Char) : Expr :=
   let equivChars := Regex.Unicode.getCaseFoldEquivChars c
   if h : equivChars.size > 0 then
     let first := equivChars[0]'h
-    equivChars.extract (start := 1).foldl (init := Expr.char first) fun acc ch =>
-      .alternate acc (.char ch)
+    .classes (equivChars.extract (start := 1).foldl (init := .atom (.single first)) fun acc ch =>
+      .union acc (.atom (.single ch)))
   else
     .char c
 
