@@ -5,7 +5,7 @@ set_option autoImplicit false
 namespace Regex.Unicode
 
 @[specialize]
-private def binarySearch {α} [Inhabited α] (c : UInt32) (values : Array α) (f : α → UInt32) (lo hi : Nat) : Nat :=
+def binarySearch {α} [Inhabited α] (c : UInt32) (values : Array α) (f : α → UInt32) (lo hi : Nat) : Nat :=
   if lo >= hi then lo
   else
     let mid := (lo + hi) / 2
@@ -63,6 +63,16 @@ def getCaseFoldChar (c : Char) : Char :=
         else c
       else c
 
+namespace Internal
+
+def getCaseFoldChar_spec (c : Char) : Char :=
+  let table := caseFoldTable
+  let idx := binarySearch c.val table (·.1) 0 table.size
+  let (_, tgt) := table[idx]!
+  Char.ofNat tgt.toNat
+
+end Internal
+
 def insertCaseFoldEquiv (result : Std.HashMap UInt32 (Array UInt32)) (pair : UInt32 × UInt32) :
     Std.HashMap UInt32 (Array UInt32) :=
   let (src, tgt) := pair
@@ -73,7 +83,7 @@ def insertCaseFoldEquiv (result : Std.HashMap UInt32 (Array UInt32)) (pair : UIn
 def buildCaseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) :=
   caseFoldTable.toList.foldl insertCaseFoldEquiv {}
 
-private def caseFoldEquivTableThunk : Thunk (Std.HashMap UInt32 (Array UInt32)) :=
+def caseFoldEquivTableThunk : Thunk (Std.HashMap UInt32 (Array UInt32)) :=
   Thunk.mk fun _ => buildCaseFoldEquivTable
 
 def caseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) := caseFoldEquivTableThunk.get
@@ -82,10 +92,15 @@ def getCaseFoldEquivChars (c : Char) : Array Char :=
   let folded := getCaseFoldChar c
   match caseFoldEquivTable[folded.val]? with
   | some arr => arr.map fun u => Char.ofNat u.toNat
-  | none =>
-    if folded == c then
-      #[folded]
-    else
-      #[folded, c]
+  | none => #[folded]
+
+namespace Internal
+
+def getCaseFoldEquivChars_spec (c : Char) : Array Char :=
+  let folded := getCaseFoldChar_spec c
+  let arr := caseFoldEquivTable[folded.val]!
+  arr.map fun u => Char.ofNat u.toNat
+
+end Internal
 
 end Regex.Unicode
