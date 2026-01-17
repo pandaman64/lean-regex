@@ -21,8 +21,8 @@ def CaseFoldEquiv' (c₁ c₂ : Char) : Prop :=
 theorem char_mem_caseFoldEquivTable (c : Char) : c.val ∈ caseFoldEquivTable[(Internal.getCaseFoldChar_spec c).val]! := by
   unfold caseFoldEquivTable caseFoldEquivTableThunk
   dsimp [Thunk.get, Thunk.mk]
-  have h_mem_table := getCaseFoldChar_mem_table c
-  obtain ⟨arr, h_some, h_mem⟩ := buildCaseFoldEquivTable_correct c.val (Internal.getCaseFoldChar_spec c).val h_mem_table
+  have h_mem_table := getCaseFoldChar_pair_mem_table c
+  obtain ⟨arr, h_some, h_mem⟩ := buildCaseFoldEquivTable_complete c.val (Internal.getCaseFoldChar_spec c).val h_mem_table
   simp only [Std.HashMap.getElem!_eq_get!_getElem?, h_some, Option.get!_some]
   exact h_mem
 
@@ -53,7 +53,7 @@ theorem caseFoldTable_sound (u : UInt32) (tgt : Char) :
   have h_tgt_eq : Char.ofNat tgt.val.toNat = tgt := Char.ofNat_toNat tgt
   cases caseFoldEquivTable_mem_cases u tgt h_mem with
   | inl h_in_table =>
-    rw [getCaseFoldChar_of_table_entry u tgt.val h_in_table, h_tgt_eq]
+    rw [getCaseFoldChar_eq_of_mem u tgt.val h_in_table, h_tgt_eq]
   | inr h_u_eq_tgt =>
     subst h_u_eq_tgt
     have h_exists_src : ∃ src, (src, tgt.val) ∈ caseFoldTable.toList := by
@@ -65,7 +65,7 @@ theorem caseFoldTable_sound (u : UInt32) (tgt : Char) :
         exact (Array.not_mem_empty tgt.val h_mem).elim
       | some _ =>
         exact buildCaseFoldEquivTable_key_exists tgt.val (by simp [h_lookup])
-    rw [getCaseFoldChar_idempotent tgt.val h_exists_src, h_tgt_eq]
+    rw [getCaseFoldChar_fixed_of_is_target tgt.val h_exists_src, h_tgt_eq]
 
 theorem caseFoldEquivTable_valid (u : UInt32) (tgt : Char) :
     u ∈ caseFoldEquivTable[tgt.val]! → UInt32.isValidChar u := by
