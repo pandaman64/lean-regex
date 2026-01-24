@@ -190,6 +190,42 @@ theorem getCaseFoldChar_eq_of_mem (src tgt : UInt32) :
       exact this
     simp only [beq_iff_eq, h_idx_src, not_true_eq_false] at h
 
+/-- If getCaseFoldChar_spec c = tgt and c ≠ tgt, then (c.val, tgt.val) is in caseFoldTable. -/
+theorem getCaseFoldChar_spec_ne_implies_in_table (c tgt : Char)
+    (h_folds : Internal.getCaseFoldChar_spec c = tgt)
+    (h_ne : c ≠ tgt) :
+    (c.val, tgt.val) ∈ caseFoldTable.toList := by
+  unfold Internal.getCaseFoldChar_spec at h_folds
+  set idx := binarySearch c.val caseFoldTable (·.1) 0 caseFoldTable.size with h_idx_def
+  have h_idx_lt : idx < caseFoldTable.size :=
+    binarySearch_lt_size c.val caseFoldTable 0 caseFoldTable.size
+      caseFoldTable_nonempty (Nat.le_refl _)
+  have h_get_internal : caseFoldTable.get!Internal idx = caseFoldTable[idx]! := rfl
+  simp only [← h_idx_def, h_get_internal] at h_folds
+  split at h_folds
+  case isTrue h_src_eq =>
+    -- Binary search found c.val at idx, so (c.val, tgt.val) is in the table
+    have h_src : (caseFoldTable[idx]!).1 = c.val := by
+      simp only [beq_iff_eq] at h_src_eq
+      exact h_src_eq
+    have h_tgt_char : Char.ofNat (caseFoldTable[idx]!).2.toNat = tgt := h_folds
+    have h_tgt : (caseFoldTable[idx]!).2 = tgt.val := by
+      have h_valid := caseFoldTable_tgt_valid idx h_idx_lt
+      have h_eq := congrArg Char.val h_tgt_char
+      simp only [Char.ofNat, h_valid, dite_true] at h_eq
+      exact h_eq
+    have h_getElem!_eq : caseFoldTable[idx]! = caseFoldTable[idx] := getElem!_pos caseFoldTable idx h_idx_lt
+    have h_entry : caseFoldTable[idx] = (c.val, tgt.val) := by
+      rw [← h_getElem!_eq]
+      exact Prod.ext h_src h_tgt
+    rw [Array.mem_toList_iff, Array.mem_iff_getElem]
+    exact ⟨idx, h_idx_lt, h_entry⟩
+  case isFalse h_src_ne =>
+    -- Binary search did not find c.val, so c is returned unchanged
+    exfalso
+    have h_c_eq_tgt : c = tgt := h_folds
+    exact h_ne h_c_eq_tgt
+
 theorem getCaseFoldChar_fixed_of_is_target (tgt : UInt32) :
     (∃ src, (src, tgt) ∈ caseFoldTable.toList) →
     Internal.getCaseFoldChar_spec (Char.ofNat tgt.toNat) = Char.ofNat tgt.toNat := by

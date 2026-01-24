@@ -18,14 +18,6 @@ def CaseFoldEquiv (c₁ c₂ : Char) : Prop :=
 def CaseFoldEquiv' (c₁ c₂ : Char) : Prop :=
   Internal.getCaseFoldChar_spec c₁ = Internal.getCaseFoldChar_spec c₂
 
-theorem char_mem_caseFoldEquivTable (c : Char) : c.val ∈ caseFoldEquivTable[(Internal.getCaseFoldChar_spec c).val]! := by
-  unfold caseFoldEquivTable caseFoldEquivTableThunk
-  dsimp [Thunk.get, Thunk.mk]
-  have h_mem_table := getCaseFoldChar_pair_mem_table c
-  obtain ⟨arr, h_some, h_mem⟩ := buildCaseFoldEquivTable_complete c.val (Internal.getCaseFoldChar_spec c).val h_mem_table
-  simp only [Std.HashMap.getElem!_eq_get!_getElem?, h_some, Option.get!_some]
-  exact h_mem
-
 theorem buildCaseFoldEquivTable_soundness (u tgt : UInt32) :
     (∃ arr, buildCaseFoldEquivTable[tgt]? = some arr ∧ u ∈ arr) →
     ((u, tgt) ∈ caseFoldTable.toList ∨ u = tgt) := by
@@ -34,96 +26,139 @@ theorem buildCaseFoldEquivTable_soundness (u tgt : UInt32) :
   intro k
   exact Std.HashMap.getElem?_empty
 
-theorem caseFoldEquivTable_mem_cases (u : UInt32) (tgt : Char)
-    (h_mem : u ∈ caseFoldEquivTable[tgt.val]!) :
-    (u, tgt.val) ∈ caseFoldTable.toList ∨ u = tgt.val := by
-  simp only [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get,
-             Std.HashMap.getElem!_eq_get!_getElem?] at h_mem
-  cases h_lookup : buildCaseFoldEquivTable[tgt.val]? with
-  | none =>
-    simp only [h_lookup, Option.get!_none] at h_mem
-    exact (Array.not_mem_empty u h_mem).elim
-  | some arr =>
-    simp only [h_lookup, Option.get!_some] at h_mem
-    exact buildCaseFoldEquivTable_soundness u tgt.val ⟨arr, h_lookup, h_mem⟩
+theorem getCaseFoldChar_spec_idempotent (c : Char) :
+    Internal.getCaseFoldChar_spec (Internal.getCaseFoldChar_spec c) = Internal.getCaseFoldChar_spec c := by
+  let c' := Internal.getCaseFoldChar_spec c
+  if h : c' = c then
+    have h_eq : Internal.getCaseFoldChar_spec c = c := h
+    rw [h_eq]
+    exact Char.ext (congrArg Char.val h)
+  else
+    have h_in := getCaseFoldChar_spec_ne_implies_in_table c c' rfl (Ne.symm h)
+    have h_exists : ∃ src, (src, c'.val) ∈ caseFoldTable.toList :=
+      ⟨c.val, h_in⟩
+    have h_res := getCaseFoldChar_fixed_of_is_target c'.val h_exists
+    have h_char_eq : Char.ofNat c'.val.toNat = c' := by
+      simp [Char.ofNat]
+      simp [c'.valid]
+      exact Char.ext rfl
+    rw [h_char_eq] at h_res
+    exact h_res
 
-theorem caseFoldTable_sound (u : UInt32) (tgt : Char) :
-    u ∈ caseFoldEquivTable[tgt.val]! → Internal.getCaseFoldChar_spec (Char.ofNat u.toNat) = tgt := by
-  intro h_mem
-  have h_tgt_eq : Char.ofNat tgt.val.toNat = tgt := Char.ofNat_toNat tgt
-  cases caseFoldEquivTable_mem_cases u tgt h_mem with
-  | inl h_in_table =>
-    rw [getCaseFoldChar_eq_of_mem u tgt.val h_in_table, h_tgt_eq]
-  | inr h_u_eq_tgt =>
-    subst h_u_eq_tgt
-    have h_exists_src : ∃ src, (src, tgt.val) ∈ caseFoldTable.toList := by
-      simp only [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get,
-                 Std.HashMap.getElem!_eq_get!_getElem?] at h_mem
-      cases h_lookup : buildCaseFoldEquivTable[tgt.val]? with
-      | none =>
-        simp only [h_lookup, Option.get!_none] at h_mem
-        exact (Array.not_mem_empty tgt.val h_mem).elim
-      | some _ =>
-        exact buildCaseFoldEquivTable_key_exists tgt.val (by simp [h_lookup])
-    rw [getCaseFoldChar_fixed_of_is_target tgt.val h_exists_src, h_tgt_eq]
+theorem caseFoldEquivTable_mem_self
+    (k : UInt32) (arr : Array UInt32) :
+    caseFoldEquivTable[k]? = some arr → k ∈ arr := by
+  rw [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get, buildCaseFoldEquivTable]
+  generalize caseFoldTable.toList = l
+  suffices ∀ (m : Std.HashMap UInt32 (Array UInt32)),
+    (∀ (k' : UInt32) (arr' : Array UInt32), m[k']? = some arr' → k' ∈ arr') →
+    let res := l.foldl insertCaseFoldEquiv m
+    res[k]? = some arr → k ∈ arr by
+    apply this {} (fun _ _ h => by simp at h)
+  intro m h_inv
+  induction l generalizing m with
+  | nil =>
+    exact h_inv k arr
+  | cons pair tail ih =>
+    simp only [List.foldl_cons]
+    apply ih
+    intro k' arr' h_get
+    rcases pair with ⟨src, tgt⟩
+    dsimp [insertCaseFoldEquiv] at h_get
+    split at h_get <;> rename_i existing_arr h_found
+    · by_cases h_kt : k' = tgt
+      · subst h_kt
+        rw [Std.HashMap.getElem?_insert_self] at h_get
+        injection h_get with h_eq
+        subst h_eq
+        rw [Array.mem_push]
+        left
+        grind
+      · rw [Std.HashMap.getElem?_insert] at h_get
+        simp [Ne.symm h_kt] at h_get
+        exact h_inv k' arr' h_get
+    · by_cases h_kt : k' = tgt
+      · subst h_kt
+        rw [Std.HashMap.getElem?_insert_self] at h_get
+        injection h_get with h_eq
+        subst h_eq
+        simp
+      · rw [Std.HashMap.getElem?_insert] at h_get
+        simp [Ne.symm h_kt] at h_get
+        exact h_inv k' arr' h_get
 
-theorem caseFoldEquivTable_valid (u : UInt32) (tgt : Char) :
-    u ∈ caseFoldEquivTable[tgt.val]! → UInt32.isValidChar u := by
-  intro h_mem
-  cases caseFoldEquivTable_mem_cases u tgt h_mem with
-  | inl h_in_table =>
-    have h_in_array : (u, tgt.val) ∈ caseFoldTable := Array.mem_toList_iff.mp h_in_table
-    obtain ⟨i, hi, h_entry⟩ := Array.mem_iff_getElem.mp h_in_array
-    have h_i_bang : caseFoldTable[i]! = caseFoldTable[i] := getElem!_pos caseFoldTable i hi
-    have h_src_eq : (caseFoldTable[i]!).1 = u := by rw [h_i_bang, h_entry]
-    rw [← h_src_eq]
-    exact caseFoldTable_src_valid i hi
-  | inr h_u_eq_tgt =>
-    rw [h_u_eq_tgt]
-    exact tgt.valid
+theorem caseFoldEquivTable_none_imp_eq_fold
+    (c : Char) (u : Char)
+    (h_spec : Internal.getCaseFoldChar_spec c = u) :
+    caseFoldEquivTable[u.val]? = none → c = u := by
+  intro h_none
+  by_contra h_ne
+  have h_in := getCaseFoldChar_spec_ne_implies_in_table c u h_spec h_ne
+  have ⟨arr, h_found, h_mem⟩ := buildCaseFoldEquivTable_complete c.val u.val h_in
+  rw [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get] at h_none
+  rw [h_found] at h_none
+  contradiction
 
 theorem mem_getCaseFoldEquivChars_iff {c₁ c₂ : Char} :
-    c₂ ∈ Internal.getCaseFoldEquivChars_spec c₁ ↔ c₂.val ∈ caseFoldEquivTable[(Internal.getCaseFoldChar_spec c₁).val]! := by
-  simp only [Internal.getCaseFoldEquivChars_spec]
-  set folded := Internal.getCaseFoldChar_spec c₁ with h_folded
-  have h_c₁_mem : c₁.val ∈ caseFoldEquivTable[folded.val]! := char_mem_caseFoldEquivTable c₁
-  simp only [Std.HashMap.getElem!_eq_get!_getElem?] at h_c₁_mem ⊢
-  cases h_lookup : caseFoldEquivTable[folded.val]? with
-  | none =>
-    simp only [h_lookup, Option.get!_none] at h_c₁_mem
-    exact (Array.not_mem_empty c₁.val h_c₁_mem).elim
+    c₂ ∈ Internal.getCaseFoldEquivChars_spec c₁ ↔
+    Internal.getCaseFoldChar_spec c₂ = Internal.getCaseFoldChar_spec c₁ := by
+  dsimp [Internal.getCaseFoldEquivChars_spec]
+  let u₁ := Internal.getCaseFoldChar_spec c₁
+  let u₂ := Internal.getCaseFoldChar_spec c₂
+  match h_map : caseFoldEquivTable[u₁.val]? with
   | some arr =>
-    simp only [Option.get!_some]
     constructor
     · intro h_mem
-      simp only [Array.mem_map] at h_mem
-      obtain ⟨u, h_u_in_arr, h_u_eq⟩ := h_mem
-      have h_valid : UInt32.isValidChar u := caseFoldEquivTable_valid u folded (by
-        simp only [Std.HashMap.getElem!_eq_get!_getElem?, h_lookup, Option.get!_some]
-        exact h_u_in_arr)
-      have h_c₂_eq : c₂.val = u := by
+      rw [Array.mem_map] at h_mem
+      obtain ⟨u, h_u_in, h_u_eq⟩ := h_mem
+      have h_sound := buildCaseFoldEquivTable_soundness u u₁.val ⟨arr, h_map, h_u_in⟩
+      rcases h_sound with h_in_table | h_eq_val
+      · have h_fold := getCaseFoldChar_eq_of_mem u u₁.val h_in_table
+        rw [h_u_eq] at h_fold
+        change _ = Char.ofNat u₁.toNat at h_fold
+        rw [Char.ofNat_toNat] at h_fold
+        exact h_fold
+      · rw [h_eq_val] at h_u_eq
+        change Char.ofNat u₁.toNat = c₂ at h_u_eq
+        rw [Char.ofNat_toNat] at h_u_eq
         rw [← h_u_eq]
-        simp only [Char.ofNat, h_valid, dif_pos, Char.ofNatAux]
-        cases u; simp [UInt32.toNat]
-      rw [h_c₂_eq]
-      exact h_u_in_arr
+        exact getCaseFoldChar_spec_idempotent c₁
+    · intro h_eq
+      rw [Array.mem_map]
+      exists c₂.val
+      constructor
+      · by_cases h_ne : c₂ ≠ u₁
+        · have h_spec : Internal.getCaseFoldChar_spec c₂ = u₁ := h_eq
+          have h_in_table := getCaseFoldChar_spec_ne_implies_in_table c₂ u₁ h_spec h_ne
+          obtain ⟨arr', h_found, h_mem_arr⟩ := buildCaseFoldEquivTable_complete c₂.val u₁.val h_in_table
+          rw [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get] at h_map
+          rw [h_found] at h_map
+          injection h_map with h_arr_eq
+          subst h_arr_eq
+          exact h_mem_arr
+        · simp only [not_not] at h_ne
+          subst h_ne
+          exact caseFoldEquivTable_mem_self u₁.val arr h_map
+      · change Char.ofNat c₂.toNat = c₂
+        exact Char.ofNat_toNat c₂
+  | none =>
+    have h_c1_eq_u1 : c₁ = u₁ := caseFoldEquivTable_none_imp_eq_fold c₁ u₁ rfl h_map
+    constructor
     · intro h_mem
-      simp only [Array.mem_map]
-      refine ⟨c₂.val, h_mem, ?_⟩
-      exact Char.ofNat_toNat c₂
+      simp only [Array.mem_singleton] at h_mem
+      rw [h_mem, h_c1_eq_u1]
+    · intro h_eq
+      rw [h_c1_eq_u1] at h_eq
+      have h_none_u2 : caseFoldEquivTable[u₂.val]? = none := by
+        grind
+      have h_c2_eq_u2 : c₂ = u₂ := caseFoldEquivTable_none_imp_eq_fold c₂ u₂ rfl h_none_u2
+      rw [h_c2_eq_u2]
+      grind
 
 theorem CaseFoldEquiv_iff_CaseFoldEquiv' {c₁ c₂ : Char} : CaseFoldEquiv c₁ c₂ ↔ CaseFoldEquiv' c₁ c₂ := by
   simp only [CaseFoldEquiv, CaseFoldEquiv']
-  have h_c₂_id : Char.ofNat c₂.val.toNat = c₂ := Char.ofNat_toNat c₂
-  constructor
-  · intro h
-    rw [mem_getCaseFoldEquivChars_iff] at h
-    have h_sound := caseFoldTable_sound c₂.val (Internal.getCaseFoldChar_spec c₁) h
-    rw [h_c₂_id] at h_sound
-    exact h_sound.symm
-  · intro h
-    rw [mem_getCaseFoldEquivChars_iff, h]
-    exact char_mem_caseFoldEquivTable c₂
+  rw [mem_getCaseFoldEquivChars_iff]
+  tauto
 
 scoped infix:50 " ≃ " => CaseFoldEquiv
 
