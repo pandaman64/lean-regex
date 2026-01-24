@@ -143,7 +143,7 @@ theorem caseFoldTable_src_unique (i j : Nat) (hi : i < caseFoldTable.size) (hj :
 
 theorem getCaseFoldChar_eq_of_mem (src tgt : UInt32) :
     (src, tgt) ∈ caseFoldTable.toList →
-    Internal.getCaseFoldChar_spec (Char.ofNat src.toNat) = Char.ofNat tgt.toNat := by
+    getCaseFoldChar (Char.ofNat src.toNat) = Char.ofNat tgt.toNat := by
   intro h_mem
   have h_in_array : (src, tgt) ∈ caseFoldTable := Array.mem_toList_iff.mp h_mem
   obtain ⟨i, hi, h_entry⟩ := Array.mem_iff_getElem.mp h_in_array
@@ -165,7 +165,7 @@ theorem getCaseFoldChar_eq_of_mem (src tgt : UInt32) :
   have h_idx_lt : idx < caseFoldTable.size :=
     binarySearch_lt_size (Char.ofNat src.toNat).val caseFoldTable 0 caseFoldTable.size
       caseFoldTable_nonempty (Nat.le_refl _)
-  unfold Internal.getCaseFoldChar_spec
+  unfold getCaseFoldChar
   have h_get_internal : caseFoldTable.get!Internal idx = caseFoldTable[idx]! := rfl
   simp only [← h_idx_def, h_get_internal]
   split
@@ -190,12 +190,12 @@ theorem getCaseFoldChar_eq_of_mem (src tgt : UInt32) :
       exact this
     simp only [beq_iff_eq, h_idx_src, not_true_eq_false] at h
 
-/-- If getCaseFoldChar_spec c = tgt and c ≠ tgt, then (c.val, tgt.val) is in caseFoldTable. -/
-theorem getCaseFoldChar_spec_ne_implies_in_table (c tgt : Char)
-    (h_folds : Internal.getCaseFoldChar_spec c = tgt)
+/-- If getCaseFoldChar c = tgt and c ≠ tgt, then (c.val, tgt.val) is in caseFoldTable. -/
+theorem getCaseFoldChar_ne_implies_in_table (c tgt : Char)
+    (h_folds : getCaseFoldChar c = tgt)
     (h_ne : c ≠ tgt) :
     (c.val, tgt.val) ∈ caseFoldTable.toList := by
-  unfold Internal.getCaseFoldChar_spec at h_folds
+  unfold getCaseFoldChar at h_folds
   set idx := binarySearch c.val caseFoldTable (·.1) 0 caseFoldTable.size with h_idx_def
   have h_idx_lt : idx < caseFoldTable.size :=
     binarySearch_lt_size c.val caseFoldTable 0 caseFoldTable.size
@@ -228,7 +228,7 @@ theorem getCaseFoldChar_spec_ne_implies_in_table (c tgt : Char)
 
 theorem getCaseFoldChar_fixed_of_is_target (tgt : UInt32) :
     (∃ src, (src, tgt) ∈ caseFoldTable.toList) →
-    Internal.getCaseFoldChar_spec (Char.ofNat tgt.toNat) = Char.ofNat tgt.toNat := by
+    getCaseFoldChar (Char.ofNat tgt.toNat) = Char.ofNat tgt.toNat := by
   intro ⟨src, h_mem⟩
   have h_in_array : (src, tgt) ∈ caseFoldTable := Array.mem_toList_iff.mp h_mem
   obtain ⟨i, hi, h_entry⟩ := Array.mem_iff_getElem.mp h_in_array

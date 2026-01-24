@@ -47,33 +47,12 @@ private def caseFoldTableThunk : Thunk (Array (UInt32 × UInt32)) :=
 def caseFoldTable : Array (UInt32 × UInt32) := caseFoldTableThunk.get
 
 def getCaseFoldChar (c : Char) : Char :=
-  if c.val < 0x41 then c
-  else if c.val <= 0x5A then
-    Char.ofNat (c.toNat + 0x20)
-  else if c.val < 0x80 then c
-  else
-    let table := caseFoldTable
-    if table.isEmpty then c
-    else
-      let idx := binarySearch c.val table (·.1) 0 table.size
-      if h : idx < table.size then
-        let (src, tgt) := table[idx]
-        if src == c.val then
-          Char.ofNat tgt.toNat
-        else c
-      else c
-
-namespace Internal
-
-def getCaseFoldChar_spec (c : Char) : Char :=
   let table := caseFoldTable
   let idx := binarySearch c.val table (·.1) 0 table.size
   let (src, tgt) := table[idx]!
   if src == c.val then
       Char.ofNat tgt.toNat
     else c
-
-end Internal
 
 def insertCaseFoldEquiv (result : Std.HashMap UInt32 (Array UInt32)) (pair : UInt32 × UInt32) :
     Std.HashMap UInt32 (Array UInt32) :=
@@ -94,16 +73,6 @@ def getCaseFoldEquivChars (c : Char) : Array Char :=
   let folded := getCaseFoldChar c
   match caseFoldEquivTable[folded.val]? with
   | some arr => arr.map fun u => Char.ofNat u.toNat
-  | none => #[folded]
-
-namespace Internal
-
-def getCaseFoldEquivChars_spec (c : Char) : Array Char :=
-  let folded := getCaseFoldChar_spec c
-  match caseFoldEquivTable[folded.val]? with
-  | some arr => arr.map fun u => Char.ofNat u.toNat
   | none => #[c]
-
-end Internal
 
 end Regex.Unicode

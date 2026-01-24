@@ -13,10 +13,10 @@ namespace Regex.Unicode
 
 /-- Two characters are case-fold equivalent if one is in the case-fold equivalence class of the other. -/
 def CaseFoldEquiv (c₁ c₂ : Char) : Prop :=
-  c₂ ∈ Internal.getCaseFoldEquivChars_spec c₁
+  c₂ ∈ getCaseFoldEquivChars c₁
 
 def CaseFoldEquiv' (c₁ c₂ : Char) : Prop :=
-  Internal.getCaseFoldChar_spec c₁ = Internal.getCaseFoldChar_spec c₂
+  getCaseFoldChar c₁ = getCaseFoldChar c₂
 
 theorem buildCaseFoldEquivTable_soundness (u tgt : UInt32) :
     (∃ arr, buildCaseFoldEquivTable[tgt]? = some arr ∧ u ∈ arr) →
@@ -26,15 +26,15 @@ theorem buildCaseFoldEquivTable_soundness (u tgt : UInt32) :
   intro k
   exact Std.HashMap.getElem?_empty
 
-theorem getCaseFoldChar_spec_idempotent (c : Char) :
-    Internal.getCaseFoldChar_spec (Internal.getCaseFoldChar_spec c) = Internal.getCaseFoldChar_spec c := by
-  let c' := Internal.getCaseFoldChar_spec c
+theorem getCaseFoldChar_idempotent (c : Char) :
+    getCaseFoldChar (getCaseFoldChar c) = getCaseFoldChar c := by
+  let c' := getCaseFoldChar c
   if h : c' = c then
-    have h_eq : Internal.getCaseFoldChar_spec c = c := h
+    have h_eq : getCaseFoldChar c = c := h
     rw [h_eq]
     exact Char.ext (congrArg Char.val h)
   else
-    have h_in := getCaseFoldChar_spec_ne_implies_in_table c c' rfl (Ne.symm h)
+    have h_in := getCaseFoldChar_ne_implies_in_table c c' rfl (Ne.symm h)
     have h_exists : ∃ src, (src, c'.val) ∈ caseFoldTable.toList :=
       ⟨c.val, h_in⟩
     have h_res := getCaseFoldChar_fixed_of_is_target c'.val h_exists
@@ -89,22 +89,22 @@ theorem caseFoldEquivTable_mem_self
 
 theorem caseFoldEquivTable_none_imp_eq_fold
     (c : Char) (u : Char)
-    (h_spec : Internal.getCaseFoldChar_spec c = u) :
+    (h : getCaseFoldChar c = u) :
     caseFoldEquivTable[u.val]? = none → c = u := by
   intro h_none
   by_contra h_ne
-  have h_in := getCaseFoldChar_spec_ne_implies_in_table c u h_spec h_ne
+  have h_in := getCaseFoldChar_ne_implies_in_table c u h h_ne
   have ⟨arr, h_found, h_mem⟩ := buildCaseFoldEquivTable_complete c.val u.val h_in
   rw [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get] at h_none
   rw [h_found] at h_none
   contradiction
 
 theorem mem_getCaseFoldEquivChars_iff {c₁ c₂ : Char} :
-    c₂ ∈ Internal.getCaseFoldEquivChars_spec c₁ ↔
-    Internal.getCaseFoldChar_spec c₂ = Internal.getCaseFoldChar_spec c₁ := by
-  dsimp [Internal.getCaseFoldEquivChars_spec]
-  let u₁ := Internal.getCaseFoldChar_spec c₁
-  let u₂ := Internal.getCaseFoldChar_spec c₂
+    c₂ ∈ getCaseFoldEquivChars c₁ ↔
+    getCaseFoldChar c₂ = getCaseFoldChar c₁ := by
+  dsimp [getCaseFoldEquivChars]
+  let u₁ := getCaseFoldChar c₁
+  let u₂ := getCaseFoldChar c₂
   match h_map : caseFoldEquivTable[u₁.val]? with
   | some arr =>
     constructor
@@ -122,14 +122,14 @@ theorem mem_getCaseFoldEquivChars_iff {c₁ c₂ : Char} :
         change Char.ofNat u₁.toNat = c₂ at h_u_eq
         rw [Char.ofNat_toNat] at h_u_eq
         rw [← h_u_eq]
-        exact getCaseFoldChar_spec_idempotent c₁
+        exact getCaseFoldChar_idempotent c₁
     · intro h_eq
       rw [Array.mem_map]
       exists c₂.val
       constructor
       · by_cases h_ne : c₂ ≠ u₁
-        · have h_spec : Internal.getCaseFoldChar_spec c₂ = u₁ := h_eq
-          have h_in_table := getCaseFoldChar_spec_ne_implies_in_table c₂ u₁ h_spec h_ne
+        · have h : getCaseFoldChar c₂ = u₁ := h_eq
+          have h_in_table := getCaseFoldChar_ne_implies_in_table c₂ u₁ h h_ne
           obtain ⟨arr', h_found, h_mem_arr⟩ := buildCaseFoldEquivTable_complete c₂.val u₁.val h_in_table
           rw [caseFoldEquivTable, caseFoldEquivTableThunk, Thunk.get] at h_map
           rw [h_found] at h_map
