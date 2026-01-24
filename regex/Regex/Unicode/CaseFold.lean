@@ -68,8 +68,10 @@ namespace Internal
 def getCaseFoldChar_spec (c : Char) : Char :=
   let table := caseFoldTable
   let idx := binarySearch c.val table (·.1) 0 table.size
-  let (_, tgt) := table[idx]!
-  Char.ofNat tgt.toNat
+  let (src, tgt) := table[idx]!
+  if src == c.val then
+      Char.ofNat tgt.toNat
+    else c
 
 end Internal
 

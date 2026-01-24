@@ -164,10 +164,13 @@ theorem getCaseFoldChar_pair_mem_table (c : Char) :
   have h_char_val : (Char.ofNat (caseFoldTable[idx]!).2.toNat).val = (caseFoldTable[idx]!).2 := by
     rw [Char.ofNat, dif_pos h_tgt_valid]
     exact UInt32.toFin_inj.mp rfl
-  simp [← h_idx_def , h_char_val]
+  simp [← h_idx_def]
   have h_pair_eq : caseFoldTable[idx]! = (c.val, (caseFoldTable[idx]!).2) := Prod.ext h_key_eq rfl
-  rw [← h_pair_eq, h_getElem!_eq]
-  exact Array.getElem_mem h_idx_lt
+  split
+  all_goals
+    rw [h_char_val]
+    rw [← h_pair_eq]
+    exact Array.mem_of_getElem (id (Eq.symm h_getElem!_eq))
 
 theorem caseFoldTable_src_unique (i j : Nat) (hi : i < caseFoldTable.size) (hj : j < caseFoldTable.size)
     (h_eq : (caseFoldTable[i]!).1 = (caseFoldTable[j]!).1) : i = j := by
@@ -221,6 +224,12 @@ theorem getCaseFoldChar_eq_of_mem (src tgt : UInt32) :
   unfold Internal.getCaseFoldChar_spec
   have h_get_internal : caseFoldTable.get!Internal idx = caseFoldTable[idx]! := rfl
   simp only [← h_idx_def, h_get_internal, h_snd_eq]
+  split
+  case isTrue =>
+    simp
+  case isFalse h =>
+    rw [h_key_eq] at h
+    simp at h
 
 theorem getCaseFoldChar_fixed_of_is_target (tgt : UInt32) :
     (∃ src, (src, tgt) ∈ caseFoldTable.toList) →
