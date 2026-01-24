@@ -84,14 +84,33 @@ theorem caseFoldEquivTable_valid (u : UInt32) (tgt : Char) :
 
 theorem mem_getCaseFoldEquivChars_iff {c₁ c₂ : Char} :
     c₂ ∈ Internal.getCaseFoldEquivChars_spec c₁ ↔ c₂.val ∈ caseFoldEquivTable[(Internal.getCaseFoldChar_spec c₁).val]! := by
-  simp only [Internal.getCaseFoldEquivChars_spec, Array.mem_map]
-  constructor
-  · rintro ⟨u, h_mem, rfl⟩
-    have h_valid := caseFoldEquivTable_valid u (Internal.getCaseFoldChar_spec c₁) h_mem
-    simp only [Char.ofNat, dif_pos h_valid]
-    exact h_mem
-  · intro h_mem
-    exact ⟨c₂.val, h_mem, Char.ofNat_toNat c₂⟩
+  simp only [Internal.getCaseFoldEquivChars_spec]
+  set folded := Internal.getCaseFoldChar_spec c₁ with h_folded
+  have h_c₁_mem : c₁.val ∈ caseFoldEquivTable[folded.val]! := char_mem_caseFoldEquivTable c₁
+  simp only [Std.HashMap.getElem!_eq_get!_getElem?] at h_c₁_mem ⊢
+  cases h_lookup : caseFoldEquivTable[folded.val]? with
+  | none =>
+    simp only [h_lookup, Option.get!_none] at h_c₁_mem
+    exact (Array.not_mem_empty c₁.val h_c₁_mem).elim
+  | some arr =>
+    simp only [Option.get!_some]
+    constructor
+    · intro h_mem
+      simp only [Array.mem_map] at h_mem
+      obtain ⟨u, h_u_in_arr, h_u_eq⟩ := h_mem
+      have h_valid : UInt32.isValidChar u := caseFoldEquivTable_valid u folded (by
+        simp only [Std.HashMap.getElem!_eq_get!_getElem?, h_lookup, Option.get!_some]
+        exact h_u_in_arr)
+      have h_c₂_eq : c₂.val = u := by
+        rw [← h_u_eq]
+        simp only [Char.ofNat, h_valid, dif_pos, Char.ofNatAux]
+        cases u; simp [UInt32.toNat]
+      rw [h_c₂_eq]
+      exact h_u_in_arr
+    · intro h_mem
+      simp only [Array.mem_map]
+      refine ⟨c₂.val, h_mem, ?_⟩
+      exact Char.ofNat_toNat c₂
 
 theorem CaseFoldEquiv_iff_CaseFoldEquiv' {c₁ c₂ : Char} : CaseFoldEquiv c₁ c₂ ↔ CaseFoldEquiv' c₁ c₂ := by
   simp only [CaseFoldEquiv, CaseFoldEquiv']

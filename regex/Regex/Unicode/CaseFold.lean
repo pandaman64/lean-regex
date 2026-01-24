@@ -100,8 +100,9 @@ namespace Internal
 
 def getCaseFoldEquivChars_spec (c : Char) : Array Char :=
   let folded := getCaseFoldChar_spec c
-  let arr := caseFoldEquivTable[folded.val]!
-  arr.map fun u => Char.ofNat u.toNat
+  match caseFoldEquivTable[folded.val]? with
+  | some arr => arr.map fun u => Char.ofNat u.toNat
+  | none => #[c]
 
 end Internal
 
