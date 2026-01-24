@@ -9,22 +9,6 @@ open Regex.Unicode
 
 namespace Regex.Unicode
 
-/-!
-# Binary Search Properties for Case Folding
-
-This file proves properties of `getCaseFoldChar!`.
-
-## Key Assumptions
-
-We model `caseFoldTable` as an idealized table that contains an entry for EVERY valid
-Unicode character:
-- For characters that need case folding: `(c, folded_c)` where `folded_c ≠ c`
-- For characters already in folded form: `(c, c)` (identity mapping)
-
-This ensures that `binarySearch` always finds an exact match for any valid character,
-making `getCaseFoldChar!` well-defined for all inputs.
--/
-
 axiom caseFoldTable_sorted :
     ∀ i j : Nat, i < j → j < caseFoldTable.size →
     (caseFoldTable[i]!).1 < (caseFoldTable[j]!).1
@@ -36,9 +20,6 @@ axiom caseFoldTable_src_valid :
 
 axiom caseFoldTable_tgt_valid :
     ∀ i : Nat, i < caseFoldTable.size → UInt32.isValidChar (caseFoldTable[i]!).2
-
-axiom caseFoldTable_complete (c : UInt32) (hc : UInt32.isValidChar c) :
-    ∃ i : Nat, i < caseFoldTable.size ∧ (caseFoldTable[i]!).1 = c
 
 axiom caseFoldTable_idempotent (i : Nat) (hi : i < caseFoldTable.size) :
     ∃ j : Nat, j < caseFoldTable.size ∧
@@ -147,31 +128,6 @@ theorem binarySearch_lt_size (c : UInt32) (values : Array (UInt32 × UInt32))
     rw [h_bs]
     exact ih_right (by omega) h_hi_le_size
 
-theorem getCaseFoldChar_pair_mem_table (c : Char) :
-    (c.val, (Internal.getCaseFoldChar_spec c).val) ∈ caseFoldTable.toList := by
-  unfold Internal.getCaseFoldChar_spec
-  set idx := binarySearch c.val caseFoldTable (·.1) 0 caseFoldTable.size with h_idx_def
-  have h_sorted : ∀ i j, 0 ≤ i → i < j → j < caseFoldTable.size →
-      (caseFoldTable[i]!).1 < (caseFoldTable[j]!).1 :=
-    fun i j _ h_lt h_j_sz => caseFoldTable_sorted i j h_lt h_j_sz
-  have h_exists : ∃ i, 0 ≤ i ∧ i < caseFoldTable.size ∧ (caseFoldTable[i]!).1 = c.val :=
-    let ⟨i, h_lt, h_eq⟩ := caseFoldTable_complete c.val c.valid
-    ⟨i, Nat.zero_le _, h_lt, h_eq⟩
-  have h_idx_lt := binarySearch_lt_size c.val caseFoldTable 0 caseFoldTable.size caseFoldTable_nonempty (Nat.le_refl _)
-  have h_getElem!_eq : caseFoldTable[idx]! = caseFoldTable[idx] := getElem!_pos caseFoldTable idx h_idx_lt
-  have h_key_eq := binarySearch_fins_key c.val caseFoldTable (·.1) 0 caseFoldTable.size h_sorted h_exists
-  have h_tgt_valid := caseFoldTable_tgt_valid idx h_idx_lt
-  have h_char_val : (Char.ofNat (caseFoldTable[idx]!).2.toNat).val = (caseFoldTable[idx]!).2 := by
-    rw [Char.ofNat, dif_pos h_tgt_valid]
-    exact UInt32.toFin_inj.mp rfl
-  simp [← h_idx_def]
-  have h_pair_eq : caseFoldTable[idx]! = (c.val, (caseFoldTable[idx]!).2) := Prod.ext h_key_eq rfl
-  split
-  all_goals
-    rw [h_char_val]
-    rw [← h_pair_eq]
-    exact Array.mem_of_getElem (id (Eq.symm h_getElem!_eq))
-
 theorem caseFoldTable_src_unique (i j : Nat) (hi : i < caseFoldTable.size) (hj : j < caseFoldTable.size)
     (h_eq : (caseFoldTable[i]!).1 = (caseFoldTable[j]!).1) : i = j := by
   by_contra h_ne
@@ -206,30 +162,33 @@ theorem getCaseFoldChar_eq_of_mem (src tgt : UInt32) :
       (caseFoldTable[k]!).1 = (Char.ofNat src.toNat).val := by
     exact ⟨i, Nat.zero_le i, hi, by rw [h_getElem!_eq_i, h_entry, h_char_val]⟩
   set idx := binarySearch (Char.ofNat src.toNat).val caseFoldTable (·.1) 0 caseFoldTable.size with h_idx_def
-  have h_key_eq : (caseFoldTable[idx]!).1 = (Char.ofNat src.toNat).val :=
-    binarySearch_fins_key (Char.ofNat src.toNat).val caseFoldTable (·.1) 0 caseFoldTable.size
-      h_sorted h_exists
-  have h_key_eq' : (caseFoldTable[idx]!).1 = src := by rw [h_key_eq, h_char_val]
   have h_idx_lt : idx < caseFoldTable.size :=
     binarySearch_lt_size (Char.ofNat src.toNat).val caseFoldTable 0 caseFoldTable.size
       caseFoldTable_nonempty (Nat.le_refl _)
-  have h_idx_eq_i : idx = i := by
-    have h_src_eq : (caseFoldTable[i]!).1 = src := by rw [h_getElem!_eq_i, h_entry]
-    exact caseFoldTable_src_unique idx i h_idx_lt hi (by rw [h_key_eq', h_src_eq])
-  have h_idx_entry : caseFoldTable[idx]! = (src, tgt) := by
-    have h_getElem!_eq_idx : caseFoldTable[idx]! = caseFoldTable[idx] := getElem!_pos caseFoldTable idx h_idx_lt
-    rw [h_getElem!_eq_idx]
-    simp only [h_idx_eq_i, h_entry]
-  have h_snd_eq : (caseFoldTable[idx]!).2 = tgt := by rw [h_idx_entry]
   unfold Internal.getCaseFoldChar_spec
   have h_get_internal : caseFoldTable.get!Internal idx = caseFoldTable[idx]! := rfl
-  simp only [← h_idx_def, h_get_internal, h_snd_eq]
+  simp only [← h_idx_def, h_get_internal]
   split
-  case isTrue =>
-    simp
+  case isTrue h_src_eq =>
+    have h_idx_src : (caseFoldTable[idx]!).1 = (Char.ofNat src.toNat).val := by
+      have := binarySearch_fins_key (Char.ofNat src.toNat).val caseFoldTable (·.1) 0 caseFoldTable.size
+        (fun i j _ h_i_lt_j h_j_sz => caseFoldTable_sorted i j h_i_lt_j h_j_sz)
+        ⟨i, Nat.zero_le i, hi, by rw [h_getElem!_eq_i, h_entry, h_char_val]⟩
+      exact this
+    have h_idx_eq_i : idx = i := by
+      apply caseFoldTable_src_unique idx i h_idx_lt hi
+      rw [h_idx_src, h_char_val, h_getElem!_eq_i, h_entry]
+    have h_idx_tgt : (caseFoldTable[idx]!).2 = tgt := by
+      rw [h_idx_eq_i, h_getElem!_eq_i, h_entry]
+    simp only [h_idx_tgt]
   case isFalse h =>
-    rw [h_key_eq] at h
-    simp at h
+    exfalso
+    have h_idx_src : (caseFoldTable[idx]!).1 = (Char.ofNat src.toNat).val := by
+      have := binarySearch_fins_key (Char.ofNat src.toNat).val caseFoldTable (·.1) 0 caseFoldTable.size
+        (fun i j _ h_i_lt_j h_j_sz => caseFoldTable_sorted i j h_i_lt_j h_j_sz)
+        ⟨i, Nat.zero_le i, hi, by rw [h_getElem!_eq_i, h_entry, h_char_val]⟩
+      exact this
+    simp only [beq_iff_eq, h_idx_src, not_true_eq_false] at h
 
 theorem getCaseFoldChar_fixed_of_is_target (tgt : UInt32) :
     (∃ src, (src, tgt) ∈ caseFoldTable.toList) →
