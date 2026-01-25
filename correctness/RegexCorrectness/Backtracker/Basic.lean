@@ -15,28 +15,34 @@ variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed}
 
 theorem done (hn : nfa[state] = .done) : pushNext σ nfa wf startPos stack update state pos = stack := by
   rw! [pushNext, hn]
+  rfl
 
 theorem fail (hn : nfa[state] = .fail) : pushNext σ nfa wf startPos stack update state pos = stack := by
   rw! [pushNext, hn]
+  rfl
 
 theorem epsilon {state' : Nat} (hn : nfa[state] = .epsilon state') :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
+  rfl
 
 theorem split {state₁ state₂ : Nat} (hn : nfa[state] = .split state₁ state₂) :
   haveI isLt : state₁ < nfa.nodes.size ∧ state₂ < nfa.nodes.size := wf.inBounds' state hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state₁, isLt.1⟩, pos⟩ :: ⟨update, ⟨state₂, isLt.2⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
+  rfl
 
 theorem saveFin {offset : Nat} {state' : Fin nfa.nodes.size} (hn : nfa[state] = .save offset state') :
   pushNext σ nfa wf startPos stack update state pos = ⟨σ.write update offset pos.current, state', pos⟩ :: stack := by
   rw! [pushNext, hn]
+  rfl
 
 theorem save {offset state' : Nat} (hn : nfa[state] = .save offset state') :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
   pushNext σ nfa wf startPos stack update state pos = ⟨σ.write update offset pos.current, ⟨state', isLt⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
+  rfl
 
 theorem anchor_pos {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : Data.Anchor.test pos.current a) :
   haveI isLt : state' < nfa.nodes.size := wf.inBounds' state hn
