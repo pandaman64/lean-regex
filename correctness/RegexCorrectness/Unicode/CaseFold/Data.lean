@@ -7,7 +7,10 @@ set_option autoImplicit false
 /--
 Generic pair-wise decision procedure over `Fin n`.
 
-These are intended to be used with `native_decide` to verify the properties of `caseFoldRepresentatives.get` via the compiler (but not through the kernel).
+Intended usage: for concrete inputs, discharge goals of the form `checkAllPairs f = true` with `by native_decide`.
+This runs the Boolean search using native evaluation (fast for small tables), but relies on the compiler/runtime
+rather than kernel normalization. The resulting fact is then consumed by `checkAllPairs_spec` to obtain kernel-checked
+statements about `caseFoldRepresentatives.get`.
 -/
 def checkAllPairs {n : Nat} (f : Fin n → Fin n → Bool) : Bool :=
   let rec go₂ (i : Nat) (hi : i ≤ n) (j : Fin n) : Bool :=

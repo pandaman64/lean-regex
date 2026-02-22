@@ -136,6 +136,13 @@ The formal proofs provide strong guarantees about the correctness of our regular
 2. **Scope of Proven Properties.** We have focused on core matching properties such as the soundness and completeness. Not every function has been verified against every desirable property
 3. **Stack Safety.** While the core search logic is stack-safe, some preprocessing components (parsers and NFA compilers) use non-tail recursion. For exceptionally complex regular expressions, this could lead to stack overflow. If you encounter this, please report it as an issue
 
+#### Usage of `native_decide`
+
+The repository contains precomputed Unicode tables used for Unicode-aware matching. While the main algorithmic correctness
+proofs do **not** depend on `native_decide`, we use `native_decide` in a few isolated places to validate that these tables
+satisfy simple, concrete invariants (e.g. sortedness) via native evaluation. For example, see
+`correctness/RegexCorrectness/Unicode/CaseFold/Data.lean`.
+
 ## Contributing
 
 Contributions are welcome! Please start by creating an issue to discuss your proposed changes before submitting a Pull Request.
