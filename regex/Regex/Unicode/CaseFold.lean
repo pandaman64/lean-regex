@@ -49,7 +49,6 @@ where
 
 private def caseFoldData : String := include_str "../../data/Simple_Case_Folding.txt"
 
--- TODO: maybe representative table is a better name
 def caseFoldRepresentatives : Thunk (Array (Char × Char)) :=
   Thunk.mk fun _ => parseCaseFoldTable caseFoldData
 
