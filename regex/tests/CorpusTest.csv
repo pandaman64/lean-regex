@@ -46,8 +46,8 @@ crazy/float2,ok,
 crazy/float3,ok,
 crazy/float4,ok,
 crazy/float5,ok,
-crazy/email,error,"expected '(?i-u)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b' to compile, but it did not: unexpected character: ?"
-crazy/email-not,error,"expected '(?i-u)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b' to compile, but it did not: unexpected character: ?"
+crazy/email,error,"expected '(?i-u)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b' to compile, but it did not: unexpected character: -"
+crazy/email-not,error,"expected '(?i-u)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b' to compile, but it did not: unexpected character: -"
 crazy/email-big,ok,
 crazy/date1,unsupported,
 crazy/date2,unsupported,
@@ -132,13 +132,13 @@ empty/600,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }]
 empty/610,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"
 expensive/regression-many-repeat-no-stack-overflow,ok,
 expensive/backtrack-blow-visited-capacity,error,"expected '\pL{50}' to compile, but it did not: unexpected escaped character: p"
-flags/1,error,"expected '(?i)abc' to compile, but it did not: unexpected character: ?"
-flags/2,error,"expected '(?i)a(?-i)bc' to compile, but it did not: unexpected character: ?"
-flags/3,error,"expected '(?i)a(?-i)bc' to compile, but it did not: unexpected character: ?"
-flags/4,error,"expected '(?is)a.' to compile, but it did not: unexpected character: ?"
-flags/5,error,"expected '(?is)a.(?-is)a.' to compile, but it did not: unexpected character: ?"
-flags/6,error,"expected '(?is)a.(?-is)a.' to compile, but it did not: unexpected character: ?"
-flags/7,error,"expected '(?is)a.(?-is:a.)?' to compile, but it did not: unexpected character: ?"
+flags/1,ok,
+flags/2,ok,
+flags/3,ok,
+flags/4,error,"expected '(?is)a.' to compile, but it did not: unexpected character: s"
+flags/5,error,"expected '(?is)a.(?-is)a.' to compile, but it did not: unexpected character: s"
+flags/6,error,"expected '(?is)a.(?-is)a.' to compile, but it did not: unexpected character: s"
+flags/7,error,"expected '(?is)a.(?-is:a.)?' to compile, but it did not: unexpected character: s"
 flags/8,error,"expected '(?U)a+' to compile, but it did not: unexpected character: ?"
 flags/9,error,"expected '(?U)a+?' to compile, but it did not: unexpected character: ?"
 flags/10,error,"expected '(?U)(?-U)a+' to compile, but it did not: unexpected character: ?"
@@ -393,11 +393,11 @@ regression/invalid-regex-no-crash-100,ok,
 regression/invalid-regex-no-crash-200,ok,
 regression/invalid-regex-no-crash-300,ok,
 regression/invalid-regex-no-crash-400,ok,
-regression/unsorted-binary-search-100,error,"expected '(?i-u)[a_]+' to compile, but it did not: unexpected character: ?"
-regression/unsorted-binary-search-200,error,"expected '(?i-u)[A_]+' to compile, but it did not: unexpected character: ?"
-regression/unicode-case-lower-nocase-flag,error,"expected '(?i)\p{Ll}+' to compile, but it did not: unexpected character: ?"
-regression/negated-char-class-100,error,"expected '(?i)[^x]' to compile, but it did not: unexpected character: ?"
-regression/negated-char-class-200,error,"expected '(?i)[^x]' to compile, but it did not: unexpected character: ?"
+regression/unsorted-binary-search-100,error,"expected '(?i-u)[a_]+' to compile, but it did not: unexpected character: -"
+regression/unsorted-binary-search-200,error,"expected '(?i-u)[A_]+' to compile, but it did not: unexpected character: -"
+regression/unicode-case-lower-nocase-flag,error,"expected '(?i)\p{Ll}+' to compile, but it did not: unexpected escaped character: p"
+regression/negated-char-class-100,ok,
+regression/negated-char-class-200,error,"expected #[], got #[#[(some (0, 1))]]"
 regression/ascii-word-underscore,error,"expected '[[:word:]]' to compile, but it did not: unsupported character class"
 regression/captures-repeat,error,"expected '([a-f]){2}(?P<foo>[x-z])' to compile, but it did not: unexpected character: ?"
 regression/alt-in-alt-100,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }], got #[#[(some (0, 1))], #[(some (2, 2))], #[(some (2, 2))]]"
@@ -410,8 +410,8 @@ regression/word-boundary-ascii-no-capture,unsupported,
 regression/word-boundary-ascii-capture,unsupported,
 regression/partial-anchor,ok,
 regression/endl-or-word-boundary,error,"expected '(?m:$)|(?-u:\b)' to compile, but it did not: unexpected character: ?"
-regression/zero-or-end,error,"expected '(?i-u:\x00)|$' to compile, but it did not: unexpected character: ?"
-regression/y-or-endl,error,"expected '(?i-u:y)|(?m:$)' to compile, but it did not: unexpected character: ?"
+regression/zero-or-end,error,"expected '(?i-u:\x00)|$' to compile, but it did not: unexpected character: -"
+regression/y-or-endl,error,"expected '(?i-u:y)|(?m:$)' to compile, but it did not: unexpected character: -"
 regression/word-boundary-start-x,error,"expected '(?u:\b)^(?-u:X)' to compile, but it did not: unexpected character: ?"
 regression/word-boundary-ascii-start-x,error,"expected '(?-u:\b)^(?-u:X)' to compile, but it did not: unexpected character: ?"
 regression/end-not-word-boundary,unsupported,
@@ -429,7 +429,7 @@ regression/captures-after-dfa-premature-end-400,ok,
 regression/literal-panic,ok,
 regression/empty-flag-expr,error,"expected '(?:(?:(?x)))' to compile, but it did not: unexpected character: ?"
 regression/invalid-repetition,ok,
-regression/flags-are-unset,error,"expected '(?:(?i)foo)|Bar' to compile, but it did not: unexpected character: ?"
+regression/flags-are-unset,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }, { id := 0, spans := #[some { start := 4, end := 7 }] }, { id := 0, spans := #[some { start := 12, end := 15 }] }], got #[#[(some (0, 3))], #[(some (4, 7))], #[(some (8, 11))], #[(some (12, 15))]]"
 regression/empty-group-with-unicode,ok,
 regression/word-boundary-weird,ok,
 regression/word-boundary-weird-ascii,unsupported,
@@ -463,7 +463,7 @@ regression/i429-11,unsupported,
 regression/i429-12,unsupported,
 regression/i969,unsupported,
 regression/fowler-basic154-unanchored,ok,
-regression/word-boundary-interact-poorly-with-literal-optimizations,error,"expected '(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))' to compile, but it did not: unexpected character: ?"
+regression/word-boundary-interact-poorly-with-literal-optimizations,ok,
 regression/impossible-branch,ok,
 regression/captures-wrong-order,ok,
 regression/negated-unicode-word-boundary-dfa-fail,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"

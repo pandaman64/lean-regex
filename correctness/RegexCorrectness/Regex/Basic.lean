@@ -31,7 +31,7 @@ theorem of_fromExpr {e : Expr} (h : Expr.Disjoint (.group 0 e)) : IsSearchRegex 
 
 theorem of_parse {s : String} {re : Regex} (h : Regex.parse s = .ok re) :
   IsSearchRegex re := by
-  simp [Regex.parse, Regex.Syntax.Parser.parse] at h
+  simp [Regex.parse, Regex.parseAux, Regex.Syntax.Parser.parseAux] at h
   set parseResult := Regex.Syntax.Parser.parseAst s
   match h' : parseResult with
   | .ok ast =>
@@ -39,6 +39,7 @@ theorem of_parse {s : String} {re : Regex} (h : Regex.parse s = .ok re) :
     have ⟨e, eq⟩ := Regex.Syntax.Parser.Ast.toRegex_group_of_group ast
     have disj : Expr.Disjoint (.group 0 e) :=
       eq ▸ Regex.Syntax.Parser.Ast.toRegex_disjoint (.group ast)
+    simp only [Regex.Syntax.Parser.Ast.toRegex] at eq
     rw [←h, eq]
     exact of_fromExpr disj
   | .error e => simp [Except.map] at h

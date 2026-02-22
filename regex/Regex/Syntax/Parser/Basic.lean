@@ -226,8 +226,20 @@ def repetitionOp : Parser.LT s Error (Nat × Option Nat × Bool) :=
     let nonGreedy ← test '?'
     pure (min, max, !nonGreedy)
 
-def nonCapturing : Parser.LT s Error Unit :=
-  charOrError '?' *> charOrError ':' |>.mapConst ()
+def isFlag : Parser.LE s Error Bool :=
+  (charOrError '?').weaken.mapConst true <|> pure false
+
+def flagModifierToNonCapturing : Parser.LE s Error (Bool × Option Bool) := do
+  let flagOpt ← flagsModifier
+  let nonCapturing ← nonCapturing
+  pure (nonCapturing, flagOpt)
+where
+  nonCapturing : Parser.LE s Error Bool :=
+    (charOrError ':').weaken.mapConst true <|> pure false
+  flagsModifier : Parser.LE s Error (Option Bool) :=
+    ((charOrError 'i').weaken |>.mapConst (some true))
+    <|> ((charOrError '-' *> charOrError 'i').weaken |>.mapConst (some false))
+    <|> pure none
 
 /-
 The following definitions describe the recursive structure of the regex parser. We duplicate the
@@ -242,15 +254,26 @@ like types indexed by a `Nat` to work. I found it more convenient to just duplic
 mutual
 
 def group (pos : Pos s) : Result.LT pos Error Ast :=
-  (charOrError '(' pos)
-  |>.bind' fun _ pos' h =>
-    (nonCapturing.opt pos'
-    |>.bind' fun nonCapturing pos'' h' =>
-      have : Rel.LT pos'' pos := Trans.trans h' h
-      regex pos''
-      |>.bind' fun ast pos''' _ =>
-        let ast := if nonCapturing.isSome then ast else .group ast
-        Functor.mapConst ast (charOrError ')' pos''')).commit
+  charOrError '(' pos
+  |>.bind' fun _ pos₁ h =>
+    isFlag pos₁
+    |>.bind' fun hasFlag pos₂ h₁ =>
+      if hasFlag then
+        flagModifierToNonCapturing pos₂
+        |>.bind' fun option pos₃ h₂ =>
+          have : Rel.LT pos₃ pos := Trans.trans (Trans.trans h₂ h₁) h
+          match option with
+          | (true, flagOpt) =>
+            regex pos₃ |>.bind' fun inn pos₄ _ =>
+              (charOrError ')' pos₄).commit.map fun _ => match flagOpt with
+                | .some ci => .group (.concat (.flags ci) inn)
+                | .none => inn
+          | (false, .some ci) => (charOrError ')' pos₃).commit.map fun _ => .flags ci
+          | (false, .none) => Result.fatal (Error.unexpectedChar '?')
+      else
+        have : Rel.LT pos₂ pos := Trans.trans h₁ h
+        regex pos₂ |>.bind' fun inn pos₃ _ =>
+          (charOrError ')' pos₃).commit.map fun _ => .group inn
 termination_by (pos, 0)
 
 def primary (pos : Pos s) : Result.LT pos Error Ast :=
@@ -310,14 +333,19 @@ termination_by (pos, 100)
 
 end
 
+structure ParseOption where
+  caseInsensitive : Bool := false
+
 def parseAst (input : String) : Except Error Ast :=
   regex input.startPos
   |>.complete .expectedEof
   |>.toExcept
 
-def parse (input : String) : Except Error Expr :=
+def parseAux (input : String) (options : ParseOption) : Except Error Expr :=
   parseAst input
-  |>.map fun ast => Ast.toRegex (.group ast)
+  |>.map fun ast => Ast.toRegexAux (ToRegexState.mk 0 options.caseInsensitive) (.group ast) |>.2
+
+def parse (input : String) : Except Error Expr := parseAux input {}
 
 def parse! (input : String) : Expr :=
   match parse input with

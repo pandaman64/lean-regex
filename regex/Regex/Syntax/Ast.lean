@@ -1,6 +1,7 @@
 import Regex.Data.Anchor
 import Regex.Data.Classes
 import Regex.Data.Expr
+import Regex.Unicode.CaseFold
 
 set_option autoImplicit false
 
@@ -20,6 +21,7 @@ inductive Ast : Type where
   | classes : Classes → Ast
   | perl : PerlClass → Ast
   | dot : Ast
+  | flags : (caseInsensitive : Bool) → Ast
 deriving Inhabited, Repr, DecidableEq
 
 def repeatConcat (e : Expr) (n : Nat) : Expr :=
@@ -44,30 +46,48 @@ def applyRepetitions (min : Nat) (max : Option Nat) (greedy : Bool) (e : Expr) :
       let e' := if greedy then .alternate e .epsilon else .alternate .epsilon e
       .concat (repeatConcat e min) (repeatConcat e' (max - min))
 
-def Ast.toRegexAux (index : Nat) (ast : Ast) : Nat × Expr :=
-  match ast with
-  | .empty => (index, .empty)
-  | .epsilon => (index, .epsilon)
-  | .anchor a => (index, .anchor a)
-  | .char c => (index, .char c)
-  | .group h =>
-    let (index', r) := h.toRegexAux (index + 1)
-    (index', .group index r)
-  | .alternate h₁ h₂ =>
-    let (index₁, r₁) := h₁.toRegexAux index
-    let (index₂, r₂) := h₂.toRegexAux index₁
-    (index₂, .alternate r₁ r₂)
-  | .concat h₁ h₂ =>
-    let (index₁, r₁) := h₁.toRegexAux index
-    let (index₂, r₂) := h₂.toRegexAux index₁
-    (index₂, .concat r₁ r₂)
-  | .repeat min max greedy h =>
-    let (index', r) := h.toRegexAux index
-    (index', applyRepetitions min max greedy r)
-  | .classes cs => (index, .classes cs)
-  | .perl pc => (index, .classes (Classes.atom (Class.perl pc)))
-  | .dot => (index, .classes (.union (Classes.atom Class.beforeLineBreak) (Classes.atom Class.afterLineBreak)))
+def charToCaseInsensitive (c : Char) : Expr :=
+  let equivChars := Regex.Unicode.getCaseFoldEquivChars c
+  if h : equivChars.size > 0 then
+    let first := equivChars[0]'h
+    .classes (equivChars.extract (start := 1).foldl (init := .atom (.single first)) fun acc ch =>
+      .union acc (.atom (.single ch)))
+  else
+    .char c
 
-def Ast.toRegex (ast : Ast) : Expr := (ast.toRegexAux 0).2
+structure ToRegexState where
+  index : Nat
+  caseInsensitive : Bool := false
+
+def Ast.toRegexAux (state : ToRegexState) (ast : Ast) : ToRegexState × Expr :=
+  match ast with
+  | .empty => (state, .empty)
+  | .epsilon => (state, .epsilon)
+  | .anchor a => (state, .anchor a)
+  | .char c =>
+    if state.caseInsensitive then
+      (state, charToCaseInsensitive c)
+    else
+      (state, .char c)
+  | .group h =>
+    let (state', r) := h.toRegexAux { state with index := state.index + 1 }
+    ({ state' with caseInsensitive := state.caseInsensitive }, .group state.index r)
+  | .alternate h₁ h₂ =>
+    let (state₁, r₁) := h₁.toRegexAux state
+    let (state₂, r₂) := h₂.toRegexAux state₁
+    (state₂, .alternate r₁ r₂)
+  | .concat h₁ h₂ =>
+    let (state₁, r₁) := h₁.toRegexAux state
+    let (state₂, r₂) := h₂.toRegexAux state₁
+    (state₂, .concat r₁ r₂)
+  | .repeat min max greedy h =>
+    let (state', r) := h.toRegexAux state
+    (state', applyRepetitions min max greedy r)
+  | .classes cs => (state, .classes cs)
+  | .perl pc => (state, .classes (Classes.atom (Class.perl pc)))
+  | .dot => (state, .classes (.union (Classes.atom Class.beforeLineBreak) (Classes.atom Class.afterLineBreak)))
+  | .flags ci => ({ state with caseInsensitive := ci }, .epsilon)
+
+def Ast.toRegex (ast : Ast) : Expr := (ast.toRegexAux ⟨0, false⟩ ).2
 
 end Regex.Syntax.Parser

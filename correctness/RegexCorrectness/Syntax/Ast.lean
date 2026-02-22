@@ -7,6 +7,27 @@ set_option autoImplicit false
 
 open Regex.Data (Expr)
 
+namespace Regex.Syntax.Parser
+
+
+theorem charToCaseInsensitive_tags (c : Char) : (charToCaseInsensitive c).tags = ∅ := by
+  simp only [charToCaseInsensitive]
+  split
+  case isFalse =>
+    simp only [Expr.tags]
+  case isTrue =>
+    simp only [Expr.tags]
+
+theorem charToCaseInsensitive_disjoint (c : Char) : Expr.Disjoint (charToCaseInsensitive c) := by
+  simp only [charToCaseInsensitive]
+  split
+  case isFalse =>
+    simp only [Expr.Disjoint]
+  case isTrue =>
+    simp only [Expr.Disjoint]
+
+end Regex.Syntax.Parser
+
 namespace Regex.Syntax.Parser.Ast
 
 theorem subset_repeatConcat_go_tags (e : Expr) (accum : Expr) (n : Nat) (h : e.tags ⊆ accum.tags) :
@@ -36,9 +57,9 @@ theorem applyRepetitions_tags (min : Nat) (max : Option Nat) (greedy : Bool) (e 
   grind [Expr.tags, repeatConcat_tags]
 
 -- `Finset.ico index index'` corresponds to a half-open interval [index, index').
-theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
+theorem toRegexAux_tags {index index' : ToRegexState} {ast : Ast} {e : Expr}
   (h : ast.toRegexAux index = (index', e)) :
-  index ≤ index' ∧ e.tags ⊆ Finset.Ico index index' := by
+  index.index ≤ index'.index ∧ e.tags ⊆ Finset.Ico index.index index'.index := by
   fun_induction ast.toRegexAux index generalizing index' e
   next =>
     simp at h
@@ -49,35 +70,48 @@ theorem toRegexAux_tags {index index' : Nat} {ast : Ast} {e : Expr}
   next =>
     simp at h
     simp [←h, Expr.tags]
+  next state c _ =>
+    simp at h
+    simp [←h, charToCaseInsensitive_tags]
   next =>
     simp at h
     simp [←h, Expr.tags]
-  next index ast index'' e' h' ih =>
-    simp at h
+  next state ast state' e' h' ih =>
     have ⟨le, ih⟩ := ih h'
-    simp [←h, Expr.tags]
-    refine ⟨by omega, ?_⟩
-    apply Finset.insert_subset
-    . simp only [Finset.mem_Ico, le_refl, true_and]
-      omega
-    . exact Finset.Subset.trans ih (Finset.Ico_subset_Ico (by simp) (by simp))
-  next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
+    simp only at le ih
+    simp only [Prod.mk.injEq] at h
+    obtain ⟨h1, h2⟩ := h
+    subst h1 h2
+    simp only [Expr.tags]
+    constructor
+    · omega
+    · apply Finset.union_subset
+      · intro x hx
+        simp only [Finset.mem_singleton] at hx
+        simp only [Finset.mem_Ico]
+        omega
+      · calc e'.tags ⊆ Finset.Ico (state.index + 1) state'.index := ih
+          _ ⊆ Finset.Ico state.index state'.index := Finset.Ico_subset_Ico (by omega) (by omega)
+  next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
     simp [←h, Expr.tags]
     exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
-  next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
+  next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
     simp [←h, Expr.tags]
     exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
-  next index min max greedy ast index'' e' h' ih =>
+  next state min max greedy ast state' e' h' ih =>
     simp at h
     have ⟨le, ih⟩ := ih h'
     simp [←h, le]
     exact Finset.Subset.trans (applyRepetitions_tags min max greedy e') ih
+  next =>
+    simp at h
+    simp [←h, Expr.tags]
   next =>
     simp at h
     simp [←h, Expr.tags]
@@ -101,36 +135,38 @@ theorem applyRepetitions_disjoint (min : Nat) (max : Option Nat) (greedy : Bool)
   (applyRepetitions min max greedy e).Disjoint := by
   fun_cases applyRepetitions min max greedy e <;> grind [Expr.Disjoint, repeatConcat_disjoint]
 
-theorem toRegexAux_disjoint (index : Nat) (ast : Ast) : Expr.Disjoint (ast.toRegexAux index).2 := by
-  fun_induction ast.toRegexAux index
+theorem toRegexAux_disjoint (state : ToRegexState) (ast : Ast) : Expr.Disjoint (ast.toRegexAux state).2 := by
+  fun_induction ast.toRegexAux state
   next => simp [Expr.Disjoint]
   next => simp [Expr.Disjoint]
   next => simp [Expr.Disjoint]
+  next state c _ => exact charToCaseInsensitive_disjoint c
   next => simp [Expr.Disjoint]
-  next index ast index' e h ih =>
+  next state ast state' e h ih =>
     simp [h] at ih
     simp [Expr.Disjoint, ih]
     exact Finset.not_mem_subset (toRegexAux_tags h).2 (by simp)
-  next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
+  next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
     simp [Expr.Disjoint, ih₁, ih₂]
-  next index ast₁ ast₂ index₁ e₁ h₁ index₂ e₂ h₂ ih₁ ih₂ =>
+  next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
     simp [Expr.Disjoint, ih₁, ih₂]
-  next index min max greedy ast index' e h ih =>
+  next state min max greedy ast state' e h ih =>
     simp [h] at ih
     exact applyRepetitions_disjoint min max greedy e ih
   next => simp [Expr.Disjoint]
   next => simp [Expr.Disjoint]
   next => simp [Expr.Disjoint]
+  next => simp [Expr.Disjoint]
 
 theorem toRegex_disjoint (ast : Ast) : Expr.Disjoint ast.toRegex :=
-  toRegexAux_disjoint 0 ast
+  toRegexAux_disjoint ⟨ 0, false ⟩ ast
 
-theorem toRegexAux_group_of_group {ast : Ast} : (toRegexAux 0 (.group ast)).2 = .group 0 (toRegexAux 1 ast).2 :=
+theorem toRegexAux_group_of_group {ast : Ast} : (toRegexAux ⟨ 0, false ⟩ (.group ast)).2 = .group 0 (toRegexAux ⟨ 1, false ⟩ ast).2 :=
   rfl
 
 theorem toRegex_group_of_group (ast : Ast) : ∃ e, toRegex (.group ast) = .group 0 e :=
-  ⟨(toRegexAux 1 ast).2, by simp [toRegex, toRegexAux_group_of_group]⟩
+  ⟨(toRegexAux ⟨ 1, false ⟩ ast).2, by simp [toRegex, toRegexAux_group_of_group]⟩
 
 end Regex.Syntax.Parser.Ast

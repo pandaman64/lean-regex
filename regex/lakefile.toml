@@ -18,5 +18,9 @@ srcDir = "scripts"
 buildType = "relWithDebInfo"
 
 [[lean_exe]]
+name = "GenSimpleCaseFolding"
+srcDir = "scripts"
+
+[[lean_exe]]
 name = "CorpusTest"
 srcDir = "tests"
