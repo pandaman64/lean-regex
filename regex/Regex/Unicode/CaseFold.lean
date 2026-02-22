@@ -1,23 +1,30 @@
 import Std.Data.HashMap
+import Std.Tactic.Do
+
+open Std.Do
+
+set_option mvcgen.warning false
 
 set_option autoImplicit false
 
 namespace Regex.Unicode
 
 @[specialize]
-def binarySearch {α} [Inhabited α] (c : UInt32) (values : Array α) (f : α → UInt32) (lo hi : Nat) : Nat :=
-  if lo >= hi then lo
+def binarySearch {α} (c : Char) (values : Array α) (f : α → Char)
+  (lo : Nat := 0) (hi : Nat := values.size) (le : hi ≤ values.size := by grind) : Nat :=
+  if _ : lo ≥ hi then lo
   else
     let mid := (lo + hi) / 2
-    if lo = mid then lo
-    else if c < f values[mid]! then
-      binarySearch c values f lo mid
+    have hmid : mid < values.size := by grind
+    if c = f values[mid] then mid
+    else if c < f values[mid] then
+      binarySearch c values f lo mid (by grind)
     else
-      binarySearch c values f mid hi
+      binarySearch c values f (mid + 1) hi (by grind)
 termination_by hi - lo
 
-private def parseCaseFoldTable (s : String) : Array (UInt32 × UInt32) := Id.run do
-  let mut result : Array (UInt32 × UInt32) := #[]
+private def parseCaseFoldTable (s : String) : Array (Char × Char) := Id.run do
+  let mut result : Array (Char × Char) := #[]
   let lines := s.splitOn "\n"
   for line in lines do
     if line.isEmpty then continue
@@ -27,52 +34,65 @@ private def parseCaseFoldTable (s : String) : Array (UInt32 × UInt32) := Id.run
         result := result.push (src, tgt)
   return result
 where
-  parseHex (s : String) : Option UInt32 :=
+  parseHex (s : String) : Option Char := do
     let s := s.trimAscii.toString
     if s.isEmpty then none
     else
-      s.foldl (init := some (0 : UInt32)) fun acc c =>
+      let n ← s.foldl (init := some 0) fun acc c =>
         acc.bind fun n =>
           let d := if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
                    else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
                    else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
                    else none
-          d.map fun d => n * 16 + d.toUInt32
+          d.map fun d => n * 16 + d
+      if n.isValidChar then some (Char.ofNat n) else none
 
 private def caseFoldData : String := include_str "../../data/Simple_Case_Folding.txt"
 
-private def caseFoldTableThunk : Thunk (Array (UInt32 × UInt32)) :=
+def caseFoldRepresentatives : Thunk (Array (Char × Char)) :=
   Thunk.mk fun _ => parseCaseFoldTable caseFoldData
 
-def caseFoldTable : Array (UInt32 × UInt32) := caseFoldTableThunk.get
+def buildCaseFoldInvMap (representatives : Array (Char × Char)) : Std.HashMap Char (Array Char) := Id.run do
+  let mut table : Std.HashMap Char (Array Char) := {}
+  for p in representatives do
+    table := table.alter p.2 fun arr => (arr.getD #[]).push p.1
+  return table
 
-def getCaseFoldChar (c : Char) : Char :=
-  let table := caseFoldTable
-  let idx := binarySearch c.val table (·.1) 0 table.size
-  let (src, tgt) := table[idx]!
-  if src == c.val then
-      Char.ofNat tgt.toNat
-    else c
+@[grind .]
+theorem mem_buildCaseFoldInvMap_iff {c c' : Char} {rs : Array (Char × Char)} :
+  (∃ _ : c' ∈ buildCaseFoldInvMap rs, c ∈ (buildCaseFoldInvMap rs)[c']) ↔ (c, c') ∈ rs := by
+  generalize eq : buildCaseFoldInvMap rs = table
+  apply Id.of_wp_run_eq eq; clear eq
+  mvcgen invariants
+  · ⇓⟨cursor, table⟩ =>
+    ⌜(∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ cursor.prefix.toArray⌝
+  case vc1.step pref cur suff eq table inv => grind
+  case vc2.a.pre => simp
 
-def insertCaseFoldEquiv (result : Std.HashMap UInt32 (Array UInt32)) (pair : UInt32 × UInt32) :
-    Std.HashMap UInt32 (Array UInt32) :=
-  let (src, tgt) := pair
-  match result[tgt]? with
-  | some arr => result.insert tgt (arr.push src)
-  | none => result.insert tgt #[tgt, src]
+def caseFoldInvMap : Thunk (Std.HashMap Char (Array Char)) :=
+  Thunk.mk fun _ => buildCaseFoldInvMap caseFoldRepresentatives.get
 
-def buildCaseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) :=
-  caseFoldTable.toList.foldl insertCaseFoldEquiv {}
+theorem mem_caseFoldInvMap_iff {c c' : Char} :
+  (∃ _ : c' ∈ caseFoldInvMap.get, c ∈ caseFoldInvMap.get[c']) ↔ (c, c') ∈ caseFoldRepresentatives.get :=
+  mem_buildCaseFoldInvMap_iff
 
-def caseFoldEquivTableThunk : Thunk (Std.HashMap UInt32 (Array UInt32)) :=
-  Thunk.mk fun _ => buildCaseFoldEquivTable
+/--
+Returns the case-fold-equivalent characters for a given character.
 
-def caseFoldEquivTable : Std.HashMap UInt32 (Array UInt32) := caseFoldEquivTableThunk.get
-
-def getCaseFoldEquivChars (c : Char) : Array Char :=
-  let folded := getCaseFoldChar c
-  match caseFoldEquivTable[folded.val]? with
-  | some arr => arr.map fun u => Char.ofNat u.toNat
-  | none => #[c]
+The first return value corresponds to the representative character for the equivalence class,
+and the second return value corresponds to the remaining characters in the equivalence class.
+-/
+def getCaseFoldEquivChars (c : Char) : (Char × Array Char) :=
+  let table := caseFoldRepresentatives.get
+  let idx := binarySearch c table (·.1) 0 table.size (by grind)
+  if h : idx < table.size then
+    let p := table[idx]
+    if p.1 = c then
+      have : p.2 ∈ caseFoldInvMap.get := (mem_buildCaseFoldInvMap_iff.mpr (by grind : (p.1, p.2) ∈ table)).1
+      (p.2, caseFoldInvMap.get[p.2])
+    else
+      (c, caseFoldInvMap.get[c]?.getD #[])
+  else
+    (c, caseFoldInvMap.get[c]?.getD #[])
 
 end Regex.Unicode

@@ -47,13 +47,12 @@ def applyRepetitions (min : Nat) (max : Option Nat) (greedy : Bool) (e : Expr) :
       .concat (repeatConcat e min) (repeatConcat e' (max - min))
 
 def charToCaseInsensitive (c : Char) : Expr :=
-  let equivChars := Regex.Unicode.getCaseFoldEquivChars c
-  if h : equivChars.size > 0 then
-    let first := equivChars[0]'h
-    .classes (equivChars.extract (start := 1).foldl (init := .atom (.single first)) fun acc ch =>
+  let (rep, equivChars) := Regex.Unicode.getCaseFoldEquivChars c
+  if equivChars.size > 0 then
+    .classes (equivChars.foldl (init := .atom (.single rep)) fun acc ch =>
       .union acc (.atom (.single ch)))
   else
-    .char c
+    .char rep
 
 structure ToRegexState where
   index : Nat
