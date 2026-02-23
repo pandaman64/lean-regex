@@ -57,9 +57,8 @@ theorem mem_dense_of_lt (h : i < s.count) : s.dense[i] ∈ s := by
 
 theorem dense_inj (hi : i < s.count) (hj : j < s.count) (eq : s.dense[i] = s.dense[j]) :
   i = j := by
-  have : s.sparse[s.dense[i]] = s.sparse[s.dense[j]] := by rw [eq]
-  simp [s.sparse_dense i hi, s.sparse_dense j hj] at this
-  exact this
+  have : s.sparse[s.dense[i]] = s.sparse[s.dense[j]] := by grind
+  simpa [s.sparse_dense i hi, s.sparse_dense j hj]
 
 theorem dense_surj (h : j ∈ s) : ∃ i : Fin n, i < s.count ∧ s.dense[i] = j := by
   simp [mem] at h
