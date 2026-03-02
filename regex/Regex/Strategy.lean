@@ -1,8 +1,14 @@
-import Regex.NFA
+module
+
+public import Regex.NFA
+public import Regex.Data.String
 
 set_option autoImplicit false
 
 open String (Pos PosPlusOne)
+
+@[expose]
+public section
 
 namespace Regex
 
@@ -61,3 +67,5 @@ theorem HistoryStrategy.write_def {s update offset pos} :
   (HistoryStrategy s).write update offset pos = update.append [(offset, pos)] := rfl
 
 end Regex
+
+end
