@@ -1,3 +1,5 @@
+module
+
 import Regex.Regex.Utilities
 import Regex.Regex.Captures
 import Regex.Regex.Elab

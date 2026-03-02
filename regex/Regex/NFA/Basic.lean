@@ -195,6 +195,7 @@ theorem done_WellFormed : done.WellFormed :=
     | ⟨_ + 1, isLt⟩ => contradiction
   ⟨start_lt, inBounds⟩
 
+@[expose]
 instance decWellFormed (nfa : NFA) : Decidable nfa.WellFormed :=
   decidable_of_decidable_of_iff WellFormed.iff.symm
 

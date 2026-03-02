@@ -2,6 +2,9 @@ module
 
 public meta import Regex.Regex.Basic
 public meta import Lean.Elab.Tactic.ElabTerm
+public meta import Regex.NFA.Basic
+
+import Regex.NFA.Basic
 
 open Regex.Data (Anchor PerlClassKind PerlClass Class Classes)
 open Regex NFA Node
@@ -44,5 +47,9 @@ elab "re!" lit:str : term => do
   match Regex.parse lit.getString with
   | Except.ok re => return toExpr re
   | Except.error e => throwError s!"failed to parse regex: {e}"
+
+-- TODO: failing because the kernel is not able to reduce `decide nfa.WellFormed = true`.
+set_option pp.instances true in
+#eval re! "a+b*c?"
 
 end Regex.Elab
