@@ -1,8 +1,12 @@
-import Regex.Regex.Basic
+module
+
+public import Regex.Regex.Basic
 
 set_option autoImplicit false
 
 open String (Pos PosPlusOne Slice)
+
+public section
 
 namespace Regex
 
@@ -31,7 +35,7 @@ def CapturedGroups.get (self : CapturedGroups haystack) (index : Nat) : Option S
   if h : stop.isValid && start ≤ stop then
     have isStopPosValid : stop.isValid := by grind
     have isStartPosValid : start.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-    return ⟨haystack, start.asPos isStartPosValid, stop.asPos isStopPosValid, PosPlusOne.le_iff.mp (by grind)⟩
+    return ⟨haystack, start.asPos isStartPosValid, stop.asPos isStopPosValid, by simpa [PosPlusOne.asPos_def] using PosPlusOne.le_iff.mp (by grind)⟩
   else
     throw ()
 
@@ -147,3 +151,5 @@ Creates a new `Captures` iterator for a regex pattern and input string.
 -/
 def Regex.captures (regex : Regex) (s : String) : Captures s :=
   { regex := regex, currentPos := s.startPosPlusOne }
+
+end

@@ -1,5 +1,7 @@
-import Regex.Regex.Basic
-import Regex.Regex.Matches
-import Regex.Regex.Captures
-import Regex.Regex.Utilities
-import Regex.Regex.Elab
+module
+
+public import Regex.Regex.Basic
+public import Regex.Regex.Matches
+public import Regex.Regex.Captures
+public import Regex.Regex.Utilities
+public import Regex.Regex.Elab

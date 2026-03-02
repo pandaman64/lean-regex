@@ -1,9 +1,12 @@
-import Regex.Regex.Basic
-import Regex.Data.String
+module
+
+public import Regex.Regex.Basic
 
 set_option autoImplicit false
 
 open String (Pos.Raw Pos PosPlusOne Slice)
+
+public section
 
 namespace Regex
 
@@ -94,3 +97,5 @@ Creates a new `Matches` iterator for a regex pattern and input string.
 -/
 def Regex.matches (regex : Regex) (s : String) : Matches s :=
   { regex := regex, currentPos := s.startPosPlusOne }
+
+end

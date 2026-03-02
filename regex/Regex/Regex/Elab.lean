@@ -1,5 +1,7 @@
-import Regex.Regex.Basic
-import Lean
+module
+
+public meta import Regex.Regex.Basic
+public meta import Lean.Elab.Tactic.ElabTerm
 
 open Regex.Data (Anchor PerlClassKind PerlClass Class Classes)
 open Regex NFA Node
@@ -11,11 +13,11 @@ namespace Regex.Elab
 
 -- A term representing a proof of `prop` given by letting kernel decide `prop`
 -- using an `Decidable` instance `inst`.
-private def mkDecidableProof (prop : Expr) (inst : Expr) : Expr :=
+private meta def mkDecidableProof (prop : Expr) (inst : Expr) : Expr :=
   let refl := mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``true)
   mkApp3 (mkConst ``of_decide_eq_true) prop inst refl
 
-instance : ToExpr Regex where
+private meta instance : ToExpr Regex where
   toTypeExpr := mkConst ``Regex
   toExpr re :=
     let nfa := toExpr re.nfa

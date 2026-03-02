@@ -203,6 +203,9 @@ theorem isValid_iff_isValid (p : PosPlusOne s) : p.isValid ↔ p.offset.IsValid 
 def asPos (p : PosPlusOne s) (h : p.isValid) : Pos s :=
   ⟨p.offset, p.isValid_iff_isValid.mp h⟩
 
+@[simp, grind →]
+theorem asPos_def {p : PosPlusOne s} {h : p.isValid} : p.asPos h = ⟨p.offset, p.isValid_iff_isValid.mp h⟩ := (rfl)
+
 def lt (p₁ p₂ : PosPlusOne s) : Prop :=
   p₁.offset < p₂.offset
 
