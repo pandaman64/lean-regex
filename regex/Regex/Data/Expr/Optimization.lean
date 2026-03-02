@@ -1,10 +1,12 @@
-import Regex.Data.Expr.Basic
+module
+
+public import Regex.Data.Expr.Basic
 
 open Std
 
 namespace Regex.Data.Expr
 
-def nullOnly (expr : Expr) : Bool :=
+public def nullOnly (expr : Expr) : Bool :=
   match expr with
   | .empty | .epsilon | .anchor _ => true
   | .char _ | .classes _ => false
@@ -13,7 +15,7 @@ def nullOnly (expr : Expr) : Bool :=
   | .alternate e₁ e₂ => e₁.nullOnly && e₂.nullOnly
   | .star _ e => e.nullOnly
 
-def firstChars (maxSize : Nat) (expr : Expr) : Option (HashSet Char) := do
+public def firstChars (maxSize : Nat) (expr : Expr) : Option (HashSet Char) := do
   let cs ← match expr with
     | .empty | .epsilon | .anchor _ => .none
     | .char c => .some {c}

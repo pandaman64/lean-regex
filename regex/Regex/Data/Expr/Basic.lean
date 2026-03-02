@@ -1,12 +1,14 @@
-import Regex.Data.Anchor
-import Regex.Data.Classes
+module
+
+public import Regex.Data.Anchor
+public import Regex.Data.Classes
 
 namespace Regex.Data
 
 /--
 An inductive type that represents a regular expression.
 -/
-inductive Expr : Type where
+public inductive Expr : Type where
   | empty : Expr
   | epsilon : Expr
   | anchor : Anchor → Expr

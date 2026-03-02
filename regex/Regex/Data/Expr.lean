@@ -1,2 +1,4 @@
-import Regex.Data.Expr.Basic
-import Regex.Data.Expr.Optimization
+module
+
+public import Regex.Data.Expr.Basic
+public import Regex.Data.Expr.Optimization
