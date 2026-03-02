@@ -1,8 +1,12 @@
+module
+
 import Regex.Data.String
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.Data
 
@@ -118,3 +122,5 @@ end Regex.Data
 macro_rules | `(tactic| decreasing_trivial) => `(tactic|
   (with_reducible change (_ : Regex.Data.BVPos _) < _
    simp) <;> done)
+
+end
