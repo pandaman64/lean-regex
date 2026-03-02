@@ -1,8 +1,12 @@
-import Regex.Data.Anchor
-import Regex.Data.Classes
-import Lean
+module
+
+public import Regex.Data.Anchor
+public import Regex.Data.Classes
+public import Lean.ToExpr
 
 set_option autoImplicit false
+
+public section
 
 namespace Regex.NFA
 
@@ -28,6 +32,7 @@ def Node.isDone (n : Node) : Bool :=
 theorem Node.isDone_def {n : Node} : n.isDone = decide (n = .done) := by
   grind [isDone]
 
+@[expose]
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
   match n with
   | .done => True
@@ -48,55 +53,29 @@ theorem Node.inBounds.fail {size : Nat} : Node.fail.inBounds size := by
   simp [inBounds]
 
 @[simp]
-theorem Node.inBounds.epsilon {size next : Nat} (h : next < size) :
-  (Node.epsilon next).inBounds size := by
-  simp [inBounds, h]
+theorem Node.inBounds.epsilon_iff {size next : Nat} : (Node.epsilon next).inBounds size ↔ next < size := by
+  simp [inBounds]
 
 @[simp]
-theorem Node.inBounds.anchor {size next : Nat} {a : Regex.Data.Anchor} (h : next < size) :
-  (Node.anchor a next).inBounds size := by
-  simp [inBounds, h]
+theorem Node.inBounds.anchor_iff {size next : Nat} {a : Regex.Data.Anchor} : (Node.anchor a next).inBounds size ↔ next < size := by
+  simp [inBounds]
 
 @[simp]
-theorem Node.inBounds.char {size next : Nat} {c : Char} (h : next < size) :
-  (Node.char c next).inBounds size := by
-  simp [inBounds, h]
+theorem Node.inBounds.char_iff {size next : Nat} {c : Char} : (Node.char c next).inBounds size ↔ next < size := by
+  simp [inBounds]
 
 @[simp]
-theorem Node.inBounds.split {size next₁ next₂ : Nat} (h₁ : next₁ < size) (h₂ : next₂ < size) :
-  (Node.split next₁ next₂).inBounds size := by
-  simp [inBounds, h₁, h₂]
+theorem Node.inBounds.split_iff {size next₁ next₂ : Nat} :
+  (Node.split next₁ next₂).inBounds size ↔ next₁ < size ∧ next₂ < size := by
+  simp [inBounds]
 
 @[simp]
-theorem Node.inBounds.save {size offset next : Nat} (h : next < size) :
-  (Node.save offset next).inBounds size := by
-  simp [inBounds, h]
+theorem Node.inBounds.save_iff {size offset next : Nat} : (Node.save offset next).inBounds size ↔ next < size := by
+  simp [inBounds]
 
-theorem Node.lt_of_inBounds.epsilon {size next : Nat} (h : (Node.epsilon next).inBounds size) :
-  next < size := by
-  simp [inBounds] at h
-  exact h
-
-theorem Node.lt_of_inBounds.char {size next : Nat} {c : Char} (h : (Node.char c next).inBounds size) :
-  next < size := by
-  simp [inBounds] at h
-  exact h
-
-theorem Node.lt_of_inBounds.split {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
-  next₁ < size ∧ next₂ < size := by
-  simp [inBounds] at h
-  exact h
-
-theorem Node.lt_of_inBounds.split_left {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
-  next₁ < size := (Node.lt_of_inBounds.split h).left
-
-theorem Node.lt_of_inBounds.split_right {size next₁ next₂ : Nat} (h : (Node.split next₁ next₂).inBounds size) :
-  next₂ < size := (Node.lt_of_inBounds.split h).right
-
-theorem Node.lt_of_inBounds.save {size offset next : Nat} (h : (Node.save offset next).inBounds size) :
-  next < size := by
-  simp [inBounds] at h
-  exact h
+@[simp]
+theorem Node.inBounds.sparse_iff {size next : Nat} {cs : Regex.Data.Classes} : (Node.sparse cs next).inBounds size ↔ next < size := by
+  simp [inBounds]
 
 theorem Node.inBounds_of_inBounds_of_le {n : Node} {size size' : Nat} (h : n.inBounds size) (le : size ≤ size') :
   n.inBounds size' := by
@@ -111,14 +90,14 @@ theorem Node.inBounds_of_inBounds_of_le {n : Node} {size size' : Nat} (h : n.inB
 
 instance Node.decInBounds {node : Node} {size : Nat} : Decidable (node.inBounds size) :=
   match node with
-  | .done => isTrue trivial
-  | .fail => isTrue trivial
-  | .epsilon next => inferInstanceAs (Decidable (next < size))
-  | .anchor _ next => inferInstanceAs (Decidable (next < size))
-  | .char _ next => inferInstanceAs (Decidable (next < size))
-  | .sparse _ next => inferInstanceAs (Decidable (next < size))
-  | .split next₁ next₂ => inferInstanceAs (Decidable (next₁ < size ∧ next₂ < size))
-  | .save _ next => inferInstanceAs (Decidable (next < size))
+  | .done => isTrue Node.inBounds.done
+  | .fail => isTrue Node.inBounds.fail
+  | .epsilon _ => decidable_of_decidable_of_iff Node.inBounds.epsilon_iff.symm
+  | .anchor _ _ => decidable_of_decidable_of_iff Node.inBounds.anchor_iff.symm
+  | .char _ _ => decidable_of_decidable_of_iff Node.inBounds.char_iff.symm
+  | .sparse _ _ => decidable_of_decidable_of_iff Node.inBounds.sparse_iff.symm
+  | .split _ _ => decidable_of_decidable_of_iff Node.inBounds.split_iff.symm
+  | .save _ _ => decidable_of_decidable_of_iff Node.inBounds.save_iff.symm
 
 end Regex.NFA
 
@@ -139,6 +118,7 @@ instance : ToString NFA where
 
 namespace NFA
 
+@[expose]
 def done : NFA :=
   let nodes := #[NFA.Node.done]
   let start := 0
@@ -152,7 +132,7 @@ instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
 
 @[grind =]
 theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) :
-  nfa[i] = nfa.nodes[i] := rfl
+  nfa[i] = nfa.nodes[i] := (rfl)
 
 def maxTag (nfa : NFA) : Nat :=
   nfa.nodes.foldl (init := 0) fun accum node =>
@@ -216,14 +196,10 @@ theorem done_WellFormed : done.WellFormed :=
   ⟨start_lt, inBounds⟩
 
 instance decWellFormed (nfa : NFA) : Decidable nfa.WellFormed :=
-  let decStartLt := inferInstanceAs (Decidable (nfa.start < nfa.nodes.size))
-  match decStartLt with
-  | isTrue h₁ =>
-    let decInBounds := inferInstanceAs (Decidable (∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size))
-    match decInBounds with
-    | isTrue h₂ => isTrue ⟨h₁, h₂⟩
-    | isFalse h₂ => isFalse (fun h => absurd h.2 h₂)
-  | isFalse h₁ => isFalse (fun h => absurd h.1 h₁)
+  decidable_of_decidable_of_iff WellFormed.iff.symm
 
 end NFA
+
 end Regex
+
+end

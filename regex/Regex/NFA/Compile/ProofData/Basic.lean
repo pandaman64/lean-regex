@@ -1,9 +1,15 @@
-import Regex.NFA.Compile.Basic
-import Regex.NFA.Compile.Lemmas
+module
+
+public import Regex.NFA.Compile.Basic
+import all Regex.NFA.Compile.Basic
+public import Regex.NFA.Compile.Lemmas
 
 open Regex.Data (Classes Expr)
 
 set_option autoImplicit false
+
+@[expose]
+public section
 
 namespace Regex.NFA.Compile
 
@@ -24,7 +30,7 @@ theorem eq_result {result} (eq : NFA.pushRegex nfa next e = result) : result = n
   simp [←eq]
   rfl
 
-theorem eq : nfa.pushRegex next e = nfa' := rfl
+theorem eq : nfa.pushRegex next e = nfa' := (rfl)
 
 end ProofData
 
@@ -422,3 +428,5 @@ end Star
 end ProofData
 
 end Regex.NFA.Compile
+
+end

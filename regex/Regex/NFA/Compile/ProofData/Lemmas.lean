@@ -1,9 +1,14 @@
-import Regex.NFA.Compile.Basic
-import Regex.NFA.Compile.ProofData.Basic
+module
+
+public import Regex.NFA.Compile.Basic
+import all Regex.NFA.Compile.Basic
+public import Regex.NFA.Compile.ProofData.Basic
 
 open Regex.Data (Expr)
 
 set_option autoImplicit false
+
+public section
 
 namespace Regex.NFA
 
@@ -15,13 +20,9 @@ theorem pushNode_wf {nfa : NFA} {node}
   cases Nat.lt_or_ge i.val nfa.nodes.size with
   | inl lt =>
     have : (nfa.nodes.push node)[i.val] = nfa.nodes[i.val] := nfa.nodes.getElem_push_lt lt
-    simp [this]
-    apply Node.inBounds_of_inBounds_of_le (wf.inBounds ⟨i.val, lt⟩) (by omega)
-  | inr ge =>
-    have isLt := i.isLt
-    simp at isLt
-    have : i.val = nfa.nodes.size := by omega
-    simp [this, inBounds]
+    simp [this, ←NFA.get_eq_nodes_get]
+    exact Node.inBounds_of_inBounds_of_le (wf.inBounds ⟨i.val, lt⟩) (by grind)
+  | inr ge => grind
 
 open Compile.ProofData in
 theorem pushRegex_wf {nfa : NFA} {next e}
@@ -182,3 +183,5 @@ end Star
 end Compile.ProofData
 
 end Regex.NFA
+
+end

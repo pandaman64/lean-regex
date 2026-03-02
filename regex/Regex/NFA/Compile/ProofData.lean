@@ -1,2 +1,4 @@
-import Regex.NFA.Compile.ProofData.Basic
-import Regex.NFA.Compile.ProofData.Lemmas
+module
+
+public import Regex.NFA.Compile.ProofData.Basic
+public import Regex.NFA.Compile.ProofData.Lemmas
