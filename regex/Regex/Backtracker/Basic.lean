@@ -1,7 +1,9 @@
+module
+
 import Regex.Data.BitMatrix
 import Regex.Data.BVPos
-import Regex.NFA
-import Regex.Strategy
+public import Regex.NFA
+public import Regex.Strategy
 
 open String (Pos)
 open Regex.Data (BitMatrix BVPos)
@@ -82,7 +84,7 @@ where
       .none
   termination_by pos
 
-def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
+public def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
   captureNext (BufferStrategy s bufferSize) nfa wf p
 
 end Regex.Backtracker

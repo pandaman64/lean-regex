@@ -1,1 +1,3 @@
-import Regex.Backtracker.Basic
+module
+
+public import Regex.Backtracker.Basic
