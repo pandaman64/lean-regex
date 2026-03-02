@@ -1,6 +1,10 @@
-import Lean
+module
+
+public import Lean.ToExpr
 
 def Char.MAX_UNICODE : Nat := 0x10FFFF
+
+public section
 
 namespace Regex.Data
 
@@ -75,3 +79,5 @@ instance {c : Char} {cs : Classes} : Decidable (c ∈ cs) :=
   | false => isFalse (by simp [Classes.mem_mem, h])
 
 end Regex.Data
+
+end
