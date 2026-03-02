@@ -1,15 +1,22 @@
+module
+
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.Syntax.Parser.Combinators
 
 variable {s : String}
 
+@[expose]
 def Rel.LE (p' p : Pos s) : Prop := p ≤ p'
 
+@[expose]
 def Rel.LT (p' p : Pos s) : Prop := p < p'
 
+@[expose]
 def Rel (strict : Bool) : Pos s → Pos s → Prop :=
   if strict then Rel.LT else Rel.LE
 
@@ -64,3 +71,5 @@ instance {strict : Bool} : Trans (@Rel s strict) (@Rel s strict) (@Rel s strict)
 end Rel
 
 end Regex.Syntax.Parser.Combinators
+
+end

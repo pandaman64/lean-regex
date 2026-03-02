@@ -1,13 +1,17 @@
-import Regex.Syntax.Parser.Combinators.Parser
+module
+
+public import Regex.Syntax.Parser.Combinators.Parser
 import Regex.Data.String
 
 set_option autoImplicit false
 
 open String (Pos)
 
+public section
+
 namespace Regex.Syntax.Parser.Combinators
 
-@[macro_inline]
+@[expose, macro_inline]
 def anyCharOrElse {s ε} (unexpectedEof : ε) : Parser.LT s ε Char
   | pos =>
     if hn : pos ≠ s.endPos then
@@ -15,7 +19,7 @@ def anyCharOrElse {s ε} (unexpectedEof : ε) : Parser.LT s ε Char
     else
       .error unexpectedEof
 
-@[macro_inline]
+@[expose, macro_inline]
 def testP {s ε} (f : Char → Bool) : Parser.LE s ε Bool
   | pos =>
     if hn : pos ≠ s.endPos then
@@ -27,11 +31,11 @@ def testP {s ε} (f : Char → Bool) : Parser.LE s ε Bool
     else
       pure false
 
-@[macro_inline]
+@[expose, macro_inline]
 def test {s ε} (c : Char) : Parser.LE s ε Bool :=
   testP (· = c)
 
-@[macro_inline]
+@[expose, macro_inline]
 def charOrElse {s ε} (c : Char) (unexpectedEof : ε) (unexpectedChar : Char → ε) : Parser.LT s ε Char
   | pos =>
     anyCharOrElse unexpectedEof pos |>.guard fun c' =>
@@ -77,3 +81,5 @@ def foldlPos {s ε α β} (init : β) (f : β → α → β) (p : Parser.LT s ε
   foldlN init f p n |>.cast (by simp [NeZero.ne])
 
 end Regex.Syntax.Parser.Combinators
+
+end

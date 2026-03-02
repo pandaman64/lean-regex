@@ -1,6 +1,9 @@
+module
+
 import Regex.Syntax.Ast
 import Regex.Syntax.Parser.Combinators
-import Regex.Syntax.Parser.Error
+public import Regex.Syntax.Parser.Error
+public import Regex.Data.Expr
 
 set_option autoImplicit false
 
@@ -333,7 +336,7 @@ termination_by (pos, 100)
 
 end
 
-structure ParseOption where
+public structure ParseOption where
   caseInsensitive : Bool := false
 
 def parseAst (input : String) : Except Error Ast :=
@@ -341,13 +344,13 @@ def parseAst (input : String) : Except Error Ast :=
   |>.complete .expectedEof
   |>.toExcept
 
-def parseAux (input : String) (options : ParseOption) : Except Error Expr :=
+public def parseAux (input : String) (options : ParseOption) : Except Error Expr :=
   parseAst input
   |>.map fun ast => Ast.toRegexAux (ToRegexState.mk 0 options.caseInsensitive) (.group ast) |>.2
 
-def parse (input : String) : Except Error Expr := parseAux input {}
+public def parse (input : String) : Except Error Expr := parseAux input {}
 
-def parse! (input : String) : Expr :=
+public def parse! (input : String) : Expr :=
   match parse input with
   | .ok r => r
   | .error e => panic! s!"Failed to parse a regex: {e}"
