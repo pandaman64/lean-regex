@@ -1,4 +1,8 @@
-import Regex.Data.Nat
+module
+
+public import Regex.Data.Nat
+
+public section
 
 namespace BitVec
 
@@ -38,3 +42,5 @@ theorem sub_lt_popcount_set_not_getElem {w : Nat} (b : BitVec w) (i : Nat) (h : 
   omega
 
 end BitVec
+
+end
