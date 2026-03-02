@@ -1,9 +1,13 @@
-import Regex.Data.Expr
+module
+
+public import Regex.Data.Expr
 import Regex.Data.String
-import Lean.ToExpr
+public import Lean.ToExpr
 
 open Regex.Data (Expr)
 open String (Pos)
+
+public section
 
 namespace Regex
 
@@ -29,3 +33,5 @@ def findStart {s : String} (self : OptimizationInfo) (pos : Pos s) : Pos s :=
 end OptimizationInfo
 
 end Regex
+
+end
