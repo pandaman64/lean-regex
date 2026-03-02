@@ -44,7 +44,7 @@ instance : HasSubset (SparseSet n) where
   Subset := @Subset n
 
 @[inline]
-instance : Decidable (i ∈ s) :=
+public instance : Decidable (i ∈ s) :=
   match h : s.mem i with
   | true => isTrue h
   | false => isFalse (by simp [h])

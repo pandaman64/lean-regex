@@ -1,6 +1,8 @@
+module
+
 import Regex.Data.SparseSet
-import Regex.NFA.Basic
-import Regex.Strategy
+public import Regex.NFA.Basic
+public import Regex.Strategy
 
 set_option autoImplicit false
 
@@ -153,7 +155,7 @@ where
           go (p.next h) matched' stepped.2 ⟨current.states.clear, current.updates⟩
   termination_by p
 
-def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
+public def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
   captureNext (BufferStrategy s bufferSize) nfa wf p
 
 end Regex.VM

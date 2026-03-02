@@ -1,1 +1,3 @@
-import Regex.VM.Basic
+module
+
+public import Regex.VM.Basic
