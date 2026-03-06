@@ -1,2 +1,4 @@
-import RegexCorrectness.Backtracker.Traversal.Invariants
-import RegexCorrectness.Backtracker.Traversal.Lemmas
+module
+
+import all RegexCorrectness.Backtracker.Traversal.Invariants
+import all RegexCorrectness.Backtracker.Traversal.Lemmas

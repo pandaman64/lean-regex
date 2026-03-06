@@ -1,4 +1,6 @@
-import RegexCorrectness.Backtracker.Traversal.Invariants
+module
+
+import all RegexCorrectness.Backtracker.Traversal.Invariants
 
 set_option autoImplicit false
 

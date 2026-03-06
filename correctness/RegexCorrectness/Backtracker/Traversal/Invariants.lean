@@ -1,7 +1,9 @@
-import Regex.Strategy
+module
+
+import all Regex.Strategy
 import RegexCorrectness.Data.BVPos
-import RegexCorrectness.Backtracker.Basic
-import RegexCorrectness.Backtracker.Path
+import all RegexCorrectness.Backtracker.Basic
+import all RegexCorrectness.Backtracker.Path
 
 set_option autoImplicit false
 

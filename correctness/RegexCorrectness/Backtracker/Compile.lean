@@ -1,5 +1,7 @@
+module
+
 import RegexCorrectness.Data.BVPos
-import RegexCorrectness.Backtracker.Traversal
+import all RegexCorrectness.Backtracker.Traversal
 import RegexCorrectness.NFA.Semantics
 
 set_option autoImplicit false
