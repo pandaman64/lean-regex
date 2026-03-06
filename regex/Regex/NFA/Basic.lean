@@ -124,6 +124,7 @@ def done : NFA :=
   let start := 0
   ⟨nodes, start⟩
 
+@[expose]
 def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
   nfa.nodes[i]
 
@@ -183,21 +184,10 @@ theorem WellFormed.inBounds' {nfa : NFA} {node : NFA.Node} (wf : nfa.WellFormed)
   rw [←hn]
   exact wf.inBounds i
 
-theorem done_WellFormed : done.WellFormed :=
-  have start_lt : 0 < done.nodes.size := by
-    simp [done]
-  have inBounds (i : Fin done.nodes.size) : done[i].inBounds done.nodes.size := by
-    match i with
-    | ⟨0, isLt⟩ =>
-      simp [done, Node.inBounds]
-      split <;> try contradiction
-      trivial
-    | ⟨_ + 1, isLt⟩ => contradiction
-  ⟨start_lt, inBounds⟩
-
-@[expose]
 instance decWellFormed (nfa : NFA) : Decidable nfa.WellFormed :=
   decidable_of_decidable_of_iff WellFormed.iff.symm
+
+theorem done_WellFormed : done.WellFormed := by decide
 
 end NFA
 
