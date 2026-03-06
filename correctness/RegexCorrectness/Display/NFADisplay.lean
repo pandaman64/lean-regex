@@ -1,11 +1,15 @@
-import ProofWidgets.Component.PenroseDiagram
-import ProofWidgets.Component.HtmlDisplay
+module
+
+meta import ProofWidgets.Component.PenroseDiagram
+meta import ProofWidgets.Component.HtmlDisplay
 import Regex.Regex
 import Regex.Data.Anchor
 import Regex.Data.Classes
 import Regex.Syntax.Parser
 
 open Lean Meta ProofWidgets Jsx Regex.Syntax.Parser
+
+meta section
 
 namespace RegexCorrectness.Display.NFADisplay
 
@@ -87,10 +91,10 @@ Let FALSE := False()
         sub := sub ++ labelNode i "fail"
     | .anchor a next =>
         sub := sub ++ labelNode i s!"anchor {next}"
-        sub := sub ++ createTransition i next s!"{Anchor.toString a}"
+        sub := sub ++ createTransition i next s!"{reprStr a}"
     | .sparse cs next =>
         sub := sub ++ labelNode i s!"sparse {next}"
-        sub := sub ++ createTransition i next s!"{Classes.toString cs}"
+        sub := sub ++ createTransition i next s!"{reprStr cs}"
 
   return sub
 
@@ -124,3 +128,5 @@ def sampleRegex : Regex :=
 -- Place your cursor at the end of the following line to see the NFA diagram
 open RegexCorrectness.Display.NFADisplay
 #html mkNFADiagram sampleRegex
+
+end
