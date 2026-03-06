@@ -1,11 +1,16 @@
-import Regex.Regex.OptimizationInfo
-import RegexCorrectness.Data.Expr.Semantics
+module
+
+import all Regex.Regex.OptimizationInfo
+public import Regex.Regex.OptimizationInfo
+public import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.Data.Expr.Optimization
 import RegexCorrectness.Data.String
 
 open Regex.Data (Expr CaptureGroups)
 open String (Pos)
 open Std
+
+public section
 
 namespace Regex.OptimizationInfo
 
@@ -29,3 +34,5 @@ theorem findStart_completeness {s : String} {pos pos' pos'' : Pos s} {opt : Opti
   next => exact Nat.not_lt_of_ge ge
 
 end Regex.OptimizationInfo
+
+end

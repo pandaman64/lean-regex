@@ -1,4 +1,6 @@
-import RegexCorrectness.Regex.Basic
-import RegexCorrectness.Regex.Matches
-import RegexCorrectness.Regex.Captures
-import RegexCorrectness.Regex.Utilities
+module
+
+public import RegexCorrectness.Regex.Basic
+public import RegexCorrectness.Regex.Matches
+public import RegexCorrectness.Regex.Captures
+public import RegexCorrectness.Regex.Utilities

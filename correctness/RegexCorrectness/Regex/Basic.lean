@@ -1,5 +1,15 @@
-import Regex.Regex
-import RegexCorrectness.Data.Expr.Semantics
+module
+
+import all Regex.Syntax.Ast
+import all Regex.Syntax.Parser.Basic
+import all Regex.Backtracker.Basic
+import all Regex.VM.Basic
+import all Regex.Regex.Basic
+public import Regex.Regex
+
+import all RegexCorrectness.Strategy.Materialize.Basic
+public import RegexCorrectness.Strategy.Materialize.Basic
+public import RegexCorrectness.Data.Expr.Semantics
 import RegexCorrectness.NFA.Compile
 import RegexCorrectness.Syntax.Ast
 import RegexCorrectness.Backtracker
@@ -12,8 +22,11 @@ open Regex.Data (Expr)
 open String (Pos)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
+public section
+
 namespace Regex
 
+@[expose]
 def IsSearchRegex (re : Regex) : Prop :=
   ∃ e : Expr,
     re.nfa = NFA.compile (.group 0 e) ∧
@@ -144,3 +157,5 @@ theorem searchNext_some {slice} (h : re.searchNext pos = .some slice) (isr : IsS
 end IsSearchRegex
 
 end Regex
+
+end

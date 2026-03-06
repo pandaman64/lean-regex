@@ -1,4 +1,6 @@
-import RegexCorrectness.NFA
-import RegexCorrectness.VM
-import RegexCorrectness.Regex
-import RegexCorrectness.Unicode.CaseFold
+module
+
+public import RegexCorrectness.NFA
+public import RegexCorrectness.VM
+public import RegexCorrectness.Regex
+public import RegexCorrectness.Unicode.CaseFold
