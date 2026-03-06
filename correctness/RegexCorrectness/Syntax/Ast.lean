@@ -1,5 +1,8 @@
-import Regex.Syntax.Ast
-import RegexCorrectness.Data.Expr.Semantics.Separation
+module
+
+import all Regex.Syntax.Ast
+public import Regex.Syntax.Ast
+public import RegexCorrectness.Data.Expr.Semantics.Separation
 import Mathlib.Order.Interval.Finset.Basic
 import Mathlib.Order.Interval.Finset.Nat
 
@@ -8,7 +11,6 @@ set_option autoImplicit false
 open Regex.Data (Expr)
 
 namespace Regex.Syntax.Parser
-
 
 theorem charToCaseInsensitive_tags (c : Char) : (charToCaseInsensitive c).tags = ∅ := by
   simp only [charToCaseInsensitive]
@@ -160,13 +162,13 @@ theorem toRegexAux_disjoint (state : ToRegexState) (ast : Ast) : Expr.Disjoint (
   next => simp [Expr.Disjoint]
   next => simp [Expr.Disjoint]
 
-theorem toRegex_disjoint (ast : Ast) : Expr.Disjoint ast.toRegex :=
+public theorem toRegex_disjoint (ast : Ast) : Expr.Disjoint ast.toRegex :=
   toRegexAux_disjoint ⟨ 0, false ⟩ ast
 
 theorem toRegexAux_group_of_group {ast : Ast} : (toRegexAux ⟨ 0, false ⟩ (.group ast)).2 = .group 0 (toRegexAux ⟨ 1, false ⟩ ast).2 :=
   rfl
 
-theorem toRegex_group_of_group (ast : Ast) : ∃ e, toRegex (.group ast) = .group 0 e :=
+public theorem toRegex_group_of_group (ast : Ast) : ∃ e, toRegex (.group ast) = .group 0 e :=
   ⟨(toRegexAux ⟨ 1, false ⟩ ast).2, by simp [toRegex, toRegexAux_group_of_group]⟩
 
 end Regex.Syntax.Parser.Ast
