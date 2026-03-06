@@ -51,7 +51,7 @@ where
 
 private def caseFoldData : String := include_str "../../data/Simple_Case_Folding.txt"
 
-def caseFoldRepresentatives : Thunk (Array (Char × Char)) :=
+public def caseFoldRepresentatives : Thunk (Array (Char × Char)) :=
   Thunk.mk fun _ => parseCaseFoldTable caseFoldData
 
 def buildCaseFoldInvMap (representatives : Array (Char × Char)) : Std.HashMap Char (Array Char) := Id.run do

@@ -1,1 +1,3 @@
-import RegexCorrectness.Unicode.CaseFold.Equivalence
+module
+
+public import RegexCorrectness.Unicode.CaseFold.Equivalence

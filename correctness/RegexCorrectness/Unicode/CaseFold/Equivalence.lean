@@ -1,5 +1,9 @@
-import RegexCorrectness.Unicode.CaseFold.BinarySearch
-import RegexCorrectness.Unicode.CaseFold.Data
+module
+
+import all Regex.Unicode.CaseFold
+public import Regex.Unicode.CaseFold
+import all RegexCorrectness.Unicode.CaseFold.BinarySearch
+import all RegexCorrectness.Unicode.CaseFold.Data
 import Mathlib.Tactic.SplitIfs
 
 namespace Regex.Unicode
@@ -29,7 +33,8 @@ theorem getCaseFoldEquivChars_not_found {c : Char}
   all_goals simp
 
 /-- Two characters are case-fold equivalent if one is in the case-fold equivalence class of the other. -/
-def CaseFoldEquiv (c₁ c₂ : Char) : Prop :=
+@[expose]
+public def CaseFoldEquiv (c₁ c₂ : Char) : Prop :=
   c₂ = (getCaseFoldEquivChars c₁).1 ∨ c₂ ∈ (getCaseFoldEquivChars c₁).2
 
 /-- Alternative definition of case-fold equivalence with a trivial equivalence proof. -/
@@ -93,19 +98,7 @@ theorem caseFoldEquiv'_iff_caseFoldEquiv {c₁ c₂ : Char} : CaseFoldEquiv' c�
 theorem caseFoldEquiv'_eq_caseFoldEquiv : CaseFoldEquiv' = CaseFoldEquiv := by
   grind [caseFoldEquiv'_iff_caseFoldEquiv]
 
-instance instCaseFoldEquivEquivalence : Equivalence CaseFoldEquiv :=
+public instance instCaseFoldEquivEquivalence : Equivalence CaseFoldEquiv :=
   caseFoldEquiv'_eq_caseFoldEquiv ▸ instCaseFoldEquivEquivalence'
-
-
--- Due to the dependence on `native_decide` in `Data.lean`, the proof has `Lean.trustCompiler` as an axiom.
-/--
-info: 'Regex.Unicode.instCaseFoldEquivEquivalence' depends on axioms: [propext,
- Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms instCaseFoldEquivEquivalence
 
 end Regex.Unicode
