@@ -1,8 +1,13 @@
-import Batteries.Data.String
+module
+
+public import Batteries.Data.String
 import Mathlib.Tactic.Common
-import Regex.Data.String
+import all Regex.Data.String
+public import Regex.Data.String
 
 open String (Pos)
+
+public section
 
 theorem List.eq_of_append_eq (s₁ s₂ t₁ t₂ : List Char) (le : String.utf8Len s₁ ≤ String.utf8Len t₁) (eq : s₁ ++ s₂ = t₁ ++ t₂) :
   ∃ u, s₁ ++ u = t₁ ∧ s₂ = u ++ t₂ := by
@@ -57,3 +62,5 @@ theorem find_completeness {s : String} {pos pos' : Pos s} {p : Char → Bool}
     grind
 
 end Regex.Data.String
+
+end

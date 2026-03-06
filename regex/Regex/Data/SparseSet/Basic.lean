@@ -40,7 +40,7 @@ theorem mem_mem : i ∈ s ↔ s.mem i := Iff.rfl
 public def Subset ⦃n : Nat⦄ (s₁ s₂ : SparseSet n) : Prop :=
   ∀ i, i ∈ s₁ → i ∈ s₂
 
-instance : HasSubset (SparseSet n) where
+public instance : HasSubset (SparseSet n) where
   Subset := @Subset n
 
 @[inline]

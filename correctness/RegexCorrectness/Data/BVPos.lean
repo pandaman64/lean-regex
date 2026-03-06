@@ -1,9 +1,14 @@
-import Regex.Data.BVPos
+module
+
+import all Regex.Data.BVPos
+public import Regex.Data.BVPos
 import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.Data.BVPos
 
@@ -21,3 +26,5 @@ def Splits (p : BVPos startPos) (l r : String) : Prop :=
   p.current.Splits l r
 
 end Regex.Data.BVPos
+
+end

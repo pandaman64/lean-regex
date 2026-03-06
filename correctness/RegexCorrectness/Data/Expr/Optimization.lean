@@ -1,7 +1,11 @@
-import Regex.Data.Expr
-import RegexCorrectness.Data.Expr.Semantics
+module
+
+import all Regex.Data.Expr.Optimization
+public import RegexCorrectness.Data.Expr.Semantics
 
 open String (Pos)
+
+public section
 
 namespace Regex.Data.Expr
 
@@ -41,3 +45,5 @@ theorem contains_get_of_captures_of_firstChars_some {s} {p p' : Pos s} {groups e
     next => exact ih₁ h.1
 
 end Regex.Data.Expr
+
+end
