@@ -1,3 +1,5 @@
-import RegexCorrectness.VM.Path.EpsilonClosure
-import RegexCorrectness.VM.Path.CharStep
-import RegexCorrectness.VM.Path.VMPath
+module
+
+import all RegexCorrectness.VM.Path.EpsilonClosure
+import all RegexCorrectness.VM.Path.CharStep
+import all RegexCorrectness.VM.Path.VMPath

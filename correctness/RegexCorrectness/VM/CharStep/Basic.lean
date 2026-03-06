@@ -1,4 +1,6 @@
-import RegexCorrectness.VM.EpsilonClosure
+module
+
+import all RegexCorrectness.VM.EpsilonClosure
 
 set_option autoImplicit false
 

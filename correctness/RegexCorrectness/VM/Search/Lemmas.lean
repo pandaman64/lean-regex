@@ -1,5 +1,7 @@
+module
+
 import RegexCorrectness.Data.String
-import RegexCorrectness.VM.Search.Basic
+import all RegexCorrectness.VM.Search.Basic
 
 set_option autoImplicit false
 
@@ -197,7 +199,7 @@ theorem captureNext.ne_done_of_path_of_none {s nfa wf pos} (h : captureNext (His
       have eq : pos = pos' := by ext; exact Nat.le_antisymm path.le le
       have mem : state ∈ result.2.states := mopInv state update (eq ▸ path)
       exact ndinv state mem
-    exact captureNext.go.ne_done_of_path_of_none h rfl ndinv mopInv inv
+    exact captureNext.go.ne_done_of_path_of_none h SparseSet.isEmpty_empty ndinv mopInv inv
   | .some _ =>
     have := captureNext.go.some_of_some .none h (by simp [h'])
     simp at this

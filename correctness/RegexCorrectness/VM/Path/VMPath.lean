@@ -1,5 +1,7 @@
-import Regex.Data.SparseSet
-import Regex.VM
+module
+
+import all Regex.Data.SparseSet
+import all Regex.VM.Basic
 import RegexCorrectness.VM.Path.EpsilonClosure
 import RegexCorrectness.VM.Path.CharStep
 

@@ -1,4 +1,7 @@
-import RegexCorrectness.VM.Search
+module
+
+import all RegexCorrectness.VM.Search
+import all RegexCorrectness.Strategy.Materialize.Basic
 import RegexCorrectness.Strategy
 
 set_option autoImplicit false

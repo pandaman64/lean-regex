@@ -1,8 +1,13 @@
-import RegexCorrectness.NFA.Semantics.Path
+module
+
+public import RegexCorrectness.NFA.Semantics.Path
+import Regex.Data.String
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.NFA
 
@@ -70,3 +75,5 @@ theorem char_or_sparse (step : nfa.CharStep pos i j) :
 end CharStep
 
 end Regex.NFA
+
+end

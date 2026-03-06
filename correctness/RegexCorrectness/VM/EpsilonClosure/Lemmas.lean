@@ -1,7 +1,9 @@
+module
+
 import RegexCorrectness.Data.SparseSet
 import RegexCorrectness.NFA.Semantics.Path
-import RegexCorrectness.VM.Path
-import RegexCorrectness.VM.EpsilonClosure.Basic
+import all RegexCorrectness.VM.Path
+import all RegexCorrectness.VM.EpsilonClosure.Basic
 
 set_option autoImplicit false
 

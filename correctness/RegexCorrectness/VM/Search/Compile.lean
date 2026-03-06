@@ -1,5 +1,7 @@
+module
+
 import RegexCorrectness.NFA.Semantics.Equivalence
-import RegexCorrectness.VM.Search.Lemmas
+import all RegexCorrectness.VM.Search.Lemmas
 
 set_option autoImplicit false
 

@@ -1,7 +1,9 @@
-import Regex.Data.SparseSet
-import Regex.NFA.Basic
-import Regex.VM
-import RegexCorrectness.VM.Path
+module
+
+import all Regex.Data.SparseSet
+import all Regex.NFA.Basic
+import all Regex.VM
+import all RegexCorrectness.VM.Path
 import Mathlib.Tactic.DepRewrite
 
 set_option autoImplicit false

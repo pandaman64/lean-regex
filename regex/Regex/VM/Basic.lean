@@ -133,7 +133,7 @@ where
         else
           go (i + 1) hlt result.2
 
-def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : Pos s) : Option σ.Update :=
+public def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : Pos s) : Option σ.Update :=
   let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
   let (matched, current) := εClosure σ nfa wf p .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
   go p matched current ⟨.empty, updates⟩

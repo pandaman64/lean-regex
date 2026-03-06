@@ -1,2 +1,4 @@
-import RegexCorrectness.VM.Correspondence.Refinement
-import RegexCorrectness.VM.Correspondence.Correctness
+module
+
+public import RegexCorrectness.VM.Correspondence.Refinement
+public import RegexCorrectness.VM.Correspondence.Correctness

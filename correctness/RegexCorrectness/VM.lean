@@ -1,5 +1,7 @@
-import RegexCorrectness.VM.Path
-import RegexCorrectness.VM.EpsilonClosure
-import RegexCorrectness.VM.CharStep
-import RegexCorrectness.VM.Search
-import RegexCorrectness.VM.Correspondence
+module
+
+public import RegexCorrectness.VM.Path
+public import RegexCorrectness.VM.EpsilonClosure
+public import RegexCorrectness.VM.CharStep
+public import RegexCorrectness.VM.Search
+public import RegexCorrectness.VM.Correspondence

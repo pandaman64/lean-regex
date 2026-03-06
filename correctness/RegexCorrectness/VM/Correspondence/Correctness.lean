@@ -1,6 +1,10 @@
-import RegexCorrectness.VM.Search
-import RegexCorrectness.VM.Correspondence.Refinement
-import RegexCorrectness.Spec
+module
+
+public import Regex.VM
+import all RegexCorrectness.VM.Search
+import all RegexCorrectness.VM.Correspondence.Refinement
+public import RegexCorrectness.Spec
+public import RegexCorrectness.Strategy.Materialize
 
 set_option autoImplicit false
 
@@ -9,6 +13,8 @@ open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 open RegexCorrectness.Spec (SearchProblem)
 open String (Pos)
+
+public section
 
 namespace Regex.VM
 
@@ -57,3 +63,5 @@ def decideSearchProblem {s : String} (e : Expr) (pos : Pos s) (disj : e.Disjoint
   | .none => .isFalse (captureNext_completeness hresB)
 
 end Regex.VM
+
+end
