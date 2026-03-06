@@ -1,9 +1,13 @@
-import RegexCorrectness.NFA.Semantics.Path
+module
+
+public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.NFA.Compile.ProofData
 
@@ -276,3 +280,5 @@ theorem step_start_iff :
 end Star
 
 end Regex.NFA.Compile.ProofData
+
+end

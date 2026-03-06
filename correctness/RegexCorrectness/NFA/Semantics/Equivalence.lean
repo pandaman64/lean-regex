@@ -1,2 +1,4 @@
-import RegexCorrectness.NFA.Semantics.Equivalence.CapturesOfPath
-import RegexCorrectness.NFA.Semantics.Equivalence.PathOfCaptures
+module
+
+public import RegexCorrectness.NFA.Semantics.Equivalence.CapturesOfPath
+public import RegexCorrectness.NFA.Semantics.Equivalence.PathOfCaptures

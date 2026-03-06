@@ -1,6 +1,8 @@
-import Regex.NFA
-import RegexCorrectness.Data.List
-import RegexCorrectness.NFA.Compile
+module
+
+import all Regex.NFA
+public import RegexCorrectness.Data.List
+public import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
@@ -9,6 +11,8 @@ In this file, we treat an NFA as a collection of instructions and give a small-s
 -/
 
 open String (Pos)
+
+public section
 
 namespace Regex.NFA
 
@@ -255,3 +259,5 @@ theorem of_step_closure {lb} (motive : Nat → Pos s → Prop) (closure : ∀ i 
 end Path
 
 end Regex.NFA
+
+end

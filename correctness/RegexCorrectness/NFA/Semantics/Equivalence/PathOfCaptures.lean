@@ -1,6 +1,9 @@
-import RegexCorrectness.NFA.Semantics.Equivalence.Basic
-import RegexCorrectness.NFA.Semantics.Path
+module
+
+public import RegexCorrectness.NFA.Semantics.Equivalence.Basic
+public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Semantics.ProofData
+import all Regex.NFA.Compile.Basic
 
 set_option autoImplicit false
 
@@ -135,7 +138,7 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
 
   exact (Path.more step path₁).trans path₂
 
-theorem path_of_captures (eq : nfa.pushRegex next e = result)
+public theorem path_of_captures (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (c : e.Captures pos pos' groups) :
   ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update := by
@@ -180,7 +183,7 @@ theorem path_of_captures (eq : nfa.pushRegex next e = result)
     exact .last step
   | starConcat c₁ _ ih₁ ih₂ => exact path_of_captures.starConcat eq wf next_lt ih₁ ih₂
 
-theorem path_of_captures_compile (eq : compile e = nfa) (c : e.Captures pos pos' groups) :
+public theorem path_of_captures_compile (eq : compile e = nfa) (c : e.Captures pos pos' groups) :
   ∃ update, EquivUpdate groups update ∧ nfa.Path 1 nfa.start pos 0 pos' update := by
   simp [←eq, compile]
   exact path_of_captures rfl done_WellFormed (by decide) c
