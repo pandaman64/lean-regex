@@ -1,1 +1,3 @@
-import RegexCorrectness.Strategy.Materialize
+module
+
+public import RegexCorrectness.Strategy.Materialize

@@ -1,6 +1,8 @@
-import RegexCorrectness.Data.Expr.Semantics
-import RegexCorrectness.NFA.Semantics.Equivalence
-import RegexCorrectness.Strategy.Materialize.Lemmas
+module
+
+public import RegexCorrectness.NFA.Semantics.Equivalence
+public import RegexCorrectness.Strategy.Materialize.Lemmas
+import all RegexCorrectness.Strategy.Materialize.Basic
 
 set_option autoImplicit false
 
@@ -16,7 +18,7 @@ variable {s : String}
 Under suitable conditions, the equivalence between capture groups and NFA buffer updates can be
 naturally transformed into a materialized version.
 -/
-theorem EquivUpdate.materialize {e : Expr} {n : Nat} {pos pos' : Pos s} {groups updates}
+public theorem EquivUpdate.materialize {e : Expr} {n : Nat} {pos pos' : Pos s} {groups updates}
   (c : e.Captures pos pos' groups) (disj : e.Disjoint)
   (eqv : EquivUpdate groups updates) :
   EquivMaterializedUpdate (materializeRegexGroups groups) (materializeUpdates n updates) := by

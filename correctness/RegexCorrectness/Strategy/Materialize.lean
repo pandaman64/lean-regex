@@ -1,3 +1,5 @@
-import RegexCorrectness.Strategy.Materialize.Basic
-import RegexCorrectness.Strategy.Materialize.Lemmas
-import RegexCorrectness.Strategy.Materialize.Naturality
+module
+
+public import RegexCorrectness.Strategy.Materialize.Basic
+public import RegexCorrectness.Strategy.Materialize.Lemmas
+public import RegexCorrectness.Strategy.Materialize.Naturality
