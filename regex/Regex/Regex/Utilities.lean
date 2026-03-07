@@ -1,7 +1,11 @@
-import Regex.Regex.Matches
-import Regex.Regex.Captures
+module
+
+public import Regex.Regex.Matches
+public import Regex.Regex.Captures
 
 open String (Pos Slice)
+
+public section
 
 namespace Regex
 
@@ -184,3 +188,5 @@ where
   termination_by m
 
 end Regex
+
+end

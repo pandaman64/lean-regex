@@ -1,3 +1,11 @@
+module
+
+-- v4.28.0 seems to forget to expose these lemmas, so we import them manually.
+public import Init.Data.String.Lemmas.Basic
+
+-- @[expose]
+public section
+
 namespace Char
 
 def isWordChar (ch : Char) : Bool :=
@@ -147,12 +155,9 @@ namespace PosPlusOne
 
 variable {s : String}
 
--- Doesn't seem to work at the moment
-@[match_pattern]
 def pos (p : Pos s) : PosPlusOne s :=
   ⟨p.offset, .inl p.isValid⟩
 
-@[match_pattern]
 def sentinel (s : String) : PosPlusOne s :=
   ⟨s.rawEndPos.offsetBy ⟨1⟩, .inr rfl⟩
 
@@ -197,6 +202,9 @@ theorem isValid_iff_isValid (p : PosPlusOne s) : p.isValid ↔ p.offset.IsValid 
 
 def asPos (p : PosPlusOne s) (h : p.isValid) : Pos s :=
   ⟨p.offset, p.isValid_iff_isValid.mp h⟩
+
+@[simp, grind →]
+theorem asPos_def {p : PosPlusOne s} {h : p.isValid} : p.asPos h = ⟨p.offset, p.isValid_iff_isValid.mp h⟩ := (rfl)
 
 def lt (p₁ p₂ : PosPlusOne s) : Prop :=
   p₁.offset < p₂.offset
@@ -338,10 +346,10 @@ theorem or_self {p : PosPlusOne s} : p.or p = p := by
   | sentinel => simp
 
 @[simp, grind =]
-theorem asPos_pos {p : Pos s} : (pos p).asPos (by grind) = p := rfl
+theorem asPos_pos {p : Pos s} : (pos p).asPos (by grind) = p := (rfl)
 
 @[simp, grind =]
-theorem pos_asPos {p : PosPlusOne s} {h : p.isValid} : (pos (p.asPos h)) = p := rfl
+theorem pos_asPos {p : PosPlusOne s} {h : p.isValid} : (pos (p.asPos h)) = p := (rfl)
 
 end PosPlusOne
 
@@ -349,3 +357,5 @@ def startPosPlusOne (s : String) : PosPlusOne s :=
   .pos s.startPos
 
 end String
+
+end

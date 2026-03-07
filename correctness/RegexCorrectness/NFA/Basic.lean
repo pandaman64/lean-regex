@@ -1,7 +1,13 @@
-import Regex.NFA.Basic
+module
 
-import Mathlib.Data.Set.Basic
+import all Regex.NFA.Basic
+public import Regex.NFA.Basic
+
+public import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Insert
+
+@[expose]
+public section
 
 namespace Regex.NFA
 
@@ -66,3 +72,5 @@ theorem lt_of_charStep {nfa : NFA} {i j : Nat} {h : i < nfa.nodes.size}
   exact lt_of_inBounds_of_charStep inBounds mem
 
 end Regex.NFA
+
+end

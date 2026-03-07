@@ -1,9 +1,13 @@
-import Regex.Regex.Matches
-import RegexCorrectness.Regex.Basic
+module
+
+import all Regex.Regex.Matches
+public import RegexCorrectness.Regex.Basic
 
 set_option autoImplicit false
 
 open String (Pos PosPlusOne Slice)
+
+public section
 
 namespace Regex.Matches
 
@@ -41,3 +45,5 @@ theorem captures_of_next?_some (h : self.next? = .some (slice, self')) (isr : se
   next => simp at h
 
 end Regex.Matches
+
+end

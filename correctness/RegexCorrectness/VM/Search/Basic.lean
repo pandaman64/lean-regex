@@ -1,6 +1,8 @@
-import RegexCorrectness.VM.Path
-import RegexCorrectness.VM.EpsilonClosure
-import RegexCorrectness.VM.CharStep
+module
+
+import all RegexCorrectness.VM.Path
+import all RegexCorrectness.VM.EpsilonClosure
+import all RegexCorrectness.VM.CharStep
 
 set_option autoImplicit false
 

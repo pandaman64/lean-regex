@@ -1,9 +1,14 @@
-import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
+module
+
+public import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
+public import Regex.Data.String
 
 set_option autoImplicit false
 
 open Regex.Data (CaptureGroups)
 open String (Pos PosPlusOne)
+
+public section
 
 namespace Regex.Strategy
 
@@ -84,3 +89,5 @@ theorem EquivMaterializedUpdate.eq_none {n} {groups : Nat → Option (Pos s × P
   | .none => grind
 
 end Regex.Strategy
+
+end

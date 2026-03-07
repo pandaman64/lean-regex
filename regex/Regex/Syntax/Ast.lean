@@ -1,11 +1,15 @@
-import Regex.Data.Anchor
-import Regex.Data.Classes
-import Regex.Data.Expr
+module
+
+public import Regex.Data.Anchor
+public import Regex.Data.Classes
+public import Regex.Data.Expr
 import Regex.Unicode.CaseFold
 
 set_option autoImplicit false
 
 open Regex.Data (Anchor Class Classes PerlClass Expr)
+
+public section
 
 namespace Regex.Syntax.Parser
 
@@ -90,3 +94,5 @@ def Ast.toRegexAux (state : ToRegexState) (ast : Ast) : ToRegexState × Expr :=
 def Ast.toRegex (ast : Ast) : Expr := (ast.toRegexAux ⟨0, false⟩ ).2
 
 end Regex.Syntax.Parser
+
+end

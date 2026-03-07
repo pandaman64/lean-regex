@@ -1,10 +1,16 @@
-import Regex.Regex.Utilities
-import RegexCorrectness.Regex.Matches
-import RegexCorrectness.Regex.Captures
+module
+
+import all Regex.Regex.Captures
+import all Regex.Regex.Matches
+import all Regex.Regex.Utilities
+public import RegexCorrectness.Regex.Matches
+public import RegexCorrectness.Regex.Captures
 
 set_option autoImplicit false
 
 open String (Pos Slice)
+
+public section
 
 namespace Regex
 
@@ -21,7 +27,7 @@ theorem captures_of_find_some  (h : re.find haystack = .some slice)
   have ⟨_, h⟩ := h
   exact Matches.captures_of_next?_some h isr
 
-theorem captures_of_mem_findAll.go {m : Matches haystack} {accum : Array Slice} (isr : m.regex.IsSearchRegex)
+private theorem captures_of_mem_findAll.go {m : Matches haystack} {accum : Array Slice} (isr : m.regex.IsSearchRegex)
   (inv : ∀ slice ∈ accum, ∃ startPos eq, Matches.Spec isr haystack startPos slice eq) :
   ∀ slice ∈ findAll.go haystack m accum, ∃ startPos eq, Matches.Spec isr haystack startPos slice eq := by
   induction m, accum using findAll.go.induct with
@@ -48,7 +54,7 @@ theorem captures_of_capture_some {captured} (h : re.capture haystack = .some cap
   have ⟨_, h⟩ := h
   exact Captures.captures_of_next?_some h isr
 
-theorem captures_of_mem_captureAll.go {captures : Captures haystack} {accum : Array (CapturedGroups haystack)} (isr : captures.regex.IsSearchRegex)
+private theorem captures_of_mem_captureAll.go {captures : Captures haystack} {accum : Array (CapturedGroups haystack)} (isr : captures.regex.IsSearchRegex)
   (inv : ∀ captured ∈ accum, ∃ startPos, CapturedGroups.Spec isr haystack startPos captured) :
   ∀ captured ∈ captureAll.go haystack captures accum, ∃ startPos, CapturedGroups.Spec isr haystack startPos captured := by
   induction captures, accum using captureAll.go.induct with
@@ -71,3 +77,5 @@ theorem captures_of_mem_captureAll {captured} (mem : captured ∈ re.captureAll 
   exact captures_of_mem_captureAll.go (eq ▸ isr) (by grind) captured mem
 
 end Regex
+
+end

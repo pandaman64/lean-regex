@@ -1,5 +1,7 @@
+module
+
 import RegexCorrectness.Data.BVPos
-import RegexCorrectness.NFA.Semantics.Path
+public import RegexCorrectness.NFA.Semantics.Path
 
 set_option autoImplicit false
 

@@ -1,3 +1,5 @@
-import RegexCorrectness.VM.Search.Basic
-import RegexCorrectness.VM.Search.Lemmas
-import RegexCorrectness.VM.Search.Compile
+module
+
+import all RegexCorrectness.VM.Search.Basic
+import all RegexCorrectness.VM.Search.Lemmas
+import all RegexCorrectness.VM.Search.Compile

@@ -1,8 +1,12 @@
-import Regex.Data.Classes
+module
+
+public import Regex.Data.Classes
 
 set_option autoImplicit false
 
 open Regex.Data (PerlClass)
+
+public section
 
 namespace Regex.Syntax.Parser
 
@@ -34,3 +38,5 @@ instance : ToString Error where
     | .unsupportedCharacterClass => "unsupported character class"
 
 end Regex.Syntax.Parser
+
+end

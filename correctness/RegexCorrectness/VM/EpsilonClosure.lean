@@ -1,2 +1,4 @@
-import RegexCorrectness.VM.EpsilonClosure.Basic
-import RegexCorrectness.VM.EpsilonClosure.Lemmas
+module
+
+import all RegexCorrectness.VM.EpsilonClosure.Basic
+import all RegexCorrectness.VM.EpsilonClosure.Lemmas

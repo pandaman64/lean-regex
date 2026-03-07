@@ -1,4 +1,8 @@
-import Regex.Backtracker
+module
+
+import all Regex.Data.BitMatrix
+import all Regex.Data.BVPos
+import all Regex.Backtracker.Basic
 import Mathlib.Tactic.DepRewrite
 
 set_option autoImplicit false

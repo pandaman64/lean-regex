@@ -1,8 +1,12 @@
-import RegexCorrectness.NFA.Semantics.ProofData.Basic
+module
+
+public import RegexCorrectness.NFA.Semantics.ProofData.Basic
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.NFA
 
@@ -107,3 +111,5 @@ end Star
 end Compile.ProofData
 
 end Regex.NFA
+
+end

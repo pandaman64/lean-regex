@@ -1,8 +1,12 @@
-import Regex.Syntax.Parser.Combinators.Result
+module
+
+public import Regex.Syntax.Parser.Combinators.Result
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.Syntax.Parser.Combinators
 
@@ -175,3 +179,5 @@ instance {s ε} : Monad (Parser s false ε) where
 end Parser
 
 end Regex.Syntax.Parser.Combinators
+
+end

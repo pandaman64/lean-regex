@@ -1,11 +1,16 @@
-import Regex.NFA
-import Regex.NFA.Compile
-import RegexCorrectness.NFA.Basic
-import RegexCorrectness.Data.Expr.Semantics.Separation
+module
+
+import all Regex.NFA
+import all Regex.NFA.Compile.Basic
+public import Regex.NFA.Compile
+public import RegexCorrectness.NFA.Basic
+public import RegexCorrectness.Data.Expr.Semantics.Separation
 
 import Mathlib.Tactic.Common
 
 set_option autoImplicit false
+
+public section
 
 namespace Regex.NFA
 
@@ -547,3 +552,5 @@ theorem lt_zero_start_compile {e nfa} (eq : compile e = nfa) :
   exact ge_pushRegex_start (nfa := done) rfl
 
 end Regex.NFA
+
+end

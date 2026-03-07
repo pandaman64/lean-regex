@@ -1,9 +1,14 @@
-import RegexCorrectness.Data.Expr.Semantics
+module
+
+import all RegexCorrectness.Data.Expr.Semantics.CaptureGroups
+public import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
 
 set_option autoImplicit false
 
 open Regex.Data (CaptureGroups)
 open String (Pos)
+
+public section
 
 namespace Regex.NFA
 
@@ -38,3 +43,5 @@ theorem EquivUpdate.mem_groups_of_mem_updates {s : String} {groups : CaptureGrou
       exact ⟨tag, first, last, by simp [mem], eq⟩
 
 end Regex.NFA
+
+end

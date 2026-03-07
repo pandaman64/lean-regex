@@ -1,1 +1,3 @@
-import Regex.Data.SparseSet.Basic
+module
+
+public import Regex.Data.SparseSet.Basic

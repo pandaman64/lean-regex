@@ -1,3 +1,5 @@
-import RegexCorrectness.NFA.Semantics.Path
-import RegexCorrectness.NFA.Semantics.ProofData
-import RegexCorrectness.NFA.Semantics.Equivalence
+module
+
+public import RegexCorrectness.NFA.Semantics.Path
+public import RegexCorrectness.NFA.Semantics.ProofData
+public import RegexCorrectness.NFA.Semantics.Equivalence

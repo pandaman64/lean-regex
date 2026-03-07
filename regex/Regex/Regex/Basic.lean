@@ -1,13 +1,18 @@
-import Regex.Syntax.Parser
-import Regex.NFA
+module
+
+public import Regex.Syntax.Parser
+public import Regex.NFA
 import Regex.VM
 import Regex.Backtracker
-import Regex.Regex.OptimizationInfo
+public import Regex.Regex.OptimizationInfo
+public import Regex.Strategy
 
 set_option autoImplicit false
 
 open String (Pos PosPlusOne Slice)
 open Regex.Data (Expr)
+
+public section
 
 /--
 A structure representing a compiled regular expression.
@@ -56,7 +61,7 @@ def searchNext {s : String} (self : Regex) (p : Pos s) : Option Slice := do
   if h : stopPos.isValid && startPos ≤ stopPos then
     have isStopPosValid : stopPos.isValid := by grind
     have h' : startPos.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-    pure ⟨s, startPos.asPos h', stopPos.asPos isStopPosValid, PosPlusOne.le_iff.mp (by grind)⟩
+    pure ⟨s, startPos.asPos h', stopPos.asPos isStopPosValid, by simpa [PosPlusOne.asPos_def] using PosPlusOne.le_iff.mp (by grind)⟩
   else
     .none
 
@@ -111,3 +116,5 @@ def parse! (s : String) : Regex :=
   Regex.fromExpr (Regex.Syntax.Parser.parse! s)
 
 end Regex
+
+end

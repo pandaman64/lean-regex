@@ -1,10 +1,14 @@
-import RegexCorrectness.NFA.Semantics.Path
+module
+
+public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
 open String (Pos)
 open String.Pos (Raw)
+
+public section
 
 -- Transition relations specialized for ε-closure traversal.
 namespace Regex.NFA
@@ -116,3 +120,5 @@ theorem εClosure'_iff_path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (i j 
     | inr path => exact εClosure'_of_path wf rfl path
 
 end Regex.NFA
+
+end

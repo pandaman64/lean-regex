@@ -1,6 +1,9 @@
-import RegexCorrectness.NFA.Semantics.Equivalence.Basic
-import RegexCorrectness.NFA.Semantics.Path
+module
+
+public import RegexCorrectness.NFA.Semantics.Equivalence.Basic
+public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Semantics.ProofData
+import all Regex.NFA.Compile.Basic
 
 set_option autoImplicit false
 
@@ -173,7 +176,7 @@ theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy 
   have wf_placeholder := wf_placeholder wf
   exact ih rfl wf_placeholder wf_placeholder.start_lt path
 
-theorem captures_of_path (eq : nfa.pushRegex next e = result)
+public theorem captures_of_path (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
   (path : result.Path nfa.nodes.size result.start pos next pos' update) :
   ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups := by
@@ -209,7 +212,7 @@ theorem captures_of_path (eq : nfa.pushRegex next e = result)
   | concat e₁ e₂ ih₁ ih₂ => exact captures_of_path.concat eq wf next_lt path ih₁ ih₂
   | star greedy e ih => exact captures_of_path.star eq wf next_lt path ih
 
-theorem captures_of_path_compile (eq : compile e = nfa) (path : nfa.Path 1 nfa.start pos 0 pos' update) :
+public theorem captures_of_path_compile (eq : compile e = nfa) (path : nfa.Path 1 nfa.start pos 0 pos' update) :
   ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups := by
   simp [←eq, compile] at path
   exact captures_of_path rfl done_WellFormed (by decide) path

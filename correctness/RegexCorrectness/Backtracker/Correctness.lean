@@ -1,6 +1,10 @@
-import RegexCorrectness.Backtracker.Compile
-import RegexCorrectness.Backtracker.Refinement
-import RegexCorrectness.Spec
+module
+
+public import Regex.Backtracker
+import all RegexCorrectness.Backtracker.Compile
+import all RegexCorrectness.Backtracker.Refinement
+public import RegexCorrectness.Spec
+public import RegexCorrectness.Strategy.Materialize
 
 set_option autoImplicit false
 
@@ -10,9 +14,11 @@ open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeU
 open RegexCorrectness.Spec (SearchProblem)
 open String (Pos)
 
+public section
+
 namespace Regex.Backtracker
 
-theorem captureNext_soundness {s e bufferSize pos matchedB}
+theorem captureNext_soundness {s : String} {e : Expr} {bufferSize : Nat} {pos : Pos s} {matchedB}
   (disj : e.Disjoint)
   (hresB : captureNext (BufferStrategy s bufferSize) (NFA.compile e) NFA.compile_wf pos = .some matchedB) :
   ∃ (pos' pos'' : Pos s) (groups : CaptureGroups s),
@@ -55,3 +61,5 @@ def decideSearchProblem {s : String} (e : Expr) (pos : Pos s) (disj : e.Disjoint
   | .none => .isFalse (captureNext_completeness hresB)
 
 end Regex.Backtracker
+
+end

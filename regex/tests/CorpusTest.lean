@@ -1,5 +1,7 @@
-import Lake.Toml
-import Lake.Toml.Decode
+module
+
+public import Lake.Toml
+import all Lake.Toml.Decode
 import Regex
 
 open Lake (DecodeToml)
@@ -265,7 +267,7 @@ def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
   | .ok tests _ => return tests
   | .error () e => throw (IO.userError (s!"Error decoding regex tests: {e}"))
 
-def main (args : List String) : IO UInt32 := do
+public def main (args : List String) : IO UInt32 := do
   let backtracker := args.contains "--backtracker"
   let outputName := if backtracker then "CorpusTest-backtracker.csv" else "CorpusTest.csv"
   let files ← System.FilePath.readDir "tests/testdata"

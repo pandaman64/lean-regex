@@ -1,9 +1,14 @@
-import RegexCorrectness.NFA.Semantics.ProofData.Basic
+module
+
+import all RegexCorrectness.NFA.Compile
+public import RegexCorrectness.NFA.Semantics.ProofData.Basic
 import RegexCorrectness.NFA.Compile
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.NFA
 
@@ -63,3 +68,5 @@ theorem Path.path_next_of_ne (eq : nfa.pushRegex next e = result)
   | inr h => exact h
 
 end Regex.NFA
+
+end

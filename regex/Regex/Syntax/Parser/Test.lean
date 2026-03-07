@@ -1,5 +1,8 @@
+module
+
 -- Unit tests for the regex parser.
-import Regex.Syntax.Parser.Basic
+meta import Regex.Syntax.Parser.Basic
+import all Regex.Syntax.Parser.Basic
 
 namespace Regex.Syntax.Parser.Test
 

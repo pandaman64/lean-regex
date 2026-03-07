@@ -1,8 +1,14 @@
-import Regex.Data.Expr
-import Mathlib.Data.Finset.Basic
-import RegexCorrectness.Data.Expr.Semantics.Captures
+module
+
+import all Regex.Data.Expr
+public import Regex.Data.Expr
+public import Mathlib.Data.Finset.Basic
+public import RegexCorrectness.Data.Expr.Semantics.Captures
 
 open String (Pos)
+
+@[expose]
+public section
 
 namespace Regex.Data.Expr
 
@@ -48,3 +54,5 @@ theorem Captures.mem_tags_of_mem_groups {e : Expr} {s} {p p' : Pos s} {groups} (
     | inr mem₂ => exact ih₂ mem₂
 
 end Regex.Data.Expr
+
+end

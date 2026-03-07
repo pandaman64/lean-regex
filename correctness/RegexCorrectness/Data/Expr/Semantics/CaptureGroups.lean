@@ -1,8 +1,12 @@
-import Regex.Data.Expr
+module
+
+import Regex.Data.Expr.Basic
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.Data
 
@@ -53,3 +57,5 @@ theorem mem_concat {group : Nat × Pos s × Pos s} {g₁ g₂} : group ∈ Captu
 end CaptureGroups
 
 end Regex.Data
+
+end

@@ -1,3 +1,5 @@
+module
+
 import Std.Data.HashMap
 import Std.Tactic.Do
 
@@ -49,7 +51,7 @@ where
 
 private def caseFoldData : String := include_str "../../data/Simple_Case_Folding.txt"
 
-def caseFoldRepresentatives : Thunk (Array (Char × Char)) :=
+public def caseFoldRepresentatives : Thunk (Array (Char × Char)) :=
   Thunk.mk fun _ => parseCaseFoldTable caseFoldData
 
 def buildCaseFoldInvMap (representatives : Array (Char × Char)) : Std.HashMap Char (Array Char) := Id.run do
@@ -82,7 +84,7 @@ Returns the case-fold-equivalent characters for a given character.
 The first return value corresponds to the representative character for the equivalence class,
 and the second return value corresponds to the remaining characters in the equivalence class.
 -/
-def getCaseFoldEquivChars (c : Char) : (Char × Array Char) :=
+public def getCaseFoldEquivChars (c : Char) : (Char × Array Char) :=
   let table := caseFoldRepresentatives.get
   let idx := binarySearch c table (·.1) 0 table.size (by grind)
   if h : idx < table.size then

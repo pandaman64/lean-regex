@@ -1,4 +1,6 @@
-import Regex.Unicode.CaseFold
+module
+
+import all Regex.Unicode.CaseFold
 
 namespace Regex.Unicode
 

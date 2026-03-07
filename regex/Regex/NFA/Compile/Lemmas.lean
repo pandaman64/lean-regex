@@ -1,8 +1,11 @@
-import Regex.NFA.Compile.Basic
+module
+
+public import Regex.NFA.Compile.Basic
+import all Regex.NFA.Compile.Basic
 
 namespace Regex.NFA
 
-theorem pushRegex_size_lt {nfa : NFA} {next e} :
+public theorem pushRegex_size_lt {nfa : NFA} {next e} :
   nfa.nodes.size < (nfa.pushRegex next e).nodes.size := by
   induction e generalizing nfa next with
   | empty => simp [pushRegex]

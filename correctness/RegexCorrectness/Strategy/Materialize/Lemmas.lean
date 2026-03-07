@@ -1,28 +1,33 @@
-import RegexCorrectness.Strategy.Materialize.Basic
-import RegexCorrectness.Data.Expr.Semantics
--- import Init.Data.Vector.Lemmas
+module
+
+import all RegexCorrectness.Strategy.Materialize.Basic
+public import RegexCorrectness.Strategy.Materialize.Basic
+import all RegexCorrectness.Data.Expr.Semantics.Separation
+public import RegexCorrectness.Data.Expr.Semantics
 
 set_option autoImplicit false
 
 open String (Pos PosPlusOne)
 open Regex.Data (CaptureGroups)
 
+public section
+
 namespace Regex.Strategy
 
 variable {s : String}
 
 @[simp]
-theorem materializeRegexGroups_empty : @materializeRegexGroups s .empty = fun _ => .none := rfl
+theorem materializeRegexGroups_empty : @materializeRegexGroups s .empty = fun _ => .none := (rfl)
 
 @[simp]
 theorem materializeRegexGroups_group {tag : Nat} {first last : Pos s} {groups : CaptureGroups s} :
   materializeRegexGroups (.group tag first last groups) =
-  fun tag' => if tag = tag' then .some (first, last) else materializeRegexGroups groups tag' := rfl
+  fun tag' => if tag = tag' then .some (first, last) else materializeRegexGroups groups tag' := (rfl)
 
 @[simp]
 theorem materializeRegexGroups_concat {g₁ g₂ : CaptureGroups s} :
   materializeRegexGroups (.concat g₁ g₂) =
-  fun tag => materializeRegexGroups g₂ tag <|> materializeRegexGroups g₁ tag := rfl
+  fun tag => materializeRegexGroups g₂ tag <|> materializeRegexGroups g₁ tag := (rfl)
 
 open Regex.Data Expr in
 theorem mem_tags_of_materializeRegexGroups_some {e : Expr} {pos pos' : Pos s} {groups : CaptureGroups s} {tag : Nat}
@@ -103,7 +108,7 @@ theorem materializeUpdatesAux_cons_of_not_in {n accum updates offset} {pos : Pos
 
 @[simp]
 theorem materializeUpdatesAux_nil {n : Nat} {accum : Vector (PosPlusOne s) n} :
-  materializeUpdatesAux n accum [] = accum := rfl
+  materializeUpdatesAux n accum [] = accum := (rfl)
 
 theorem materializeUpdatesAux_append {n : Nat} {accum : Vector (PosPlusOne s) n} {updates₁ updates₂ : List (Nat × Pos s)} :
   materializeUpdatesAux n accum (updates₁ ++ updates₂) = materializeUpdatesAux n (materializeUpdatesAux n accum updates₁) updates₂ := by
@@ -119,7 +124,7 @@ theorem materializeUpdatesAux_getElem {n : Nat} {accum : Vector (PosPlusOne s) n
   | cons head updates ih => grind [materializeUpdatesAux]
 
 @[simp]
-theorem materializeUpdates_empty {n} : @materializeUpdates s n [] = Vector.replicate n (.sentinel s) := rfl
+theorem materializeUpdates_empty {n} : @materializeUpdates s n [] = Vector.replicate n (.sentinel s) := (rfl)
 
 @[simp]
 theorem materializeUpdates_snoc {n : Nat} {updates : List (Nat × Pos s)} {offset : Nat} {pos : Pos s} :
@@ -137,3 +142,5 @@ theorem materializeUpdates_append_getElem {n : Nat} {updates₁ updates₂ : Lis
   rfl
 
 end Regex.Strategy
+
+end

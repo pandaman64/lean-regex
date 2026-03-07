@@ -1,7 +1,11 @@
-import Regex.Data.Expr
-import Regex.NFA.Basic
+module
+
+public import Regex.Data.Expr
+public import Regex.NFA.Basic
 
 open Regex.Data (Expr)
+
+public section
 
 namespace Regex.NFA
 
@@ -37,7 +41,7 @@ theorem pushNode_get {nfa : NFA} {node : Node}
   | inr eq => simp [eq]
 
 @[simp, grind =]
-theorem pushNode_start_eq {nfa : NFA} {node : Node} : (nfa.pushNode node).start = nfa.nodes.size := rfl
+theorem pushNode_start_eq {nfa : NFA} {node : Node} : (nfa.pushNode node).start = nfa.nodes.size := (rfl)
 
 /--
   Compile a Regex and append the resulting nodes to the NFA. The nodes will transition to `next` on match.
@@ -90,3 +94,7 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
 def compile (r : Expr) : NFA := done.pushRegex 0 r
 
 end NFA
+
+end Regex
+
+end

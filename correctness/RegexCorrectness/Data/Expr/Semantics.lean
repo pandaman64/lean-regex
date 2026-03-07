@@ -1,3 +1,5 @@
-import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
-import RegexCorrectness.Data.Expr.Semantics.Captures
-import RegexCorrectness.Data.Expr.Semantics.Separation
+module
+
+public import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
+public import RegexCorrectness.Data.Expr.Semantics.Captures
+public import RegexCorrectness.Data.Expr.Semantics.Separation

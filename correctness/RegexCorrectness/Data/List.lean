@@ -1,9 +1,15 @@
+module
+
 set_option autoImplicit false
 
+public section
+
+@[expose]
 def List.ofOption {α} : Option α → List α
   | none => []
   | some x => [x]
 
+@[expose]
 def List.consOption {α} : Option α → List α → List α
   | none, xs => xs
   | some x, xs => x :: xs
@@ -35,3 +41,5 @@ theorem List.consOption_append {α} (opt : Option α) (xs ys : List α) :
 @[simp]
 theorem List.consOption_nil {α} (opt : Option α) : opt ::ₒ [] = List.ofOption opt := by
   cases opt <;> simp
+
+end

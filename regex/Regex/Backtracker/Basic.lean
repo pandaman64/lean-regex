@@ -1,7 +1,9 @@
+module
+
 import Regex.Data.BitMatrix
 import Regex.Data.BVPos
-import Regex.NFA
-import Regex.Strategy
+public import Regex.NFA
+public import Regex.Strategy
 
 open String (Pos)
 open Regex.Data (BitMatrix BVPos)
@@ -69,7 +71,7 @@ def captureNextAux {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellForm
         captureNextAux σ nfa wf startPos visited' stack''
 termination_by (nfa.nodes.size * (startPos.remainingBytes + 1) + 1 - visited.popcount, stack)
 
-def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s) : Option σ.Update :=
+public def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s) : Option σ.Update :=
   go (BVPos.start startPos) (BitMatrix.zero _ _)
 where
   go (pos : BVPos startPos) (visited : BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Option σ.Update :=
@@ -82,7 +84,7 @@ where
       .none
   termination_by pos
 
-def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
+public def captureNextBuf {s : String} (nfa : NFA) (wf : nfa.WellFormed) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
   captureNext (BufferStrategy s bufferSize) nfa wf p
 
 end Regex.Backtracker

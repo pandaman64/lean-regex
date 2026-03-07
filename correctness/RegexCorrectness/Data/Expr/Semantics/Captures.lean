@@ -1,10 +1,15 @@
-import Regex.Data.Expr
-import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
+module
+
+import all Regex.Data.Expr
+public import Regex.Data.Expr
+public import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
 import RegexCorrectness.Data.String
 
 set_option autoImplicit false
 
 open String (Pos)
+
+public section
 
 namespace Regex.Data
 
@@ -43,3 +48,5 @@ theorem le {s} {p p' : Pos s} {groups e} (c : Expr.Captures p p' groups e) : p â
 end Expr.Captures
 
 end Regex.Data
+
+end

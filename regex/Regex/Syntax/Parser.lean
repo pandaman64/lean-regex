@@ -1,2 +1,4 @@
-import Regex.Syntax.Parser.Basic
-import Regex.Syntax.Parser.Test
+module
+
+public import Regex.Syntax.Parser.Basic
+public import Regex.Syntax.Parser.Test

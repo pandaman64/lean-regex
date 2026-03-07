@@ -1,7 +1,7 @@
-import Regex.Regex.Utilities
-import Regex.Regex.Captures
-import Regex.Regex.Elab
-import Regex.Backtracker
+module
+
+meta import Regex
+import Regex
 
 open String (Slice Pos Pos)
 

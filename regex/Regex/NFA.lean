@@ -1,2 +1,4 @@
-import Regex.NFA.Basic
-import Regex.NFA.Compile
+module
+
+public import Regex.NFA.Basic
+public import Regex.NFA.Compile

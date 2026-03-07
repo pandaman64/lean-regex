@@ -1,6 +1,10 @@
+module
+
 import Regex.Data.BitVec
 
 set_option autoImplicit false
+
+public section
 
 namespace Regex.Data
 
@@ -116,3 +120,5 @@ theorem popcount_decreasing (m : BitMatrix w h) (x : Fin w) (y : Fin h) (hget : 
 end BitMatrix
 
 end Regex.Data
+
+end

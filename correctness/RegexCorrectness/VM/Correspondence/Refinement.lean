@@ -1,1 +1,3 @@
-import RegexCorrectness.VM.Correspondence.Refinement.Refinement
+module
+
+import all RegexCorrectness.VM.Correspondence.Refinement.Refinement

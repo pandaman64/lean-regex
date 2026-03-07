@@ -1,4 +1,7 @@
-import RegexCorrectness.Backtracker.Traversal
+module
+
+import all RegexCorrectness.Backtracker.Traversal
+import all RegexCorrectness.Strategy.Materialize.Basic
 import RegexCorrectness.Strategy
 
 set_option autoImplicit false

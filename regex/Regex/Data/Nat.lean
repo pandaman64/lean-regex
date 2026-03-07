@@ -1,56 +1,40 @@
+module
+
 namespace Nat
 
-def popcount (n : Nat) : Nat :=
+public def popcount (n : Nat) : Nat :=
   if n = 0 then
     0
   else
     popcount (n / 2) + n % 2
 
 @[simp]
-theorem popcount_zero : popcount 0 = 0 := by
-  conv =>
-    lhs
-    unfold popcount
-    simp
+public theorem popcount_zero : popcount 0 = 0 := by
+  grind [popcount]
 
-theorem popcount_ne {n : Nat} (h : n ≠ 0) : popcount n = popcount (n / 2) + n % 2 := by
-  conv =>
-    lhs
-    unfold popcount
-    simp [h]
+public theorem popcount_ne {n : Nat} (h : n ≠ 0) : popcount n = popcount (n / 2) + n % 2 := by
+  grind [popcount]
 
-theorem popcount_odd {n : Nat} (h : n.testBit 0) : popcount n = popcount (n / 2) + 1 := by
-  conv =>
-    lhs
-    unfold popcount
-  split
-  next h' => simp [h'] at h
-  next h' => simp only [Nat.add_left_cancel_iff, mod_two_eq_one_iff_testBit_zero, h]
+public theorem popcount_odd {n : Nat} (h : n.testBit 0) : popcount n = popcount (n / 2) + 1 := by
+  grind [popcount]
 
-theorem popcount_even {n : Nat} (h : ¬n.testBit 0) : popcount n = popcount (n / 2) := by
-  conv =>
-    lhs
-    unfold popcount
-  split
-  next h' => simp [h']
-  next h' => simp only [Nat.add_eq_left, mod_two_eq_zero_iff_testBit_zero, h]
+public theorem popcount_even {n : Nat} (h : ¬n.testBit 0) : popcount n = popcount (n / 2) := by
+  grind [popcount]
 
-theorem popcount_le_of_lt_pow {n w : Nat} (h : n < 2 ^ w) : popcount n ≤ w := by
+public theorem popcount_le_of_lt_pow {n w : Nat} (h : n < 2 ^ w) : popcount n ≤ w := by
   induction n using popcount.induct generalizing w with
   | case1 => simp
   | case2 n ne ih =>
     match w with
     | 0 => simp [ne] at h
-    | w + 1 =>
-      simp [popcount_ne ne]
-      apply Nat.add_le_add (ih (w := w) (Nat.div_lt_of_lt_mul (by omega))) (by omega)
+    | w + 1 => grind [popcount_ne]
 
 theorem one_shiftLeft_lt_pow {n w : Nat} (h : n < w) : 1 <<< n < 2 ^ w := by
   rw [one_shiftLeft]
   exact Nat.pow_lt_pow_of_lt (by omega) h
 
 @[simp]
-theorem one_shiftLeft_mod_two_pow {n w : Nat} (h : n < w) : (1 <<< n) % (2 ^ w) = 1 <<< n :=
+public theorem one_shiftLeft_mod_two_pow {n w : Nat} (h : n < w) : (1 <<< n) % (2 ^ w) = 1 <<< n :=
   mod_eq_of_lt (one_shiftLeft_lt_pow h)
 
 theorem zero_of_or_zero {n m : Nat} (h : n ||| m = 0) : n = 0 ∧ m = 0 := by
@@ -90,7 +74,7 @@ theorem ne_zero_of_testBit {n i : Nat} (h : n.testBit i) : n ≠ 0 := by
   have := (h' ▸ zero_testBit) i
   simpa [h]
 
-theorem popcount_or_one_shiftLeft (n i : Nat) : popcount (n ||| (1 <<< i)) = if n.testBit i then popcount n else popcount n + 1 := by
+public theorem popcount_or_one_shiftLeft (n i : Nat) : popcount (n ||| (1 <<< i)) = if n.testBit i then popcount n else popcount n + 1 := by
   induction i generalizing n with
   | zero =>
     split

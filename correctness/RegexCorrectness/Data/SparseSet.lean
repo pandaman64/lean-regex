@@ -1,6 +1,15 @@
-import Regex.Data.SparseSet
+module
+
+import all Regex.Data.SparseSet.Basic
+public import Regex.Data.SparseSet.Basic
+
+set_option autoImplicit false
+
+public section
 
 namespace Regex.Data.SparseSet
+
+variable {n : Nat} {i : Fin n}
 
 theorem mem_insert_of_mem {s : SparseSet n} {i j : Fin n} (h : j ∉ s) (hmem : i ∈ s) : i ∈ s.insert j h := by
   have ne : i ≠ j := fun eq => h (eq ▸ hmem)
@@ -44,3 +53,5 @@ theorem index_of_mem {i : Fin n} {s : SparseSet n} (h : i ∈ s) : ∃ _ : s.ind
   exact ⟨h.1, by simpa [getElem, get, index] using h.2⟩
 
 end Regex.Data.SparseSet
+
+end
