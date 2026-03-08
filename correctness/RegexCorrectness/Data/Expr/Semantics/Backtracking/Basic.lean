@@ -27,7 +27,7 @@ inductive BacktrackingTree where
   | fail
   | choice (t₁ t₂ : BacktrackingTree)
   | read (next : BacktrackingTree)
-  | anchorPass (anchor : Anchor) (next : BacktrackingTree)
+  | anchorPass (next : BacktrackingTree)
   | openGroup (tag : Nat) (next : BacktrackingTree)
   | closeGroup (tag : Nat) (next : BacktrackingTree)
 deriving Inhabited
@@ -47,7 +47,7 @@ inductive IsValid {s : String} : List Action → Pos s → GroupMap s → Backtr
     IsValid (.expr .epsilon :: as) p gs t
   | anchor {a : Anchor} {as : List Action} {p : Pos s} {gs : GroupMap s} {t : BacktrackingTree}
     (ha : a.test p) (h : IsValid as p gs t) :
-    IsValid (.expr (.anchor a) :: as) p gs (.anchorPass a t)
+    IsValid (.expr (.anchor a) :: as) p gs (.anchorPass t)
   | anchorFail {a : Anchor} {as : List Action} {p : Pos s} {gs : GroupMap s} (ha : ¬a.test p) :
     IsValid (.expr (.anchor a) :: as) p gs .fail
   | char {c : Char} {as : List Action} {p : Pos s} {gs : GroupMap s} {t : BacktrackingTree}
@@ -93,7 +93,7 @@ def firstMatch (t : BacktrackingTree) : Option Unit :=
   | .fail => .none
   | .choice t₁ t₂ => firstMatch t₁ <|> firstMatch t₂
   | .read t => t.firstMatch
-  | .anchorPass _ t => t.firstMatch
+  | .anchorPass t => t.firstMatch
   | .openGroup _ t => t.firstMatch
   | .closeGroup _ t => t.firstMatch
 
@@ -103,7 +103,7 @@ def extractCapturesAux {s : String} (p : Pos s) (gs : GroupMap s) (t : Backtrack
   | .fail => []
   | .choice t₁ t₂ => t₁.extractCapturesAux p gs ++ t₂.extractCapturesAux p gs
   | .read t => if hp : p ≠ s.endPos then t.extractCapturesAux (p.next hp) gs else []
-  | .anchorPass _ t => t.extractCapturesAux p gs
+  | .anchorPass t => t.extractCapturesAux p gs
   | .openGroup tag t => t.extractCapturesAux p (gs.openGroup tag p)
   | .closeGroup tag t => t.extractCapturesAux p (gs.closeGroup tag p)
 
