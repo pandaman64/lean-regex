@@ -13,7 +13,7 @@ public section
 
 namespace Regex.Data
 
-inductive Expr.Captures {s : String} : Pos s → Pos s → CaptureGroups s→ Expr → Prop where
+inductive Expr.Captures {s : String} : Pos s → Pos s → CaptureGroups s → Expr → Prop where
   | char {p c} (ne : p ≠ s.endPos) (eq : p.get ne = c) : Expr.Captures p (p.next ne) .empty (.char c)
   | sparse {p cs} (ne : p ≠ s.endPos) (h : p.get ne ∈ cs) : Expr.Captures p (p.next ne) .empty (.classes cs)
   | epsilon {p} : Expr.Captures p p .empty .epsilon
