@@ -8,8 +8,6 @@ public import RegexCorrectness.Data.Expr.Semantics.Separation
 
 import Mathlib.Tactic.Common
 
-set_option autoImplicit false
-
 public section
 
 namespace Regex.NFA

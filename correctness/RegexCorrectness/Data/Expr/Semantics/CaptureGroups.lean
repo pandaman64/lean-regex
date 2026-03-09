@@ -2,8 +2,6 @@ module
 
 import Regex.Data.Expr.Basic
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

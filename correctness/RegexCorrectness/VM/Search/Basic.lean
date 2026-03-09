@@ -4,8 +4,6 @@ import all RegexCorrectness.VM.Path
 import all RegexCorrectness.VM.EpsilonClosure
 import all RegexCorrectness.VM.CharStep
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos)

@@ -8,8 +8,6 @@ public import Regex.Strategy
 open String (Pos)
 open Regex.Data (BitMatrix BVPos)
 
-set_option autoImplicit false
-
 namespace Regex.Backtracker
 
 structure StackEntry {s : String} (σ : Strategy s) (nfa : NFA) (startPos : Pos s) where

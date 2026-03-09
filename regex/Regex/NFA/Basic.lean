@@ -4,8 +4,6 @@ public import Regex.Data.Anchor
 public import Regex.Data.Classes
 public import Lean.ToExpr
 
-set_option autoImplicit false
-
 public section
 
 namespace Regex.NFA

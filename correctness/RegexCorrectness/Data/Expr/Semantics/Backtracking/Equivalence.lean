@@ -3,8 +3,6 @@ module
 public import RegexCorrectness.Data.Expr.Semantics.Backtracking.Basic
 import all RegexCorrectness.Data.Expr.Semantics.Backtracking.Basic
 
-set_option autoImplicit false
-
 open String (Pos)
 
 namespace Regex.Data.Expr.BacktrackingTree

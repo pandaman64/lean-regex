@@ -4,8 +4,6 @@ import all Regex.Unicode.CaseFold
 
 namespace Regex.Unicode
 
-set_option autoImplicit false
-
 /--
 Generic pair-wise decision procedure over `Fin n`.
 

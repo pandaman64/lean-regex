@@ -2,8 +2,6 @@ module
 
 public import Regex.Data.Classes
 
-set_option autoImplicit false
-
 open Regex.Data (PerlClass)
 
 public section

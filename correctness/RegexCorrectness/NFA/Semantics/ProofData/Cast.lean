@@ -2,8 +2,6 @@ module
 
 public import RegexCorrectness.NFA.Semantics.ProofData.Basic
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

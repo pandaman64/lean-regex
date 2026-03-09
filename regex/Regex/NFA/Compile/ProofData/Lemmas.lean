@@ -6,8 +6,6 @@ public import Regex.NFA.Compile.ProofData.Basic
 
 open Regex.Data (Expr)
 
-set_option autoImplicit false
-
 public section
 
 namespace Regex.NFA

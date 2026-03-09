@@ -6,8 +6,6 @@ public import RegexCorrectness.Data.Expr.Semantics.Separation
 import Mathlib.Order.Interval.Finset.Basic
 import Mathlib.Order.Interval.Finset.Nat
 
-set_option autoImplicit false
-
 open Regex.Data (Expr)
 
 namespace Regex.Syntax.Parser

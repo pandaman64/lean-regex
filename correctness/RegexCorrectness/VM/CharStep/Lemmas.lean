@@ -5,8 +5,6 @@ import all RegexCorrectness.VM.EpsilonClosure
 import all RegexCorrectness.VM.CharStep.Basic
 import RegexCorrectness.Data.String
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (εStep' εClosure' CharStep)

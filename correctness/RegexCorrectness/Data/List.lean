@@ -1,7 +1,5 @@
 module
 
-set_option autoImplicit false
-
 public section
 
 @[expose]

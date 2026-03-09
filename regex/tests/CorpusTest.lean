@@ -8,8 +8,6 @@ open Lake (DecodeToml)
 open Lake.Toml (Value DecodeError EDecodeM throwDecodeErrorAt)
 open String (Pos)
 
-set_option autoImplicit false
-
 deriving instance Repr for DecodeError
 
 instance : ToString DecodeError where

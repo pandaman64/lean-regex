@@ -2,8 +2,6 @@ module
 
 import Regex.Data.String
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

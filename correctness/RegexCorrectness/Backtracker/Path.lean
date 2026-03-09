@@ -3,8 +3,6 @@ module
 import RegexCorrectness.Data.BVPos
 public import RegexCorrectness.NFA.Semantics.Path
 
-set_option autoImplicit false
-
 open String (Pos)
 open Regex.Data (BVPos)
 

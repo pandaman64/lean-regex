@@ -10,8 +10,6 @@ open Regex.Data (Anchor PerlClassKind PerlClass Class Classes)
 open Regex NFA Node
 open Lean Syntax Elab Term
 
-set_option autoImplicit false
-
 namespace Regex.Elab
 
 -- A term representing a proof of `prop` given by letting kernel decide `prop`

@@ -3,8 +3,6 @@ module
 public import RegexCorrectness.NFA.Semantics.ProofData.Basic
 import RegexCorrectness.NFA.Semantics.ProofData.Compile
 
-set_option autoImplicit false
-
 open String (Pos)
 
 namespace Regex.NFA.Compile.ProofData.Star

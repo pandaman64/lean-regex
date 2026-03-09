@@ -5,8 +5,6 @@ import RegexCorrectness.Data.BVPos
 import all RegexCorrectness.Backtracker.Basic
 import all RegexCorrectness.Backtracker.Path
 
-set_option autoImplicit false
-
 open Regex.Data (BitMatrix BVPos)
 open String (Pos)
 open Regex.NFA (Step)

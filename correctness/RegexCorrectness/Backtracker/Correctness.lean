@@ -6,8 +6,6 @@ import all RegexCorrectness.Backtracker.Refinement
 public import RegexCorrectness.Spec
 public import RegexCorrectness.Strategy.Materialize
 
-set_option autoImplicit false
-
 open Regex (NFA)
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)

@@ -3,8 +3,6 @@ module
 import all Regex.Data.SparseSet.Basic
 public import Regex.Data.SparseSet.Basic
 
-set_option autoImplicit false
-
 public section
 
 namespace Regex.Data.SparseSet

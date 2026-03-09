@@ -4,8 +4,6 @@ import all Regex.Regex.Captures
 public import RegexCorrectness.Regex.Basic
 import RegexCorrectness.Strategy
 
-set_option autoImplicit false
-
 open String (Pos PosPlusOne Slice)
 open Regex.Strategy (materializeRegexGroups)
 

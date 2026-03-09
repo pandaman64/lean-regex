@@ -7,8 +7,6 @@ open Std.Do
 
 set_option mvcgen.warning false
 
-set_option autoImplicit false
-
 namespace Regex.Unicode
 
 @[specialize]

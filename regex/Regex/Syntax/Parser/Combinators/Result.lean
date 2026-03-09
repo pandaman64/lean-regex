@@ -2,8 +2,6 @@ module
 
 public import Regex.Syntax.Parser.Combinators.Rel
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

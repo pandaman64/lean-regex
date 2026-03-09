@@ -2,8 +2,6 @@ module
 
 public import RegexCorrectness.Data.Expr.Semantics
 
-set_option autoImplicit false
-
 open Regex.Data (Expr CaptureGroups)
 open String (Pos)
 

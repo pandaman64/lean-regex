@@ -4,8 +4,6 @@ import all RegexCorrectness.Backtracker.Traversal
 import all RegexCorrectness.Strategy.Materialize.Basic
 import RegexCorrectness.Strategy
 
-set_option autoImplicit false
-
 open Regex (NFA)
 open Regex.Data (BitMatrix BVPos)
 open Regex.Strategy (materializeUpdates)

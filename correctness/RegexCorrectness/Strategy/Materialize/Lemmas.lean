@@ -5,8 +5,6 @@ public import RegexCorrectness.Strategy.Materialize.Basic
 import all RegexCorrectness.Data.Expr.Semantics.Separation
 public import RegexCorrectness.Data.Expr.Semantics
 
-set_option autoImplicit false
-
 open String (Pos PosPlusOne)
 open Regex.Data (CaptureGroups)
 

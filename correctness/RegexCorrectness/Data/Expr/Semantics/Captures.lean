@@ -5,8 +5,6 @@ public import Regex.Data.Expr
 public import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
 import RegexCorrectness.Data.String
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

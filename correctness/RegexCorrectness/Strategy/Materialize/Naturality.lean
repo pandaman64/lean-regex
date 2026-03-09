@@ -4,8 +4,6 @@ public import RegexCorrectness.NFA.Semantics.Equivalence
 public import RegexCorrectness.Strategy.Materialize.Lemmas
 import all RegexCorrectness.Strategy.Materialize.Basic
 
-set_option autoImplicit false
-
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy
 open String (Pos PosPlusOne)
