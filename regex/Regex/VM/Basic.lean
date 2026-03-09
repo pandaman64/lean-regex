@@ -15,10 +15,10 @@ open String (Pos)
 namespace Regex.VM
 
 structure SearchState {s : String} (σ : Strategy s) (nfa : NFA) where
-  states : SparseSet nfa.nodes.size
-  updates : Vector σ.Update nfa.nodes.size
+  states : SparseSet nfa.size
+  updates : Vector σ.Update nfa.size
 
-abbrev εStack {s : String} (σ : Strategy s) (nfa : NFA) := List (σ.Update × Fin nfa.nodes.size)
+abbrev εStack {s : String} (σ : Strategy s) (nfa : NFA) := List (σ.Update × Fin nfa.size)
 
 namespace εClosure
 
@@ -32,7 +32,7 @@ def writeUpdate (node : NFA.Node) : Bool :=
   | _ => false
 
 @[inline]
-def pushNext {s : String} (σ : Strategy s) (nfa : NFA) (p : Pos s) (node : NFA.Node) (inBounds : node.inBounds nfa.nodes.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
+def pushNext {s : String} (σ : Strategy s) (nfa : NFA) (p : Pos s) (node : NFA.Node) (inBounds : node.inBounds nfa.size) (update : σ.Update) (stack : εStack σ nfa) : εStack σ nfa :=
   match node with
   | .epsilon state' => (update, ⟨state', inBounds⟩) :: stack
   | .split state₁ state₂ => (update, ⟨state₁, inBounds.1⟩) :: (update, ⟨state₂, inBounds.2⟩) :: stack
@@ -79,10 +79,10 @@ termination_by (next.states.measure, stack)
 If the given state can make a transition on the current character of `it`, make the transition and
 traverse ε-closures from the resulting state.
 -/
-def stepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : Pos s) (ne : p ≠ s.endPos) (currentUpdates : Vector σ.Update nfa.nodes.size)
-  (next : SearchState σ nfa) (state : Fin nfa.nodes.size) :
+def stepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : Pos s) (ne : p ≠ s.endPos) (currentUpdates : Vector σ.Update nfa.size)
+  (next : SearchState σ nfa) (state : Fin nfa.size) :
   Option σ.Update × SearchState σ nfa :=
-  let state' : Option (Fin nfa.nodes.size) :=
+  let state' : Option (Fin nfa.size) :=
     match hn : nfa[state] with
     | .char c state' =>
       if p.get ne = c then
@@ -132,7 +132,7 @@ where
           go (i + 1) hlt result.2
 
 public def captureNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p : Pos s) : Option σ.Update :=
-  let updates : Vector σ.Update nfa.nodes.size := Vector.replicate nfa.nodes.size σ.empty
+  let updates : Vector σ.Update nfa.size := Vector.replicate nfa.size σ.empty
   let (matched, current) := εClosure σ nfa wf p .none ⟨.empty, updates⟩ [(σ.empty, ⟨nfa.start, wf.start_lt⟩)]
   go p matched current ⟨.empty, updates⟩
 where

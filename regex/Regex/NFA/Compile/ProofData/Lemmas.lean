@@ -11,20 +11,28 @@ public section
 namespace Regex.NFA
 
 theorem pushNode_wf {nfa : NFA} {node}
-  (wf : nfa.WellFormed) (inBounds : node.inBounds (nfa.nodes.size + 1)) :
+  (wf : nfa.WellFormed) (inBounds : node.inBounds (nfa.size + 1)) :
   (nfa.pushNode node).WellFormed := by
-  simp [pushNode, WellFormed.iff, NFA.get_eq_nodes_get]
+  simp [pushNode, WellFormed.iff, size]
   intro i
-  cases Nat.lt_or_ge i.val nfa.nodes.size with
+  cases Nat.lt_or_ge i.val nfa.size with
   | inl lt =>
-    have : (nfa.nodes.push node)[i.val] = nfa.nodes[i.val] := nfa.nodes.getElem_push_lt lt
-    simp [this, ←NFA.get_eq_nodes_get]
-    exact Node.inBounds_of_inBounds_of_le (wf.inBounds ⟨i.val, lt⟩) (by grind)
-  | inr ge => grind
+    have hget : (nfa.nodes.push node)[i.val] = nfa.nodes[i.val] := nfa.nodes.getElem_push_lt lt
+    dsimp only [pushNode, NFA.get, GetElem.getElem, size]
+    refine Node.inBounds_of_inBounds_of_le ?_ (Nat.le_succ _)
+    simpa [hget, NFA.get_eq_nodes_get] using wf.inBounds ⟨i.val, lt⟩
+  | inr ge =>
+    have hsize : (nfa.pushNode node).size = nfa.size + 1 := pushNode_size
+    have : i.val < nfa.size + 1 := hsize ▸ i.isLt
+    have eq : i.val = nfa.size := Nat.le_antisymm (Nat.lt_succ_iff.mp this) ge
+    dsimp only [pushNode, NFA.get, GetElem.getElem, size]
+    simp only [eq, size]
+    have heq : (nfa.nodes.push node)[nfa.size] = node := Array.getElem_push_eq
+    simpa [heq, size] using inBounds
 
 open Compile.ProofData in
 theorem pushRegex_wf {nfa : NFA} {next e}
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) :
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size) :
   (nfa.pushRegex next e).WellFormed := by
   induction e generalizing nfa next with
   | empty =>
@@ -88,7 +96,7 @@ theorem pushRegex_wf {nfa : NFA} {next e}
     simp [WellFormed.iff]
     refine ⟨pd.size_lt, ?_⟩
     intro i
-    cases Nat.decEq i pd.nfa.nodes.size with
+    cases Nat.decEq i pd.nfa.size with
     | isTrue eq =>
       simp [eq]
       simp [pd.get_start, Star.splitNode]
@@ -101,36 +109,36 @@ theorem pushRegex_wf {nfa : NFA} {next e}
 
 theorem compile_wf {e} : (compile e).WellFormed := by
   simp [compile]
-  apply pushRegex_wf done_WellFormed (by simp [done])
+  apply pushRegex_wf done_WellFormed (by simp [done, size])
 
 -- Well-formedness of the NFAs
 namespace Compile.ProofData
 
-theorem Empty.wf' [Empty] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem Empty.wf' [Empty] (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
-theorem Epsilon.wf' [Epsilon] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem Epsilon.wf' [Epsilon] (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
-theorem Char.wf' [Char] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem Char.wf' [Char] (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
-theorem Classes.wf' [Classes] (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem Classes.wf' [Classes] (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
 namespace Group
 
 variable [Group]
 
-theorem wf_close (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfaClose.WellFormed := by
+theorem wf_close (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfaClose.WellFormed := by
   apply pushNode_wf wf
   simp [Node.inBounds]
   omega
 
-theorem wf_expr (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfaExpr.WellFormed :=
+theorem wf_expr (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfaExpr.WellFormed :=
   pushRegex_wf (wf_close wf next_lt) (wf_close wf next_lt).start_lt
 
-theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
 end Group
@@ -139,13 +147,13 @@ namespace Alternate
 
 variable [Alternate]
 
-theorem wf₁ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa₁.WellFormed :=
+theorem wf₁ (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa₁.WellFormed :=
   pushRegex_wf wf next_lt
 
-theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa₂.WellFormed :=
+theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa₂.WellFormed :=
   pushRegex_wf (wf₁ wf next_lt) (Nat.lt_trans next_lt nfa₁_property)
 
-theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
 end Alternate
@@ -154,10 +162,10 @@ namespace Concat
 
 variable [Concat]
 
-theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa₂.WellFormed :=
+theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa₂.WellFormed :=
   pushRegex_wf wf next_lt
 
-theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
 end Concat
@@ -173,7 +181,7 @@ theorem wf_placeholder (wf : nfa.WellFormed) : nfaPlaceholder.WellFormed := by
 theorem wf_expr (wf : nfa.WellFormed) : nfaExpr.WellFormed :=
   pushRegex_wf (wf_placeholder wf) (wf_placeholder wf).start_lt
 
-theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) : nfa'.WellFormed :=
+theorem wf' (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa'.WellFormed :=
   pushRegex_wf wf next_lt
 
 end Star

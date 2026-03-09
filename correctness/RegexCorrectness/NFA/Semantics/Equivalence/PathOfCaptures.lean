@@ -13,12 +13,12 @@ open String (Pos)
 variable {s : String} {nfa : NFA} {next e result} {pos pos' : Pos s} {groups : CaptureGroups s}
 
 theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
   (ih : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update) :
-  ∃ update, EquivUpdate (.group tag pos pos' groups) update ∧ result.Path nfa.nodes.size result.start pos next pos' update := by
+    next < nfa.size →
+    ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update) :
+  ∃ update, EquivUpdate (.group tag pos pos' groups) update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData Group in
   let pd := Group.intro eq
   simp [eq_result eq]
@@ -27,26 +27,26 @@ theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
   have ⟨update, eqv, path⟩ := ih (result := nfaExpr) rfl wf_close wf_close.start_lt
   exists (2 * tag, pos) :: update ++ [(2 * tag + 1, pos')], .group eqv
 
-  have stepOpen : nfa'.Step nfa.nodes.size nfa'.start pos nfaExpr.start pos (.some (2 * tag, pos)) := by
+  have stepOpen : nfa'.Step nfa.size nfa'.start pos nfaExpr.start pos (.some (2 * tag, pos)) := by
     apply step_start_iff.mpr
     exact ⟨rfl, rfl, rfl⟩
   have path := castFromExpr path
-  have path : nfa'.Path nfa.nodes.size nfaExpr.start pos nfaClose.start pos' update :=
+  have path : nfa'.Path nfa.size nfaExpr.start pos nfaClose.start pos' update :=
     path.liftBound (by simp [Group.nfaClose]; exact Nat.le_succ _)
-  have pathClose : nfa'.Path nfa.nodes.size nfaClose.start pos' next pos' [(2 * tag + 1, pos')] := by
-    have stepClose : nfa'.Step nfa.nodes.size nfaClose.start pos' next pos' (.some (2 * tag + 1, pos')) := by
+  have pathClose : nfa'.Path nfa.size nfaClose.start pos' next pos' [(2 * tag + 1, pos')] := by
+    have stepClose : nfa'.Step nfa.size nfaClose.start pos' next pos' (.some (2 * tag + 1, pos')) := by
       apply step_close_iff.mpr
       exact ⟨rfl, rfl, rfl⟩
     exact .last stepClose
   exact .more stepOpen (path.trans pathClose)
 
 theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
   (ih : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update) :
-  ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update := by
+    next < nfa.size →
+    ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update) :
+  ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData Alternate in
   let pd := Alternate.intro eq
   simp [eq_result eq]
@@ -54,19 +54,19 @@ theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.al
   have ⟨update, eqv, path⟩ := ih (result := nfa₁) rfl wf next_lt
   exists update, eqv
 
-  have step : nfa'.Step nfa.nodes.size nfa'.start pos nfa₁.start pos .none := by
+  have step : nfa'.Step nfa.size nfa'.start pos nfa₁.start pos .none := by
     apply step_start_iff.mpr
     simp
   have path := castFrom₁ path
   exact .more step path
 
 theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
   (ih : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update) :
-  ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update := by
+    next < nfa.size →
+    ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update) :
+  ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData Alternate in
   let pd := Alternate.intro eq
   simp [eq_result eq]
@@ -75,23 +75,23 @@ theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.a
   have ⟨update, eqv, path⟩ := ih (result := nfa₂) rfl wf₁ (Nat.lt_trans next_lt nfa₁_property)
   exists update, eqv
 
-  have step : nfa'.Step nfa.nodes.size nfa'.start pos nfa₂.start pos .none := by
+  have step : nfa'.Step nfa.size nfa'.start pos nfa₂.start pos .none := by
     apply step_start_iff.mpr
     simp
   have path := castFrom₂ (path.liftBound (Nat.le_of_lt nfa₁_property))
   exact .more step path
 
 theorem path_of_captures.concat {pos'' e₁ e₂ groups₁ groups₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
   (ih₁ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.nodes.size result.start pos next pos' update)
+    next < nfa.size →
+    ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.size result.start pos next pos' update)
   (ih₂ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.nodes.size result.start pos' next pos'' update) :
-  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.nodes.size result.start pos next pos'' update := by
+    next < nfa.size →
+    ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.size result.start pos' next pos'' update) :
+  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.size result.start pos next pos'' update := by
   open Compile.ProofData Concat in
   let pd := Concat.intro eq
   simp [pd.eq_result eq]
@@ -105,16 +105,16 @@ theorem path_of_captures.concat {pos'' e₁ e₂ groups₁ groups₂} (eq : nfa.
   exact (path₁.liftBound (Nat.le_of_lt nfa₂_property)).trans path₂
 
 theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : nfa.pushRegex next (.star greedy e) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
   (ih₁ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next e = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.nodes.size result.start pos next pos' update)
+    next < nfa.size →
+    ∃ update, EquivUpdate groups₁ update ∧ result.Path nfa.size result.start pos next pos' update)
   (ih₂ : ∀ {nfa : NFA} {next result}, nfa.pushRegex next (.star greedy e) = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.nodes.size result.start pos' next pos'' update) :
-  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.nodes.size result.start pos next pos'' update := by
+    next < nfa.size →
+    ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.size result.start pos' next pos'' update) :
+  ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.size result.start pos next pos'' update := by
   open Compile.ProofData Star in
   let pd := Star.intro eq
   simp [pd.eq_result eq]
@@ -126,9 +126,9 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
 
   have start_eq_placeholder : nfaPlaceholder.start = nfa'.start := by
     simp [nfaPlaceholder, start_eq]
-  have path₁ : nfa'.Path nfa.nodes.size nfaExpr.start pos nfa'.start pos' update₁ :=
+  have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfa'.start pos' update₁ :=
     start_eq_placeholder ▸ (castFromExpr path₁).liftBound (by simp [nfaPlaceholder]; exact Nat.le_succ _)
-  have step : nfa'.Step nfa.nodes.size nfa'.start pos nfaExpr.start pos .none :=
+  have step : nfa'.Step nfa.size nfa'.start pos nfaExpr.start pos .none :=
     if h : pd.greedy then
       .splitLeft (j₂ := next) (by simp [start_eq]; exact Nat.le_refl _) (wf' wf next_lt).start_lt (by simp [start_eq, get_start, splitNode, h]; rfl)
     else
@@ -137,9 +137,9 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
   exact (Path.more step path₁).trans path₂
 
 public theorem path_of_captures (eq : nfa.pushRegex next e = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
   (c : e.Captures pos pos' groups) :
-  ∃ update, EquivUpdate groups update ∧ result.Path nfa.nodes.size result.start pos next pos' update := by
+  ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData in
   induction c generalizing nfa next result with
   | char ne hc =>
@@ -175,7 +175,7 @@ public theorem path_of_captures (eq : nfa.pushRegex next e = result)
     exists [], .empty
     simp [pd.eq_result eq]
 
-    have step : nfa'.Step nfa.nodes.size nfa'.start pos next pos .none := by
+    have step : nfa'.Step nfa.size nfa'.start pos next pos .none := by
       apply (pd.step_start_iff).mpr
       exact ⟨.inr rfl, rfl, rfl⟩
     exact .last step

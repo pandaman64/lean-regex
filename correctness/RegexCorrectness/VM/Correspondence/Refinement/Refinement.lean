@@ -42,7 +42,7 @@ theorem εStack.materialize.cons {entry} :
 def materializeResult (resultH : Option (HistoryStrategy s).Update × SearchState (HistoryStrategy s) nfa) : Option (BufferStrategy s bufferSize).Update × SearchState (BufferStrategy s bufferSize) nfa :=
   ⟨resultH.1.map (materializeUpdates bufferSize), resultH.2.materialize⟩
 
-theorem εClosure.pushNext.refines {state : Fin nfa.nodes.size} {update} {buffer} (wf : nfa.WellFormed)
+theorem εClosure.pushNext.refines {state : Fin nfa.size} {update} {buffer} (wf : nfa.WellFormed)
   (h₁ : materializeUpdates bufferSize update = buffer) (h₂ : εStack.materialize stackH = stackB) :
   εStack.materialize (pushNext (HistoryStrategy s) nfa pos nfa[state] (wf.inBounds' state rfl) update stackH)
     = (pushNext (BufferStrategy s bufferSize) nfa pos nfa[state] (wf.inBounds' state rfl) buffer stackB) := by
@@ -238,8 +238,8 @@ theorem captureNext.refines :
   (captureNext (HistoryStrategy s) nfa wf pos).map (materializeUpdates bufferSize) = (captureNext (BufferStrategy s bufferSize) nfa wf pos) := by
   unfold captureNext
   simp
-  generalize hexpandH : εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expandedH
-  generalize hexpandB : εClosure (BufferStrategy s bufferSize) nfa wf pos .none ⟨.empty, Vector.replicate nfa.nodes.size Buffer.empty⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expandedB
+  generalize hexpandH : εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expandedH
+  generalize hexpandB : εClosure (BufferStrategy s bufferSize) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size Buffer.empty⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expandedB
 
   have refExpanded := εClosure.refines expandedB expandedH hexpandB hexpandH rfl (by simp [SearchState.materialize, Buffer.empty]) rfl
   exact captureNext.go.refines rfl rfl (by simp [←refExpanded, materializeResult]) (by simp [←refExpanded, materializeResult]) (by simp [SearchState.materialize, Buffer.empty])

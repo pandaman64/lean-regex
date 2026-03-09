@@ -32,9 +32,9 @@ namespace Epsilon
 variable [Epsilon] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   j = next ∧ p' = p ∧ update = .none := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .epsilon next := by
     simp [start_eq, get_eq]
@@ -45,8 +45,8 @@ theorem step_start_iff :
     simp_all
     exact .epsilon (by simp [start_eq]) lt this
 
-theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+theorem path_start_iff (next_lt : next < nfa.size) :
+  nfa'.Path nfa.size nfa'.start p j p' update ↔
   j = next ∧ p' = p ∧ update = [] := by
   apply Iff.intro
   . intro path
@@ -70,9 +70,9 @@ namespace Anchor
 variable [Anchor] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   j = next ∧ p' = p ∧ update = .none ∧ anchor.test p := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .anchor anchor next := by
     simp [start_eq, get_eq]
@@ -83,8 +83,8 @@ theorem step_start_iff :
     simp_all
     exact .anchor (by simp [start_eq]) lt this hcond
 
-theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+theorem path_start_iff (next_lt : next < nfa.size) :
+  nfa'.Path nfa.size nfa'.start p j p' update ↔
   j = next ∧ p' = p ∧ update = [] ∧ anchor.test p := by
   apply Iff.intro
   . intro path
@@ -108,9 +108,9 @@ namespace Char
 variable [Char] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   j = next ∧ update = .none ∧ ∃ ne, p' = p.next ne ∧ p.get ne = c := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .char c next := by
     simp [start_eq, get_eq]
@@ -121,10 +121,10 @@ theorem step_start_iff :
     simp_all
     exact .char (by simp [start_eq]) lt this ne hget
 
-theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+theorem path_start_iff (next_lt : next < nfa.size) :
+  nfa'.Path nfa.size nfa'.start p j p' update ↔
   j = next ∧ update = [] ∧ ∃ ne, p' = p.next ne ∧ p.get ne = c := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .char c next := by
     simp [start_eq, get_eq]
@@ -150,9 +150,9 @@ namespace Classes
 variable [Classes] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   j = next ∧ update = .none ∧ ∃ ne, p' = p.next ne ∧ p.get ne ∈ cs := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .sparse cs next := by
     simp [start_eq, get_eq]
@@ -163,10 +163,10 @@ theorem step_start_iff :
     simp_all
     exact .sparse (by simp [start_eq]) lt this ne mem
 
-theorem path_start_iff (next_lt : next < nfa.nodes.size) :
-  nfa'.Path nfa.nodes.size nfa'.start p j p' update ↔
+theorem path_start_iff (next_lt : next < nfa.size) :
+  nfa'.Path nfa.size nfa'.start p j p' update ↔
   j = next ∧ update = [] ∧ ∃ ne, p' = p.next ne ∧ p.get ne ∈ cs := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_eq, start_eq]
   have : nfa'[nfa'.start] = .sparse cs next := by
     simp [start_eq, get_eq]
@@ -192,9 +192,9 @@ namespace Group
 variable [Group] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   j = nfaExpr.start ∧ p' = p ∧ update = .some (2 * tag, p) := by
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have lt : nfa'.start < nfa'.size := by
     simp [size_lt_expr', start_eq]
   have : nfa'[nfa'.start] = .save (2 * tag) nfaExpr.start := by
     simp [start_eq, get_open]
@@ -206,9 +206,9 @@ theorem step_start_iff :
     exact .save (ge_pushRegex_start rfl) lt this
 
 theorem step_close_iff :
-  nfa'.Step nfa.nodes.size nfaClose.start p j p' update ↔
+  nfa'.Step nfa.size nfaClose.start p j p' update ↔
   j = next ∧ p' = p ∧ update = .some (2 * tag + 1, p) := by
-  have lt : nfaClose.start < nfa'.nodes.size := by
+  have lt : nfaClose.start < nfa'.size := by
     simp [nfaClose, size_lt]
   have : nfa'[nfaClose.start] = .save (2 * tag + 1) next := by
     simp [nfaClose, get_close]
@@ -226,10 +226,10 @@ namespace Alternate
 variable [Alternate] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   (j = nfa₁.start ∨ j = nfa₂.start) ∧ p' = p ∧ update = .none := by
-  have ge : nfa.nodes.size ≤ nfa'.start := ge_pushRegex_start rfl
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have ge : nfa.size ≤ nfa'.start := ge_pushRegex_start rfl
+  have lt : nfa'.start < nfa'.size := by
     simp [size_lt₂, start_eq]
   have : nfa'[nfa'.start] = .split nfa₁.start nfa₂.start := get_start
   apply Iff.intro
@@ -251,10 +251,10 @@ namespace Star
 variable [Star] {s : String} {lb} {p p' : Pos s} {j update}
 
 theorem step_start_iff :
-  nfa'.Step nfa.nodes.size nfa'.start p j p' update ↔
+  nfa'.Step nfa.size nfa'.start p j p' update ↔
   (j = nfaExpr.start ∨ j = next) ∧ p' = p ∧ update = .none := by
-  have ge : nfa.nodes.size ≤ nfa'.start := ge_pushRegex_start rfl
-  have lt : nfa'.start < nfa'.nodes.size := by
+  have ge : nfa.size ≤ nfa'.start := ge_pushRegex_start rfl
+  have lt : nfa'.start < nfa'.size := by
     simp [size_lt, start_eq]
   have : nfa'[nfa'.start] = splitNode := by
     simp [start_eq, get_start]

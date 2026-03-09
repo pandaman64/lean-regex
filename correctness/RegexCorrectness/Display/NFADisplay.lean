@@ -62,14 +62,14 @@ def nfaToSubstance (regex : Regex) : String := Id.run do
 Let TRUE := True()
 Let FALSE := False()
 "###
-  for i in [0:regex.nfa.nodes.size] do
+  for i in [0:regex.nfa.size] do
     sub := sub ++ createNode i
     if i > 0 then sub := sub ++ relateSuccessorNodes i
 
   sub := sub ++ declareStartNode regex.nfa.start
 
-  for h : i in [0:regex.nfa.nodes.size] do
-    let node := regex.nfa.nodes[i]
+  for h : i in [0:regex.nfa.size] do
+    let node := regex.nfa[i]
     match node with
     | .done =>
         sub := sub ++ labelNode i "done"

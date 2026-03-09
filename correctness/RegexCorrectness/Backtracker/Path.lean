@@ -8,15 +8,15 @@ open Regex.Data (BVPos)
 
 namespace Regex.Backtracker
 
-inductive Path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos s) : Pos s → Fin nfa.nodes.size → List (Nat × Pos s) → Prop where
+inductive Path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos : Pos s) : Pos s → Fin nfa.size → List (Nat × Pos s) → Prop where
   | init : Path nfa wf pos pos ⟨nfa.start, wf.start_lt⟩ []
-  | more {i j : Fin nfa.nodes.size} {pos' pos'' update₁ update₂ update₃} (prev : Path nfa wf pos pos' i update₁) (step : nfa.Step 0 i pos' j pos'' update₂)
+  | more {i j : Fin nfa.size} {pos' pos'' update₁ update₂ update₃} (prev : Path nfa wf pos pos' i update₁) (step : nfa.Step 0 i pos' j pos'' update₂)
     (equpdate : update₃ = update₁ ++ List.ofOption update₂) :
     Path nfa wf pos pos'' j update₃
 
 namespace Path
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos pos' pos'' : Pos s} {i j : Fin nfa.nodes.size}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos pos' pos'' : Pos s} {i j : Fin nfa.size}
   {update update₁ update₂ update₃ : List (Nat × Pos s)}
 
 theorem le (path : Path nfa wf pos pos' i update) :
@@ -43,7 +43,7 @@ theorem nfaPath_of_ne (path : Path nfa wf pos pos' i update) (ne : i.val ≠ nfa
   nfa.Path 0 nfa.start pos i pos' update := by
   simpa [ne] using eq_or_nfaPath path
 
-theorem concat_nfaPath {i j : Nat} (isLt : i < nfa.nodes.size)
+theorem concat_nfaPath {i j : Nat} (isLt : i < nfa.size)
   (path₁ : Path nfa wf pos pos' ⟨i, isLt⟩ update₁) (path₂ : nfa.Path 0 i pos' j pos'' update₂) (equpdate : update₃ = update₁ ++ update₂) :
   Path nfa wf pos pos'' ⟨j, path₂.lt_right wf⟩ update₃ := by
   induction path₂ generalizing update₁ with

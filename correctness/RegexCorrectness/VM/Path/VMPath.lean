@@ -11,7 +11,7 @@ open String (Pos)
 
 namespace Regex.NFA
 
-variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos₀ pos pos' : Pos s} {i j : Fin nfa.nodes.size} {update : Option (Nat × Pos s)}
+variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos₀ pos pos' : Pos s} {i j : Fin nfa.size} {update : Option (Nat × Pos s)}
 
 @[grind →]
 theorem Step.εStep_or_charStep {i j : Nat} (wf : nfa.WellFormed) (step : nfa.Step 0 i pos j pos' update) :
@@ -19,7 +19,7 @@ theorem Step.εStep_or_charStep {i j : Nat} (wf : nfa.WellFormed) (step : nfa.St
   (nfa.CharStep pos ⟨i, step.lt⟩ ⟨j, step.lt_right wf⟩ ∧ update = .none ∧ ∃ ne, pos' = pos.next ne) := by
   grind
 
-inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (pos₀ : Pos s) : Pos s → Fin nfa.nodes.size → List (Nat × Pos s) → Prop where
+inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (pos₀ : Pos s) : Pos s → Fin nfa.size → List (Nat × Pos s) → Prop where
   | init {pos i update} (le : pos₀ ≤ pos) (cls : nfa.εClosure' pos ⟨nfa.start, wf.start_lt⟩ i update) :
     VMPath nfa wf pos₀ pos i update
   | more {i j k pos pos' update₁ update₂ update₃} (prev : VMPath nfa wf pos₀ pos i update₁) (step : nfa.CharStep pos i j) (cls : nfa.εClosure' (pos.next step.ne) j k update₂)
@@ -93,7 +93,7 @@ theorem nfaPath_of_ne {update} (path : nfa.VMPath wf pos₀ pos i update) (ne : 
   ∃ poss, pos₀ ≤ poss ∧ nfa.Path 0 nfa.start poss i pos update := by
   simpa [ne] using eq_or_nfaPath path
 
-theorem concat_nfaPath {i j : Nat} {update₁ update₂} (isLt₁ : i < nfa.nodes.size)
+theorem concat_nfaPath {i j : Nat} {update₁ update₂} (isLt₁ : i < nfa.size)
   (path₁ : nfa.VMPath wf pos₀ pos ⟨i, isLt₁⟩ update₁) (path₂ : nfa.Path 0 i pos j pos' update₂) :
   nfa.VMPath wf pos₀ pos' ⟨j, path₂.lt_right wf⟩ (update₁ ++ update₂) := by
   induction path₂ generalizing update₁ with

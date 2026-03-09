@@ -22,7 +22,7 @@ variable [ProofData]
 
 def nfa' : NFA := nfa.pushRegex next e
 
-theorem size_lt : nfa.nodes.size < nfa'.nodes.size := pushRegex_size_lt
+theorem size_lt : nfa.size < nfa'.size := pushRegex_size_lt
 
 theorem eq_result {result} (eq : NFA.pushRegex nfa next e = result) : result = nfa' := by
   simp [←eq]
@@ -50,25 +50,25 @@ variable [Empty]
 theorem eq' : nfa' = nfa.pushRegex next .empty := by
   simp [nfa', expr_eq]
 
-theorem start_eq : nfa'.start = nfa.nodes.size := by
+theorem start_eq : nfa'.start = nfa.size := by
   simp [eq', pushRegex]
 
-theorem size_eq : nfa'.nodes.size = nfa.nodes.size + 1 := by
+theorem size_eq : nfa'.size = nfa.size + 1 := by
   simp [eq', pushRegex]
 
-theorem get_lt {i : Nat} (h : i < nfa.nodes.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
+theorem get_lt {i : Nat} (h : i < nfa.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
   simp [eq', pushRegex, pushNode_get_lt i h]
 
-theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .fail := by
+theorem get_eq : nfa'[nfa.size]'size_lt = .fail := by
   simp [eq', pushRegex]
 
-theorem get (i : Nat) (h : i < nfa'.nodes.size) :
-  if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
+theorem get (i : Nat) (h : i < nfa'.size) :
+  if _ : i < nfa.size then nfa'[i] = nfa[i]
   else nfa'[i] = .fail := by
   split
   case isTrue => exact get_lt _
   case isFalse h' =>
-    have : i = nfa.nodes.size := by
+    have : i = nfa.size := by
       simp [size_eq] at h
       omega
     simp [this, get_eq]
@@ -91,25 +91,25 @@ variable [Epsilon]
 theorem eq' : nfa' = nfa.pushRegex next .epsilon := by
   simp [nfa', expr_eq]
 
-theorem start_eq : nfa'.start = nfa.nodes.size := by
+theorem start_eq : nfa'.start = nfa.size := by
   simp [eq', pushRegex]
 
-theorem size_eq : nfa'.nodes.size = nfa.nodes.size + 1 := by
+theorem size_eq : nfa'.size = nfa.size + 1 := by
   simp [eq', pushRegex]
 
-theorem get_lt {i : Nat} (h : i < nfa.nodes.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
+theorem get_lt {i : Nat} (h : i < nfa.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
   simp [eq', pushRegex, pushNode_get_lt i h]
 
-theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .epsilon next := by
+theorem get_eq : nfa'[nfa.size]'size_lt = .epsilon next := by
   simp [eq', pushRegex]
 
-theorem get (i : Nat) (h : i < nfa'.nodes.size) :
-  if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
+theorem get (i : Nat) (h : i < nfa'.size) :
+  if _ : i < nfa.size then nfa'[i] = nfa[i]
   else nfa'[i] = .epsilon next := by
   split
   case isTrue => exact get_lt _
   case isFalse h' =>
-    have : i = nfa.nodes.size := by
+    have : i = nfa.size := by
       simp [size_eq] at h
       omega
     simp [this, get_eq]
@@ -133,25 +133,25 @@ variable [Anchor]
 theorem eq' : nfa' = nfa.pushRegex next (.anchor anchor) := by
   simp [nfa', expr_eq]
 
-theorem start_eq : nfa'.start = nfa.nodes.size := by
+theorem start_eq : nfa'.start = nfa.size := by
   simp [eq', pushRegex]
 
-theorem size_eq : nfa'.nodes.size = nfa.nodes.size + 1 := by
+theorem size_eq : nfa'.size = nfa.size + 1 := by
   simp [eq', pushRegex]
 
-theorem get_lt {i : Nat} (h : i < nfa.nodes.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
+theorem get_lt {i : Nat} (h : i < nfa.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
   simp [eq', pushRegex, pushNode_get_lt i h]
 
-theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .anchor anchor next := by
+theorem get_eq : nfa'[nfa.size]'size_lt = .anchor anchor next := by
   simp [eq', pushRegex]
 
-theorem get (i : Nat) (h : i < nfa'.nodes.size) :
-  if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
+theorem get (i : Nat) (h : i < nfa'.size) :
+  if _ : i < nfa.size then nfa'[i] = nfa[i]
   else nfa'[i] = .anchor anchor next := by
   split
   case isTrue => exact get_lt _
   case isFalse h' =>
-    have : i = nfa.nodes.size := by
+    have : i = nfa.size := by
       simp [size_eq] at h
       omega
     simp [this, get_eq]
@@ -175,25 +175,25 @@ variable [Char]
 theorem eq' : nfa' = nfa.pushRegex next (.char c) := by
   simp [nfa', expr_eq]
 
-theorem start_eq : nfa'.start = nfa.nodes.size := by
+theorem start_eq : nfa'.start = nfa.size := by
   simp [eq', pushRegex]
 
-theorem size_eq : nfa'.nodes.size = nfa.nodes.size + 1 := by
+theorem size_eq : nfa'.size = nfa.size + 1 := by
   simp [eq', pushRegex]
 
-theorem get_lt {i : Nat} (h : i < nfa.nodes.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
+theorem get_lt {i : Nat} (h : i < nfa.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
   simp [eq', pushRegex, pushNode_get_lt i h]
 
-theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .char c next := by
+theorem get_eq : nfa'[nfa.size]'size_lt = .char c next := by
   simp [eq', pushRegex]
 
-theorem get (i : Nat) (h : i < nfa'.nodes.size) :
-  if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
+theorem get (i : Nat) (h : i < nfa'.size) :
+  if _ : i < nfa.size then nfa'[i] = nfa[i]
   else nfa'[i] = .char c next := by
   split
   case isTrue => exact get_lt _
   case isFalse h' =>
-    have : i = nfa.nodes.size := by
+    have : i = nfa.size := by
       simp [size_eq] at h
       omega
     simp [this, get_eq]
@@ -217,25 +217,25 @@ variable [Classes]
 theorem eq' : nfa' = nfa.pushRegex next (.classes cs) := by
   simp [nfa', expr_eq]
 
-theorem start_eq : nfa'.start = nfa.nodes.size := by
+theorem start_eq : nfa'.start = nfa.size := by
   simp [eq', pushRegex]
 
-theorem size_eq : nfa'.nodes.size = nfa.nodes.size + 1 := by
+theorem size_eq : nfa'.size = nfa.size + 1 := by
   simp [eq', pushRegex]
 
-theorem get_lt {i : Nat} (h : i < nfa.nodes.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
+theorem get_lt {i : Nat} (h : i < nfa.size) : nfa'[i]'(Nat.lt_trans h size_lt) = nfa[i] := by
   simp [eq', pushRegex, pushNode_get_lt i h]
 
-theorem get_eq : nfa'[nfa.nodes.size]'size_lt = .sparse cs next := by
+theorem get_eq : nfa'[nfa.size]'size_lt = .sparse cs next := by
   simp [eq', pushRegex]
 
-theorem get (i : Nat) (h : i < nfa'.nodes.size) :
-  if _ : i < nfa.nodes.size then nfa'[i] = nfa[i]
+theorem get (i : Nat) (h : i < nfa'.size) :
+  if _ : i < nfa.size then nfa'[i] = nfa[i]
   else nfa'[i] = .sparse cs next := by
   split
   case isTrue => exact get_lt _
   case isFalse h' =>
-    have : i = nfa.nodes.size := by
+    have : i = nfa.size := by
       simp [size_eq] at h
       omega
     simp [this, get_eq]
@@ -260,9 +260,9 @@ variable [Group]
 def nfaClose : NFA := nfa.pushNode (.save (2 * tag + 1) next)
 def nfaExpr : NFA := nfaClose.pushRegex nfaClose.start e'
 
-theorem nfaClose_property : nfa.nodes.size < nfaClose.nodes.size := by simp [nfaClose]
+theorem nfaClose_property : nfa.size < nfaClose.size := by simp [nfaClose]
 
-theorem nfaExpr_property : nfaClose.nodes.size < nfaExpr.nodes.size :=
+theorem nfaExpr_property : nfaClose.size < nfaExpr.size :=
   pushRegex_size_lt
 
 theorem eq' : nfa' = nfa.pushRegex next (.group tag e') := by
@@ -270,27 +270,27 @@ theorem eq' : nfa' = nfa.pushRegex next (.group tag e') := by
 
 theorem eq_push : nfa' = nfaExpr.pushNode (.save (2 * tag) nfaExpr.start) := eq'
 
-theorem start_eq : nfa'.start = nfaExpr.nodes.size := by
+theorem start_eq : nfa'.start = nfaExpr.size := by
   simp [eq_push]
 
-theorem size_lt_expr' : nfaExpr.nodes.size < nfa'.nodes.size := by
+theorem size_lt_expr' : nfaExpr.size < nfa'.size := by
   simp [eq_push]
 
-theorem size_lt_close' : nfaClose.nodes.size < nfa'.nodes.size :=
+theorem size_lt_close' : nfaClose.size < nfa'.size :=
   Nat.lt_trans nfaExpr_property size_lt_expr'
 
-theorem size_lt_nfa_expr : nfa.nodes.size < nfaExpr.nodes.size :=
+theorem size_lt_nfa_expr : nfa.size < nfaExpr.size :=
   Nat.lt_trans nfaClose_property nfaExpr_property
 
-theorem get_open : nfa'[nfaExpr.nodes.size]'size_lt_expr' = (.save (2 * tag) nfaExpr.start) := by
+theorem get_open : nfa'[nfaExpr.size]'size_lt_expr' = (.save (2 * tag) nfaExpr.start) := by
   simp [eq_push]
 
-theorem get_lt_expr {i : Nat} (h : i < nfaExpr.nodes.size) :
+theorem get_lt_expr {i : Nat} (h : i < nfaExpr.size) :
   nfa'[i]'(Nat.lt_trans h size_lt_expr') = nfaExpr[i] := by
   simp [eq_push, pushNode_get_lt i h]
 
 -- We state this for `nfaClose` for now because an inducion hypothesis is needed to see through `nfaExpr`.
-theorem get_close_pre : nfaClose[nfa.nodes.size]'nfaClose_property = .save (2 * tag + 1) next := by
+theorem get_close_pre : nfaClose[nfa.size]'nfaClose_property = .save (2 * tag + 1) next := by
   simp [nfaClose]
 
 end Group
@@ -313,10 +313,10 @@ variable [Alternate]
 def nfa₁ : NFA := nfa.pushRegex next e₁
 def nfa₂ : NFA := nfa₁.pushRegex next e₂
 
-theorem nfa₁_property : nfa.nodes.size < nfa₁.nodes.size :=
+theorem nfa₁_property : nfa.size < nfa₁.size :=
   pushRegex_size_lt
 
-theorem nfa₂_property : nfa₁.nodes.size < nfa₂.nodes.size :=
+theorem nfa₂_property : nfa₁.size < nfa₂.size :=
   pushRegex_size_lt
 
 theorem eq' : nfa' = nfa.pushRegex next (.alternate e₁ e₂) := by
@@ -324,16 +324,16 @@ theorem eq' : nfa' = nfa.pushRegex next (.alternate e₁ e₂) := by
 
 theorem eq_push : nfa' = nfa₂.pushNode (.split nfa₁.start nfa₂.start) := eq'
 
-theorem size_lt₂ : nfa₂.nodes.size < nfa'.nodes.size := by
+theorem size_lt₂ : nfa₂.size < nfa'.size := by
   simp [eq_push]
 
-theorem size_lt₁ : nfa₁.nodes.size < nfa'.nodes.size :=
+theorem size_lt₁ : nfa₁.size < nfa'.size :=
   Nat.lt_trans nfa₂_property size_lt₂
 
-theorem get_split : nfa'[nfa₂.nodes.size]'size_lt₂ = .split nfa₁.start nfa₂.start := by
+theorem get_split : nfa'[nfa₂.size]'size_lt₂ = .split nfa₁.start nfa₂.start := by
   simp [eq_push]
 
-theorem start_eq : nfa'.start = nfa₂.nodes.size := by
+theorem start_eq : nfa'.start = nfa₂.size := by
   simp [eq_push]
 
 theorem get_start : nfa'[nfa'.start]'(start_eq ▸ size_lt₂) = .split nfa₁.start nfa₂.start := by
@@ -358,7 +358,7 @@ variable [Concat]
 
 def nfa₂ : NFA := nfa.pushRegex next e₂
 
-theorem nfa₂_property : nfa.nodes.size < nfa₂.nodes.size :=
+theorem nfa₂_property : nfa.size < nfa₂.size :=
   pushRegex_size_lt
 
 theorem eq' : nfa' = nfa.pushRegex next (.concat e₁ e₂) := by
@@ -368,7 +368,7 @@ theorem eq_push : nfa' = nfa₂.pushRegex nfa₂.start e₁ := by
   simp [eq', pushRegex]
   rfl
 
-theorem size₂_lt : nfa₂.nodes.size < nfa'.nodes.size := by
+theorem size₂_lt : nfa₂.size < nfa'.size := by
   simp [eq_push]
   exact pushRegex_size_lt
 
@@ -395,31 +395,31 @@ theorem eq' : nfa' = nfa.pushRegex next (.star greedy e') := by
 def nfaPlaceholder : NFA := nfa.pushNode .fail
 def nfaExpr : NFA := nfaPlaceholder.pushRegex nfaPlaceholder.start e'
 
-theorem nfaPlaceholder_property : nfa.nodes.size < nfaPlaceholder.nodes.size := by
+theorem nfaPlaceholder_property : nfa.size < nfaPlaceholder.size := by
   simp [nfaPlaceholder]
 
-theorem nfaExpr_property : nfaPlaceholder.nodes.size < nfaExpr.nodes.size :=
+theorem nfaExpr_property : nfaPlaceholder.size < nfaExpr.size :=
   pushRegex_size_lt
 
-theorem start_eq : nfa'.start = nfa.nodes.size := by
+theorem start_eq : nfa'.start = nfa.size := by
   rw [eq', pushRegex]
 
-theorem size_eq_expr' : nfa'.nodes.size = nfaExpr.nodes.size := by
-  simp [eq', pushRegex]
-  rfl
+theorem size_eq_expr' : nfa'.size = nfaExpr.size := by
+  simp only [expr_eq, pushRegex, nfa', nfaExpr, nfaPlaceholder, pushNode_start_eq, size]
+  rw [Array.size_setIfInBounds]
 
 def splitNode : NFA.Node :=
   .split (if greedy then nfaExpr.start else next) (if greedy then next else nfaExpr.start)
 
-theorem get_start : nfa'[nfa.nodes.size]'size_lt = splitNode := by
+theorem get_start : nfa'[nfa.size]'size_lt = splitNode := by
   simp [eq', pushRegex, NFA.get_eq_nodes_get, splitNode]
   split <;> rfl
 
-theorem get_ne_start (i : Nat) (h : i < nfa'.nodes.size) (ne : i ≠ nfa.nodes.size) :
+theorem get_ne_start (i : Nat) (h : i < nfa'.size) (ne : i ≠ nfa.size) :
   nfa'[i] = nfaExpr[i]'(size_eq_expr' ▸ h) := by
-  simp [eq', pushRegex, NFA.get_eq_nodes_get]
-  rw [Array.getElem_setIfInBounds_ne (hj := size_eq_expr' ▸ h) (h := ne.symm)]
-  rfl
+  simp [eq', pushRegex, NFA.get_eq_nodes_get, nfaExpr]
+  have hj : i < nfaExpr.nodes.size := (by rfl : nfaExpr.size = nfaExpr.nodes.size) ▸ (size_eq_expr' ▸ h)
+  exact Array.getElem_setIfInBounds_ne (hj := hj) (h := ne.symm)
 
 end Star
 

@@ -16,19 +16,19 @@ namespace Regex.NFA
 
 @[grind]
 inductive Step {s : String} (nfa : NFA) (lb : Nat) : Nat → Pos s → Nat → Pos s → Option (Nat × Pos s) → Prop where
-  | epsilon {i j p} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .epsilon j) :
+  | epsilon {i j p} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .epsilon j) :
     Step nfa lb i p j p .none
-  | anchor {i j p a} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .anchor a j) (h : a.test p) :
+  | anchor {i j p a} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .anchor a j) (h : a.test p) :
     Step nfa lb i p j p .none
-  | splitLeft {i j₁ j₂ p} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .split j₁ j₂) :
+  | splitLeft {i j₁ j₂ p} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .split j₁ j₂) :
     Step nfa lb i p j₁ p .none
-  | splitRight {i j₁ j₂ p} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .split j₁ j₂) :
+  | splitRight {i j₁ j₂ p} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .split j₁ j₂) :
     Step nfa lb i p j₂ p .none
-  | save {i j p offset} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .save offset j) :
+  | save {i j p offset} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .save offset j) :
     Step nfa lb i p j p (.some (offset, p))
-  | char {i j p c} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .char c j) (ne : p ≠ s.endPos) (eq' : p.get ne = c) :
+  | char {i j p c} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .char c j) (ne : p ≠ s.endPos) (eq' : p.get ne = c) :
     Step nfa lb i p j (p.next ne) .none
-  | sparse {i j p cs} (ge : lb ≤ i) (lt : i < nfa.nodes.size) (eq : nfa[i] = .sparse cs j) (ne : p ≠ s.endPos) (mem : p.get ne ∈ cs):
+  | sparse {i j p cs} (ge : lb ≤ i) (lt : i < nfa.size) (eq : nfa[i] = .sparse cs j) (ne : p ≠ s.endPos) (mem : p.get ne ∈ cs):
     Step nfa lb i p j (p.next ne) .none
 
 namespace Step
@@ -40,11 +40,11 @@ theorem ge (step : nfa.Step lb i p j p' update) : lb ≤ i := by
   cases step <;> assumption
 
 @[grind →]
-theorem lt (step : nfa.Step lb i p j p' update) : i < nfa.nodes.size := by
+theorem lt (step : nfa.Step lb i p j p' update) : i < nfa.size := by
   cases step <;> assumption
 
 @[grind →]
-theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i p j p' update) : j < nfa.nodes.size := by
+theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i p j p' update) : j < nfa.size := by
   have inBounds := wf.inBounds ⟨i, step.lt⟩
   cases step <;> simp_all [Node.inBounds]
 
@@ -60,7 +60,7 @@ theorem le (step : nfa.Step lb i p j p' update) : p ≤ p' := by
 
 @[grind .]
 theorem cast (step : nfa.Step lb i p j p' update)
-  {lt : i < nfa'.nodes.size} (h : nfa[i]'step.lt = nfa'[i]) :
+  {lt : i < nfa'.size} (h : nfa[i]'step.lt = nfa'[i]) :
   nfa'.Step lb i p j p' update := by
   cases step with
   | epsilon ge _ eq => exact .epsilon ge lt (h ▸ eq)
@@ -70,6 +70,19 @@ theorem cast (step : nfa.Step lb i p j p' update)
   | save ge _ eq => exact .save ge lt (h ▸ eq)
   | char ge _ eq ne eq' => exact .char ge lt (h ▸ eq) ne eq'
   | sparse ge _ eq ne mem => exact .sparse ge lt (h ▸ eq) ne mem
+
+@[grind .]
+theorem castFrom (step : nfa'.Step lb i p j p' update)
+  {lt : i < nfa.size} (h : nfa'[i]'step.lt = nfa[i]) :
+  nfa.Step lb i p j p' update := by
+  cases step with
+  | epsilon ge _ eq => exact .epsilon ge lt (h.symm ▸ eq)
+  | anchor ge _ eq h' => exact .anchor ge lt (h.symm ▸ eq) h'
+  | splitLeft ge _ eq => exact .splitLeft ge lt (h.symm ▸ eq)
+  | splitRight ge _ eq => exact .splitRight ge lt (h.symm ▸ eq)
+  | save ge _ eq => exact .save ge lt (h.symm ▸ eq)
+  | char ge _ eq ne eq' => exact .char ge lt (h.symm ▸ eq) ne eq'
+  | sparse ge _ eq ne mem => exact .sparse ge lt (h.symm ▸ eq) ne mem
 
 @[grind .]
 theorem liftBound' (ge : lb' ≤ i) (step : nfa.Step lb i p j p' update) :
@@ -89,7 +102,7 @@ theorem liftBound (le : lb' ≤ lb) (step : nfa.Step lb i p j p' update) :
   step.liftBound' (Nat.le_trans le step.ge)
 
 @[grind =]
-theorem iff_done {lt : i < nfa.nodes.size} (eq : nfa[i] = .done) :
+theorem iff_done {lt : i < nfa.size} (eq : nfa[i] = .done) :
   nfa.Step lb i p j p' update ↔ False := by
   apply Iff.intro
   . intro step
@@ -97,37 +110,37 @@ theorem iff_done {lt : i < nfa.nodes.size} (eq : nfa[i] = .done) :
   . simp
 
 @[grind =]
-theorem iff_fail {lt : i < nfa.nodes.size} (eq : nfa[i] = .fail) :
+theorem iff_fail {lt : i < nfa.size} (eq : nfa[i] = .fail) :
   nfa.Step lb i p j p' update ↔ False := by
   grind
 
 @[grind =>]
-theorem iff_epsilon {next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .epsilon next) :
+theorem iff_epsilon {next} {lt : i < nfa.size} (eq : nfa[i] = .epsilon next) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ j = next ∧ p' = p ∧ update = .none := by
   grind
 
 @[grind =>]
-theorem iff_anchor {anchor next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .anchor anchor next) :
+theorem iff_anchor {anchor next} {lt : i < nfa.size} (eq : nfa[i] = .anchor anchor next) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ j = next ∧ p' = p ∧ update = .none ∧ anchor.test p := by
   grind
 
 @[grind =>]
-theorem iff_split {next₁ next₂} {lt : i < nfa.nodes.size} (eq : nfa[i] = .split next₁ next₂) :
+theorem iff_split {next₁ next₂} {lt : i < nfa.size} (eq : nfa[i] = .split next₁ next₂) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ (j = next₁ ∨ j = next₂) ∧ p' = p ∧ update = .none := by
   grind
 
 @[grind =>]
-theorem iff_save {offset next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .save offset next) :
+theorem iff_save {offset next} {lt : i < nfa.size} (eq : nfa[i] = .save offset next) :
   nfa.Step lb i p j p' update ↔ lb ≤ i ∧ j = next ∧ p' = p ∧ update = .some (offset, p) := by
   grind
 
 @[grind =>]
-theorem iff_char {c next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .char c next) :
+theorem iff_char {c next} {lt : i < nfa.size} (eq : nfa[i] = .char c next) :
   nfa.Step lb i p j p' update ↔ ∃ ne, lb ≤ i ∧ j = next ∧ p' = p.next ne ∧ update = .none ∧ p.get ne = c := by
   grind
 
 @[grind =>]
-theorem iff_sparse {cs next} {lt : i < nfa.nodes.size} (eq : nfa[i] = .sparse cs next) :
+theorem iff_sparse {cs next} {lt : i < nfa.size} (eq : nfa[i] = .sparse cs next) :
   nfa.Step lb i p j p' update ↔ ∃ ne, lb ≤ i ∧ j = next ∧ p' = p.next ne ∧ update = .none ∧ p.get ne ∈ cs := by
   grind
 
@@ -136,7 +149,7 @@ theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i p 
   nfa.Step 1 i p j p' update := by
   cases Nat.eq_zero_or_pos i with
   | inl eqi =>
-    have lt : i < nfa.nodes.size := eqi ▸ lt_zero_size_compile eq
+    have lt : i < nfa.size := eqi ▸ lt_zero_size_compile eq
     have := (done_iff_zero_compile eq ⟨i, lt⟩).mpr eqi
     cases step <;> simp_all
   | inr gt => exact step.liftBound' gt
@@ -163,13 +176,13 @@ theorem ge (path : nfa.Path lb i p j p' updates) : lb ≤ i := by
   | more step => exact step.ge
 
 @[grind →]
-theorem lt (path : nfa.Path lb i p j p' updates) : i < nfa.nodes.size := by
+theorem lt (path : nfa.Path lb i p j p' updates) : i < nfa.size := by
   cases path with
   | last step => exact step.lt
   | more step => exact step.lt
 
 @[grind →]
-theorem lt_right (wf : nfa.WellFormed) (path : nfa.Path lb i p j p' updates) : j < nfa.nodes.size := by
+theorem lt_right (wf : nfa.WellFormed) (path : nfa.Path lb i p j p' updates) : j < nfa.size := by
   induction path with
   | last step => exact step.lt_right wf
   | more _ _ ih => exact ih
@@ -184,7 +197,7 @@ theorem le (path : nfa.Path lb i p j p' updates) : p ≤ p' := by
 A simpler casting procedure where the equality can be proven easily, e.g., when casting to a larger NFA.
 -/
 @[grind =>]
-theorem cast (eq : ∀ i, lb ≤ i → (_ : i < nfa.nodes.size) → ∃ _ : i < nfa'.nodes.size, nfa[i] = nfa'[i])
+theorem cast (eq : ∀ i, lb ≤ i → (_ : i < nfa.size) → ∃ _ : i < nfa'.size, nfa[i] = nfa'[i])
   (path : nfa.Path lb i p j p' updates) :
   nfa'.Path lb i p j p' updates := by
   induction path with
@@ -199,8 +212,8 @@ theorem cast (eq : ∀ i, lb ≤ i → (_ : i < nfa.nodes.size) → ∃ _ : i < 
 A casting procedure that transports a path from a larger NFA to a smaller NFA.
 -/
 @[grind →]
-theorem cast' (lt : i < nfa.nodes.size) (size_le : nfa.nodes.size ≤ nfa'.nodes.size) (wf : nfa.WellFormed)
-  (eq : ∀ i, lb ≤ i → (lt : i < nfa.nodes.size) → nfa'[i]'(Nat.lt_of_lt_of_le lt size_le) = nfa[i])
+theorem cast' (lt : i < nfa.size) (size_le : nfa.size ≤ nfa'.size) (wf : nfa.WellFormed)
+  (eq : ∀ i, lb ≤ i → (lt : i < nfa.size) → nfa'[i]'(Nat.lt_of_lt_of_le lt size_le) = nfa[i])
   (path : nfa'.Path lb i p j p' updates) :
   nfa.Path lb i p j p' updates := by
   induction path with
