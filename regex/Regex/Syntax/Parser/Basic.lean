@@ -5,8 +5,6 @@ import Regex.Syntax.Parser.Combinators
 public import Regex.Syntax.Parser.Error
 public import Regex.Data.Expr
 
-set_option autoImplicit false
-
 open Regex.Syntax.Parser (Ast)
 open Regex.Syntax.Parser.Combinators
 open Regex.Data (Anchor PerlClass PerlClassKind Class Classes Expr)

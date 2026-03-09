@@ -7,8 +7,6 @@ import Regex.Backtracker
 public import Regex.Regex.OptimizationInfo
 public import Regex.Strategy
 
-set_option autoImplicit false
-
 open String (Pos PosPlusOne Slice)
 open Regex.Data (Expr)
 

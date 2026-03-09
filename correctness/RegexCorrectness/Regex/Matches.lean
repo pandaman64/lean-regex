@@ -3,8 +3,6 @@ module
 import all Regex.Regex.Matches
 public import RegexCorrectness.Regex.Basic
 
-set_option autoImplicit false
-
 open String (Pos PosPlusOne Slice)
 
 public section

@@ -2,8 +2,6 @@ module
 import Init.Data.Vector.Lemmas
 import Regex.Data.SparseSet.Bijection
 
-set_option autoImplicit false
-
 namespace Regex.Data
 
 public structure SparseSet (n : Nat) where

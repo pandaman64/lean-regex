@@ -47,7 +47,7 @@ theorem or_ne_zero {n m : Nat} (h : m ≠ 0) : n ||| m ≠ 0 := by
   rw [Decidable.not_not] at h'
   exact h (zero_of_or_zero h').2
 
-theorem or_one_shiftLeft_ne_zero {n : Nat} : (n ||| 1 <<< i) ≠ 0 := by
+theorem or_one_shiftLeft_ne_zero {n i : Nat} : (n ||| 1 <<< i) ≠ 0 := by
   have : 1 <<< i ≠ 0 := by
     rw [one_shiftLeft]
     exact Nat.ne_zero_of_lt (Nat.two_pow_pos i)
@@ -56,11 +56,11 @@ theorem or_one_shiftLeft_ne_zero {n : Nat} : (n ||| 1 <<< i) ≠ 0 := by
 theorem or_one_mod_two {n : Nat} : (n ||| 1) % 2 = 1 := by
   simp [Nat.or_mod_two_eq_one]
 
-theorem one_shiftLeft_succ_div_two : (1 <<< (i + 1)) / 2 = 1 <<< i := by
+theorem one_shiftLeft_succ_div_two (i : Nat) : (1 <<< (i + 1)) / 2 = 1 <<< i := by
   simp [one_shiftLeft]
   omega
 
-theorem or_one_shiftLeft_succ_mod_two {n : Nat} : (n ||| 1 <<< (i + 1)) % 2 = n % 2 := by
+theorem or_one_shiftLeft_succ_mod_two {n i : Nat} : (n ||| 1 <<< (i + 1)) % 2 = n % 2 := by
   rw [one_shiftLeft]
   match h : n % 2 with
   | 0 => simp [mod_two_eq_zero_iff_testBit_zero, h]

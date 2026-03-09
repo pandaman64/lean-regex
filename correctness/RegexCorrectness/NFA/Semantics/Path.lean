@@ -4,8 +4,6 @@ import all Regex.NFA
 public import RegexCorrectness.Data.List
 public import RegexCorrectness.NFA.Compile
 
-set_option autoImplicit false
-
 /-
 In this file, we treat an NFA as a collection of instructions and give a small-step operational semantics.
 -/

@@ -3,8 +3,6 @@ module
 public import RegexCorrectness.Data.Expr.Semantics.CaptureGroups
 public import Regex.Data.String
 
-set_option autoImplicit false
-
 open Regex.Data (CaptureGroups)
 open String (Pos PosPlusOne)
 

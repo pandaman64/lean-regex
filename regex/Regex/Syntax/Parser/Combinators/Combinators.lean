@@ -3,8 +3,6 @@ module
 public import Regex.Syntax.Parser.Combinators.Parser
 import Regex.Data.String
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

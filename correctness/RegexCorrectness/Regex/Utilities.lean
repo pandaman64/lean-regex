@@ -6,8 +6,6 @@ import all Regex.Regex.Utilities
 public import RegexCorrectness.Regex.Matches
 public import RegexCorrectness.Regex.Captures
 
-set_option autoImplicit false
-
 open String (Pos Slice)
 
 public section

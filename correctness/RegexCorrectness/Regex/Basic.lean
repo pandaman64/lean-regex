@@ -16,8 +16,6 @@ import RegexCorrectness.Backtracker
 import RegexCorrectness.VM
 import RegexCorrectness.Regex.OptimizationInfo
 
-set_option autoImplicit false
-
 open Regex.Data (Expr)
 open String (Pos)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)

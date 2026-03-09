@@ -5,8 +5,6 @@ import all Regex.Data.BVPos
 import all Regex.Backtracker.Basic
 import Mathlib.Tactic.DepRewrite
 
-set_option autoImplicit false
-
 open Regex.Data (BitMatrix BVPos)
 open String (Pos)
 

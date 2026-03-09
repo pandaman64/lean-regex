@@ -2,8 +2,6 @@ module
 
 public import Regex.Regex.Basic
 
-set_option autoImplicit false
-
 open String (Pos PosPlusOne Slice)
 
 public section

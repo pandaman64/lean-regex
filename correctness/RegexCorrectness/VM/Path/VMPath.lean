@@ -5,8 +5,6 @@ import all Regex.VM.Basic
 import RegexCorrectness.VM.Path.EpsilonClosure
 import RegexCorrectness.VM.Path.CharStep
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos)

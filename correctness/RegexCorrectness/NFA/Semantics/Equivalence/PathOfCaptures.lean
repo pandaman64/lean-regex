@@ -5,8 +5,6 @@ public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Semantics.ProofData
 import all Regex.NFA.Compile.Basic
 
-set_option autoImplicit false
-
 namespace Regex.NFA
 
 open Regex.Data (Expr CaptureGroups)

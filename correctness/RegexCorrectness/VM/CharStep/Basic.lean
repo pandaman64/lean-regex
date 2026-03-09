@@ -2,8 +2,6 @@ module
 
 import all RegexCorrectness.VM.EpsilonClosure
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos)

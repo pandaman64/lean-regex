@@ -3,8 +3,6 @@ module
 public import Regex.NFA
 public import Regex.Data.String
 
-set_option autoImplicit false
-
 open String (Pos PosPlusOne)
 
 @[expose]

@@ -4,7 +4,7 @@ keywords = ["regex", "verification"]
 defaultTargets = ["RegexCorrectness"]
 
 [leanOptions]
-# autoImplicit = false
+autoImplicit = false
 
 [[require]]
 name = "mathlib"

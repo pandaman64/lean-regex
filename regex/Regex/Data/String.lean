@@ -324,7 +324,7 @@ theorem sentinel_or {p₁ p₂ : PosPlusOne s} (h : p₁ = .sentinel s) : p₁.o
   grind
 
 @[simp, grind =>]
-theorem pos_or {p₁ p₂ : PosPlusOne s} (h : p₁ = pos p) : p₁.or p₂ = p₁ := by
+theorem pos_or {p₁ p₂ : PosPlusOne s} {p : Pos s} (h : p₁ = pos p) : p₁.or p₂ = p₁ := by
   grind
 
 @[simp, grind =]

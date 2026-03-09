@@ -5,8 +5,6 @@ public import Regex.Data.Classes
 public import Regex.Data.Expr
 import Regex.Unicode.CaseFold
 
-set_option autoImplicit false
-
 open Regex.Data (Anchor Class Classes PerlClass Expr)
 
 public section

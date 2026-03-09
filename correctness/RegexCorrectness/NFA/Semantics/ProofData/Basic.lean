@@ -3,8 +3,6 @@ module
 public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Compile
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

@@ -2,8 +2,6 @@ module
 
 import Regex.Data.BitVec
 
-set_option autoImplicit false
-
 public section
 
 namespace Regex.Data

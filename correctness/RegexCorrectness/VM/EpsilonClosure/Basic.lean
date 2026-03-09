@@ -6,8 +6,6 @@ import all Regex.VM
 import all RegexCorrectness.VM.Path
 import Mathlib.Tactic.DepRewrite
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet Anchor Classes)
 open Regex (NFA)
 open Regex.NFA (Node)

@@ -4,8 +4,6 @@ import all RegexCorrectness.NFA.Compile
 public import RegexCorrectness.NFA.Semantics.ProofData.Basic
 import RegexCorrectness.NFA.Compile
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

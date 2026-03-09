@@ -1,7 +1,5 @@
 module
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

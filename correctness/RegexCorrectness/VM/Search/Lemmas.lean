@@ -3,8 +3,6 @@ module
 import RegexCorrectness.Data.String
 import all RegexCorrectness.VM.Search.Basic
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos)

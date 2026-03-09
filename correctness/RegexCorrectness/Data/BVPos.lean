@@ -4,8 +4,6 @@ import all Regex.Data.BVPos
 public import Regex.Data.BVPos
 import RegexCorrectness.Data.String
 
-set_option autoImplicit false
-
 open String (Pos)
 
 public section

@@ -3,8 +3,6 @@ module
 import RegexCorrectness.NFA.Semantics.Equivalence
 import all RegexCorrectness.VM.Search.Lemmas
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet CaptureGroups)
 open Regex (NFA)
 open Regex.NFA (EquivUpdate)

@@ -6,8 +6,6 @@ public import Regex.NFA.Compile.Lemmas
 
 open Regex.Data (Classes Expr)
 
-set_option autoImplicit false
-
 @[expose]
 public section
 

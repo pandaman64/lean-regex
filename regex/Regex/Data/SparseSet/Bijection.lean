@@ -1,6 +1,5 @@
 -- Minimal theory about the bijection between `Fin n`.
 module
-set_option autoImplicit false
 
 namespace Regex.Data.SparseSet.Bijection
 

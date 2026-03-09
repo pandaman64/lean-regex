@@ -4,8 +4,6 @@ import RegexCorrectness.Data.BVPos
 import all RegexCorrectness.Backtracker.Traversal
 import RegexCorrectness.NFA.Semantics
 
-set_option autoImplicit false
-
 open String (Pos)
 open Regex.NFA (EquivUpdate)
 open Regex.Data (CaptureGroups BitMatrix BVPos)

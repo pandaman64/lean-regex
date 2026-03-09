@@ -2,8 +2,6 @@ module
 
 import all RegexCorrectness.Backtracker.Traversal.Invariants
 
-set_option autoImplicit false
-
 open Regex.Data (BitMatrix BVPos)
 open String (Pos)
 

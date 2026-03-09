@@ -4,8 +4,6 @@ import Regex.Data.SparseSet
 public import Regex.NFA.Basic
 public import Regex.Strategy
 
-set_option autoImplicit false
-
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open String (Pos)
