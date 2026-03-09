@@ -35,12 +35,12 @@ def εStep (nfa : NFA) (i : Nat) : Set Nat :=
     else ∅
 
 theorem charStep_of_charStep {nfa : NFA} {i : Nat} {c : Char} {h : i < nfa.nodes.size}
-  (mem : j ∈ nfa[i].charStep c) :
+  {j : Nat} (mem : j ∈ nfa[i].charStep c) :
   j ∈ nfa.charStep i c := by
   simp [charStep, h, mem]
 
 theorem εStep_of_εStep {nfa : NFA} {i : Nat} {h : i < nfa.nodes.size}
-  (mem : j ∈ nfa[i].εStep) :
+  {j : Nat} (mem : j ∈ nfa[i].εStep) :
   j ∈ nfa.εStep i := by
   simp [εStep, h, mem]
 
@@ -65,7 +65,7 @@ theorem lt_of_εStep {nfa : NFA} {i j : Nat} {h : i < nfa.nodes.size}
   simp [get_eq_nodes_get] at mem
   exact lt_of_inBounds_of_εStep inBounds mem
 
-theorem lt_of_charStep {nfa : NFA} {i j : Nat} {h : i < nfa.nodes.size}
+theorem lt_of_charStep {nfa : NFA} {i j : Nat} {c : Char} {h : i < nfa.nodes.size}
   (wf : nfa.WellFormed) (mem : j ∈ nfa[i].charStep c) : j < nfa.nodes.size := by
   have inBounds := wf.inBounds ⟨i, h⟩
   simp [get_eq_nodes_get] at mem
