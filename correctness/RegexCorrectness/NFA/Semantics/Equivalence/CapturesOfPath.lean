@@ -13,12 +13,12 @@ open String (Pos)
 variable {s : String} {nfa : NFA} {next e result} {pos pos' : Pos s} {update}
 
 theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.Path nfa.nodes.size result.start pos next pos' update)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
+  (path : result.Path nfa.size result.start pos next pos' update)
   (ih : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    result.Path nfa.nodes.size result.start pos next pos' update →
+    next < nfa.size →
+    result.Path nfa.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.group tag e).Captures pos pos' groups := by
   open Compile.ProofData Group in
@@ -30,7 +30,7 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     have ⟨eqnext, _, _⟩ := step_start_iff.mp step
     have ge := ge_pushRegex_start (result := nfaExpr) rfl
     simp [←eqnext, nfaClose] at ge
-    have : next < pd.nfa.nodes.size := next_lt
+    have : next < pd.nfa.size := next_lt
     omega
   | @more i pos j posm k pos'' update updates step rest  =>
     have ⟨hj, hpos, hupdate⟩ := step_start_iff.mp step
@@ -38,10 +38,10 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     simp [hj, hpos] at rest
 
     have rest := castToExpr wf next_lt rest
-    have next_lt_close : next < nfaClose.nodes.size := by
+    have next_lt_close : next < nfaClose.size := by
       simp [nfaClose]
       exact Nat.lt_trans next_lt (Nat.lt_add_one _)
-    have ge_expr_start : nfaClose.nodes.size ≤ nfaExpr.start := ge_pushRegex_start rfl
+    have ge_expr_start : nfaClose.size ≤ nfaExpr.start := ge_pushRegex_start rfl
     have ne_next : next ≠ nfaClose.start := by
       simp [nfaClose]
       exact Nat.ne_of_lt next_lt
@@ -61,21 +61,21 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
       exact ⟨.group tag pos pos' groupExpr, .group eqv, .group c⟩
     | more step rest =>
       have ⟨hj, _, _⟩ := step_close_iff.mp (step.cast this)
-      have : nfa.nodes.size ≤ next := show nfa.nodes.size ≤ pd.next from hj ▸ rest.ge
+      have : nfa.size ≤ next := show nfa.size ≤ pd.next from hj ▸ rest.ge
       omega
 
 theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.Path nfa.nodes.size result.start pos next pos' update)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
+  (path : result.Path nfa.size result.start pos next pos' update)
   (ih₁ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    result.Path nfa.nodes.size result.start pos next pos' update →
+    next < nfa.size →
+    result.Path nfa.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e₁.Captures pos pos' groups)
   (ih₂ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    result.Path nfa.nodes.size result.start pos next pos' update →
+    next < nfa.size →
+    result.Path nfa.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e₂.Captures pos pos' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.alternate e₁ e₂).Captures pos pos' groups := by
   open Compile.ProofData Alternate in
@@ -101,12 +101,12 @@ theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.altern
       simp [hj, hpos] at rest
 
       have rest := castTo₂ wf next_lt rest
-      have rest : nfa₂.Path nfa₁.nodes.size nfa₂.start pos next pos' updates := by
+      have rest : nfa₂.Path nfa₁.size nfa₂.start pos next pos' updates := by
         apply rest.liftBound' (ge_pushRegex_start rfl)
         intro i pos j pos' update gei gej step
         cases (step.liftBound' gei).eq_or_ge_of_pushRegex with
         | inl eq =>
-          have : nfa.nodes.size ≤ next := show nfa.nodes.size ≤ pd.next from eq ▸ gej
+          have : nfa.size ≤ next := show nfa.size ≤ pd.next from eq ▸ gej
           omega
         | inr ge => exact ge
 
@@ -115,24 +115,24 @@ theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.altern
       exact ⟨groups, eqv, .alternateRight c⟩
 
 theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.Path nfa.nodes.size result.start pos next pos' update)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
+  (path : result.Path nfa.size result.start pos next pos' update)
   (ih₁ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₁ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    result.Path nfa.nodes.size result.start pos next pos' update →
+    next < nfa.size →
+    result.Path nfa.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e₁.Captures pos pos' groups)
   (ih₂ : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e₂ = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    result.Path nfa.nodes.size result.start pos next pos' update →
+    next < nfa.size →
+    result.Path nfa.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e₂.Captures pos pos' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.concat e₁ e₂).Captures pos pos' groups := by
   open Compile.ProofData Concat in
   let pd := Concat.intro eq
   simp [pd.eq_result eq] at path
-  have next_lt₂ : next < nfa₂.nodes.size := Nat.lt_trans next_lt nfa₂_property
-  have ge_start : nfa₂.nodes.size ≤ nfa'.start := ge_pushRegex_start rfl
+  have next_lt₂ : next < nfa₂.size := Nat.lt_trans next_lt nfa₂_property
+  have ge_start : nfa₂.size ≤ nfa'.start := ge_pushRegex_start rfl
   have ne_next : next ≠ nfa₂.start := Nat.ne_of_lt (Nat.lt_of_lt_of_le next_lt (ge_pushRegex_start rfl))
   have ⟨itm, update₁, update₂, equ, path₁, path₂⟩ := path.path_next_of_ne rfl next_lt₂ ge_start ne_next
 
@@ -144,7 +144,7 @@ theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e�
 open Compile.ProofData Star in
 theorem captures_of_path.star_of_loop [Star] {greedy} (loop : Loop pos pos' update)
   (ih : ∀ {pos pos' : Pos s} {update},
-    nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update →
+    nfa'.Path nfaPlaceholder.size nfaExpr.start pos nfaPlaceholder.start pos' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.star greedy e).Captures pos pos' groups := by
   induction loop with
@@ -155,12 +155,12 @@ theorem captures_of_path.star_of_loop [Star] {greedy} (loop : Loop pos pos' upda
     exact ⟨.concat groups₁ groups₂, .concat eqv₁ eqv₂, .starConcat c₁ c₂⟩
 
 theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy e) = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.Path nfa.nodes.size result.start pos next pos' update)
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
+  (path : result.Path nfa.size result.start pos next pos' update)
   (ih : ∀ {nfa : NFA} {next result} {pos pos' : Pos s} {update}, nfa.pushRegex next e = result →
     nfa.WellFormed →
-    next < nfa.nodes.size →
-    result.Path nfa.nodes.size result.start pos next pos' update →
+    next < nfa.size →
+    result.Path nfa.size result.start pos next pos' update →
     ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups) :
   ∃ groups, EquivUpdate groups update ∧ (Expr.star greedy e).Captures pos pos' groups := by
   open Compile.ProofData Star in
@@ -175,8 +175,8 @@ theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy 
   exact ih rfl wf_placeholder wf_placeholder.start_lt path
 
 public theorem captures_of_path (eq : nfa.pushRegex next e = result)
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : result.Path nfa.nodes.size result.start pos next pos' update) :
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
+  (path : result.Path nfa.size result.start pos next pos' update) :
   ∃ groups, EquivUpdate groups update ∧ e.Captures pos pos' groups := by
   open Compile.ProofData in
   induction e generalizing nfa next result pos pos' update with

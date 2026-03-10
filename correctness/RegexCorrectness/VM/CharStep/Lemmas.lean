@@ -13,8 +13,8 @@ open String (Pos)
 namespace Regex.VM
 
 variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s} {ne : pos ≠ s.endPos}
-  {current : SearchState (HistoryStrategy s) nfa} {currentUpdates : Vector (List (Nat × Pos s)) nfa.nodes.size}
-  {next : SearchState (HistoryStrategy s) nfa} {state : Fin nfa.nodes.size}
+  {current : SearchState (HistoryStrategy s) nfa} {currentUpdates : Vector (List (Nat × Pos s)) nfa.size}
+  {next : SearchState (HistoryStrategy s) nfa} {state : Fin nfa.size}
   {matched' : Option (List (Nat × Pos s))} {next' : SearchState (HistoryStrategy s) nfa}
 
 namespace stepChar

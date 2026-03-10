@@ -65,7 +65,7 @@ theorem captureNext.path_done_of_matched {s nfa wf pos₀ matched'}
     nfa.VMPath wf pos₀ pos state (matched'.get isSome') := by
   simp [captureNext] at h
 
-  set result := εClosure (HistoryStrategy s) nfa wf pos₀ .none ⟨.empty, Vector.replicate nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure (HistoryStrategy s) nfa wf pos₀ .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   set matched := result.1
   set current := result.2
   have h' : result = (matched, current) := rfl
@@ -184,7 +184,7 @@ If `captureNext` returns `.none`, then there is no path from `nfa.start` to a `.
 theorem captureNext.ne_done_of_path_of_none {s nfa wf pos} (h : captureNext (HistoryStrategy s) nfa wf pos = .none) :
   ∀ pos' state update, nfa.VMPath wf pos pos' state update → nfa[state] ≠ .done := by
   simp [captureNext] at h
-  set result := εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.nodes.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   match h' : result.1 with
   | .none =>
     have ndinv : SearchState.NotDoneInv (HistoryStrategy s) nfa result.2 := εClosure.not_done_of_none result rfl h' (.of_empty (by simp))

@@ -15,7 +15,7 @@ namespace Regex.VM.εClosure
 namespace pushNext
 
 variable {s : String} {σ : Strategy s} {nfa : NFA} {pos : Pos s} {node : NFA.Node}
-  {inBounds : node.inBounds nfa.nodes.size} {update : σ.Update} {stack : εStack σ nfa}
+  {inBounds : node.inBounds nfa.size} {update : σ.Update} {stack : εStack σ nfa}
 
 theorem mem_of_mem_stack {entry} (mem : entry ∈ stack) :
   entry ∈ pushNext σ nfa pos node inBounds update stack := by
@@ -171,21 +171,21 @@ theorem not_done_of_none (result) (h : εClosure σ nfa wf pos matched next stac
       | inr mem => exact inv i mem
     exact ih h inv'
 
-def LowerInvStep (pos : Pos s) (states : SparseSet nfa.nodes.size) (stack : εStack σ nfa) : Prop :=
+def LowerInvStep (pos : Pos s) (states : SparseSet nfa.size) (stack : εStack σ nfa) : Prop :=
   ∀ i j update, i ∈ states → nfa.εStep' pos i j update → j ∈ states ∨ ∃ update', (update', j) ∈ stack
 
-def LowerBoundStep (pos : Pos s) (states : SparseSet nfa.nodes.size) : Prop :=
+def LowerBoundStep (pos : Pos s) (states : SparseSet nfa.size) : Prop :=
   ∀ i j update, i ∈ states → nfa.εStep' pos i j update → j ∈ states
 
-def LowerBound (pos : Pos s) (states : SparseSet nfa.nodes.size) : Prop :=
+def LowerBound (pos : Pos s) (states : SparseSet nfa.size) : Prop :=
   ∀ i j update, i ∈ states → nfa.εClosure' pos i j update → j ∈ states
 
-theorem LowerBound.of_empty {pos : Pos s} {states : SparseSet nfa.nodes.size} (h : states.isEmpty) :
+theorem LowerBound.of_empty {pos : Pos s} {states : SparseSet nfa.size} (h : states.isEmpty) :
   LowerBound pos states := by
   intro i j update mem cls
   exact (SparseSet.not_mem_of_isEmpty h mem).elim
 
-theorem LowerBound.of_step {pos : Pos s} {states : SparseSet nfa.nodes.size} (h : LowerBoundStep pos states) :
+theorem LowerBound.of_step {pos : Pos s} {states : SparseSet nfa.size} (h : LowerBoundStep pos states) :
   εClosure.LowerBound pos states := by
   intro i j update mem cls
   induction cls with
@@ -194,7 +194,7 @@ theorem LowerBound.of_step {pos : Pos s} {states : SparseSet nfa.nodes.size} (h 
 
 namespace LowerInvStep
 
-variable {states : SparseSet nfa.nodes.size} {entry : σ.Update × Fin nfa.nodes.size}
+variable {states : SparseSet nfa.size} {entry : σ.Update × Fin nfa.size}
 
 theorem preserves' {stack' : εStack σ nfa} (hmem : entry.2 ∉ states) (nextEntries) (hstack : stack' = nextEntries ++ stack)
   (h : ∀ j update, nfa.εStep' pos entry.2 j update → ∃ update', (update', j) ∈ nextEntries)
@@ -335,7 +335,7 @@ doesn't change during the traversal.
 At the end of the traversal, we can guarantee that all states in `next` were already in `states₀` or
 they are reachable from `i₀` with the updates written to `next.updates`.
 -/
-structure UpperInv (states₀ : SparseSet nfa.nodes.size) (pos₀ : Pos s) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Pos s))
+structure UpperInv (states₀ : SparseSet nfa.size) (pos₀ : Pos s) (i₀ : Fin nfa.size) (update₀ : List (Nat × Pos s))
   (next : SearchState (HistoryStrategy s) nfa) (stack : εStack (HistoryStrategy s) nfa) : Prop where
   -- The intuition is that `update₀` corresponds to the update list from `nfa.start` to `i₀`, and
   -- `update'` is the update list from `i₀` to `j`. Therefore, `update₀ ++ update'` gives the update
@@ -347,8 +347,8 @@ structure UpperInv (states₀ : SparseSet nfa.nodes.size) (pos₀ : Pos s) (i₀
 
 namespace UpperInv
 
-variable {states₀ : SparseSet nfa.nodes.size} {pos₀ : Pos s} {i₀ : Fin nfa.nodes.size} {update₀ : List (Nat × Pos s)}
-  {next : SearchState (HistoryStrategy s) nfa} {entry : List (Nat × Pos s) × Fin nfa.nodes.size} {stack : εStack (HistoryStrategy s) nfa}
+variable {states₀ : SparseSet nfa.size} {pos₀ : Pos s} {i₀ : Fin nfa.size} {update₀ : List (Nat × Pos s)}
+  {next : SearchState (HistoryStrategy s) nfa} {entry : List (Nat × Pos s) × Fin nfa.size} {stack : εStack (HistoryStrategy s) nfa}
 
 theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hstack : stack' = nextEntries ++ stack)
   (not_mem : entry.2 ∉ next.states)
@@ -390,7 +390,7 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
           exact h write
         next => exact h write
 
-theorem preserves {update : List (Nat × Pos s)} {state : Fin nfa.nodes.size} (wf : nfa.WellFormed) (not_mem : state ∉ next.states)
+theorem preserves {update : List (Nat × Pos s)} {state : Fin nfa.size} (wf : nfa.WellFormed) (not_mem : state ∉ next.states)
   (inv : UpperInv states₀ pos₀ i₀ update₀ next ((update, state) :: stack)) :
   letI states' := next.states.insert state not_mem
   letI updates' := if writeUpdate nfa[state] then next.updates.set state update else next.updates
@@ -436,7 +436,7 @@ end UpperInv
 /--
 All new states in `next'` are reachable from the starting state `i₀` and have corresponding updates in `next'.updates`.
 -/
-theorem upper_boundAux (states₀ : SparseSet nfa.nodes.size) (pos₀ : Pos s) (i₀ : Fin nfa.nodes.size) (update₀ : List (Nat × Pos s))
+theorem upper_boundAux (states₀ : SparseSet nfa.size) (pos₀ : Pos s) (i₀ : Fin nfa.size) (update₀ : List (Nat × Pos s))
   (h : εClosure (HistoryStrategy s) nfa wf pos₀ matched next stack = (matched', next'))
   (inv₀ : UpperInv states₀ pos₀ i₀ update₀ next stack) :
   UpperInv states₀ pos₀ i₀ update₀ next' []  := by

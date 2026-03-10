@@ -11,7 +11,7 @@ public section
 -- Transition relations specialized for ε-closure traversal.
 namespace Regex.NFA
 
-def εStep' {s : String} (nfa : NFA) (pos : Pos s) (i j : Fin nfa.nodes.size) (update : Option (Nat × Pos s)) : Prop :=
+def εStep' {s : String} (nfa : NFA) (pos : Pos s) (i j : Fin nfa.size) (update : Option (Nat × Pos s)) : Prop :=
   nfa.Step 0 i pos j pos update
 
 section
@@ -60,7 +60,7 @@ theorem εStep'.sparse {cs} {next : Nat} (hn : nfa[i] = .sparse cs next) :
 
 end
 
-inductive εClosure' {s : String} (nfa : NFA) (pos : Pos s) : Fin nfa.nodes.size → Fin nfa.nodes.size → List (Nat × Pos s) → Prop where
+inductive εClosure' {s : String} (nfa : NFA) (pos : Pos s) : Fin nfa.size → Fin nfa.size → List (Nat × Pos s) → Prop where
   | base {i} : εClosure' nfa pos i i []
   | step {i j k update₁ update₂} (step : nfa.εStep' pos i j update₁) (rest : εClosure' nfa pos j k update₂) :
     εClosure' nfa pos i k (update₁ ::ₒ update₂)
@@ -100,7 +100,7 @@ theorem εClosure'_of_path {nfa : NFA} {s : String} {pos : Pos s} {i j pos' upda
       subst hpos hpos'
       exact ((Nat.not_le_of_lt pos.lt_next) rest.le).elim
 
-theorem εClosure'_iff_path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.nodes.size) (pos : Pos s) (updates : List (Nat × Pos s)) :
+theorem εClosure'_iff_path {s : String} (nfa : NFA) (wf : nfa.WellFormed) (i j : Fin nfa.size) (pos : Pos s) (updates : List (Nat × Pos s)) :
   nfa.εClosure' pos i j updates ↔ (i = j ∧ updates = []) ∨ nfa.Path 0 i pos j pos updates := by
   apply Iff.intro
   . intro cls

@@ -17,23 +17,23 @@ A `Loop` term corresponds to such a loop. The `last` variant corresponds to the 
 and the `loop` variant extracts the first iteration and the remaining loop.
 -/
 public inductive Loop {s : String} : Pos s → Pos s → List (Nat × Pos s) → Prop where
-  | last {pos} (step : nfa'.Step nfa.nodes.size nfa'.start pos next pos .none) : Loop pos pos []
+  | last {pos} (step : nfa'.Step nfa.size nfa'.start pos next pos .none) : Loop pos pos []
   | loop {pos pos' pos'' update₁ update₂}
-    (path : nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start pos' update₁)
+    (path : nfa'.Path nfaPlaceholder.size nfaExpr.start pos nfaPlaceholder.start pos' update₁)
     (loop : Loop pos' pos'' update₂) : Loop pos pos'' (update₁ ++ update₂)
 
 theorem Loop.introAux {s : String} {pos pos' : Pos s} {i j update}
-  (lt : i < nfa'.nodes.size) (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size) (eqj : j = next)
-  (path : nfa'.Path nfa.nodes.size i pos j pos' update) :
+  (lt : i < nfa'.size) (wf : nfa.WellFormed) (next_lt : next < nfa.size) (eqj : j = next)
+  (path : nfa'.Path nfa.size i pos j pos' update) :
   if i = nfa'.start then
-    (nfa'.Step nfa.nodes.size nfa'.start pos next pos' .none ∧ pos' = pos ∧ update = []) ∨
+    (nfa'.Step nfa.size nfa'.start pos next pos' .none ∧ pos' = pos ∧ update = []) ∨
     (∃ posm update₁ update₂,
-      nfa'.Path nfaPlaceholder.nodes.size nfaExpr.start pos nfaPlaceholder.start posm update₁ ∧
+      nfa'.Path nfaPlaceholder.size nfaExpr.start pos nfaPlaceholder.start posm update₁ ∧
       Loop posm pos' update₂ ∧
       update = update₁ ++ update₂)
   else
     ∃ posm update₁ update₂,
-      nfa'.Path nfaPlaceholder.nodes.size i pos nfaPlaceholder.start posm update₁ ∧
+      nfa'.Path nfaPlaceholder.size i pos nfaPlaceholder.start posm update₁ ∧
       Loop posm pos' update₂ ∧
       update = update₁ ++ update₂ := by
   induction path with
@@ -54,15 +54,15 @@ theorem Loop.introAux {s : String} {pos pos' : Pos s} {i j update}
       . exact .inl (.splitRight (Nat.le_of_eq start_eq.symm) wf'.start_lt this)
       . exact .inl (.splitLeft (Nat.le_of_eq start_eq.symm) wf'.start_lt this)
     next nei =>
-      have : nfa.nodes.size ≤ i := step.ge
-      have : i ≠ nfa.nodes.size := start_eq ▸ nei
-      have gt : i > nfa.nodes.size := by grind
+      have : nfa.size ≤ i := step.ge
+      have : i ≠ nfa.size := start_eq ▸ nei
+      have gt : i > nfa.size := by grind
 
-      have step : nfa'.Step (nfa.nodes.size + 1) i pos j pos' update :=
+      have step : nfa'.Step (nfa.size + 1) i pos j pos' update :=
         step.liftBound' gt
-      have step : nfa'.Step nfaPlaceholder.nodes.size i pos j pos' update := by
+      have step : nfa'.Step nfaPlaceholder.size i pos j pos' update := by
         simp [nfaPlaceholder, step]
-      have step : nfaExpr.Step nfaPlaceholder.nodes.size i pos j pos' update :=
+      have step : nfaExpr.Step nfaPlaceholder.size i pos j pos' update :=
         step.cast (get_ne_start i step.lt (Nat.ne_of_gt gt))
 
       have := step.eq_or_ge_of_pushRegex
@@ -74,12 +74,12 @@ theorem Loop.introAux {s : String} {pos pos' : Pos s} {i j update}
     next eqi =>
       subst eqi eqj
       have : j ≠ next := by
-        have : nfa.nodes.size ≤ j := rest.ge
+        have : nfa.size ≤ j := rest.ge
         omega
       simp [step_start_iff, this] at step
 
       have ne : nfaExpr.start ≠ nfa'.start := by
-        have : nfaPlaceholder.nodes.size ≤ nfaExpr.start := ge_pushRegex_start rfl
+        have : nfaPlaceholder.size ≤ nfaExpr.start := ge_pushRegex_start rfl
         simp [nfaPlaceholder] at this
         simp [start_eq]
         omega
@@ -87,7 +87,7 @@ theorem Loop.introAux {s : String} {pos pos' : Pos s} {i j update}
       simp [step]
       exact .inr ih'
     next nei =>
-      have gt : i > nfa.nodes.size := by
+      have gt : i > nfa.size := by
         simp [start_eq] at nei
         have := step.ge
         omega
@@ -106,20 +106,20 @@ theorem Loop.introAux {s : String} {pos pos' : Pos s} {i j update}
           refine ⟨pos', List.ofOption update₁, update₃ ++ update₄, ?_, loop'', by simp [equ]⟩
           simp [nfaPlaceholder]
 
-          have step : nfa'.Step nfa.nodes.size i pos nfa.nodes.size pos' update₁ :=
-            have : j = nfa.nodes.size := eqj ▸ start_eq
+          have step : nfa'.Step nfa.size i pos nfa.size pos' update₁ :=
+            have : j = nfa.size := eqj ▸ start_eq
             this ▸ step
           exact (.last (step.liftBound' gt))
       next nej =>
         have ⟨itm, update₃, update₄, path', loop', equ⟩ := ih'
-        have step : nfa'.Step nfaPlaceholder.nodes.size i pos j pos' update₁ := by
+        have step : nfa'.Step nfaPlaceholder.size i pos j pos' update₁ := by
           simp [nfaPlaceholder]
           exact step.liftBound' gt
         exact ⟨itm, update₁ ::ₒ update₃, update₄, .more step path', loop', by simp [equ]⟩
 
 public theorem Loop.intro {s : String} {pos pos' : Pos s} {update}
-  (wf : nfa.WellFormed) (next_lt : next < nfa.nodes.size)
-  (path : nfa'.Path nfa.nodes.size nfa'.start pos next pos' update) :
+  (wf : nfa.WellFormed) (next_lt : next < nfa.size)
+  (path : nfa'.Path nfa.size nfa'.start pos next pos' update) :
   Loop pos pos' update := by
   have wf' := wf' wf next_lt
   have loop := introAux wf'.start_lt wf next_lt rfl path

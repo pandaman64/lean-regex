@@ -32,14 +32,14 @@ theorem capture_of_some_compile {s e pos update} (hres : captureNext (HistoryStr
   exact ⟨pos', pos'', groups, le, c, eqv⟩
 
 theorem ne_done_of_path_of_none {s nfa wf pos} (hres : captureNext (HistoryStrategy s) nfa wf pos = .none) :
-  ∀ (pos' pos'' : Pos s) (state : Fin nfa.nodes.size) (update : List (Nat × Pos s)),
+  ∀ (pos' pos'' : Pos s) (state : Fin nfa.size) (update : List (Nat × Pos s)),
     pos ≤ pos' →
     Path nfa wf pos' pos'' state update →
     nfa[state] ≠ .done := by
   dsimp [captureNext] at hres
 
   let bvpos : BVPos pos := ⟨pos, Pos.le_refl _⟩
-  let visited := BitMatrix.zero nfa.nodes.size (pos.remainingBytes + 1)
+  let visited := BitMatrix.zero nfa.size (pos.remainingBytes + 1)
 
   have h := go.ne_done_of_path_of_none hres (BVPos.le_refl _) go.Inv.zero captureNextAux.NotDoneInv.zero
 
@@ -55,7 +55,7 @@ theorem not_captures_of_none_compile {s e pos} (hres : captureNext (HistoryStrat
   intro c
   have ⟨update, _, path⟩ := NFA.path_of_captures_compile rfl c
 
-  let zero : Fin (NFA.compile e).nodes.size := ⟨0, NFA.lt_zero_size_compile rfl⟩
+  let zero : Fin (NFA.compile e).size := ⟨0, NFA.lt_zero_size_compile rfl⟩
   have hne := ne_done_of_path_of_none hres pos' pos'' zero update le (Path.of_nfaPath (path.liftBound (by decide)))
   have hn := (NFA.done_iff_zero_compile (e := e) rfl zero).mpr (by simp [zero])
   exact hne hn

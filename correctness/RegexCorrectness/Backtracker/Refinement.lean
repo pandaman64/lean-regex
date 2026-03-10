@@ -25,7 +25,7 @@ theorem materializeStack.nil : materializeStack [] = ([] : List (StackEntry (Buf
 theorem materializeStack.cons {entryH stackH} :
   materializeStack (entryH :: stackH) = (StackEntry.materialize entryH :: materializeStack stackH : List (StackEntry (BufferStrategy s bufferSize) nfa startPos)) := rfl
 
-def materializeResultAux (resultH : Option (List (Nat × Pos s)) × BitMatrix nfa.nodes.size (startPos.remainingBytes + 1)) : Option (Buffer s bufferSize) × BitMatrix nfa.nodes.size (startPos.remainingBytes + 1) :=
+def materializeResultAux (resultH : Option (List (Nat × Pos s)) × BitMatrix nfa.size (startPos.remainingBytes + 1)) : Option (Buffer s bufferSize) × BitMatrix nfa.size (startPos.remainingBytes + 1) :=
   ⟨resultH.1.map (materializeUpdates bufferSize), resultH.2⟩
 
 def materializeResult (resultH : Option (List (Nat × Pos s))) : Option (Buffer s bufferSize) :=

@@ -10,38 +10,38 @@ public section
 namespace Regex.NFA
 
 def pushNode (nfa : NFA) (node : Node) : NFA :=
-  let start := nfa.nodes.size
+  let start := nfa.size
   let nodes := nfa.nodes.push node
   ⟨nodes, start⟩
 
 @[simp, grind =]
 theorem pushNode_size {nfa : NFA} {node : Node} :
-  (nfa.pushNode node).nodes.size = nfa.nodes.size + 1 := by
-  simp [pushNode]
+  (nfa.pushNode node).size = nfa.size + 1 := by
+  simp [pushNode, size]
 
 @[grind =]
 theorem pushNode_get_lt {nfa : NFA} {node : Node}
-  (i : Nat) (h : i < nfa.nodes.size) :
+  (i : Nat) (h : i < nfa.size) :
   (nfa.pushNode node)[i]'(Nat.lt_trans h (by simp only [pushNode_size, Nat.lt_add_one])) = nfa[i] := by
   simp [pushNode, get_eq_nodes_get]
   rw [Array.getElem_push_lt]
 
 @[simp, grind =]
 theorem pushNode_get_eq {nfa : NFA} {node : Node} :
-  (nfa.pushNode node)[nfa.nodes.size] = node := by
-  simp [pushNode, get_eq_nodes_get]
+  (nfa.pushNode node)[nfa.size] = node := by
+  simp [pushNode, ↓get_eq_nodes_get, size]
 
 @[grind =]
 theorem pushNode_get {nfa : NFA} {node : Node}
-  (i : Nat) (h : i < (nfa.pushNode node).nodes.size) :
-  (nfa.pushNode node)[i]'h = if h' : i < nfa.nodes.size then nfa[i]'h' else node := by
+  (i : Nat) (h : i < (nfa.pushNode node).size) :
+  (nfa.pushNode node)[i]'h = if h' : i < nfa.size then nfa[i]'h' else node := by
   simp at h
   cases Nat.lt_or_eq_of_le (Nat.le_of_succ_le_succ h) with
   | inl lt => simp [lt, pushNode_get_lt _ lt]
   | inr eq => simp [eq]
 
 @[simp, grind =]
-theorem pushNode_start_eq {nfa : NFA} {node : Node} : (nfa.pushNode node).start = nfa.nodes.size := (rfl)
+theorem pushNode_start_eq {nfa : NFA} {node : Node} : (nfa.pushNode node).start = nfa.size := (rfl)
 
 /--
   Compile a Regex and append the resulting nodes to the NFA. The nodes will transition to `next` on match.
@@ -71,7 +71,7 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
     let nfa₂ := nfa.pushRegex next r₂
     nfa₂.pushRegex nfa₂.start r₁
   | .star greedy r =>
-    let start := nfa.nodes.size
+    let start := nfa.size
     -- We need to generate a placeholder node first. We use `fail` for it because
     -- 1. We want to make sure `done` does not appear except at the first node.
     -- 2. variants without data are represented as a boxed integer so there is one less allocation.
@@ -85,7 +85,7 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
         .split next compiled.start
     -- While we know that `pushRegex` increase the size and hence this `setIfInBounds` is always
     -- in bounds, we don't use that information to eliminate the bounds check. This is because
-    -- it requires changing the return type to `{ nfa' : NFA // nfa.nodes.size < nfa'.nodes.size }`
+    -- it requires changing the return type to `{ nfa' : NFA // nfa.size < nfa'.size }`
     -- which is much more inconvenient to work with.
     let patched := compiled.nodes.setIfInBounds start split
 

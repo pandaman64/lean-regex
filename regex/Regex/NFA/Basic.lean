@@ -123,14 +123,18 @@ def done : NFA :=
   ⟨nodes, start⟩
 
 @[expose]
-def get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) : NFA.Node :=
+def size (nfa : NFA) : Nat :=
+  nfa.nodes.size
+
+@[expose]
+def get (nfa : NFA) (i : Nat) (h : i < nfa.size) : NFA.Node :=
   nfa.nodes[i]
 
-instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.nodes.size) where
+instance : GetElem NFA Nat NFA.Node (fun nfa i => i < nfa.size) where
   getElem nfa i h := get nfa i h
 
 @[grind =]
-theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.nodes.size) :
+theorem get_eq_nodes_get (nfa : NFA) (i : Nat) (h : i < nfa.size) :
   nfa[i] = nfa.nodes[i] := (rfl)
 
 def maxTag (nfa : NFA) : Nat :=
@@ -140,11 +144,11 @@ def maxTag (nfa : NFA) : Nat :=
     | _ => accum
 
 @[grind →]
-theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] = .save tag next) :
+theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.size) (eq : nfa[i] = .save tag next) :
   tag ≤ nfa.maxTag := by
   unfold maxTag
   let motive (i : Nat) (maxTag : Nat) : Prop :=
-    ∀ j next (lt₁ : j < i) (lt₂ : j < nfa.nodes.size) (eq : nfa[j] = .save tag next), tag ≤ maxTag
+    ∀ j next (lt₁ : j < i) (lt₂ : j < nfa.size) (eq : nfa[j] = .save tag next), tag ≤ maxTag
   refine Array.foldl_induction motive
     ?h0 ?hf i.val next i.isLt i.isLt eq
   case h0 => simp [motive]
@@ -170,15 +174,15 @@ theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.nodes.size) (eq : nfa[i] =
         exact absurd eq (ne tag next)
 
 structure WellFormed (nfa : NFA) : Prop where
-  start_lt : nfa.start < nfa.nodes.size
-  inBounds : ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size
+  start_lt : nfa.start < nfa.size
+  inBounds : ∀ i : Fin nfa.size, nfa[i].inBounds nfa.size
 
 theorem WellFormed.iff {nfa : NFA} :
-  nfa.WellFormed ↔ nfa.start < nfa.nodes.size ∧ ∀ i : Fin nfa.nodes.size, nfa[i].inBounds nfa.nodes.size :=
+  nfa.WellFormed ↔ nfa.start < nfa.size ∧ ∀ i : Fin nfa.size, nfa[i].inBounds nfa.size :=
   ⟨fun wf => ⟨wf.start_lt, wf.inBounds⟩, fun ⟨h₁, h₂⟩ => ⟨h₁, h₂⟩⟩
 
-theorem WellFormed.inBounds' {nfa : NFA} {node : NFA.Node} (wf : nfa.WellFormed) (i : Fin nfa.nodes.size) (hn : nfa[i] = node) :
-  node.inBounds nfa.nodes.size := by
+theorem WellFormed.inBounds' {nfa : NFA} {node : NFA.Node} (wf : nfa.WellFormed) (i : Fin nfa.size) (hn : nfa[i] = node) :
+  node.inBounds nfa.size := by
   rw [←hn]
   exact wf.inBounds i
 
@@ -186,6 +190,16 @@ instance decWellFormed (nfa : NFA) : Decidable nfa.WellFormed :=
   decidable_of_decidable_of_iff WellFormed.iff.symm
 
 theorem done_WellFormed : done.WellFormed := by decide
+
+@[ext]
+theorem ext {nfa₁ nfa₂ : NFA}
+  (h₁ : nfa₁.size = nfa₂.size)
+  (h₂ : ∀ i : Nat, (_ : i < nfa₁.size) → (_ : i < nfa₂.size) → nfa₁[i] = nfa₂[i])
+  (h₃ : nfa₁.start = nfa₂.start) :
+  nfa₁ = nfa₂ := by
+  match nfa₁, nfa₂ with
+  | { nodes := nodes₁, start := start₁ }, { nodes := nodes₂, start := start₂ } =>
+    grind [Array.ext h₁ h₂]
 
 end NFA
 

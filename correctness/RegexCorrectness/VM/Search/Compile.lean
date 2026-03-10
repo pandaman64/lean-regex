@@ -32,7 +32,7 @@ theorem not_captures_of_none_compile {s e pos} (h : captureNext (HistoryStrategy
   (pos' pos'' : Pos s) (groups : CaptureGroups s) (le : pos ≤ pos') :
   ¬e.Captures pos' pos'' groups := by
   intro c
-  let zero : Fin (NFA.compile e).nodes.size := ⟨0, NFA.lt_zero_size_compile rfl⟩
+  let zero : Fin (NFA.compile e).size := ⟨0, NFA.lt_zero_size_compile rfl⟩
   have ⟨update, _, path⟩ := NFA.path_of_captures_compile rfl c
   have path := NFA.VMPath.of_nfaPath NFA.compile_wf le (path.liftBound (by decide))
   have ne := ne_done_of_path_of_none h pos'' zero update path

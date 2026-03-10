@@ -9,12 +9,12 @@ public section
 
 namespace Regex.NFA
 
-def CharStep {s : String} (nfa : NFA) (pos : Pos s) (i j : Fin nfa.nodes.size) : Prop :=
+def CharStep {s : String} (nfa : NFA) (pos : Pos s) (i j : Fin nfa.size) : Prop :=
   ∃ ne : pos ≠ s.endPos, nfa.Step 0 i pos j (pos.next ne) .none
 
 namespace CharStep
 
-variable {s : String} {nfa : NFA} {pos : Pos s} {i j : Fin nfa.nodes.size}
+variable {s : String} {nfa : NFA} {pos : Pos s} {i j : Fin nfa.size}
 
 @[grind →]
 theorem ne (step : nfa.CharStep pos i j) : pos ≠ s.endPos := by
