@@ -29,8 +29,7 @@ theorem pushNode_get_lt {nfa : NFA} {node : Node}
 @[simp, grind =]
 theorem pushNode_get_eq {nfa : NFA} {node : Node} :
   (nfa.pushNode node)[nfa.size] = node := by
-  simp only [pushNode, size, NFA.get, GetElem.getElem]
-  exact Array.getElem_push_eq
+  simp [pushNode, ↓get_eq_nodes_get, size]
 
 @[grind =]
 theorem pushNode_get {nfa : NFA} {node : Node}

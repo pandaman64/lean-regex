@@ -21,14 +21,7 @@ theorem pushNode_wf {nfa : NFA} {node}
     dsimp only [pushNode, NFA.get, GetElem.getElem, size]
     refine Node.inBounds_of_inBounds_of_le ?_ (Nat.le_succ _)
     simpa [hget, NFA.get_eq_nodes_get] using wf.inBounds ⟨i.val, lt⟩
-  | inr ge =>
-    have hsize : (nfa.pushNode node).size = nfa.size + 1 := pushNode_size
-    have : i.val < nfa.size + 1 := hsize ▸ i.isLt
-    have eq : i.val = nfa.size := Nat.le_antisymm (Nat.lt_succ_iff.mp this) ge
-    dsimp only [pushNode, NFA.get, GetElem.getElem, size]
-    simp only [eq, size]
-    have heq : (nfa.nodes.push node)[nfa.size] = node := Array.getElem_push_eq
-    simpa [heq, size] using inBounds
+  | inr ge => grind [NFA.size]
 
 open Compile.ProofData in
 theorem pushRegex_wf {nfa : NFA} {next e}
