@@ -128,8 +128,8 @@ empty/400,ok,
 empty/500,ok,
 empty/510,ok,
 empty/520,ok,
-empty/600,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"
-empty/610,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 2 }] }, { id := 0, spans := #[some { start := 3, end := 3 }] }], got #[#[(some (0, 3))], #[(some (3, 3))]]"
+empty/600,ok,
+empty/610,ok,
 expensive/regression-many-repeat-no-stack-overflow,ok,
 expensive/backtrack-blow-visited-capacity,error,"expected '\pL{50}' to compile, but it did not: unexpected escaped character: p"
 flags/1,ok,
@@ -229,13 +229,13 @@ multiline/repeat1-no-multi-crlf-cr,error,"expected '(?R)(?:^$)*' to compile, but
 multiline/repeat2,error,"expected '(?m)(?:^|a)+' to compile, but it did not: unexpected character: ?"
 multiline/repeat2-crlf,error,"expected '(?Rm)(?:^|a)+' to compile, but it did not: unexpected character: ?"
 multiline/repeat2-crlf-cr,error,"expected '(?Rm)(?:^|a)+' to compile, but it did not: unexpected character: ?"
-multiline/repeat2-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 2, end := 5 }] }], but got #[#[(some (0, 1))], #[(some (2, 5))]]"
+multiline/repeat2-no-multi,ok,
 multiline/repeat2-no-multi-crlf,error,"expected '(?R)(?:^|a)+' to compile, but it did not: unexpected character: ?"
 multiline/repeat2-no-multi-crlf-cr,error,"expected '(?R)(?:^|a)+' to compile, but it did not: unexpected character: ?"
 multiline/repeat3,error,"expected '(?m)(?:^|a)*' to compile, but it did not: unexpected character: ?"
 multiline/repeat3-crlf,error,"expected '(?Rm)(?:^|a)*' to compile, but it did not: unexpected character: ?"
 multiline/repeat3-crlf-cr,error,"expected '(?Rm)(?:^|a)*' to compile, but it did not: unexpected character: ?"
-multiline/repeat3-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 1))], #[(some (1, 1))], #[(some (2, 5))], #[(some (5, 5))], #[(some (6, 6))]]"
+multiline/repeat3-no-multi,error,"expected #[{ id := 0, spans := #[some { start := 0, end := 0 }] }, { id := 0, spans := #[some { start := 1, end := 1 }] }, { id := 0, spans := #[some { start := 2, end := 5 }] }, { id := 0, spans := #[some { start := 6, end := 6 }] }], got #[#[(some (0, 0))], #[(some (1, 1))], #[(some (2, 5))], #[(some (5, 5))], #[(some (6, 6))]]"
 multiline/repeat3-no-multi-crlf,error,"expected '(?R)(?:^|a)*' to compile, but it did not: unexpected character: ?"
 multiline/repeat3-no-multi-crlf-cr,error,"expected '(?R)(?:^|a)*' to compile, but it did not: unexpected character: ?"
 multiline/repeat4,error,"expected '(?m)(?:^|a+)' to compile, but it did not: unexpected character: ?"

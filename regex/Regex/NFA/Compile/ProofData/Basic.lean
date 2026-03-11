@@ -1,3 +1,4 @@
+-- TODO: remove this
 module
 
 public import Regex.NFA.Compile.Basic

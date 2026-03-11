@@ -48,7 +48,7 @@ elab "re!" lit:str : term => do
 
 -- The elaborator should work.
 /--
-info: { nfa := { nodes := { toList := [Node.done, save 1 0, epsilon 1, save 0 2] }, start := 3 }, wf := ⋯, maxTag := 1,
+info: { nfa := { nodes := { toList := [Node.done, save 1 0, epsilon 1, save 0 2] } }, wf := ⋯, maxTag := 1,
   optimizationInfo := { firstChars := none } }
 -/
 #guard_msgs in
