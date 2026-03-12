@@ -56,7 +56,7 @@ theorem pushNode_wf {nfa : NFA} {node : Node} (wf : nfa.WellFormed) (inBounds : 
 /--
   Compile a Regex and append the resulting nodes to the NFA. The nodes will transition to `next` on match.
 -/
-@[grind =]
+@[grind =, expose]
 def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
   | .empty => nfa.pushNode .fail
   | .epsilon => nfa.pushNode (.epsilon next)
