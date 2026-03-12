@@ -56,6 +56,7 @@ theorem pushNode_wf {nfa : NFA} {node : Node} (wf : nfa.WellFormed) (inBounds : 
 /--
   Compile a Regex and append the resulting nodes to the NFA. The nodes will transition to `next` on match.
 -/
+@[grind =]
 def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
   | .empty => nfa.pushNode .fail
   | .epsilon => nfa.pushNode (.epsilon next)
@@ -77,9 +78,9 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
     let split := Node.split start₁ start₂
 
     nfa₂.pushNode split
-  | .concat r₁ r₂ =>
-    let nfa₂ := nfa.pushRegex next r₂
-    nfa₂.pushRegex nfa₂.start r₁
+  | .concat e₁ e₂ =>
+    let nfa₂ := nfa.pushRegex next e₂
+    nfa₂.pushRegex nfa₂.start e₁
   | .star greedy e =>
     let patchAt := nfa.size
     -- We need to generate a placeholder node first. We use `fail` for it because
@@ -94,7 +95,8 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
     -- in bounds, we don't use that information to eliminate the bounds check. This is because
     -- it requires changing the return type to `{ nfa' : NFA // nfa.size < nfa'.size }`
     -- which is much more inconvenient to work with.
-    ⟨quest.nodes.setIfInBounds patchAt split⟩
+    let patched := ⟨quest.nodes.setIfInBounds patchAt split⟩
+    patched
 
 def compile (r : Expr) : NFA := done.pushRegex 0 r
 
