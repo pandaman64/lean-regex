@@ -194,30 +194,12 @@ variable [Group] {s : String} {lb} {p p' : Pos s} {j update}
 theorem step_start_iff :
   nfa'.Step nfa.size nfa'.start p j p' update ↔
   j = nfaExpr.start ∧ p' = p ∧ update = .some (2 * tag, p) := by
-  have lt : nfa'.start < nfa'.size := by
-    simp [size_lt_expr', start_eq]
-  have : nfa'[nfa'.start] = .save (2 * tag) nfaExpr.start := by
-    simp [start_eq, get_open]
-  apply Iff.intro
-  . intro step
-    cases step <;> simp_all
-  . intro ⟨hj, hp, hupdate⟩
-    simp_all
-    exact .save (ge_pushRegex_start rfl) lt this
+  grind
 
 theorem step_close_iff :
   nfa'.Step nfa.size nfaClose.start p j p' update ↔
   j = next ∧ p' = p ∧ update = .some (2 * tag + 1, p) := by
-  have lt : nfaClose.start < nfa'.size := by
-    simp [nfaClose, size_lt]
-  have : nfa'[nfaClose.start] = .save (2 * tag + 1) next := by
-    simp [nfaClose, get_close]
-  apply Iff.intro
-  . intro step
-    cases step <;> simp_all
-  . intro ⟨hj, hp, hupdate⟩
-    simp_all
-    exact .save (by simp [nfaClose]) lt this
+  grind
 
 end Group
 
@@ -228,21 +210,7 @@ variable [Alternate] {s : String} {lb} {p p' : Pos s} {j update}
 theorem step_start_iff :
   nfa'.Step nfa.size nfa'.start p j p' update ↔
   (j = nfa₁.start ∨ j = nfa₂.start) ∧ p' = p ∧ update = .none := by
-  have ge : nfa.size ≤ nfa'.start := ge_pushRegex_start rfl
-  have lt : nfa'.start < nfa'.size := by
-    simp [size_lt₂, start_eq]
-  have : nfa'[nfa'.start] = .split nfa₁.start nfa₂.start := get_start
-  apply Iff.intro
-  . intro step
-    cases step <;> simp_all
-  . intro ⟨hj, hp, hupdate⟩
-    cases hj with
-    | inl hj =>
-      simp_all
-      exact .splitLeft ge lt this
-    | inr hj =>
-      simp_all
-      exact .splitRight ge lt this
+  grind
 
 end Alternate
 
@@ -253,27 +221,13 @@ variable [Star] {s : String} {lb} {p p' : Pos s} {j update}
 theorem step_start_iff :
   nfa'.Step nfa.size nfa'.start p j p' update ↔
   (j = nfaExpr.start ∨ j = next) ∧ p' = p ∧ update = .none := by
-  have ge : nfa.size ≤ nfa'.start := ge_pushRegex_start rfl
-  have lt : nfa'.start < nfa'.size := by
-    simp [size_lt, start_eq]
-  have : nfa'[nfa'.start] = splitNode := by
-    simp [start_eq, get_start]
-  simp [splitNode] at this
   apply Iff.intro
   . intro step
     cases step <;> grind
   . intro ⟨hj, hp, hupdate⟩
     cases hj with
-    | inl hj =>
-      simp_all
-      split at this
-      . exact .splitLeft ge lt this
-      . exact .splitRight ge lt this
-    | inr hj =>
-      simp_all
-      split at this
-      . exact .splitRight ge lt this
-      . exact .splitLeft ge lt this
+    | inl hj => grind
+    | inr hj => grind
 
 end Star
 

@@ -44,9 +44,9 @@ def materializeResult (resultH : Option (HistoryStrategy s).Update × SearchStat
 
 theorem εClosure.pushNext.refines {state : Fin nfa.size} {update} {buffer} (wf : nfa.WellFormed)
   (h₁ : materializeUpdates bufferSize update = buffer) (h₂ : εStack.materialize stackH = stackB) :
-  εStack.materialize (pushNext (HistoryStrategy s) nfa pos nfa[state] (wf.inBounds' state rfl) update stackH)
-    = (pushNext (BufferStrategy s bufferSize) nfa pos nfa[state] (wf.inBounds' state rfl) buffer stackB) := by
-  cases nfa[state], wf.inBounds' state rfl, update, stackH using pushNext.fun_cases' (HistoryStrategy s) nfa pos with
+  εStack.materialize (pushNext (HistoryStrategy s) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) update stackH)
+    = (pushNext (BufferStrategy s bufferSize) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) buffer stackB) := by
+  cases nfa[state], wf.inBounds' state state.isLt rfl, update, stackH using pushNext.fun_cases' (HistoryStrategy s) nfa pos with
   | epsilon _ _ state' inBounds => simp only [pushNext.epsilon rfl, εStack.materialize.cons, h₁, h₂]
   | split _ _ state₁ state₂ inBounds => simp only [pushNext.split rfl, εStack.materialize.cons, h₁, h₂]
   | save _ _ offset state' inBounds =>

@@ -123,7 +123,7 @@ theorem induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed)
     let matched' := if node = Node.done then matched <|> some update else matched
     let states' := next.states.insert state hmem
     let updates' := if writeUpdate node = true then next.updates.set state update else next.updates
-    motive matched' ⟨states', updates'⟩ (pushNext σ nfa pos node (wf.inBounds state) update stack') →
+    motive matched' ⟨states', updates'⟩ (pushNext σ nfa pos node (wf.inBounds state state.isLt) update stack') →
     motive matched next ((update, state) :: stack')) :
   ∀ (matched : Option σ.Update) (next : SearchState σ nfa) (stack : εStack σ nfa), motive matched next stack :=
   fun matched next stack =>
@@ -154,7 +154,7 @@ theorem not_visited (hmem : state ∉ next.states) :
   letI states' := next.states.insert state hmem
   letI updates' := if writeUpdate node = true then next.updates.set state update else next.updates
   εClosure σ nfa wf pos matched next ((update, state) :: stack') =
-  εClosure σ nfa wf pos matched' ⟨states', updates'⟩ (pushNext σ nfa pos node (wf.inBounds state) update stack') := by
+  εClosure σ nfa wf pos matched' ⟨states', updates'⟩ (pushNext σ nfa pos node (wf.inBounds state state.isLt) update stack') := by
   grind [εClosure]
 
 end

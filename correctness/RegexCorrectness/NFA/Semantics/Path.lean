@@ -45,7 +45,7 @@ theorem lt (step : nfa.Step lb i p j p' update) : i < nfa.size := by
 
 @[grind →]
 theorem lt_right (wf : nfa.WellFormed) (step : nfa.Step lb i p j p' update) : j < nfa.size := by
-  have inBounds := wf.inBounds ⟨i, step.lt⟩
+  have inBounds := wf.inBounds i step.lt
   cases step <;> simp_all [Node.inBounds]
 
 @[grind →]
@@ -148,10 +148,7 @@ theorem iff_sparse {cs next} {lt : i < nfa.size} (eq : nfa[i] = .sparse cs next)
 theorem compile_liftBound {e nfa} (eq : compile e = nfa) (step : nfa.Step 0 i p j p' update) :
   nfa.Step 1 i p j p' update := by
   cases Nat.eq_zero_or_pos i with
-  | inl eqi =>
-    have lt : i < nfa.size := eqi ▸ lt_zero_size_compile eq
-    have := (done_iff_zero_compile eq ⟨i, lt⟩).mpr eqi
-    cases step <;> simp_all
+  | inl eqi => grind [lt_zero_size_compile]
   | inr gt => exact step.liftBound' gt
 
 end Step

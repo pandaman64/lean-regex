@@ -215,8 +215,8 @@ theorem preserves' {stack' : εStack σ nfa} (hmem : entry.2 ∉ states) (nextEn
       | inr mem' => exact .inr ⟨update', by simp [hstack, mem']⟩
 
 theorem preserves (wf : nfa.WellFormed) (hmem : entry.2 ∉ states) (inv : LowerInvStep pos states (entry :: stack)) :
-  LowerInvStep pos (states.insert entry.2 hmem) (pushNext σ nfa pos nfa[entry.2] (wf.inBounds entry.2) entry.1 stack) := by
-  cases hn : nfa[entry.2], wf.inBounds entry.2, entry.1, stack using pushNext.fun_cases' σ nfa pos with
+  LowerInvStep pos (states.insert entry.2 hmem) (pushNext σ nfa pos nfa[entry.2] (wf.inBounds entry.2 entry.2.isLt) entry.1 stack) := by
+  cases hn : nfa[entry.2], wf.inBounds entry.2 entry.2.isLt, entry.1, stack using pushNext.fun_cases' σ nfa pos with
   | epsilon _ _ state' inBounds =>
     rename_i update
     simp [pushNext.epsilon rfl]
@@ -394,8 +394,8 @@ theorem preserves {update : List (Nat × Pos s)} {state : Fin nfa.size} (wf : nf
   (inv : UpperInv states₀ pos₀ i₀ update₀ next ((update, state) :: stack)) :
   letI states' := next.states.insert state not_mem
   letI updates' := if writeUpdate nfa[state] then next.updates.set state update else next.updates
-  UpperInv states₀ pos₀ i₀ update₀ ⟨states', updates'⟩ (pushNext (HistoryStrategy s) nfa pos₀ nfa[state] (wf.inBounds state) update stack) := by
-  cases hn : nfa[state], wf.inBounds state, update, stack using pushNext.fun_cases' (HistoryStrategy s) nfa pos₀ with
+  UpperInv states₀ pos₀ i₀ update₀ ⟨states', updates'⟩ (pushNext (HistoryStrategy s) nfa pos₀ nfa[state] (wf.inBounds state state.isLt) update stack) := by
+  cases hn : nfa[state], wf.inBounds state state.isLt, update, stack using pushNext.fun_cases' (HistoryStrategy s) nfa pos₀ with
   | epsilon update state state' inBounds =>
     simp [pushNext.epsilon rfl]
     -- Lean slows down when deciding which term to unify with `entry`.

@@ -158,8 +158,8 @@ theorem mem_save_of_mem_tags_pushRegex {nfa : NFA} {next e tag} (h : tag ∈ e.t
     refine ⟨⟨i, by grind⟩, offset, by grind⟩
 
 theorem mem_save_of_mem_tags_compile {e tag} (h : tag ∈ e.tags) :
-∃ (i : Fin (compile e).size) (offset : Nat), (compile e)[i] = .save (2 * tag + 1) offset :=
-mem_save_of_mem_tags_pushRegex h
+  ∃ (i : Fin (compile e).size) (offset : Nat), (compile e)[i] = .save (2 * tag + 1) offset :=
+  mem_save_of_mem_tags_pushRegex h
 
 theorem lt_of_mem_tags_compile {e tag} (h : tag ∈ e.tags) :
   2 * tag < (compile e).maxTag := by
@@ -181,6 +181,7 @@ theorem ne_done_of_pushRegex_ge {nfa next e} (i : Nat)
     next => grind only [= Compile.ProofData.Star.split]
   all_goals grind
 
+@[grind =]
 theorem done_iff_zero_compile {e} (i : Nat) (h : i < (compile e).size) :
   (compile e)[i] = .done ↔ i = 0 := by
   apply Iff.intro

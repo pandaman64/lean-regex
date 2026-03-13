@@ -20,13 +20,31 @@ theorem Step.eq_or_lt_of_pushNode {node} (step : (nfa.pushNode node).Step lb i p
 @[grind →]
 theorem Step.eq_or_lt_of_pushRegex (step : (nfa.pushRegex next e).Step lb i pos j pos' update) :
   nfa.size ≤ i ∨ i < nfa.size ∧ nfa.Step lb i pos j pos' update := by
-  fun_induction pushRegex <;> grind [pushRegex_size_lt]
+  fun_induction pushRegex
+  case case9 nfa next greedy e patchAt placeholder compiled split quest patched ih =>
+    cases Nat.lt_or_ge i nfa.size with
+    | inl lt =>
+      refine .inr ⟨lt, ?_⟩
+      have : (pushRegex nfa next (.star greedy e))[i]'(by grind) = nfa[i] := by grind
+      exact step.cast this
+    | inr ge => exact .inl ge
+  all_goals grind
 
 @[grind →]
 theorem Step.eq_or_ge_of_pushRegex
   (step : (nfa.pushRegex next e).Step nfa.size i pos j pos' update) :
   j = next ∨ nfa.size ≤ j := by
-  fun_induction pushRegex <;> grind [pushRegex_size_lt, NFA.size]
+  fun_induction pushRegex
+  case case9 nfa next greedy e patchAt placeholder compiled split quest patched ih =>
+    have eq : pushRegex nfa next (.star greedy e) = patched := rfl
+    cases (eq ▸ step).eq_or_lt_of_pushRegex with
+    | inl ge =>
+      let pd := Compile.ProofData.Star.intro' nfa next greedy e
+      have step' : pd.nfa'.Step nfa.size i pos j pos' update := by grind
+      have get := pd.get i step.lt
+      split_ifs at get <;> grind
+    | inr lt => exact (Nat.not_le_of_lt lt.1 step.ge).elim
+  all_goals grind
 
 theorem Path.eq_or_path_next (eq : nfa.pushRegex next e = result)
   (jlt : j < nfa.size) (ige : i ≥ nfa.size)

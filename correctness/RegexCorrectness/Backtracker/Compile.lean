@@ -25,8 +25,8 @@ theorem capture_of_some_compile {s e pos update} (hres : captureNext (HistoryStr
     e.Captures pos' pos'' groups ∧
     EquivUpdate groups update := by
   have ⟨state, pos', pos'', hn, le, path⟩ := path_done_of_some hres
-  have eq_zero := (NFA.done_iff_zero_compile rfl state).mp hn
-  have ne : state.val ≠ (NFA.compile e).start := eq_zero ▸ Nat.ne_of_lt (NFA.lt_zero_start_compile rfl)
+  have eq_zero := (NFA.done_iff_zero_compile state state.isLt).mp hn
+  have ne : state.val ≠ (NFA.compile e).start := eq_zero ▸ Nat.ne_of_lt NFA.lt_zero_start_compile
   have path := path.nfaPath_of_ne ne
   have ⟨groups, eqv, c⟩ := NFA.captures_of_path_compile rfl (eq_zero ▸ path.compile_liftBound rfl)
   exact ⟨pos', pos'', groups, le, c, eqv⟩
@@ -55,9 +55,9 @@ theorem not_captures_of_none_compile {s e pos} (hres : captureNext (HistoryStrat
   intro c
   have ⟨update, _, path⟩ := NFA.path_of_captures_compile rfl c
 
-  let zero : Fin (NFA.compile e).size := ⟨0, NFA.lt_zero_size_compile rfl⟩
+  let zero : Fin (NFA.compile e).size := ⟨0, NFA.lt_zero_size_compile⟩
   have hne := ne_done_of_path_of_none hres pos' pos'' zero update le (Path.of_nfaPath (path.liftBound (by decide)))
-  have hn := (NFA.done_iff_zero_compile (e := e) rfl zero).mpr (by simp [zero])
+  have hn := (NFA.done_iff_zero_compile (e := e) zero (by grind)).mpr (by simp [zero])
   exact hne hn
 
 end captureNext

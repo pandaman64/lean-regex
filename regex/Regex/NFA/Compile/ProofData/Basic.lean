@@ -346,7 +346,7 @@ theorem nfa₂_property : nfa₁.size < nfa₂.size :=
 theorem wf₁ (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa₁.WellFormed := by
   grind
 
-theorem wf₂ (wf : nfa₁.WellFormed) (next_lt : next < nfa₁.size) : nfa₂.WellFormed := by
+theorem wf₂ (wf : nfa.WellFormed) (next_lt : next < nfa.size) : nfa₂.WellFormed := by
   grind
 
 @[grind =]
