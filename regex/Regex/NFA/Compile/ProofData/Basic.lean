@@ -468,9 +468,11 @@ theorem nfaPlaceholder_property : nfa.size < nfaPlaceholder.size := by
 theorem nfaExpr_property : nfaPlaceholder.size < nfaExpr.size :=
   pushRegex_size_lt
 
+@[grind =]
 theorem size_eq_patched : nfa'.size = patched.size := by
   grind
 
+@[grind =]
 theorem size_eq_quest : nfa'.size = quest.size := by
   grind
 

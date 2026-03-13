@@ -8,192 +8,17 @@ public import RegexCorrectness.Data.Expr.Semantics.Separation
 
 import Mathlib.Tactic.Common
 
+open Regex.Data (Expr)
+
 public section
 
 namespace Regex.NFA
 
--- Probably we want to state results directly about `pushRegex.val`. ProofData work better with that kind of equalities, it seems.
-open Compile.ProofData in
-theorem pushRegex_get_lt {nfa next e nfa'} (eq : pushRegex nfa next e = nfa') (i : Nat) (h : i < nfa.size) :
-  nfa'[i]'(Nat.lt_trans h (eq ▸ pushRegex_size_lt)) = nfa[i] := by
-  induction e generalizing nfa next nfa' with
-  | empty | epsilon | anchor | char | classes =>
-    try let pd := Empty.intro eq
-    try let pd := Epsilon.intro eq
-    try let pd := Anchor.intro eq
-    try let pd := Char.intro eq
-    try let pd := Classes.intro eq
-    simp [pd.eq_result eq, pd.get_lt h]
-    rfl
-  | group _ r ih =>
-    let pd := Group.intro eq
-
-    have ih := ih (nfa' := pd.nfaExpr) rfl (Nat.lt_trans h pd.nfaClose_property)
-
-    simp [pd.eq_result eq, pd.eq_push, pushNode_get_lt _ (Nat.lt_trans h pd.size_lt_nfa_expr)]
-    simp [ih, Group.nfaClose]
-    rw [pushNode_get_lt i]
-    rfl
-  | alternate r₁ r₂ ih₁ ih₂ =>
-    let pd := Alternate.intro eq
-
-    have h₁ : i < (pd.nfa₁).size := Nat.lt_trans h pd.nfa₁_property
-    have h₂ : i < (pd.nfa₂).size := Nat.lt_trans h₁ pd.nfa₂_property
-
-    simp [pd.eq_result eq, pd.eq_push, pushNode_get_lt i h₂]
-    rw [ih₂ (nfa' := pd.nfa₂) rfl h₁]
-    rw [ih₁ (nfa' := pd.nfa₁) rfl h]
-    rfl
-  | concat r₁ r₂ ih₁ ih₂ =>
-    let pd := Concat.intro eq
-
-    have h₂ : i < (pd.nfa₂).size := Nat.lt_trans h pd.nfa₂_property
-    have ih₁ := ih₁ (pd.eq_push).symm h₂
-    have ih₂ := ih₂ (nfa' := pd.nfa₂) rfl h
-
-    simp [pd.eq_result eq, ih₁, ih₂]
-    rfl
-  | star greedy r ih =>
-    let pd := Star.intro eq
-
-    have ih := ih (nfa' := pd.nfaExpr) rfl (Nat.lt_trans h pd.nfaPlaceholder_property)
-    simp [pd.eq_result eq, pd.get_ne_start i (Nat.lt_trans h size_lt) (Nat.ne_of_lt h), ih]
-    simp [Star.nfaPlaceholder]
-    rw [pushNode_get_lt]
-    rfl
-
--- Bring get_lt to `ProofData`.
-namespace Compile.ProofData
-
-namespace Group
-
-variable [Group]
-
-theorem get_close_expr : nfaExpr[nfa.size]'size_lt_nfa_expr = .save (2 * tag + 1) next := by
-  simp [nfaExpr]
-  rw [pushRegex_get_lt rfl nfa.size nfaClose_property, get_close_pre]
-
-theorem get_close : nfa'[nfa.size]'size_lt = .save (2 * tag + 1) next := by
-  simp [get_lt_expr size_lt_nfa_expr, get_close_expr]
-
-theorem get (i : Nat) (h : i < nfa'.size) :
-  if _ : i < nfa.size then nfa'[i] = nfa[i]
-  else if _ : i = nfa.size then nfa'[i] = .save (2 * tag + 1) next
-  else if _ : i < nfaExpr.size then nfa'[i] = nfaExpr[i]
-  else nfa'[i] = .save (2 * tag) nfaExpr.start := by
-  split_ifs
-  next h' => exact pushRegex_get_lt eq'.symm i h'
-  next h' => simp [h', get_close]
-  next h' => exact get_lt_expr h'
-  next _ _ h' =>
-    simp [eq_push] at h
-    have : i ≥ nfaExpr.size := Nat.ge_of_not_lt h'
-    have : i = nfaExpr.size := by
-      omega
-    simp [this, get_open]
-
-theorem get_lt_close {i : Nat} (h : i < nfaClose.size) :
-  nfa'[i]'(Nat.lt_trans h size_lt_close') = nfaClose[i] := by
-  simp [get_lt_expr (Nat.lt_trans h nfaExpr_property)]
-  simp [nfaExpr, pushRegex_get_lt rfl i h]
-
-end Group
-
-namespace Alternate
-
-variable [Alternate]
-
-theorem get_lt₂ {i : Nat} (h : i < nfa₂.size) : nfa'[i]'(Nat.lt_trans h size_lt₂) = nfa₂[i] := by
-  simp [eq_push, pushNode_get_lt i h]
-
-theorem get_lt₁ {i : Nat} (h : i < nfa₁.size) : nfa'[i]'(Nat.lt_trans h size_lt₁) = nfa₁[i] := by
-  simp [get_lt₂ (Nat.lt_trans h nfa₂_property), nfa₂]
-  rw [pushRegex_get_lt rfl i h]
-
-theorem get (i : Nat) (h : i < nfa'.size) :
-  if _ : i < nfa.size then nfa'[i] = nfa[i]
-  else if _ : i < nfa₁.size then nfa'[i] = nfa₁[i]
-  else if _ : i < nfa₂.size then nfa'[i] = nfa₂[i]
-  else nfa'[i] = .split nfa₁.start nfa₂.start := by
-  split_ifs
-  next h' => exact pushRegex_get_lt eq'.symm i h'
-  next h' => exact get_lt₁ h'
-  next h' => exact get_lt₂ h'
-  next _ _ h' =>
-    simp [eq_push] at h
-    have : i ≥ nfa₂.size := Nat.ge_of_not_lt h'
-    have : i = nfa₂.size := by
-      omega
-    simp [this, get_split]
-
-end Alternate
-
-namespace Concat
-
-variable [Concat]
-
-theorem get_lt₂ {i : Nat} (h : i < nfa₂.size) : nfa'[i]'(Nat.lt_trans h size₂_lt) = nfa₂[i] := by
-  simp [eq_push, pushRegex_get_lt rfl i h]
-
-theorem get (i : Nat) (h : i < nfa'.size) :
-  if _ : i < nfa.size then nfa'[i] = nfa[i]
-  else if _ : i < nfa₂.size then nfa'[i] = nfa₂[i]
-  else True := by
-  split_ifs
-  next h' => exact pushRegex_get_lt eq'.symm i h'
-  next h' => exact get_lt₂ h'
-
-end Concat
-
-namespace Star
-
-variable [Star]
-
-theorem get (i : Nat) (h : i < nfa'.size) :
-  if _ : i < nfa.size then nfa'[i] = nfa[i]
-  else if _ : i = nfa.size then nfa'[i] = splitNode
-  else nfa'[i] = nfaExpr[i]'(size_eq_expr' ▸ h) := by
-  split_ifs
-  next h' => exact pushRegex_get_lt eq'.symm i h'
-  next h' => exact h' ▸ get_start
-  next h' => exact get_ne_start i h h'
-
-end Star
-
-end Compile.ProofData
-
-open Compile.ProofData in
 @[grind =>]
 theorem ge_pushRegex_start {nfa next e result} (eq : pushRegex nfa next e = result) :
   nfa.size ≤ result.start := by
-  induction e generalizing nfa next result with
-  | empty | epsilon | anchor a | char c | classes cs =>
-    try let pd := Empty.intro eq
-    try let pd := Epsilon.intro eq
-    try let pd := Anchor.intro eq
-    try let pd := Char.intro eq
-    try let pd := Classes.intro eq
-    simp [pd.eq_result eq, pd.start_eq]
-    rfl
-  | group =>
-    let pd := Group.intro eq
-    simp [pd.eq_result eq, pd.start_eq]
-    exact Nat.le_of_lt (Nat.lt_trans pd.nfaClose_property pd.nfaExpr_property)
-  | alternate e₁ e₂ =>
-    let pd := Alternate.intro eq
-    simp [pd.eq_result eq, pd.eq_push]
-    exact Nat.le_of_lt (Nat.lt_trans pd.nfa₁_property pd.nfa₂_property)
-  | concat e₁ e₂ ih₁ =>
-    let pd := Concat.intro eq
-    open Concat in
-    have : nfa.size ≤ nfa'.start := by
-      have := ih₁ eq_push.symm
-      exact Nat.le_trans (Nat.le_of_lt nfa₂_property) this
-    simp [pd.eq_result eq, this]
-  | star e =>
-    let pd := Star.intro eq
-    simp [pd.eq_result eq, pd.start_eq]
-    rfl
+  show nfa.size ≤ result.size - 1
+  grind
 
 open Compile.ProofData in
 theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushRegex nfa next e = result)
@@ -285,269 +110,96 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
     have get := pd.get i h₂
     simp [nlt] at get
     split_ifs at get
-    next =>
-      simp [get, Node.charStep, Node.εStep, Star.splitNode] at step
-      cases step with
-      | inl eq =>
-        split at eq
-        . exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
-        . exact .inl eq
-      | inr eq =>
-        split at eq
-        . exact .inl eq
-        . exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
+    next => grind [Node.charStep, Node.εStep]
     next h₁' =>
-      have h₁ : Star.nfaPlaceholder.size ≤ i := by
-        simp [Star.nfaPlaceholder]
-        omega
-      have := ih rfl h₁ (pd.size_eq_expr' ▸ h₂) (get ▸ step)
-      simp [Star.nfaPlaceholder] at this
-      cases this with
-      | inl eq => exact .inr (eq ▸ Nat.le_refl _)
-      | inr le => exact .inr (Nat.le_of_lt le)
+      have := ih rfl (by grind) h₁' (get ▸ step)
+      grind only [= Star.intro, = Star.nfaPlaceholder, = pushNode_size]
+    next => grind [Node.charStep, Node.εStep]
 
-open Compile.ProofData Data.Expr in
-theorem mem_save_of_mem_tags_pushRegex {nfa next e result tag} (eq : pushRegex nfa next e = result)
-  (h : tag ∈ e.tags) :
-  ∃ (i j : Fin result.size) (offset offset' : Nat),
-    result[i] = .save (2 * tag) offset ∧ result[j] = .save (2 * tag + 1) offset' := by
-  induction e generalizing nfa next result with
-  | empty | epsilon | anchor | char | classes => simp [tags] at h
-  | group tag' e ih =>
-    let pd := Group.intro eq
-    rw [pd.eq_result eq]
-
-    simp [tags] at h
+theorem mem_save_of_mem_tags_pushRegex {nfa : NFA} {next e tag} (h : tag ∈ e.tags) :
+  ∃ (i : Fin (nfa.pushRegex next e).size) (offset : Nat), (nfa.pushRegex next e)[i] = .save (2 * tag + 1) offset := by
+  fun_induction pushRegex nfa next e
+  next => grind [Expr.tags]
+  next => grind [Expr.tags]
+  next => grind [Expr.tags]
+  next => grind [Expr.tags]
+  next => grind [Expr.tags]
+  next nfa next tag' e nfaClose nfaExpr ih =>
+    simp only [Expr.tags, Finset.mem_union, Finset.mem_singleton] at h
     cases h with
-    | inl eq =>
-      refine ⟨⟨(pd.nfaExpr).size, pd.size_lt_expr'⟩, ⟨(pd.nfa).size, pd.size_lt⟩, (pd.nfaExpr).start, pd.next, ?_⟩
-      simp [pd.get_open, pd.get_close, eq]
-      rfl
+    | inl eq => exact ⟨⟨nfa.size, by grind⟩, next, by grind⟩
     | inr h =>
-      have ⟨i, j, offset, offset', eq'⟩ := ih (result := pd.nfaExpr) rfl h
-      simp at eq'
-      have iLt' := Nat.lt_trans i.isLt pd.size_lt_expr'
-      have jLt' := Nat.lt_trans j.isLt pd.size_lt_expr'
-      refine ⟨⟨i, iLt'⟩, ⟨j, jLt'⟩, offset, offset', ?_⟩
-      have eqi : nfa'[i.val] = pd.nfaExpr[i] := by
-        simp [pd.eq_push, pushNode_get_lt]
-      have eqj : nfa'[j.val] = pd.nfaExpr[j] := by
-        simp [pd.eq_push, pushNode_get_lt]
-      simp [eqi, eqj, eq']
-  | alternate e₁ e₂ ih₁ ih₂ =>
-    let pd := Alternate.intro eq
-    rw [pd.eq_result eq]
-
-    simp [tags] at h
+      obtain ⟨i, offset, eq⟩ := ih h
+      exact ⟨⟨i, by grind⟩, offset, by grind⟩
+  next nfa next e₁ e₂ nfa₁ start₁ nfa₂ start₂ split ih₁ ih₂ =>
+    simp only [Expr.tags, Finset.mem_union] at h
     cases h with
     | inl h =>
-      have ⟨i, j, offset, offset', eq'⟩ := ih₁ (result := pd.nfa₁) rfl h
-      simp at eq' i j
-      refine ⟨⟨i, Nat.lt_trans i.isLt pd.size_lt₁⟩, ⟨j, Nat.lt_trans j.isLt pd.size_lt₁⟩, offset, offset', ?_⟩
-      simp [pd.get_lt₁, eq']
+      obtain ⟨i, offset, eq⟩ := ih₁ h
+      exact ⟨⟨i, by grind⟩, offset, by grind⟩
     | inr h =>
-      have ⟨i, j, offset, offset', eq'⟩ := ih₂ (result := pd.nfa₂) rfl h
-      simp at eq' i j
-      refine ⟨⟨i, Nat.lt_trans i.isLt pd.size_lt₂⟩, ⟨j, Nat.lt_trans j.isLt pd.size_lt₂⟩, offset, offset', ?_⟩
-      simp [pd.get_lt₂, eq']
-  | concat e₁ e₂ ih₁ ih₂ =>
-    let pd := Concat.intro eq
-    rw [pd.eq_result eq]
-
-    simp [tags] at h
+      obtain ⟨i, offset, eq⟩ := ih₂ h
+      exact ⟨⟨i, by grind⟩, offset, by grind⟩
+  next nfa next e₁ e₂ nfa₂ ih₂ ih₁ =>
+    simp only [Expr.tags, Finset.mem_union] at h
     cases h with
-    | inl h => exact ih₁ (nfa := pd.nfa₂) rfl h
+    | inl h =>
+      obtain ⟨i, offset, eq⟩ := ih₁ h
+      exact ⟨⟨i, by grind⟩, offset, by grind⟩
     | inr h =>
-      have ⟨i, j, offset, offset', eq'⟩ := ih₂ (result := pd.nfa₂) rfl h
-      simp at eq' i j
-      refine ⟨⟨i, Nat.lt_trans i.isLt pd.size₂_lt⟩, ⟨j, Nat.lt_trans j.isLt pd.size₂_lt⟩, offset, offset', ?_⟩
-      simp [pd.get_lt₂, eq']
-  | star greedy e ih =>
-    let pd := Star.intro eq
-    rw [pd.eq_result eq]
+      obtain ⟨i, offset, eq⟩ := ih₂ h
+      exact ⟨⟨i, by grind⟩, offset, by grind⟩
+  next nfa next greedy e patchAt placeholder compiled split quest patched ih =>
+    simp only [Expr.tags] at h
+    obtain ⟨i, offset, eq⟩ := ih h
 
-    simp [tags] at h
-    have ⟨i, j, offset, offset', eq'⟩ := ih (result := pd.nfaExpr) rfl h
-    simp at eq' i j
-    have ilt : i < nfa'.size := by simp [pd.size_eq_expr']
-    have jlt : j < nfa'.size := by simp [pd.size_eq_expr']
-    refine ⟨⟨i, ilt⟩, ⟨j, jlt⟩, offset, offset', ⟨?_, ?_⟩⟩
-    . simp
-      have := pd.get i ilt
-      split_ifs at this
-      next h =>
-        have ilt' : i < (pd.nfaPlaceholder).size := by
-          simp [Star.nfaPlaceholder]
-          omega
-        have : nfa'[i.val] = pd.nfaExpr[i] :=
-          calc
-            _ = nfa[i] := pushRegex_get_lt rfl i h
-            _ = pd.nfaPlaceholder[i] := by
-              simp [Star.nfaPlaceholder, pushNode_get_lt i h]
-              rfl
-            _ = pd.nfaExpr[i] := (pushRegex_get_lt rfl i ilt').symm
-        simp [this, eq']
-      next h =>
-        have ilt' : i < (pd.nfaPlaceholder).size := by
-          simp [Star.nfaPlaceholder, h]
-        have : pd.nfaExpr[i] = .fail :=
-          calc
-            _ = pd.nfaPlaceholder[i] := pushRegex_get_lt rfl i ilt'
-            _ = .fail := by simp [h, Star.nfaPlaceholder]
-        simp [eq'] at this
-      next => simp [this, eq']
-    . simp
-      have := pd.get j jlt
-      split_ifs at this
-      next h =>
-        have jlt' : j < (pd.nfaPlaceholder).size := by
-          simp [Star.nfaPlaceholder]
-          omega
-        have : nfa'[j.val] = pd.nfaExpr[j] :=
-          calc
-            _ = nfa[j] := pushRegex_get_lt rfl j h
-            _ = pd.nfaPlaceholder[j] := by
-              simp [Star.nfaPlaceholder, pushNode_get_lt j h]
-              rfl
-            _ = pd.nfaExpr[j] := (pushRegex_get_lt rfl j jlt').symm
-        simp [this, eq']
-      next h =>
-        have jlt' : j < (pd.nfaPlaceholder).size := by
-          simp [Star.nfaPlaceholder, h]
-        have : pd.nfaExpr[j] = .fail :=
-          calc
-            _ = pd.nfaPlaceholder[j] := pushRegex_get_lt rfl j jlt'
-            _ = .fail := by simp [h, Star.nfaPlaceholder]
-        simp [eq'] at this
-      next => simp [this, eq']
+    let pd := Compile.ProofData.Star.intro' nfa next greedy e
+    show ∃ (i : Fin pd.nfa'.size) (offset : Nat), pd.nfa'[i] = .save (2 * tag + 1) offset
+    refine ⟨⟨i, by grind⟩, offset, by grind⟩
 
-theorem mem_save_of_mem_tags_compile {e nfa tag} (eq : compile e = nfa) (h : tag ∈ e.tags) :
-  ∃ (i j : Fin nfa.size) (offset offset' : Nat),
-    nfa[i] = .save (2 * tag) offset ∧ nfa[j] = .save (2 * tag + 1) offset' := by
-  have := mem_save_of_mem_tags_pushRegex (result := NFA.done.pushRegex 0 e) rfl h
-  simp [compile] at eq
-  rw [eq] at this
-  exact this
+theorem mem_save_of_mem_tags_compile {e tag} (h : tag ∈ e.tags) :
+∃ (i : Fin (compile e).size) (offset : Nat), (compile e)[i] = .save (2 * tag + 1) offset :=
+mem_save_of_mem_tags_pushRegex h
 
-theorem lt_of_mem_tags_compile {e nfa tag} (eq : compile e = nfa) (h : tag ∈ e.tags) :
-  2 * tag < nfa.maxTag := by
-  have ⟨_, j, _, offset', _, hn⟩ := mem_save_of_mem_tags_compile eq h
-  exact nfa.le_maxTag j hn
+theorem lt_of_mem_tags_compile {e tag} (h : tag ∈ e.tags) :
+  2 * tag < (compile e).maxTag := by
+  have ⟨i, offset, eq⟩ := mem_save_of_mem_tags_compile h
+  exact (compile e).le_maxTag i eq
 
-open Compile.ProofData in
-theorem done_iff_zero_pushRegex {nfa next e result} (eq : pushRegex nfa next e = result)
-  (h₁ : 0 < nfa.size)
-  (h₂ : ∀ (i : Nat) (isLt : i < nfa.size), nfa[i] = .done ↔ i = 0) :
-  ∀ (i : Nat) (isLt : i < result.size), result[i] = .done ↔ i = 0 := by
-  induction e generalizing nfa next result with
-  | empty | epsilon | anchor a | char c | classes c =>
-    try let pd := Empty.intro eq
-    try let pd := Epsilon.intro eq
-    try let pd := Anchor.intro eq
-    try let pd := Char.intro eq
-    try let pd := Classes.intro eq
-    simp [pd.eq_result eq, pd.eq', pushRegex]
-    intro i isLt
-    cases Nat.eq_or_lt_of_le isLt with
-    | inl eq =>
-      simp at eq
-      simp only [eq, pushNode_get_eq, reduceCtorEq, false_iff]
-      exact Nat.ne_zero_iff_zero_lt.mpr h₁
-    | inr lt =>
-      simp at lt
-      simp [pushNode_get_lt _ lt]
-      exact h₂ i lt
-  | group _ r ih =>
-    let pd := Group.intro eq
-    simp [pd.eq_result eq]
-    intro i isLt
-    have get := pd.get i isLt
-    split_ifs at get <;> simp [get]
-    next h => exact h₂ i h
-    next h => exact Nat.ne_of_gt (h ▸ h₁)
-    next h =>
-      have ih := ih (result := pd.nfaExpr) rfl (Nat.lt_trans h₁ pd.nfaClose_property)
-      apply ih
-      intro i isLt
-      simp [Group.nfaClose] at isLt
-      cases Nat.eq_or_lt_of_le isLt with
-      | inl eq =>
-        simp at eq
-        simp only [Group.nfaClose, eq, pushNode_get_eq, reduceCtorEq, false_iff]
-        exact Nat.ne_of_gt h₁
-      | inr lt =>
-        simp at lt
-        simp [Group.nfaClose, pushNode_get_lt _ lt]
-        exact h₂ i lt
-    next h =>
-      apply Nat.ne_of_gt
-      calc
-        0 < nfa.size := h₁
-        _ < Group.nfaExpr.size := pd.size_lt_nfa_expr
-        _ ≤ i := Nat.le_of_not_lt h
-  | alternate r₁ r₂ ih₁ ih₂ =>
-    let pd := Alternate.intro eq
-    simp [pd.eq_result eq, pd.eq_push]
+theorem ne_done_of_pushRegex_ge {nfa next e} (i : Nat)
+  (h₁ : nfa.size ≤ i) (h₂ : i < (pushRegex nfa next e).size) :
+  (pushRegex nfa next e)[i] ≠ .done := by
+  fun_induction pushRegex nfa next e
+  case case9 nfa next greedy e patchAt placeholder compiled split quest patched ih =>
+    let pd := Compile.ProofData.Star.intro' nfa next greedy e
+    show pd.nfa'[i] ≠ .done
+    let get := pd.get i h₂
+    split_ifs at get
+    next => grind only [= Compile.ProofData.Star.intro']
+    next => grind only [= Compile.ProofData.Star.split]
+    next => exact get ▸ ih (by grind) (by grind)
+    next => grind only [= Compile.ProofData.Star.split]
+  all_goals grind
 
-    intro i isLt
-    cases Nat.eq_or_lt_of_le isLt with
-    | inl eq =>
-      simp at eq
-      simp only [eq, pushNode_get_eq, reduceCtorEq, false_iff]
-      exact Nat.ne_of_gt (Nat.zero_lt_of_lt pd.nfa₂_property)
-    | inr lt =>
-      simp at lt
-      simp [pushNode_get_lt _ lt]
-      apply ih₂ rfl (Nat.lt_trans h₁ pd.nfa₁_property)
-      intro i isLt
-      apply ih₁ rfl h₁ h₂
-  | concat r₁ r₂ ih₁ ih₂ =>
-    let pd := Concat.intro eq
-    simp [pd.eq_result eq]
-    apply ih₁ rfl (Nat.zero_lt_of_lt pd.nfa₂_property)
-    apply ih₂ rfl h₁ h₂
-  | star greedy r ih =>
-    let pd := Star.intro eq
-    simp [pd.eq_result eq]
-    intro i isLt
-    have get := pd.get i isLt
-    split_ifs at get <;> simp [get]
-    next h' => exact h₂ i h'
-    next h' =>
-      simp [Star.splitNode]
-      exact Nat.ne_of_gt (h' ▸ h₁)
-    next h' =>
-      apply ih rfl (Nat.zero_lt_of_lt Star.nfaPlaceholder_property)
-      simp [Star.nfaPlaceholder]
-      intro i isLt
-      cases Nat.eq_or_lt_of_le isLt with
-      | inl eq =>
-        simp at eq
-        simp only [eq, pushNode_get_eq, reduceCtorEq, false_iff]
-        exact Nat.ne_of_gt h₁
-      | inr lt =>
-        simp at lt
-        simp [pushNode_get_lt _ lt]
-        exact h₂ i lt
+theorem done_iff_zero_compile {e} (i : Nat) (h : i < (compile e).size) :
+  (compile e)[i] = .done ↔ i = 0 := by
+  apply Iff.intro
+  . intro eq
+    if h' : i = 0 then
+      exact h'
+    else
+      exact (ne_done_of_pushRegex_ge i (by grind [NFA.done]) h eq).elim
+  . intro eq
+    show (pushRegex NFA.done 0 e)[i] = .done
+    rw [pushRegex_get_lt i (by grind [NFA.done])]
+    grind [NFA.done]
 
-theorem done_iff_zero_compile {e nfa} (eq : compile e = nfa) (i : Fin nfa.size) :
-  nfa[i] = .done ↔ i.val = 0 := by
-  simp [←eq, compile]
-  apply done_iff_zero_pushRegex rfl (by simp [done, size])
-  intro i isLt
-  simp [done, size] at isLt
-  simp [isLt, done]
-  rfl
+theorem lt_zero_size_compile {e} : 0 < (compile e).size := by
+  grind [compile]
 
-theorem lt_zero_size_compile {e nfa} (eq : compile e = nfa) :
-  0 < nfa.size := by
-  simp [←eq, compile, size]
-  exact Nat.zero_lt_of_lt pushRegex_size_lt
-
-theorem lt_zero_start_compile {e nfa} (eq : compile e = nfa) :
-  0 < nfa.start := by
-  simp [←eq, compile]
-  exact ge_pushRegex_start (nfa := done) rfl
+theorem lt_zero_start_compile {e} : 0 < (compile e).start := by
+  show 0 < (pushRegex NFA.done 0 e).start
+  grind [NFA.done]
 
 end Regex.NFA
 

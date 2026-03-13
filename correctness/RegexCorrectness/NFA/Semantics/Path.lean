@@ -160,6 +160,8 @@ end Step
 A collection of steps in an NFA forms a path. The path must contain at least one step
 (which implies that the first state is greater than or equal to the lower bound).
 -/
+-- NOTE: After the changes to the star compilation, we should no longer need `lb`, and we should be able to use
+-- `refl : i < nfa.size → Path nfa i p i p []` as the base case.
 inductive Path {s : String} (nfa : NFA) (lb : Nat) : Nat → Pos s → Nat → Pos s → List (Nat × Pos s) → Prop where
   | last {i p j p' update} (step : Step nfa lb i p j p' update) : Path nfa lb i p j p' (List.ofOption update)
   | more {i p j p' k p'' update updates} (step : Step nfa lb i p j p' update) (rest : Path nfa lb j p' k p'' updates) :
