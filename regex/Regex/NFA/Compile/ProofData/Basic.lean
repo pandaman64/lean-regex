@@ -511,6 +511,16 @@ theorem get (i : Nat) (h : i < nfa'.size) :
       rw [← get_eq_nodes_get]
     grind
 
+@[grind =]
+theorem get_start : nfa'[nfa'.start]'(by grind) = split := by
+  simp only [get]
+  grind
+
+@[grind =]
+theorem get_placeholder_start : nfa'[nfaPlaceholder.start]'(by grind) = split := by
+  simp only [get]
+  grind
+
 end Star
 
 end ProofData

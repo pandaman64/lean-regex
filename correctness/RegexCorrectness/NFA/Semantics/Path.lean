@@ -84,6 +84,11 @@ theorem castFrom (step : nfa'.Step lb i p j p' update)
   | char ge _ eq ne eq' => exact .char ge lt (h.symm ▸ eq) ne eq'
   | sparse ge _ eq ne mem => exact .sparse ge lt (h.symm ▸ eq) ne mem
 
+theorem castIndex {i₁ i₂} (h₁ : i₁ < nfa.size) (h₂ : i₂ < nfa.size) (eq : nfa[i₁] = nfa[i₂]) (ge : lb ≤ i₂)
+  (step : nfa.Step lb i₁ p j p' update) :
+  nfa.Step lb i₂ p j p' update := by
+  cases step <;> grind
+
 @[grind .]
 theorem liftBound' (ge : lb' ≤ i) (step : nfa.Step lb i p j p' update) :
   nfa.Step lb' i p j p' update := by
@@ -221,6 +226,13 @@ theorem cast' (lt : i < nfa.size) (size_le : nfa.size ≤ nfa'.size) (wf : nfa.W
     have step := step.cast (eq _ step.ge lt)
     have rest := ih (step.lt_right wf)
     exact .more step rest
+
+theorem castHead {i₁ i₂} (h₁ : i₁ < nfa.size) (h₂ : i₂ < nfa.size) (eq : nfa[i₁] = nfa[i₂]) (ge : lb ≤ i₂)
+  (path : nfa.Path lb i₁ p j p' updates) :
+  nfa.Path lb i₂ p j p' updates := by
+  cases path with
+  | last step => exact .last (step.castIndex h₁ h₂ eq ge)
+  | more step rest => exact .more (step.castIndex h₁ h₂ eq ge) rest
 
 @[grind .]
 theorem liftBound (le : lb' ≤ lb) (path : nfa.Path lb i p j p' updates) :

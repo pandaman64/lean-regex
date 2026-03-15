@@ -115,31 +115,33 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
     next < nfa.size →
     ∃ update, EquivUpdate groups₂ update ∧ result.Path nfa.size result.start pos' next pos'' update) :
   ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.size result.start pos next pos'' update := by
-  -- open Compile.ProofData Star in
-  -- let pd := Star.intro eq
-  -- simp [pd.eq_result eq]
+  open Compile.ProofData Star in
+  let pd := Star.intro eq
+  simp [pd.eq_result eq]
 
-  -- have wfPlaceholder := wfPlaceholder wf
-  -- have ⟨update₁, eqv₁, path₁⟩ := ih₁ (result := nfaExpr) (by grind) wfPlaceholder wfPlaceholder.start_lt
-  -- have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := nfa') rfl wf next_lt
-  -- exists update₁ ++ update₂, .concat eqv₁ eqv₂
+  have wfPlaceholder := wfPlaceholder wf
+  have ⟨update₁, eqv₁, path₁⟩ := ih₁ (result := nfaExpr) (by grind only [= nfaPlaceholder,
+    = Star.intro, = nfaExpr, = pushNode_start]) wfPlaceholder wfPlaceholder.start_lt
+  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := nfa') rfl wf next_lt
+  exists update₁ ++ update₂, .concat eqv₁ eqv₂
 
-  -- have wf' : nfa'.WellFormed := by grind
-  -- have start_eq_placeholder : nfaPlaceholder.start = nfa'.start := by sorry-- grind
-  -- have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfaPlaceholder.start pos' update₁ :=
-  --   (castFromExpr path₁).liftBound (by grind)
-  -- -- have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfa'.start pos' update₁ :=
-  -- --   start_eq_placeholder ▸ (castFromExpr path₁).liftBound (by simp [nfaPlaceholder]; exact Nat.le_succ _)
-  -- have step : nfa'.Step nfa.size nfa'.start pos nfaExpr.start pos .none :=
-  --   if h : pd.greedy then
-  --     .splitLeft (j₂ := next) (by grind) (by grind) (by grind)
-  --   else
-  --     .splitRight (j₁ := next) (by grind) (by grind) (by grind)
+  have wf' : nfa'.WellFormed := pushRegex_wf wf next_lt
 
-  -- exact (Path.more step path₁).trans path₂
+  have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfaPlaceholder.start pos' update₁ :=
+    (castFromExpr path₁).liftBound (by grind only [nfaPlaceholder, Star.intro, = pushNode_size])
+  have step : nfa'.Step nfa.size nfa'.start pos nfaExpr.start pos .none :=
+    step_start_iff.mpr ⟨.inl rfl, rfl, rfl⟩
+  have path₁ : nfa'.Path nfa.size nfa'.start pos nfaPlaceholder.start pos' update₁ :=
+    .more step path₁
 
-  -- We need to rethink the proof from scratch.
-  sorry
+  have path₂ : nfa'.Path nfa.size nfaPlaceholder.start pos' next pos'' update₂ := by
+    apply path₂.castHead
+    . simp [pd.get_placeholder_start, pd.get_start]
+    . grind only [nfaPlaceholder, Star.intro, = start.eq_1, = pushNode_start]
+    . exact wf'.start_lt
+    . exact path₁.lt_right wf'
+
+  exact path₁.trans path₂
 
 public theorem path_of_captures (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
