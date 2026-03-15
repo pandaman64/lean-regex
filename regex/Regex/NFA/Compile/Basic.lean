@@ -82,6 +82,9 @@ def pushRegex (nfa : NFA) (next : Nat) : Expr → NFA
     let nfa₂ := nfa.pushRegex next e₂
     nfa₂.pushRegex nfa₂.start e₁
   | .star greedy e =>
+    -- We compile e* as (?:e+)? to avoid edge cases when e can match an empty string.
+    -- The behavior is consistent with rust-lang/regex, go/regexp, and RE2.
+    -- See https://github.com/rust-lang/regex/issues/779.
     let patchAt := nfa.size
     -- We need to generate a placeholder node first. We use `fail` for it because
     -- 1. We want to make sure `done` does not appear except at the first node.
