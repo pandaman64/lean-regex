@@ -48,11 +48,11 @@ theorem captures_of_path.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
     have ⟨posm, updateExpr, updateClose, equ, pathExpr, pathClose⟩ :=
       rest.path_next_of_ne (result := nfaExpr) rfl next_lt_close ge_expr_start ne_next
 
-    have wf_close := wf_close wf next_lt
-    have ⟨groupExpr, eqv, c⟩ := ih (result := nfaExpr) rfl wf_close wf_close.start_lt pathExpr
+    have wfClose := wfClose wf next_lt
+    have ⟨groupExpr, eqv, c⟩ := ih (result := nfaExpr) rfl wfClose wfClose.start_lt pathExpr
 
-    have : nfaExpr[nfaClose.start]'size_lt_nfa_expr = nfa'[nfaClose.start]'size_lt := by
-      simp [nfaClose, get_close_expr, get_close]
+    have : nfaExpr[nfaClose.start]'(by grind) = nfa'[nfaClose.start]'(by grind) := by
+      grind
     cases pathClose with
     | last step =>
       have ⟨_, hpos, hupdate⟩ := step_close_iff.mp (step.cast this)
@@ -166,13 +166,22 @@ theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy 
   open Compile.ProofData Star in
   let pd := Star.intro eq
   simp [pd.eq_result eq] at path
-  have loop := Loop.intro wf next_lt path
-  apply captures_of_path.star_of_loop (greedy := greedy) loop
+  cases path with
+  | last step =>
+    obtain ⟨_, rfl, rfl⟩ := step_start_iff.mp step
+    exact ⟨.empty, .empty, .starEpsilon⟩
+  | @more _ _ i pos'' _ _ _ updates step rest =>
+    obtain ⟨eqi, rfl, rfl⟩ := step_start_iff.mp step
+    cases eqi with
+    | inl eqi =>
+      have loop := Loop.intro wf next_lt (eqi ▸ rest)
+      apply captures_of_path.star_of_loop (greedy := greedy) loop
 
-  intro pos pos' update path
-  have path := castToExpr wf path
-  have wf_placeholder := wf_placeholder wf
-  exact ih rfl wf_placeholder wf_placeholder.start_lt path
+      intro pos pos' update path
+      have path := castToExpr wf path
+      have wfPlaceholder := wfPlaceholder wf
+      exact ih (by grind) wfPlaceholder wfPlaceholder.start_lt path
+    | inr eqi => grind
 
 public theorem captures_of_path (eq : nfa.pushRegex next e = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)

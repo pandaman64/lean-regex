@@ -24,13 +24,13 @@ theorem fail (hn : nfa[state] = .fail) : pushNext σ nfa wf startPos stack updat
   rfl
 
 theorem epsilon {state' : Nat} (hn : nfa[state] = .epsilon state') :
-  haveI isLt : state' < nfa.size := wf.inBounds' state hn
+  haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
   rfl
 
 theorem split {state₁ state₂ : Nat} (hn : nfa[state] = .split state₁ state₂) :
-  haveI isLt : state₁ < nfa.size ∧ state₂ < nfa.size := wf.inBounds' state hn
+  haveI isLt : state₁ < nfa.size ∧ state₂ < nfa.size := wf.inBounds' state state.isLt hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state₁, isLt.1⟩, pos⟩ :: ⟨update, ⟨state₂, isLt.2⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
   rfl
@@ -41,13 +41,13 @@ theorem saveFin {offset : Nat} {state' : Fin nfa.size} (hn : nfa[state] = .save 
   rfl
 
 theorem save {offset state' : Nat} (hn : nfa[state] = .save offset state') :
-  haveI isLt : state' < nfa.size := wf.inBounds' state hn
+  haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   pushNext σ nfa wf startPos stack update state pos = ⟨σ.write update offset pos.current, ⟨state', isLt⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
   rfl
 
 theorem anchor_pos {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a state') (h : Data.Anchor.test pos.current a) :
-  haveI isLt : state' < nfa.size := wf.inBounds' state hn
+  haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos⟩ :: stack := by
   rw! [pushNext, hn]
   simp [h]
@@ -58,7 +58,7 @@ theorem anchor_neg {a : Data.Anchor} {state' : Nat} (hn : nfa[state] = .anchor a
   simp [h]
 
 theorem char_pos {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h : pos ≠ s.endBVPos startPos) (hc : pos.get h = c) :
-  haveI isLt : state' < nfa.size := wf.inBounds' state hn
+  haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos.next h⟩ :: stack := by
   rw! [pushNext, hn]
   simp [h, hc]
@@ -71,7 +71,7 @@ theorem char_neg {c : Char} {state' : Nat} (hn : nfa[state] = .char c state') (h
   | .inr ⟨ne, hc⟩ => simp [ne, hc]
 
 theorem sparse_pos {cs : Data.Classes} {state' : Nat} (hn : nfa[state] = .sparse cs state') (h : pos ≠ s.endBVPos startPos) (hc : pos.get h ∈ cs) :
-  haveI isLt : state' < nfa.size := wf.inBounds' state hn
+  haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   pushNext σ nfa wf startPos stack update state pos = ⟨update, ⟨state', isLt⟩, pos.next h⟩ :: stack := by
   rw! [pushNext, hn]
   simp [h, hc]
@@ -114,22 +114,22 @@ theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos
     | .done => done stack update state pos hn
     | .fail => fail stack update state pos hn
     | .epsilon state' =>
-      have isLt : state' < nfa.size := wf.inBounds' state hn
+      have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
       epsilon stack update state pos ⟨state', isLt⟩ hn
     | .split state₁ state₂ =>
-      have isLt : state₁ < nfa.size ∧ state₂ < nfa.size := wf.inBounds' state hn
+      have isLt : state₁ < nfa.size ∧ state₂ < nfa.size := wf.inBounds' state state.isLt hn
       split stack update state pos ⟨state₁, isLt.1⟩ ⟨state₂, isLt.2⟩ hn
     | .save offset state' =>
-      have isLt : state' < nfa.size := wf.inBounds' state hn
+      have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
       save stack update state pos offset ⟨state', isLt⟩ hn
     | .anchor a state' =>
-      have isLt : state' < nfa.size := wf.inBounds' state hn
+      have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
       if ht : a.test pos.current then
         anchor_pos stack update state pos a ⟨state', isLt⟩ hn ht
       else
         anchor_neg stack update state pos a ⟨state', isLt⟩ hn ht
     | .char c state' =>
-      have isLt : state' < nfa.size := wf.inBounds' state hn
+      have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
       if h : ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne = c then
         char_pos stack update state pos c ⟨state', isLt⟩ hn h.1 h.2
       else
@@ -141,7 +141,7 @@ theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos
             exact .inr ⟨ne, h⟩
         char_neg stack update state pos c ⟨state', isLt⟩ hn h'
     | .sparse cs state' =>
-      have isLt : state' < nfa.size := wf.inBounds' state hn
+      have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
       if h : ∃ ne : pos ≠ s.endBVPos startPos, pos.get ne ∈ cs then
         sparse_pos stack update state pos cs ⟨state', isLt⟩ hn h.1 h.2
       else

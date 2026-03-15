@@ -61,13 +61,13 @@ theorem lt_of_inBounds_of_εStep {node : Node} {j k : Nat}
 
 theorem lt_of_εStep {nfa : NFA} {i j : Nat} {h : i < nfa.size}
   (wf : nfa.WellFormed) (mem : j ∈ nfa[i].εStep) : j < nfa.size := by
-  have inBounds := wf.inBounds ⟨i, h⟩
+  have inBounds := wf.inBounds i h
   simp [get_eq_nodes_get] at mem
   exact lt_of_inBounds_of_εStep inBounds mem
 
 theorem lt_of_charStep {nfa : NFA} {i j : Nat} {c : Char} {h : i < nfa.size}
   (wf : nfa.WellFormed) (mem : j ∈ nfa[i].charStep c) : j < nfa.size := by
-  have inBounds := wf.inBounds ⟨i, h⟩
+  have inBounds := wf.inBounds i h
   simp [get_eq_nodes_get] at mem
   exact lt_of_inBounds_of_charStep inBounds mem
 

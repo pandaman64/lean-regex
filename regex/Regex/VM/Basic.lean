@@ -70,7 +70,7 @@ def εClosure {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (
         let matched' := if node.isDone then matched <|> update else matched
         let states' := states.insert state mem
         let updates' := if εClosure.writeUpdate node then updates.set state update else updates
-        let stack'' := εClosure.pushNext σ nfa p node (wf.inBounds state) update stack'
+        let stack'' := εClosure.pushNext σ nfa p node (wf.inBounds state state.isLt) update stack'
         have : states'.measure < states.measure := SparseSet.lt_measure_insert' mem
         εClosure σ nfa wf p matched' ⟨states', updates'⟩ stack''
 termination_by (next.states.measure, stack)
@@ -86,12 +86,12 @@ def stepChar {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (p
     match hn : nfa[state] with
     | .char c state' =>
       if p.get ne = c then
-        .some ⟨state', wf.inBounds' state hn⟩
+        .some ⟨state', wf.inBounds' state state.isLt hn⟩
       else
         .none
     | .sparse cs state' =>
       if p.get ne ∈ cs then
-        .some ⟨state', wf.inBounds' state hn⟩
+        .some ⟨state', wf.inBounds' state state.isLt hn⟩
       else
         .none
     | _ => .none

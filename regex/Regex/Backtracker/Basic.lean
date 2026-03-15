@@ -22,29 +22,29 @@ def captureNextAux.pushNext {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa
   | .done => stack
   | .fail => stack
   | .epsilon state' =>
-    have isLt : state' < nfa.size := wf.inBounds' state hn
+    have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
     ⟨update, ⟨state', isLt⟩, pos⟩ :: stack
   | .split state₁ state₂ =>
-    have isLt : state₁ < nfa.size ∧ state₂ < nfa.size := wf.inBounds' state hn
+    have isLt : state₁ < nfa.size ∧ state₂ < nfa.size := wf.inBounds' state state.isLt hn
     ⟨update, ⟨state₁, isLt.1⟩, pos⟩ :: ⟨update, ⟨state₂, isLt.2⟩, pos⟩ :: stack
   | .save offset state' =>
-    have isLt : state' < nfa.size := wf.inBounds' state hn
+    have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
     let update' := σ.write update offset pos.current
     ⟨update', ⟨state', isLt⟩, pos⟩ :: stack
   | .anchor a state' =>
-    have isLt : state' < nfa.size := wf.inBounds' state hn
+    have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
     if a.test pos.current then
       ⟨update, ⟨state', isLt⟩, pos⟩ :: stack
     else
       stack
   | .char c state' =>
-    have isLt : state' < nfa.size := wf.inBounds' state hn
+    have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
     if h : ∃ h : pos ≠ s.endBVPos startPos, pos.get h = c then
       ⟨update, ⟨state', isLt⟩, pos.next h.1⟩ :: stack
     else
       stack
   | .sparse cs state' =>
-    have isLt : state' < nfa.size := wf.inBounds' state hn
+    have isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
     if h : ∃ h : pos ≠ s.endBVPos startPos, pos.get h ∈ cs then
       ⟨update, ⟨state', isLt⟩, pos.next h.1⟩ :: stack
     else

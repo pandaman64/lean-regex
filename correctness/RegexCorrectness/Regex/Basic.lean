@@ -75,15 +75,15 @@ theorem optimizationInfo_eq {re : Regex} (s : IsSearchRegex re) : re.optimizatio
 
 @[grind →]
 theorem le_maxTag {re : Regex} (s : IsSearchRegex re) : 1 ≤ re.maxTag := by
-  simp [s.maxTag_eq]
-  show 2 * 0 < re.nfa.maxTag
-  apply NFA.lt_of_mem_tags_compile s.nfa_eq.symm
+  simp [s.maxTag_eq, s.nfa_eq]
+  show 2 * 0 < (NFA.compile s.expr).maxTag
+  apply NFA.lt_of_mem_tags_compile
   simp [expr, Expr.tags]
 
 @[grind →]
 theorem lt_of_mem_tags {re : Regex} {tag : Nat} (s : IsSearchRegex re) (h : tag ∈ s.expr.tags) :
   2 * tag < re.maxTag :=
-  s.maxTag_eq ▸ NFA.lt_of_mem_tags_compile s.nfa_eq.symm h
+  s.maxTag_eq ▸ s.nfa_eq ▸ NFA.lt_of_mem_tags_compile h
 
 theorem captureNextBuf_soundness' (h : re.captureNextBuf bufferSize pos = .some matched)
   (s : IsSearchRegex re) :

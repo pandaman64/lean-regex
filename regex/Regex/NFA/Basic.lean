@@ -30,7 +30,7 @@ def Node.isDone (n : Node) : Bool :=
 theorem Node.isDone_def {n : Node} : n.isDone = decide (n = .done) := by
   grind [isDone]
 
-@[expose]
+@[expose, grind =]
 def Node.inBounds (n : Node) (size : Nat) : Prop :=
   match n with
   | .done => True
@@ -102,13 +102,13 @@ end Regex.NFA
 namespace Regex
 
 /--
-  A NFA consists an array of nodes and a designated start node.
+  A NFA consists of an array of nodes. The starting node is the last node.
 
   The transition relation and accept nodes are embedded in the nodes themselves.
 -/
+@[ext]
 structure NFA where
   nodes : Array NFA.Node
-  start : Nat
 deriving Repr, DecidableEq, Inhabited, Lean.ToExpr
 
 instance : ToString NFA where
@@ -117,16 +117,17 @@ instance : ToString NFA where
 namespace NFA
 
 @[expose]
-def done : NFA :=
-  let nodes := #[NFA.Node.done]
-  let start := 0
-  ⟨nodes, start⟩
+def done : NFA := ⟨#[NFA.Node.done]⟩
 
-@[expose]
+@[expose, grind =]
 def size (nfa : NFA) : Nat :=
   nfa.nodes.size
 
-@[expose]
+@[expose, grind =]
+def start (nfa : NFA) : Nat :=
+  nfa.size - 1
+
+@[expose, grind =]
 def get (nfa : NFA) (i : Nat) (h : i < nfa.size) : NFA.Node :=
   nfa.nodes[i]
 
@@ -174,32 +175,29 @@ theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.size) (eq : nfa[i] = .save
         exact absurd eq (ne tag next)
 
 structure WellFormed (nfa : NFA) : Prop where
-  start_lt : nfa.start < nfa.size
-  inBounds : ∀ i : Fin nfa.size, nfa[i].inBounds nfa.size
+  size_lt : 0 < nfa.size
+  inBounds : ∀ i : Nat, (h : i < nfa.size) → nfa[i].inBounds nfa.size
 
 theorem WellFormed.iff {nfa : NFA} :
-  nfa.WellFormed ↔ nfa.start < nfa.size ∧ ∀ i : Fin nfa.size, nfa[i].inBounds nfa.size :=
-  ⟨fun wf => ⟨wf.start_lt, wf.inBounds⟩, fun ⟨h₁, h₂⟩ => ⟨h₁, h₂⟩⟩
+  nfa.WellFormed ↔ 0 < nfa.size ∧ ∀ i : Nat, (h : i < nfa.size) → nfa[i].inBounds nfa.size :=
+  ⟨fun wf => ⟨wf.size_lt, wf.inBounds⟩, fun ⟨h₁, h₂⟩ => ⟨h₁, h₂⟩⟩
 
-theorem WellFormed.inBounds' {nfa : NFA} {node : NFA.Node} (wf : nfa.WellFormed) (i : Fin nfa.size) (hn : nfa[i] = node) :
+theorem WellFormed.inBounds' {nfa : NFA} {node : NFA.Node} (wf : nfa.WellFormed) (i : Nat) (h : i < nfa.size) (hn : nfa[i] = node) :
   node.inBounds nfa.size := by
   rw [←hn]
-  exact wf.inBounds i
+  exact wf.inBounds i h
+
+attribute [grind .] WellFormed.size_lt
+attribute [grind .] WellFormed.inBounds
+
+@[grind .]
+theorem WellFormed.start_lt {nfa : NFA} (wf : nfa.WellFormed) : nfa.start < nfa.size := by
+  grind [wf.size_lt]
 
 instance decWellFormed (nfa : NFA) : Decidable nfa.WellFormed :=
   decidable_of_decidable_of_iff WellFormed.iff.symm
 
 theorem done_WellFormed : done.WellFormed := by decide
-
-@[ext]
-theorem ext {nfa₁ nfa₂ : NFA}
-  (h₁ : nfa₁.size = nfa₂.size)
-  (h₂ : ∀ i : Nat, (_ : i < nfa₁.size) → (_ : i < nfa₂.size) → nfa₁[i] = nfa₂[i])
-  (h₃ : nfa₁.start = nfa₂.start) :
-  nfa₁ = nfa₂ := by
-  match nfa₁, nfa₂ with
-  | { nodes := nodes₁, start := start₁ }, { nodes := nodes₂, start := start₂ } =>
-    grind [Array.ext h₁ h₂]
 
 end NFA
 
