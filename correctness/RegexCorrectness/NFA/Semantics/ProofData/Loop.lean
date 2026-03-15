@@ -1,6 +1,6 @@
 module
 
-public import RegexCorrectness.NFA.Semantics.ProofData.Basic
+public import RegexCorrectness.NFA.Semantics.Path
 import RegexCorrectness.NFA.Semantics.ProofData.Compile
 
 open String (Pos)
