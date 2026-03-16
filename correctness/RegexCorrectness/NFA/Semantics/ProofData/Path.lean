@@ -242,14 +242,14 @@ theorem step_start_iff :
 
 theorem path_start_iff (wf : nfa.WellFormed) (next_lt : next < nfa.size) :
   nfa'.Path nfa.size nfa'.start p next p' update ↔
-  nfa₁.Path nfa.size nfa₁.start p next p' update ∨ nfa₂.Path nfa.size nfa₂.start p next p' update := by
+  nfa₁.Path nfa.size nfa₁.start p next p' update ∨ nfa₂.Path nfa₁.size nfa₂.start p next p' update := by
   refine ⟨?_, fun h => h.elim ?_ ?_⟩
   . intro path
     cases path with
     | last step =>
       obtain ⟨h, rfl, rfl⟩ := step_start_iff.mp step
       grind
-    | more step path =>
+    | @more _ _ i p₁ _ _ update updates step path =>
       obtain ⟨h, rfl, rfl⟩ := step_start_iff.mp step
       cases h with
       | inl h =>
@@ -257,12 +257,21 @@ theorem path_start_iff (wf : nfa.WellFormed) (next_lt : next < nfa.size) :
         exact .inl (castTo₁ wf next_lt path)
       | inr h =>
         subst h
-        exact .inr (castTo₂ wf next_lt path)
+        have path₂ : nfa₂.Path nfa.size nfa₂.start p₁ next p' updates := castTo₂ wf next_lt path
+        have path₂ : nfa₂.Path nfa₁.size nfa₂.start p₁ next p' updates := by
+          apply path₂.liftBound' (by grind)
+          intro p p' i j update ge₁ ge step
+          cases (step.liftBound' ge₁).eq_or_ge_of_pushRegex with
+          | inl eq =>
+            have : nfa.size ≤ next := eq ▸ ge
+            grind
+          | inr ge => exact ge
+        exact .inr path₂
   . intro path₁
     have path₁ := castFrom₁ path₁
     exact .more (step_start_iff.mpr ⟨.inl rfl, rfl, rfl⟩) path₁
   . intro path₂
-    have path₂ := castFrom₂ path₂
+    have path₂ := castFrom₂ (path₂.liftBound (by grind))
     exact .more (step_start_iff.mpr ⟨.inr rfl, rfl, rfl⟩) path₂
 
 end Alternate
