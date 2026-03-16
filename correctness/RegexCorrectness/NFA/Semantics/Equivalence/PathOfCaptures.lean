@@ -21,24 +21,15 @@ theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
   ∃ update, EquivUpdate (.group tag pos pos' groups) update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData Group in
   let pd := Group.intro eq
-  simp [eq_result eq]
+  simp only [eq_result eq]
 
   have wfClose := wfClose wf next_lt
-  have ⟨update, eqv, path⟩ := ih (result := nfaExpr) rfl wfClose wfClose.start_lt
-  exists (2 * tag, pos) :: update ++ [(2 * tag + 1, pos')], .group eqv
-
-  have stepOpen : nfa'.Step nfa.size nfa'.start pos nfaExpr.start pos (.some (2 * tag, pos)) := by
-    apply step_start_iff.mpr
-    exact ⟨rfl, rfl, rfl⟩
-  have path := castFromExpr path
-  have path : nfa'.Path nfa.size nfaExpr.start pos nfaClose.start pos' update :=
-    path.liftBound (by simp [Group.nfaClose]; exact Nat.le_succ _)
-  have pathClose : nfa'.Path nfa.size nfaClose.start pos' next pos' [(2 * tag + 1, pos')] := by
-    have stepClose : nfa'.Step nfa.size nfaClose.start pos' next pos' (.some (2 * tag + 1, pos')) := by
-      apply step_close_iff.mpr
-      exact ⟨rfl, rfl, rfl⟩
-    exact .last stepClose
-  exact .more stepOpen (path.trans pathClose)
+  have ⟨updates, eqv, path⟩ := ih (show nfaClose.pushRegex nfaClose.start e' = nfaExpr from rfl) wfClose wfClose.start_lt
+  exact ⟨
+    (2 * tag, pos) :: updates ++ [(2 * tag + 1, pos')],
+    .group eqv,
+    (pd.path_start_iff wf next_lt).mpr (by grind)
+  ⟩
 
 theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -49,16 +40,10 @@ theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.al
   ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData Alternate in
   let pd := Alternate.intro eq
-  simp [eq_result eq]
+  simp only [eq_result eq]
 
-  have ⟨update, eqv, path⟩ := ih (result := nfa₁) rfl wf next_lt
-  exists update, eqv
-
-  have step : nfa'.Step nfa.size nfa'.start pos nfa₁.start pos .none := by
-    apply step_start_iff.mpr
-    simp
-  have path := castFrom₁ path
-  exact .more step path
+  have ⟨update, eqv, path⟩ := ih (show nfa.pushRegex next e₁ = nfa₁ from rfl) wf next_lt
+  exact ⟨update, eqv, (pd.path_start_iff wf next_lt).mpr (by grind)⟩
 
 theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -69,17 +54,11 @@ theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.a
   ∃ update, EquivUpdate groups update ∧ result.Path nfa.size result.start pos next pos' update := by
   open Compile.ProofData Alternate in
   let pd := Alternate.intro eq
-  simp [eq_result eq]
+  simp only [eq_result eq]
 
   have wf₁ := wf₁ wf next_lt
-  have ⟨update, eqv, path⟩ := ih (result := nfa₂) rfl wf₁ (Nat.lt_trans next_lt nfa₁_property)
-  exists update, eqv
-
-  have step : nfa'.Step nfa.size nfa'.start pos nfa₂.start pos .none := by
-    apply step_start_iff.mpr
-    simp
-  have path := castFrom₂ (path.liftBound (Nat.le_of_lt nfa₁_property))
-  exact .more step path
+  have ⟨update, eqv, path⟩ := ih (show nfa₁.pushRegex next e₂ = nfa₂ from rfl) wf₁ (Nat.lt_trans next_lt nfa₁_property)
+  exact ⟨update, eqv, (pd.path_start_iff wf next_lt).mpr (by grind)⟩
 
 theorem path_of_captures.concat {pos'' e₁ e₂ groups₁ groups₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -94,15 +73,12 @@ theorem path_of_captures.concat {pos'' e₁ e₂ groups₁ groups₂} (eq : nfa.
   ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.size result.start pos next pos'' update := by
   open Compile.ProofData Concat in
   let pd := Concat.intro eq
-  simp [pd.eq_result eq]
+  simp only [pd.eq_result eq]
 
   have wf₂ := wf₂ wf next_lt
   have ⟨update₁, eqv₁, path₁⟩ := ih₁ eq_push.symm wf₂ wf₂.start_lt
-  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := nfa₂) rfl wf next_lt
-  exists update₁ ++ update₂, .concat eqv₁ eqv₂
-
-  have path₂ := castFrom₂ path₂
-  exact (path₁.liftBound (Nat.le_of_lt nfa₂_property)).trans path₂
+  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (show nfa.pushRegex next e₂ = nfa₂ from rfl) wf next_lt
+  exact ⟨update₁ ++ update₂, .concat eqv₁ eqv₂, (pd.path_start_iff wf next_lt).mpr (by grind)⟩
 
 theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : nfa.pushRegex next (.star greedy e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -117,24 +93,19 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
   ∃ update, EquivUpdate (.concat groups₁ groups₂) update ∧ result.Path nfa.size result.start pos next pos'' update := by
   open Compile.ProofData Star in
   let pd := Star.intro eq
-  simp [pd.eq_result eq]
+  simp only [pd.eq_result eq]
 
   have wfPlaceholder := wfPlaceholder wf
-  have ⟨update₁, eqv₁, path₁⟩ := ih₁ (result := nfaExpr) (by grind only [= nfaPlaceholder,
-    = Star.intro, = nfaExpr, = pushNode_start]) wfPlaceholder wfPlaceholder.start_lt
-  have ⟨update₂, eqv₂, path₂⟩ := ih₂ (result := nfa') rfl wf next_lt
-  exists update₁ ++ update₂, .concat eqv₁ eqv₂
+  have ⟨updates₁, eqv₁, path₁⟩ :=
+    ih₁ (show nfaPlaceholder.pushRegex nfaPlaceholder.start e = nfaExpr by grind) wfPlaceholder wfPlaceholder.start_lt
+  have ⟨updates₂, eqv₂, path₂⟩ := ih₂ (show nfa.pushRegex next (.star greedy e) = nfa' from rfl) wf next_lt
+  exists updates₁ ++ updates₂, .concat eqv₁ eqv₂
+  apply (pd.path_start_iff next_lt).mpr (.inr ?_)
 
-  have wf' : nfa'.WellFormed := pushRegex_wf wf next_lt
-
-  have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfaPlaceholder.start pos' update₁ :=
-    (castFromExpr path₁).liftBound (by grind only [nfaPlaceholder, Star.intro, = pushNode_size])
-  have step : nfa'.Step nfa.size nfa'.start pos nfaExpr.start pos .none :=
-    step_start_iff.mpr ⟨.inl rfl, rfl, rfl⟩
-  have path₁ : nfa'.Path nfa.size nfa'.start pos nfaPlaceholder.start pos' update₁ :=
-    .more step path₁
-
-  have path₂ : nfa'.Path nfa.size nfaPlaceholder.start pos' next pos'' update₂ := by
+  have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfaPlaceholder.start pos' updates₁ :=
+    (castFromExpr path₁).liftBound (by grind)
+  have path₂ : nfa'.Path nfa.size nfaPlaceholder.start pos' next pos'' updates₂ := by
+    have wf' : nfa'.WellFormed := pushRegex_wf wf next_lt
     apply path₂.castHead
     . simp [pd.get_placeholder_start, pd.get_start]
     . grind only [nfaPlaceholder, Star.intro, = start.eq_1, = pushNode_start]
@@ -152,25 +123,25 @@ public theorem path_of_captures (eq : nfa.pushRegex next e = result)
   | char ne hc =>
     let pd := Char.intro eq
     exists [], .empty
-    simp [pd.eq_result eq]
+    simp only [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     exact ⟨rfl, rfl, ne, rfl, hc⟩
   | sparse ne mem =>
     let pd := Classes.intro eq
     exists [], .empty
-    simp [pd.eq_result eq]
+    simp only [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     exact ⟨rfl, rfl, ne, rfl, mem⟩
   | epsilon =>
     let pd := Epsilon.intro eq
     exists [], .empty
-    simp [pd.eq_result eq]
+    simp only [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     trivial
   | anchor h =>
     let pd := Anchor.intro eq
     exists [], .empty
-    simp [pd.eq_result eq]
+    simp only [pd.eq_result eq]
     apply (pd.path_start_iff next_lt).mpr
     trivial
   | group c ih => exact path_of_captures.group eq wf next_lt ih
@@ -180,12 +151,8 @@ public theorem path_of_captures (eq : nfa.pushRegex next e = result)
   | @starEpsilon pos _ _ =>
     let pd := Star.intro eq
     exists [], .empty
-    simp [pd.eq_result eq]
-
-    have step : nfa'.Step nfa.size nfa'.start pos next pos .none := by
-      apply (pd.step_start_iff).mpr
-      exact ⟨.inr rfl, rfl, rfl⟩
-    exact .last step
+    simp only [pd.eq_result eq]
+    exact (pd.path_start_iff next_lt).mpr (.inl ⟨rfl, rfl⟩)
   | starConcat c₁ _ ih₁ ih₂ => exact path_of_captures.starConcat eq wf next_lt ih₁ ih₂
 
 public theorem path_of_captures_compile (eq : compile e = nfa) (c : e.Captures pos pos' groups) :
