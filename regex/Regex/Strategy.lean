@@ -14,6 +14,8 @@ class PosTracker (s : String) (α : Type) where
   empty : α
   write : α → Nat → Pos s → α
 
+attribute [simp] PosTracker.empty PosTracker.write
+
 instance listTracker (s : String) : PosTracker s (List (Nat × Pos s)) where
   empty := []
   write update offset pos := update ++ [(offset, pos)]

@@ -18,12 +18,12 @@ namespace Regex.Backtracker
 
 theorem captureNext_soundness {s : String} {e : Expr} {bufferSize : Nat} {pos : Pos s} {matchedB}
   (disj : e.Disjoint)
-  (hresB : captureNext (BufferStrategy s bufferSize) (NFA.compile e) NFA.compile_wf pos = .some matchedB) :
+  (hresB : captureNext (vectorTracker s bufferSize) (NFA.compile e) NFA.compile_wf pos = .some matchedB) :
   ∃ (pos' pos'' : Pos s) (groups : CaptureGroups s),
     pos ≤ pos' ∧
     e.Captures pos' pos'' groups ∧
     EquivMaterializedUpdate (materializeRegexGroups groups) matchedB := by
-  match hresH : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos with
+  match hresH : captureNext (listTracker s) (NFA.compile e) NFA.compile_wf pos with
   | .some matchedH =>
     have refResult := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize pos
     simp [materializeResult] at refResult
@@ -34,17 +34,17 @@ theorem captureNext_soundness {s : String} {e : Expr} {bufferSize : Nat} {pos : 
     simp [materializeResult] at refResult
 
 theorem captureNext_completeness' {s e bufferSize pos}
-  (hresB : captureNext (BufferStrategy s bufferSize) (NFA.compile e) NFA.compile_wf pos = .none)
+  (hresB : captureNext (vectorTracker s bufferSize) (NFA.compile e) NFA.compile_wf pos = .none)
   (pos' pos'' : Pos s) (groups : CaptureGroups s) (le : pos ≤ pos') (c : e.Captures pos' pos'' groups) :
   False := by
-  match hresH : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos with
+  match hresH : captureNext (listTracker s) (NFA.compile e) NFA.compile_wf pos with
   | .some matchedH =>
     have refResult := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize pos
     simp [materializeResult] at refResult
   | .none => exact captureNext.not_captures_of_none_compile hresH pos' pos'' groups le c
 
 theorem captureNext_completeness {s e bufferSize pos}
-  (hresB : captureNext (BufferStrategy s bufferSize) (NFA.compile e) NFA.compile_wf pos = .none) :
+  (hresB : captureNext (vectorTracker s bufferSize) (NFA.compile e) NFA.compile_wf pos = .none) :
   ¬∃ (pos' pos'' : Pos s) (groups : CaptureGroups s),
     pos ≤ pos' ∧
     e.Captures pos' pos'' groups := by
@@ -52,7 +52,7 @@ theorem captureNext_completeness {s e bufferSize pos}
 
 -- NOTE: we don't make this an instance because there are multiple decision procedures
 def decideSearchProblem {s : String} (e : Expr) (pos : Pos s) (disj : e.Disjoint) : Decidable (SearchProblem e pos) :=
-  match hresB : captureNext (BufferStrategy s 0) (NFA.compile e) NFA.compile_wf pos with
+  match hresB : captureNext (vectorTracker s 0) (NFA.compile e) NFA.compile_wf pos with
   | .some _ => .isTrue <|
     have ⟨pos', pos'', groups, le, c, _⟩ := captureNext_soundness disj hresB
     ⟨pos', pos'', groups, le, c⟩

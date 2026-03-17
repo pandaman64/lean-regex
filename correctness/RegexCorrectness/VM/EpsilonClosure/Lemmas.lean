@@ -4,6 +4,7 @@ import RegexCorrectness.Data.SparseSet
 import RegexCorrectness.NFA.Semantics.Path
 import all RegexCorrectness.VM.Path
 import all RegexCorrectness.VM.EpsilonClosure.Basic
+import Regex.Strategy
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
@@ -14,25 +15,25 @@ namespace Regex.VM.εClosure
 
 namespace pushNext
 
-variable {s : String} {σ : Strategy s} {nfa : NFA} {pos : Pos s} {node : NFA.Node}
-  {inBounds : node.inBounds nfa.size} {update : σ.Update} {stack : εStack σ nfa}
+variable {s : String} {α : Type} {tracker : PosTracker s α} {nfa : NFA} {pos : Pos s} {node : NFA.Node}
+  {inBounds : node.inBounds nfa.size} {update : α} {stack : εStack α nfa}
 
 theorem mem_of_mem_stack {entry} (mem : entry ∈ stack) :
-  entry ∈ pushNext σ nfa pos node inBounds update stack := by
-  cases node, inBounds, update, stack using pushNext.fun_cases' σ nfa pos <;> grind
+  entry ∈ pushNext tracker nfa pos node inBounds update stack := by
+  cases node, inBounds, update, stack using pushNext.fun_cases' nfa pos <;> grind
 
 end pushNext
 
 -- Theorems that hold for any strategy
 section
 
-variable {s : String} {σ : Strategy s} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s}
-  {matched : Option σ.Update} {next : SearchState σ nfa} {stack : εStack σ nfa}
-  {matched' : Option σ.Update} {next' : SearchState σ nfa}
+variable {s : String} {α : Type} {tracker : PosTracker s α} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s}
+  {matched : Option α} {next : SearchState α nfa} {stack : εStack α nfa}
+  {matched' : Option α} {next' : SearchState α nfa}
 
-theorem subset (h : εClosure σ nfa wf pos matched next stack = (matched', next')) :
+theorem subset (h : εClosure tracker nfa wf pos matched next stack = (matched', next')) :
   next.states ⊆ next'.states := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next =>
     simp only [base, Prod.mk.injEq] at h
     simpa [h] using SparseSet.subset_self
@@ -44,10 +45,10 @@ theorem subset (h : εClosure σ nfa wf pos matched next stack = (matched', next
     have subset : states' ⊆ next'.states := ih h
     exact SparseSet.subset_trans SparseSet.subset_insert subset
 
-theorem mem_next_of_mem_stack {entry} (h : εClosure σ nfa wf pos matched next stack = (matched', next'))
+theorem mem_next_of_mem_stack {entry} (h : εClosure tracker nfa wf pos matched next stack = (matched', next'))
   (mem_stack : entry ∈ stack) :
   entry.2 ∈ next'.states := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next => simp at mem_stack
   | visited matched next update state stack mem ih =>
     rw [εClosure.visited mem] at h
@@ -68,10 +69,10 @@ theorem mem_next_of_mem_stack {entry} (h : εClosure σ nfa wf pos matched next 
       exact SparseSet.mem_of_mem_of_subset (SparseSet.mem_insert mem) subset
     | .inr mem => exact ih h (pushNext.mem_of_mem_stack mem)
 
-theorem eq_updates_of_mem_next {i} (h : εClosure σ nfa wf pos matched next stack = (matched', next'))
+theorem eq_updates_of_mem_next {i} (h : εClosure tracker nfa wf pos matched next stack = (matched', next'))
   (mem' : i ∈ next.states) :
   next'.updates[i] = next.updates[i] := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next =>
     simp [εClosure.base] at h
     simp [h]
@@ -89,10 +90,10 @@ theorem eq_updates_of_mem_next {i} (h : εClosure σ nfa wf pos matched next sta
       exact (mem (Fin.eq_of_val_eq eq ▸ mem')).elim
     next => rfl
 
-theorem eq_matched_some (h : εClosure σ nfa wf pos matched next stack = (matched', next'))
+theorem eq_matched_some (h : εClosure tracker nfa wf pos matched next stack = (matched', next'))
   (isSome : matched.isSome) :
   matched' = matched := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next =>
     simp [εClosure.base] at h
     simp [h]
@@ -107,11 +108,11 @@ theorem eq_matched_some (h : εClosure σ nfa wf pos matched next stack = (match
       | some _ => simp
     exact eq ▸ ih h (eq ▸ isSome)
 
-theorem matched_inv (h : εClosure σ nfa wf pos matched next stack = (matched', next'))
+theorem matched_inv (h : εClosure tracker nfa wf pos matched next stack = (matched', next'))
   (inv : (isSome : matched.isSome) → ∃ i ∈ next.states, nfa[i] = .done ∧ next.updates[i] = matched.get isSome)
   (isSome' : matched'.isSome) :
   ∃ i ∈ next'.states, nfa[i] = .done ∧ next'.updates[i] = matched'.get isSome' := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next =>
     simp [εClosure.base] at h
     simp_all
@@ -144,11 +145,11 @@ theorem matched_inv (h : εClosure σ nfa wf pos matched next stack = (matched',
         exact ⟨state, SparseSet.mem_insert mem, this.1, by simp [updates', writeUpdate, this]⟩
     exact ih h inv'
 
-theorem not_done_of_none (result) (h : εClosure σ nfa wf pos matched next stack = result)
+theorem not_done_of_none (result) (h : εClosure tracker nfa wf pos matched next stack = result)
   (isNone : result.1 = .none)
-  (inv : next.NotDoneInv σ nfa) :
-  result.2.NotDoneInv σ nfa := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  (inv : next.NotDoneInv α nfa) :
+  result.2.NotDoneInv α nfa := by
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next =>
     simp [εClosure.base] at h
     simpa [←h] using inv
@@ -157,7 +158,7 @@ theorem not_done_of_none (result) (h : εClosure σ nfa wf pos matched next stac
     exact ih h inv
   | not_visited matched next update state stack mem node matched'' states' updates' ih =>
     rw [εClosure.not_visited mem] at h
-    have inv' : SearchState.NotDoneInv σ nfa ⟨states', updates'⟩ := by
+    have inv' : SearchState.NotDoneInv α nfa ⟨states', updates'⟩ := by
       intro i mem
       simp [states'] at mem
       cases SparseSet.eq_or_mem_of_mem_insert mem with
@@ -171,7 +172,7 @@ theorem not_done_of_none (result) (h : εClosure σ nfa wf pos matched next stac
       | inr mem => exact inv i mem
     exact ih h inv'
 
-def LowerInvStep (pos : Pos s) (states : SparseSet nfa.size) (stack : εStack σ nfa) : Prop :=
+def LowerInvStep (pos : Pos s) (states : SparseSet nfa.size) (stack : εStack α nfa) : Prop :=
   ∀ i j update, i ∈ states → nfa.εStep' pos i j update → j ∈ states ∨ ∃ update', (update', j) ∈ stack
 
 def LowerBoundStep (pos : Pos s) (states : SparseSet nfa.size) : Prop :=
@@ -194,9 +195,9 @@ theorem LowerBound.of_step {pos : Pos s} {states : SparseSet nfa.size} (h : Lowe
 
 namespace LowerInvStep
 
-variable {states : SparseSet nfa.size} {entry : σ.Update × Fin nfa.size}
+variable {states : SparseSet nfa.size} {entry : α × Fin nfa.size}
 
-theorem preserves' {stack' : εStack σ nfa} (hmem : entry.2 ∉ states) (nextEntries) (hstack : stack' = nextEntries ++ stack)
+theorem preserves' {stack' : εStack α nfa} (hmem : entry.2 ∉ states) (nextEntries) (hstack : stack' = nextEntries ++ stack)
   (h : ∀ j update, nfa.εStep' pos entry.2 j update → ∃ update', (update', j) ∈ nextEntries)
   (inv : LowerInvStep pos states (entry :: stack)) :
   LowerInvStep pos (states.insert entry.2 hmem) stack' := by
@@ -215,8 +216,8 @@ theorem preserves' {stack' : εStack σ nfa} (hmem : entry.2 ∉ states) (nextEn
       | inr mem' => exact .inr ⟨update', by simp [hstack, mem']⟩
 
 theorem preserves (wf : nfa.WellFormed) (hmem : entry.2 ∉ states) (inv : LowerInvStep pos states (entry :: stack)) :
-  LowerInvStep pos (states.insert entry.2 hmem) (pushNext σ nfa pos nfa[entry.2] (wf.inBounds entry.2 entry.2.isLt) entry.1 stack) := by
-  cases hn : nfa[entry.2], wf.inBounds entry.2 entry.2.isLt, entry.1, stack using pushNext.fun_cases' σ nfa pos with
+  LowerInvStep pos (states.insert entry.2 hmem) (pushNext tracker nfa pos nfa[entry.2] (wf.inBounds entry.2 entry.2.isLt) entry.1 stack) := by
+  cases hn : nfa[entry.2], wf.inBounds entry.2 entry.2.isLt, entry.1, stack using pushNext.fun_cases' nfa pos with
   | epsilon _ _ state' inBounds =>
     rename_i update
     simp [pushNext.epsilon rfl]
@@ -236,7 +237,7 @@ theorem preserves (wf : nfa.WellFormed) (hmem : entry.2 ∉ states) (inv : Lower
   | save _ _ offset state' inBounds =>
     rename_i update
     simp [pushNext.save rfl]
-    apply inv.preserves' hmem [(σ.write update offset pos, ⟨state', inBounds⟩)] (by simp)
+    apply inv.preserves' hmem [(tracker.write update offset pos, ⟨state', inBounds⟩)] (by simp)
     simp
     intro j update' step
     simp [εStep'.save hn] at step
@@ -282,10 +283,10 @@ theorem preserves (wf : nfa.WellFormed) (hmem : entry.2 ∉ states) (inv : Lower
 
 end LowerInvStep
 
-theorem lower_bound_step {pos : Pos s} (h : εClosure σ nfa wf pos matched next stack = (matched', next'))
+theorem lower_bound_step {pos : Pos s} (h : εClosure tracker nfa wf pos matched next stack = (matched', next'))
   (inv : LowerInvStep pos next.states stack) :
   LowerBoundStep pos next'.states := by
-  induction matched, next, stack using εClosure.induct' σ nfa wf pos with
+  induction matched, next, stack using εClosure.induct' tracker nfa wf pos with
   | base matched next =>
     simp_all [εClosure.base]
     intro i j update mem step
@@ -307,7 +308,7 @@ theorem lower_bound_step {pos : Pos s} (h : εClosure σ nfa wf pos matched next
     rw [εClosure.not_visited mem] at h
     exact ih h (inv.preserves wf mem)
 
-theorem lower_bound {i update} (h : εClosure σ nfa wf pos matched next [(update, i)] = (matched', next'))
+theorem lower_bound {i update} (h : εClosure tracker nfa wf pos matched next [(update, i)] = (matched', next'))
   (lb : LowerBound pos next.states) :
   LowerBound pos next'.states := by
   have inv : LowerInvStep pos next.states [(update, i)] := by
@@ -322,8 +323,8 @@ end
 section
 
 variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s}
-  {matched : Option (List (Nat × Pos s))} {next : SearchState (HistoryStrategy s) nfa} {stack : εStack (HistoryStrategy s) nfa}
-  {matched' : Option (List (Nat × Pos s))} {next' : SearchState (HistoryStrategy s) nfa}
+  {matched : Option (List (Nat × Pos s))} {next : SearchState (List (Nat × Pos s)) nfa} {stack : εStack (List (Nat × Pos s)) nfa}
+  {matched' : Option (List (Nat × Pos s))} {next' : SearchState (List (Nat × Pos s)) nfa}
 
 /--
 Intuition: given that we reached `i₀` (from `nfa.start`) with `pos₀` and `update₀`, the εClosure
@@ -336,7 +337,7 @@ At the end of the traversal, we can guarantee that all states in `next` were alr
 they are reachable from `i₀` with the updates written to `next.updates`.
 -/
 structure UpperInv (states₀ : SparseSet nfa.size) (pos₀ : Pos s) (i₀ : Fin nfa.size) (update₀ : List (Nat × Pos s))
-  (next : SearchState (HistoryStrategy s) nfa) (stack : εStack (HistoryStrategy s) nfa) : Prop where
+  (next : SearchState (List (Nat × Pos s)) nfa) (stack : εStack (List (Nat × Pos s)) nfa) : Prop where
   -- The intuition is that `update₀` corresponds to the update list from `nfa.start` to `i₀`, and
   -- `update'` is the update list from `i₀` to `j`. Therefore, `update₀ ++ update'` gives the update
   -- list from `nfa.start` to `j`.
@@ -348,7 +349,7 @@ structure UpperInv (states₀ : SparseSet nfa.size) (pos₀ : Pos s) (i₀ : Fin
 namespace UpperInv
 
 variable {states₀ : SparseSet nfa.size} {pos₀ : Pos s} {i₀ : Fin nfa.size} {update₀ : List (Nat × Pos s)}
-  {next : SearchState (HistoryStrategy s) nfa} {entry : List (Nat × Pos s) × Fin nfa.size} {stack : εStack (HistoryStrategy s) nfa}
+  {next : SearchState (List (Nat × Pos s)) nfa} {entry : List (Nat × Pos s) × Fin nfa.size} {stack : εStack (List (Nat × Pos s)) nfa}
 
 theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hstack : stack' = nextEntries ++ stack)
   (not_mem : entry.2 ∉ next.states)
@@ -394,27 +395,27 @@ theorem preserves {update : List (Nat × Pos s)} {state : Fin nfa.size} (wf : nf
   (inv : UpperInv states₀ pos₀ i₀ update₀ next ((update, state) :: stack)) :
   letI states' := next.states.insert state not_mem
   letI updates' := if writeUpdate nfa[state] then next.updates.set state update else next.updates
-  UpperInv states₀ pos₀ i₀ update₀ ⟨states', updates'⟩ (pushNext (HistoryStrategy s) nfa pos₀ nfa[state] (wf.inBounds state state.isLt) update stack) := by
-  cases hn : nfa[state], wf.inBounds state state.isLt, update, stack using pushNext.fun_cases' (HistoryStrategy s) nfa pos₀ with
+  UpperInv states₀ pos₀ i₀ update₀ ⟨states', updates'⟩ (pushNext (listTracker s) nfa pos₀ nfa[state] (wf.inBounds state state.isLt) update stack) := by
+  cases hn : nfa[state], wf.inBounds state state.isLt, update, stack using pushNext.fun_cases' nfa pos₀ with
   | epsilon update state state' inBounds =>
     simp [pushNext.epsilon rfl]
     -- Lean slows down when deciding which term to unify with `entry`.
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state', inBounds⟩)] (by simp) not_mem
-    simp [HistoryStrategy, εStep'.epsilon hn]
+    simp [εStep'.epsilon hn]
   | split update state state₁ state₂ inBounds =>
     simp [pushNext.split rfl]
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state₁, inBounds.1⟩), (update, ⟨state₂, inBounds.2⟩)] (by simp) not_mem
-    simp [HistoryStrategy, ←and_or_left, εStep'.split hn]
+    simp [←and_or_left, εStep'.split hn]
     rw [forall_swap]
     simp
   | save update state offset state' inBounds =>
     simp [pushNext.save rfl]
-    apply inv.preserves' (entry := (update, state)) hn [((HistoryStrategy s).write update offset pos₀, ⟨state', inBounds⟩)] (by simp) not_mem
-    simp [HistoryStrategy, εStep'.save hn]
+    apply inv.preserves' (entry := (update, state)) hn [((listTracker s).write update offset pos₀, ⟨state', inBounds⟩)] (by simp) not_mem
+    simp [εStep'.save hn]
   | anchor_pos update state anchor state' inBounds ht =>
     simp [pushNext.anchor_pos rfl ht]
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state', inBounds⟩)] (by simp) not_mem
-    simp [HistoryStrategy, εStep'.anchor hn, ht]
+    simp [εStep'.anchor hn, ht]
   | anchor_neg update state anchor state' inBounds ht =>
     simp [pushNext.anchor_neg rfl ht]
     exact inv.preserves' (entry := (update, state)) hn [] (by simp) not_mem (by simp)
@@ -437,10 +438,10 @@ end UpperInv
 All new states in `next'` are reachable from the starting state `i₀` and have corresponding updates in `next'.updates`.
 -/
 theorem upper_boundAux (states₀ : SparseSet nfa.size) (pos₀ : Pos s) (i₀ : Fin nfa.size) (update₀ : List (Nat × Pos s))
-  (h : εClosure (HistoryStrategy s) nfa wf pos₀ matched next stack = (matched', next'))
+  (h : εClosure (listTracker s) nfa wf pos₀ matched next stack = (matched', next'))
   (inv₀ : UpperInv states₀ pos₀ i₀ update₀ next stack) :
   UpperInv states₀ pos₀ i₀ update₀ next' []  := by
-  induction matched, next, stack using εClosure.induct' (HistoryStrategy s) nfa wf pos₀ with
+  induction matched, next, stack using εClosure.induct' (listTracker s) nfa wf pos₀ with
   | base matched next =>
     simp [↓εClosure.base] at h
     simp [h] at inv₀
@@ -468,14 +469,14 @@ theorem UpperInv.intro {i₀ update₀} (pos₀ : Pos s) :
   εClosure.UpperInv next.states pos₀ i₀ update₀ next [(update₀, i₀)] := by
   refine ⟨?mem_stack, ?mem_next⟩
   case mem_stack =>
-    simp [HistoryStrategy]
+    simp
     exact .base
   case mem_next =>
     intro j mem
     exact .inl mem
 
 theorem upper_bound {i} {update : List (Nat × Pos s)}
-  (h : εClosure (HistoryStrategy s) nfa wf pos matched next [(update, i)] = (matched', next')) :
+  (h : εClosure (listTracker s) nfa wf pos matched next [(update, i)] = (matched', next')) :
   ∀ j ∈ next'.states, j ∈ next.states ∨
     ∃ update', nfa.εClosure' pos i j update' ∧ (writeUpdate nfa[j] → next'.updates[j] = update ++ update') := by
   have := εClosure.upper_boundAux next.states pos i update h (UpperInv.intro pos)
@@ -485,7 +486,7 @@ theorem upper_bound {i} {update : List (Nat × Pos s)}
 `εClosure` inserts all states in the ε-closure of `i` into `next.states`.
 -/
 theorem mem_next {i update}
-  (h : εClosure (HistoryStrategy s) nfa wf pos matched next [(update, i)] = (matched', next'))
+  (h : εClosure (listTracker s) nfa wf pos matched next [(update, i)] = (matched', next'))
   (lb : LowerBound pos next.states)
   {j update'} (cls : nfa.εClosure' pos i j update') :
   j ∈ next'.states := by
@@ -497,7 +498,7 @@ All states in `next'.states` are already in `next.states` or they are reachable 
 updates written to `next'.updates`.
 -/
 theorem write_updates_of_mem_next {i j} {update : List (Nat × Pos s)}
-  (h : εClosure (HistoryStrategy s) nfa wf pos matched next [(update, i)] = (matched', next')) (mem : j ∈ next'.states) :
+  (h : εClosure (listTracker s) nfa wf pos matched next [(update, i)] = (matched', next')) (mem : j ∈ next'.states) :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' pos i j update' ∧ (writeUpdate nfa[j] → next'.updates[j] = update ++ update') :=
   εClosure.upper_bound h j mem
 
@@ -507,12 +508,12 @@ whose updates are written to `next.updates`. The written update list can be diff
 traversal may have reached the state through a different path.
 -/
 theorem write_updates {i j} {update update' : List (Nat × Pos s)}
-  (h : εClosure (HistoryStrategy s) nfa wf pos matched next [(update, i)] = (matched', next'))
+  (h : εClosure (listTracker s) nfa wf pos matched next [(update, i)] = (matched', next'))
   (lb : εClosure.LowerBound pos next.states) (cls : nfa.εClosure' pos i j update') :
   j ∈ next.states ∨ ∃ update', nfa.εClosure' pos i j update' ∧ (writeUpdate nfa[j] → next'.updates[j] = update ++ update') :=
   εClosure.write_updates_of_mem_next h (mem_next h lb cls)
 
-theorem inv_of_inv {pos₀} (h : εClosure (HistoryStrategy s) nfa wf pos matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
+theorem inv_of_inv {pos₀} (h : εClosure (listTracker s) nfa wf pos matched next [([], ⟨nfa.start, wf.start_lt⟩)] = (matched', next'))
   (le : pos₀ ≤ pos) (inv : next.Inv nfa wf pos₀ pos) :
   next'.Inv nfa wf pos₀ pos := by
   intro i mem

@@ -120,13 +120,13 @@ The invariant for the soundness theorem.
 All states in `next.state` have a corresponding path from `nfa.start` to the state ending at `pos`,
 and their updates are written to `next.updates` when necessary.
 -/
-def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) (next : SearchState (HistoryStrategy s) nfa) : Prop :=
+def SearchState.Inv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) (next : SearchState (List (Nat × Pos s)) nfa) : Prop :=
   ∀ i ∈ next.states,
     ∃ update,
       nfa.VMPath wf pos₀ pos i update ∧
       (εClosure.writeUpdate nfa[i] → next.updates[i] = update)
 
-theorem SearchState.Inv.of_empty {nfa wf pos₀ pos} {next : SearchState (HistoryStrategy s) nfa} (h : next.states.isEmpty) :
+theorem SearchState.Inv.of_empty {nfa wf pos₀ pos} {next : SearchState (List (Nat × Pos s)) nfa} (h : next.states.isEmpty) :
   next.Inv nfa wf pos₀ pos := by
   intro i mem
   exact (SparseSet.not_mem_of_isEmpty h mem).elim
@@ -136,7 +136,7 @@ The invariant for the completeness theorem. The invariant holds only when return
 
 For all paths ending at `pos`, the state must be tracked in `next.states`. We don't care about the updates for the completeness.
 -/
-def SearchState.MemOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) (next : SearchState (HistoryStrategy s) nfa) : Prop :=
+def SearchState.MemOfPathInv (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) (next : SearchState (List (Nat × Pos s)) nfa) : Prop :=
   ∀ i update, nfa.VMPath wf pos₀ pos i update → i ∈ next.states
 
 /--
@@ -144,11 +144,11 @@ Invariant for the completeness theorem.
 
 The `.done` state is not in `next.states`.
 -/
-def SearchState.NotDoneInv (σ : Strategy s) (nfa : NFA) (next : SearchState σ nfa) : Prop :=
+def SearchState.NotDoneInv (α : Type) (nfa : NFA) (next : SearchState α nfa) : Prop :=
   ∀ i, i ∈ next.states → nfa[i] ≠ .done
 
-theorem SearchState.NotDoneInv.of_empty {σ : Strategy s} {nfa : NFA} {next : SearchState σ nfa} (h : next.states.isEmpty) :
-  next.NotDoneInv σ nfa := by
+theorem SearchState.NotDoneInv.of_empty {α : Type} {nfa : NFA} {next : SearchState α nfa} (h : next.states.isEmpty) :
+  next.NotDoneInv α nfa := by
   intro i mem
   exact (SparseSet.not_mem_of_isEmpty h mem).elim
 

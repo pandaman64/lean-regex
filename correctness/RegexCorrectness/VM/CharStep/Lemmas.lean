@@ -3,6 +3,7 @@ module
 import all RegexCorrectness.VM.Path
 import all RegexCorrectness.VM.EpsilonClosure
 import all RegexCorrectness.VM.CharStep.Basic
+import Regex.Strategy
 import RegexCorrectness.Data.String
 
 open Regex.Data (SparseSet)
@@ -13,37 +14,37 @@ open String (Pos)
 namespace Regex.VM
 
 variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {pos : Pos s} {ne : pos ≠ s.endPos}
-  {current : SearchState (HistoryStrategy s) nfa} {currentUpdates : Vector (List (Nat × Pos s)) nfa.size}
-  {next : SearchState (HistoryStrategy s) nfa} {state : Fin nfa.size}
-  {matched' : Option (List (Nat × Pos s))} {next' : SearchState (HistoryStrategy s) nfa}
+  {current : SearchState (List (Nat × Pos s)) nfa} {currentUpdates : Vector (List (Nat × Pos s)) nfa.size}
+  {next : SearchState (List (Nat × Pos s)) nfa} {state : Fin nfa.size}
+  {matched' : Option (List (Nat × Pos s))} {next' : SearchState (List (Nat × Pos s)) nfa}
 
 namespace stepChar
 
-theorem subset (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next state = (matched', next')) :
+theorem subset (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next state = (matched', next')) :
   next.states ⊆ next'.states := by
-  simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
+  simp only [stepChar, Fin.getElem_fin] at h
   grind [εClosure.subset, SparseSet.subset_self]
 
-theorem lower_bound (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next state = (matched', next'))
+theorem lower_bound (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next state = (matched', next'))
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   εClosure.LowerBound (pos.next ne) next'.states := by
-  simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
+  simp only [stepChar, Fin.getElem_fin] at h
   grind [εClosure.lower_bound]
 
-theorem eq_updates_of_mem_next {i k} (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
+theorem eq_updates_of_mem_next {i k} (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next i = (matched', next'))
   (mem : k ∈ next.states) :
   next'.updates[k] = next.updates[k] := by
-  simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
+  simp only [stepChar, Fin.getElem_fin] at h
   grind [εClosure.eq_updates_of_mem_next]
 
-theorem done_of_matched_some (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next state = (matched', next'))
+theorem done_of_matched_some (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next state = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
-  simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
+  simp only [stepChar, Fin.getElem_fin] at h
   grind [εClosure.matched_inv]
 
 theorem mem_next_of_stepChar {i j k update}
-  (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
+  (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next i = (matched', next'))
   (lb : εClosure.LowerBound (pos.next ne) next.states)
   (step : nfa.CharStep pos i j) (cls : nfa.εClosure' (pos.next ne) j k update) :
   k ∈ next'.states := by
@@ -77,7 +78,7 @@ theorem mem_next_of_stepChar {i j k update}
       simp_all only [Prod.mk.injEq, imp_false, Fin.getElem_fin, exists_const, or_self]
 
 theorem write_updates_of_mem_next {i k}
-  (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
+  (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next i = (matched', next'))
   (ne : pos ≠ s.endPos) (mem : k ∈ next'.states) :
   k ∈ next.states ∨ ∃ j update',
     nfa.CharStep pos i j ∧
@@ -92,7 +93,7 @@ theorem write_updates_of_mem_next {i k}
   next => grind
 
 theorem inv {pos₀ idx} (hlt : idx < current.states.count)
-  (h : stepChar (HistoryStrategy s) nfa wf pos ne current.updates next current.states[idx] = (matched', next'))
+  (h : stepChar (listTracker s) nfa wf pos ne current.updates next current.states[idx] = (matched', next'))
   (ne : pos ≠ s.endPos)
   (invCurrent : current.Inv nfa wf pos₀ pos)
   (invNext : next.Inv nfa wf pos₀ (pos.next ne)) :
@@ -109,11 +110,11 @@ theorem inv {pos₀ idx} (hlt : idx < current.states.count)
     have write'' : εClosure.writeUpdate nfa[k] → next'.updates[k] = update ++ update' := (write step.write_update) ▸ write'
     exact ⟨update ++ update', .more path step cls rfl rfl, write''⟩
 
-theorem not_done_of_none (result) (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next state = result)
+theorem not_done_of_none (result) (h : stepChar (listTracker s) nfa wf pos ne currentUpdates next state = result)
   (isNone : result.1 = .none)
-  (inv : next.NotDoneInv (HistoryStrategy s) nfa) :
-  result.2.NotDoneInv (HistoryStrategy s) nfa := by
-  simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
+  (inv : next.NotDoneInv (List (Nat × Pos s)) nfa) :
+  result.2.NotDoneInv (List (Nat × Pos s)) nfa := by
+  simp only [stepChar, Fin.getElem_fin] at h
   split at h
   next state' hn => exact εClosure.not_done_of_none result h isNone inv
   next => simpa [←h] using inv
@@ -122,10 +123,10 @@ end stepChar
 
 namespace eachStepChar
 
-theorem go.lower_bound {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = (matched', next'))
+theorem go.lower_bound {idx hle} (h : eachStepChar.go (listTracker s) nfa wf pos ne current idx hle next = (matched', next'))
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   εClosure.LowerBound (pos.next ne) next'.states := by
-  induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
+  induction idx, hle, next using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne current with
   | base next => simp_all
   | done i hlt next hn => simp_all
   | found i hlt next hn matched next'' h' found =>
@@ -136,10 +137,10 @@ theorem go.lower_bound {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf
     rw [eachStepChar.go_not_found hlt hn h' not_found] at h
     exact ih h (stepChar.lower_bound h' lb)
 
-theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = (matched', next'))
+theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (listTracker s) nfa wf pos ne current idx hle next = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
-  induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
+  induction idx, hle, next using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne current with
   | base next => grind
   | done i hlt next hn => grind
   | found i hlt next hn matched next'' h' found =>
@@ -151,12 +152,12 @@ theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (HistoryStrategy 
     rw [eachStepChar.go_not_found hlt hn h' not_found] at h
     exact ih h
 
-theorem go.inv {pos₀ idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = (matched', next'))
+theorem go.inv {pos₀ idx hle} (h : eachStepChar.go (listTracker s) nfa wf pos ne current idx hle next = (matched', next'))
   (ne : pos ≠ s.endPos)
   (invCurrent : current.Inv nfa wf pos₀ pos)
   (invNext : next.Inv nfa wf pos₀ (pos.next ne)) :
   next'.Inv nfa wf pos₀ (pos.next ne) := by
-  induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
+  induction idx, hle, next using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne current with
   | base next => simp_all
   | done i hlt next hn => simp_all
   | found idx hlt next hn matched next'' h' found =>
@@ -169,11 +170,11 @@ theorem go.inv {pos₀ idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf 
       stepChar.inv hlt h' ne invCurrent invNext
     apply ih h inv'
 
-theorem go.not_done_of_none {idx hle} (result) (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = result)
+theorem go.not_done_of_none {idx hle} (result) (h : eachStepChar.go (listTracker s) nfa wf pos ne current idx hle next = result)
   (isNone : result.1 = .none)
-  (invCurrent : current.NotDoneInv (HistoryStrategy s) nfa) (invNext : next.NotDoneInv (HistoryStrategy s) nfa) :
-  result.2.NotDoneInv (HistoryStrategy s) nfa := by
-  induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
+  (invCurrent : current.NotDoneInv (List (Nat × Pos s)) nfa) (invNext : next.NotDoneInv (List (Nat × Pos s)) nfa) :
+  result.2.NotDoneInv (List (Nat × Pos s)) nfa := by
+  induction idx, hle, next using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne current with
   | base next => simpa [←h] using invNext
   | done i hlt next hn => exact (invCurrent current.states[i] (SparseSet.mem_get hlt) hn).elim
   | found i hlt next hn matched next'' h' found =>
@@ -186,9 +187,9 @@ theorem go.not_done_of_none {idx hle} (result) (h : eachStepChar.go (HistoryStra
     have invNext' := stepChar.not_done_of_none (matched, next'') h' notFound invNext
     exact ih h invNext'
 
-theorem go.subset {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = (matched', next')) :
+theorem go.subset {idx hle} (h : eachStepChar.go (listTracker s) nfa wf pos ne current idx hle next = (matched', next')) :
   next.states ⊆ next'.states := by
-  induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
+  induction idx, hle, next using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne current with
   | base next =>
     simp [eachStepChar.go_base] at h
     exact h.2 ▸ SparseSet.subset_self
@@ -202,13 +203,13 @@ theorem go.subset {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos 
     simp [eachStepChar.go_not_found hlt hn h' notFound] at h
     exact SparseSet.subset_trans (stepChar.subset h') (ih h)
 
-theorem go.mem_of_step_of_none {idx hle} (result) (h : eachStepChar.go (HistoryStrategy s) nfa wf pos ne current idx hle next = result)
+theorem go.mem_of_step_of_none {idx hle} (result) (h : eachStepChar.go (listTracker s) nfa wf pos ne current idx hle next = result)
   (isNone : result.1 = .none)
-  (notDone : current.NotDoneInv (HistoryStrategy s) nfa)
+  (notDone : current.NotDoneInv (List (Nat × Pos s)) nfa)
   (lb : εClosure.LowerBound (pos.next ne) next.states)
   (inv : ∀ i state' state'' update (_ : i < current.states.count), i < idx → nfa.CharStep pos current.states[i] state' → nfa.εClosure' (pos.next ne) state' state'' update → state'' ∈ result.2.states) :
   ∀ state state' state'' update, state ∈ current.states → nfa.CharStep pos state state' → nfa.εClosure' (pos.next ne) state' state'' update → state'' ∈ result.2.states := by
-  induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
+  induction idx, hle, next using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne current with
   | base next =>
     simp [eachStepChar.go_base] at h
     intro state state' state'' update mem step cls
@@ -233,36 +234,36 @@ theorem go.mem_of_step_of_none {idx hle} (result) (h : eachStepChar.go (HistoryS
         exact SparseSet.mem_of_mem_of_subset mem'' (go.subset h)
     exact ih h lb' inv'
 
-theorem lower_bound (result) (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = result)
+theorem lower_bound (result) (h : eachStepChar (listTracker s) nfa wf pos ne current next = result)
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   εClosure.LowerBound (pos.next ne) result.2.states := by
   simp [eachStepChar] at h
   exact go.lower_bound h lb
 
-theorem done_of_matched_some (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = (matched', next'))
+theorem done_of_matched_some (h : eachStepChar (listTracker s) nfa wf pos ne current next = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' :=
   go.done_of_matched_some h isSome'
 
-theorem inv_of_inv {pos₀ next next'} (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = (matched', next'))
+theorem inv_of_inv {pos₀ next next'} (h : eachStepChar (listTracker s) nfa wf pos ne current next = (matched', next'))
   (ne : pos ≠ s.endPos) (empty : next.states.isEmpty)
   (inv : current.Inv nfa wf pos₀ pos) :
   next'.Inv nfa wf pos₀ (pos.next ne) := by
   simp [eachStepChar] at h
   exact go.inv h ne inv (.of_empty empty)
 
-theorem not_done_of_none (result) (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = result)
+theorem not_done_of_none (result) (h : eachStepChar (listTracker s) nfa wf pos ne current next = result)
   (isNone : result.1 = .none)
-  (invCurrent : current.NotDoneInv (HistoryStrategy s) nfa) (invNext : next.NotDoneInv (HistoryStrategy s) nfa) :
-  result.2.NotDoneInv (HistoryStrategy s) nfa := by
+  (invCurrent : current.NotDoneInv (List (Nat × Pos s)) nfa) (invNext : next.NotDoneInv (List (Nat × Pos s)) nfa) :
+  result.2.NotDoneInv (List (Nat × Pos s)) nfa := by
   simp [eachStepChar] at h
   exact go.not_done_of_none result h isNone invCurrent invNext
 
 -- Intended usage: given `inv : current.MemOfPathInv nfa wf pos₀ pos`, if there is a VMPath for `pos.next ne`. We cases on the path.
 -- If that results in a char step and εClosure, we can use this theorem to show that the state is in `next'.states`.
-theorem mem_of_step_of_none (result) (h : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = result)
+theorem mem_of_step_of_none (result) (h : eachStepChar (listTracker s) nfa wf pos ne current next = result)
   (isNone : result.1 = .none)
-  (notDone : current.NotDoneInv (HistoryStrategy s) nfa)
+  (notDone : current.NotDoneInv (List (Nat × Pos s)) nfa)
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   ∀ state state' state'' update, state ∈ current.states → nfa.CharStep pos state state' → nfa.εClosure' (pos.next ne) state' state'' update → state'' ∈ result.2.states := by
   simp [eachStepChar] at h

@@ -2,6 +2,7 @@ module
 
 import RegexCorrectness.Data.String
 import all RegexCorrectness.VM.Search.Basic
+import Regex.Strategy
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
@@ -16,12 +17,12 @@ def MatchedInv {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos₀ : Pos s) (
       nfa.VMPath wf pos₀ pos state (matched.get isSome)
 
 theorem captureNext.go.inv {s : String} {nfa wf} {pos₀ pos : Pos s} {matched current next matched'}
-  (h : captureNext.go (HistoryStrategy s) nfa wf pos matched current next = matched')
+  (h : captureNext.go (listTracker s) nfa wf pos matched current next = matched')
   (le : pos₀ ≤ pos)
   (curr_inv : current.Inv nfa wf pos₀ pos) (empty : next.states.isEmpty)
   (matched_inv : MatchedInv nfa wf pos₀ matched) :
   MatchedInv nfa wf pos₀ matched' := by
-  induction pos, matched, current, next using captureNext.go.induct' (HistoryStrategy s) nfa wf with
+  induction pos, matched, current, next using captureNext.go.induct' (listTracker s) nfa wf with
   | not_found matched current next => simp_all
   | found pos matched current next ne isEmpty isSome =>
     rw [captureNext.go_found ne isEmpty isSome] at h
@@ -59,13 +60,13 @@ If `captureNext` returns `some`, the returned list corresponds to the updates of
 `nfa.start` to a `.done` state.
 -/
 theorem captureNext.path_done_of_matched {s nfa wf pos₀ matched'}
-  (h : captureNext (HistoryStrategy s) nfa wf pos₀ = matched') (isSome' : matched'.isSome) :
+  (h : captureNext (listTracker s) nfa wf pos₀ = matched') (isSome' : matched'.isSome) :
   ∃ state pos,
     nfa[state] = .done ∧
     nfa.VMPath wf pos₀ pos state (matched'.get isSome') := by
   simp [captureNext] at h
 
-  set result := εClosure (HistoryStrategy s) nfa wf pos₀ .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure (listTracker s) nfa wf pos₀ .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   set matched := result.1
   set current := result.2
   have h' : result = (matched, current) := rfl
@@ -81,19 +82,19 @@ theorem captureNext.path_done_of_matched {s nfa wf pos₀ matched'}
   exact captureNext.go.inv h (Pos.le_refl _) curr_inv (by simp) matched_inv isSome'
 
 theorem SearchState.NotDoneInv.preserves {s nfa wf pos current next ne} (stepped expanded)
-  (h₁ : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = stepped)
-  (h₂ : εClosure (HistoryStrategy s) nfa wf (pos.next ne) .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
+  (h₁ : eachStepChar (listTracker s) nfa wf pos ne current next = stepped)
+  (h₂ : εClosure (listTracker s) nfa wf (pos.next ne) .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
   (isNone₁ : stepped.1 = .none) (isNone₂ : expanded.1 = .none)
-  (invCurrent : current.NotDoneInv (HistoryStrategy s) nfa) (invNext : next.NotDoneInv (HistoryStrategy s) nfa) :
-  expanded.2.NotDoneInv (HistoryStrategy s) nfa := by
+  (invCurrent : current.NotDoneInv (List (Nat × Pos s)) nfa) (invNext : next.NotDoneInv (List (Nat × Pos s)) nfa) :
+  expanded.2.NotDoneInv (List (Nat × Pos s)) nfa := by
   have inv' := eachStepChar.not_done_of_none stepped h₁ isNone₁ invCurrent invNext
   exact εClosure.not_done_of_none expanded h₂ isNone₂ inv'
 
 theorem SearchState.MemOfPathInv.preserves {s nfa wf pos₀ pos current next ne} (stepped expanded)
-  (h₁ : eachStepChar (HistoryStrategy s) nfa wf pos ne current next = stepped)
-  (h₂ : εClosure (HistoryStrategy s) nfa wf (pos.next ne) .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
+  (h₁ : eachStepChar (listTracker s) nfa wf pos ne current next = stepped)
+  (h₂ : εClosure (listTracker s) nfa wf (pos.next ne) .none stepped.2 [([], ⟨nfa.start, wf.start_lt⟩)] = expanded)
   (isNone : stepped.1 = .none)
-  (ndinv : current.NotDoneInv (HistoryStrategy s) nfa) (lb : εClosure.LowerBound (pos.next ne) next.states)
+  (ndinv : current.NotDoneInv (List (Nat × Pos s)) nfa) (lb : εClosure.LowerBound (pos.next ne) next.states)
   (inv : current.MemOfPathInv nfa wf pos₀ pos) :
   expanded.2.MemOfPathInv nfa wf pos₀ (pos.next ne) := by
   intro k update path
@@ -110,8 +111,8 @@ theorem SearchState.MemOfPathInv.preserves {s nfa wf pos₀ pos current next ne}
 def NeDoneOfPathInv {s : String} (nfa : NFA) (wf : nfa.WellFormed) (pos₀ pos : Pos s) : Prop :=
   ∀ pos' state update, pos' ≤ pos → nfa.VMPath wf pos₀ pos' state update → nfa[state] ≠ .done
 
-theorem NeDoneOfPathInv.preserves {s nfa wf pos₀ pos ne} {expanded : Option (List (Nat × Pos s)) × SearchState (HistoryStrategy s) nfa}
-  (notDone : expanded.2.NotDoneInv (HistoryStrategy s) nfa) (memOfPath : expanded.2.MemOfPathInv nfa wf pos₀ (pos.next ne))
+theorem NeDoneOfPathInv.preserves {s nfa wf pos₀ pos ne} {expanded : Option (List (Nat × Pos s)) × SearchState (List (Nat × Pos s)) nfa}
+  (notDone : expanded.2.NotDoneInv (List (Nat × Pos s)) nfa) (memOfPath : expanded.2.MemOfPathInv nfa wf pos₀ (pos.next ne))
   (inv : NeDoneOfPathInv nfa wf pos₀ pos) :
   NeDoneOfPathInv nfa wf pos₀ (pos.next ne) := by
   intro pos' state update le path
@@ -121,10 +122,10 @@ theorem NeDoneOfPathInv.preserves {s nfa wf pos₀ pos ne} {expanded : Option (L
     have mem := memOfPath state update (eq ▸ path)
     exact notDone state mem
 
-theorem captureNext.go.some_of_some {s nfa wf pos matched current next} (result) (h : captureNext.go (HistoryStrategy s) nfa wf pos matched current next = result)
+theorem captureNext.go.some_of_some {s nfa wf pos matched current next} (result) (h : captureNext.go (listTracker s) nfa wf pos matched current next = result)
   (isSome : matched.isSome) :
   result.isSome := by
-  induction pos, matched, current, next using captureNext.go.induct' (HistoryStrategy s) nfa wf with
+  induction pos, matched, current, next using captureNext.go.induct' (listTracker s) nfa wf with
   | not_found matched current next =>
     rw [captureNext.go_not_found] at h
     simpa [←h] using isSome
@@ -141,12 +142,12 @@ theorem captureNext.go.some_of_some {s nfa wf pos matched current next} (result)
       | .none => simp [isSome]
     exact ih h isSome'
 
-theorem captureNext.go.ne_done_of_path_of_none {s nfa wf pos₀ pos matched current next} (h : captureNext.go (HistoryStrategy s) nfa wf pos matched current next = .none)
+theorem captureNext.go.ne_done_of_path_of_none {s nfa wf pos₀ pos matched current next} (h : captureNext.go (listTracker s) nfa wf pos matched current next = .none)
   (isEmpty : next.states.isEmpty)
-  (ndinv : current.NotDoneInv (HistoryStrategy s) nfa) (mopInv : current.MemOfPathInv nfa wf pos₀ pos)
+  (ndinv : current.NotDoneInv (List (Nat × Pos s)) nfa) (mopInv : current.MemOfPathInv nfa wf pos₀ pos)
   (inv : NeDoneOfPathInv nfa wf pos₀ pos) :
   ∀ pos' state update, nfa.VMPath wf pos₀ pos' state update → nfa[state] ≠ .done := by
-  induction pos, matched, current, next using captureNext.go.induct' (HistoryStrategy s) nfa wf with
+  induction pos, matched, current, next using captureNext.go.induct' (listTracker s) nfa wf with
   | not_found matched current next =>
     intro pos' state update path hn
     exact inv pos' state update pos'.isValid.le_rawEndPos path hn
@@ -162,7 +163,7 @@ theorem captureNext.go.ne_done_of_path_of_none {s nfa wf pos₀ pos matched curr
         have := some_of_some .none h (by simp [h'])
         simp at this
     have isEmpty' : current.states.clear.isEmpty := by simp
-    have ndinv' : expanded.2.NotDoneInv (HistoryStrategy s) nfa :=
+    have ndinv' : expanded.2.NotDoneInv (List (Nat × Pos s)) nfa :=
       ndinv.preserves stepped expanded rfl rfl isNone₂ isNone₃ (.of_empty isEmpty)
     have mopInv' : expanded.2.MemOfPathInv nfa wf pos₀ (pos.next ne) :=
       mopInv.preserves stepped expanded rfl rfl isNone₂ ndinv (.of_empty isEmpty)
@@ -181,13 +182,13 @@ theorem captureNext.go.ne_done_of_path_of_none {s nfa wf pos₀ pos matched curr
 /--
 If `captureNext` returns `.none`, then there is no path from `nfa.start` to a `.done` state after `pos`.
 -/
-theorem captureNext.ne_done_of_path_of_none {s nfa wf pos} (h : captureNext (HistoryStrategy s) nfa wf pos = .none) :
+theorem captureNext.ne_done_of_path_of_none {s nfa wf pos} (h : captureNext (listTracker s) nfa wf pos = .none) :
   ∀ pos' state update, nfa.VMPath wf pos pos' state update → nfa[state] ≠ .done := by
   simp [captureNext] at h
-  set result := εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  set result := εClosure (listTracker s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
   match h' : result.1 with
   | .none =>
-    have ndinv : SearchState.NotDoneInv (HistoryStrategy s) nfa result.2 := εClosure.not_done_of_none result rfl h' (.of_empty (by simp))
+    have ndinv : SearchState.NotDoneInv (List (Nat × Pos s)) nfa result.2 := εClosure.not_done_of_none result rfl h' (.of_empty (by simp))
     have mopInv : SearchState.MemOfPathInv nfa wf pos pos result.2 := by
       intro i update path
       have cls := path.εClosure_of_eq_it

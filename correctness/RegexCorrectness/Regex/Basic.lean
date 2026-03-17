@@ -17,7 +17,7 @@ import RegexCorrectness.VM
 import RegexCorrectness.Regex.OptimizationInfo
 
 open Regex.Data (Expr)
-open String (Pos)
+open String (Pos PosPlusOne)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
 
 public section
@@ -34,7 +34,7 @@ def IsSearchRegex (re : Regex) : Prop :=
 
 namespace IsSearchRegex
 
-variable {s : String} {re : Regex} {bufferSize : Nat} {pos : Pos s} {matched : Buffer s bufferSize}
+variable {s : String} {re : Regex} {bufferSize : Nat} {pos : Pos s} {matched : Vector (PosPlusOne s) bufferSize}
 
 theorem of_fromExpr {e : Expr} (h : Expr.Disjoint (.group 0 e)) : IsSearchRegex (.fromExpr (.group 0 e)) := by
   simp [fromExpr]

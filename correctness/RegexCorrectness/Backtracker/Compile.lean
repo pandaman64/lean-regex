@@ -12,14 +12,14 @@ namespace Regex.Backtracker
 
 namespace captureNext
 
-theorem path_done_of_some {s nfa wf pos update} (hres : captureNext (HistoryStrategy s) nfa wf pos = .some update) :
+theorem path_done_of_some {s nfa wf pos update} (hres : captureNext (listTracker s) nfa wf pos = .some update) :
   ∃ state pos' pos'', nfa[state] = .done ∧ pos ≤ pos' ∧ Path nfa wf pos' pos'' state update := by
   let bvpos : BVPos pos := ⟨pos, Pos.le_refl _⟩
   dsimp [captureNext] at hres
   have ⟨state, bvpos', bvpos'', hn, le, path⟩ := go.path_done_of_some hres
   exact ⟨state, bvpos'.current, bvpos''.current, hn, le, path⟩
 
-theorem capture_of_some_compile {s e pos update} (hres : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos = .some update) :
+theorem capture_of_some_compile {s e pos update} (hres : captureNext (listTracker s) (NFA.compile e) NFA.compile_wf pos = .some update) :
   ∃ pos' pos'' groups,
     pos ≤ pos' ∧
     e.Captures pos' pos'' groups ∧
@@ -31,7 +31,7 @@ theorem capture_of_some_compile {s e pos update} (hres : captureNext (HistoryStr
   have ⟨groups, eqv, c⟩ := NFA.captures_of_path_compile rfl (eq_zero ▸ path.compile_liftBound rfl)
   exact ⟨pos', pos'', groups, le, c, eqv⟩
 
-theorem ne_done_of_path_of_none {s nfa wf pos} (hres : captureNext (HistoryStrategy s) nfa wf pos = .none) :
+theorem ne_done_of_path_of_none {s nfa wf pos} (hres : captureNext (listTracker s) nfa wf pos = .none) :
   ∀ (pos' pos'' : Pos s) (state : Fin nfa.size) (update : List (Nat × Pos s)),
     pos ≤ pos' →
     Path nfa wf pos' pos'' state update →
@@ -49,7 +49,7 @@ theorem ne_done_of_path_of_none {s nfa wf pos} (hres : captureNext (HistoryStrat
 
   exact h bvpos' bvpos'' state update bvpos'.le path hn
 
-theorem not_captures_of_none_compile {s e pos} (hres : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos = .none)
+theorem not_captures_of_none_compile {s e pos} (hres : captureNext (listTracker s) (NFA.compile e) NFA.compile_wf pos = .none)
   (pos' pos'' : Pos s) (groups : CaptureGroups s) (le : pos ≤ pos') :
   ¬e.Captures pos' pos'' groups := by
   intro c

@@ -12,7 +12,7 @@ namespace Regex.VM
 
 namespace captureNext
 
-theorem captures_of_some_compile {s e pos₀ matched'} (h : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos₀ = matched')
+theorem captures_of_some_compile {s e pos₀ matched'} (h : captureNext (listTracker s) (NFA.compile e) NFA.compile_wf pos₀ = matched')
   (isSome' : matched'.isSome) :
   ∃ pos pos' groups,
     pos₀ ≤ pos ∧
@@ -28,7 +28,7 @@ theorem captures_of_some_compile {s e pos₀ matched'} (h : captureNext (History
   have ⟨groups, eqv, c⟩ := NFA.captures_of_path_compile rfl (path.compile_liftBound rfl)
   exact ⟨pos, pos', groups, le, c, eqv⟩
 
-theorem not_captures_of_none_compile {s e pos} (h : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos = .none)
+theorem not_captures_of_none_compile {s e pos} (h : captureNext (listTracker s) (NFA.compile e) NFA.compile_wf pos = .none)
   (pos' pos'' : Pos s) (groups : CaptureGroups s) (le : pos ≤ pos') :
   ¬e.Captures pos' pos'' groups := by
   intro c

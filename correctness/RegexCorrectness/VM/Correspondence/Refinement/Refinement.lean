@@ -3,11 +3,12 @@ module
 import all RegexCorrectness.VM.Search
 import all RegexCorrectness.Strategy.Materialize.Basic
 import RegexCorrectness.Strategy
+import Regex.Strategy
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.Strategy (materializeUpdates)
-open String (Pos)
+open String (Pos PosPlusOne)
 
 /-
 The correctness proofs use the refined versions of the VM functions to track all updates to the
@@ -18,40 +19,40 @@ This files estabilishes the correspondence between the refined and actual VM fun
 namespace Regex.VM
 
 variable {s : String} {nfa : NFA} {wf : nfa.WellFormed} {bufferSize : Nat} {pos : Pos s} {ne : pos ≠ s.endPos}
-  {matchedH : Option (List (Nat × Pos s))} {matchedB : Option (Buffer s bufferSize)}
-  {nextH : SearchState (HistoryStrategy s) nfa} {nextB : SearchState (BufferStrategy s bufferSize) nfa}
-  {stackH : εStack (HistoryStrategy s) nfa} {stackB : εStack (BufferStrategy s bufferSize) nfa}
+  {matchedH : Option (List (Nat × Pos s))} {matchedB : Option (Vector (PosPlusOne s) bufferSize)}
+  {nextH : SearchState (List (Nat × Pos s)) nfa} {nextB : SearchState (Vector (PosPlusOne s) bufferSize) nfa}
+  {stackH : εStack (List (Nat × Pos s)) nfa} {stackB : εStack (Vector (PosPlusOne s) bufferSize) nfa}
 
-def SearchState.materialize (stateH : SearchState (HistoryStrategy s) nfa) : SearchState (BufferStrategy s bufferSize) nfa :=
+def SearchState.materialize (stateH : SearchState (List (Nat × Pos s)) nfa) : SearchState (Vector (PosPlusOne s) bufferSize) nfa :=
   ⟨stateH.states, stateH.updates.map (materializeUpdates bufferSize)⟩
 
 @[simp]
-theorem SearchState.materialize_states {stateH : SearchState (HistoryStrategy s) nfa} :
+theorem SearchState.materialize_states {stateH : SearchState (List (Nat × Pos s)) nfa} :
   (stateH.materialize (bufferSize := bufferSize)).states = stateH.states := rfl
 
-def εStack.materialize (stackH : εStack (HistoryStrategy s) nfa) : εStack (BufferStrategy s bufferSize) nfa :=
+def εStack.materialize (stackH : εStack (List (Nat × Pos s)) nfa) : εStack (Vector (PosPlusOne s) bufferSize) nfa :=
   stackH.map (fun (update, state) => (materializeUpdates bufferSize update, state))
 
 @[simp]
-theorem εStack.materialize.nil : εStack.materialize [] = ([] : εStack (BufferStrategy s bufferSize) nfa) := rfl
+theorem εStack.materialize.nil : εStack.materialize [] = ([] : εStack (Vector (PosPlusOne s) bufferSize) nfa) := rfl
 
 @[simp]
 theorem εStack.materialize.cons {entry} :
   εStack.materialize (entry :: stackH) = (materializeUpdates bufferSize entry.1, entry.2) :: εStack.materialize stackH := rfl
 
-def materializeResult (resultH : Option (HistoryStrategy s).Update × SearchState (HistoryStrategy s) nfa) : Option (BufferStrategy s bufferSize).Update × SearchState (BufferStrategy s bufferSize) nfa :=
+def materializeResult (resultH : Option (List (Nat × Pos s)) × SearchState (List (Nat × Pos s)) nfa) : Option (Vector (PosPlusOne s) bufferSize) × SearchState (Vector (PosPlusOne s) bufferSize) nfa :=
   ⟨resultH.1.map (materializeUpdates bufferSize), resultH.2.materialize⟩
 
 theorem εClosure.pushNext.refines {state : Fin nfa.size} {update} {buffer} (wf : nfa.WellFormed)
   (h₁ : materializeUpdates bufferSize update = buffer) (h₂ : εStack.materialize stackH = stackB) :
-  εStack.materialize (pushNext (HistoryStrategy s) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) update stackH)
-    = (pushNext (BufferStrategy s bufferSize) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) buffer stackB) := by
-  cases nfa[state], wf.inBounds' state state.isLt rfl, update, stackH using pushNext.fun_cases' (HistoryStrategy s) nfa pos with
+  εStack.materialize (pushNext (listTracker s) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) update stackH)
+    = (pushNext (vectorTracker s bufferSize) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) buffer stackB) := by
+  cases nfa[state], wf.inBounds' state state.isLt rfl, update, stackH using pushNext.fun_cases' nfa pos with
   | epsilon _ _ state' inBounds => simp only [pushNext.epsilon rfl, εStack.materialize.cons, h₁, h₂]
   | split _ _ state₁ state₂ inBounds => simp only [pushNext.split rfl, εStack.materialize.cons, h₁, h₂]
   | save _ _ offset state' inBounds =>
-    simp only [pushNext.save rfl, εStack.materialize.cons]
-    simp [h₁, h₂]
+    simp only [pushNext.save rfl, εStack.materialize.cons, List.cons.injEq, Prod.mk.injEq, and_true]
+    simp [h₁, h₂, PosTracker.write]
   | anchor_pos _ _ a state' inBounds ht => simp only [pushNext.anchor_pos rfl ht, εStack.materialize.cons, h₁, h₂]
   | anchor_neg _ _ a state' inBounds ht => simp [pushNext.anchor_neg rfl ht, h₂]
   | done => simp [pushNext.done, h₂]
@@ -60,13 +61,13 @@ theorem εClosure.pushNext.refines {state : Fin nfa.size} {update} {buffer} (wf 
   | sparse => simp [pushNext.sparse rfl, h₂]
 
 theorem εClosure.refines (resultB resultH)
-  (h : εClosure (BufferStrategy s bufferSize) nfa wf pos matchedB nextB stackB = resultB)
-  (h' : εClosure (HistoryStrategy s) nfa wf pos matchedH nextH stackH = resultH)
+  (h : εClosure (vectorTracker s bufferSize) nfa wf pos matchedB nextB stackB = resultB)
+  (h' : εClosure (listTracker s) nfa wf pos matchedH nextH stackH = resultH)
   (refMatched : matchedH.map (materializeUpdates bufferSize) = matchedB)
   (refState : nextH.materialize = nextB)
   (refStack : stackH.materialize = stackB) :
   materializeResult resultH = resultB := by
-  induction matchedH, nextH, stackH using εClosure.induct' (HistoryStrategy s) nfa wf pos generalizing matchedB nextB stackB resultB resultH with
+  induction matchedH, nextH, stackH using εClosure.induct' (listTracker s) nfa wf pos generalizing matchedB nextB stackB resultB resultH with
   | base matchedH nextH =>
     simp [εStack.materialize] at refStack
     subst stackB
@@ -96,8 +97,8 @@ theorem εClosure.refines (resultB resultH)
     . exact pushNext.refines wf rfl rfl
 
 theorem stepChar.refines {currentUpdatesH currentUpdatesB state} (resultB resultH)
-  (h : stepChar (BufferStrategy s bufferSize) nfa wf pos ne currentUpdatesB nextB state = resultB)
-  (h' : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdatesH nextH state = resultH)
+  (h : stepChar (vectorTracker s bufferSize) nfa wf pos ne currentUpdatesB nextB state = resultB)
+  (h' : stepChar (listTracker s) nfa wf pos ne currentUpdatesH nextH state = resultH)
   (refUpdates : currentUpdatesH.map (materializeUpdates bufferSize) = currentUpdatesB)
   (refState : nextH.materialize = nextB) :
   materializeResult resultH = resultB := by
@@ -111,12 +112,12 @@ theorem stepChar.refines {currentUpdatesH currentUpdatesB state} (resultB result
     simpa [←h', ←h, materializeResult] using refState
 
 theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH)
-  (h : eachStepChar.go (BufferStrategy s bufferSize) nfa wf pos ne currentB i hleB nextB = resultB)
-  (h' : eachStepChar.go (HistoryStrategy s) nfa wf pos ne currentH i hleH nextH = resultH)
+  (h : eachStepChar.go (vectorTracker s bufferSize) nfa wf pos ne currentB i hleB nextB = resultB)
+  (h' : eachStepChar.go (listTracker s) nfa wf pos ne currentH i hleH nextH = resultH)
   (refCurrent : currentH.materialize = currentB)
   (refNext : nextH.materialize = nextB) :
   materializeResult resultH = resultB := by
-  induction i, hleH, nextH using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne generalizing currentB nextB resultB resultH with
+  induction i, hleH, nextH using eachStepChar.go.induct' (List (Nat × Pos s)) (listTracker s) nfa wf pos ne currentH generalizing currentB nextB resultB resultH with
   | base nextH =>
     simp at h'
     simp [←refCurrent] at h
@@ -141,7 +142,7 @@ theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH
     have refUpdates : Vector.map (materializeUpdates bufferSize) currentH.updates = currentB.updates := by
       simp [←refCurrent, SearchState.materialize]
 
-    let (eq := hstepB) (matchedB, nextB') := stepChar (BufferStrategy s bufferSize) nfa wf pos ne currentB.updates nextB currentB.states[i]
+    let (eq := hstepB) (matchedB, nextB') := stepChar (vectorTracker s bufferSize) nfa wf pos ne currentB.updates nextB currentB.states[i]
     have refResult := stepChar.refines (matchedB, nextB') (matchedH, nextH') hstepB (eqState ▸ hstepH) refUpdates refNext
     simp [materializeResult] at refResult
 
@@ -161,7 +162,7 @@ theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH
     have refUpdates : Vector.map (materializeUpdates bufferSize) currentH.updates = currentB.updates := by
       simp [←refCurrent, SearchState.materialize]
 
-    let (eq := hstepB) (matchedB, nextB') := stepChar (BufferStrategy s bufferSize) nfa wf pos ne currentB.updates nextB currentB.states[i]
+    let (eq := hstepB) (matchedB, nextB') := stepChar (vectorTracker s bufferSize) nfa wf pos ne currentB.updates nextB currentB.states[i]
     have refResult := stepChar.refines (matchedB, nextB') (matchedH, nextH') hstepB (eqState ▸ hstepH) refUpdates refNext
     simp [materializeResult] at refResult
 
@@ -173,21 +174,21 @@ theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH
     exact ih resultB resultH h h' refCurrent refResult.2
 
 theorem eachStepChar.refines {currentH currentB} (resultB resultH)
-  (h : eachStepChar (BufferStrategy s bufferSize) nfa wf pos ne currentB nextB = resultB)
-  (h' : eachStepChar (HistoryStrategy s) nfa wf pos ne currentH nextH = resultH)
+  (h : eachStepChar (vectorTracker s bufferSize) nfa wf pos ne currentB nextB = resultB)
+  (h' : eachStepChar (listTracker s) nfa wf pos ne currentH nextH = resultH)
   (refCurrent : currentH.materialize = currentB)
   (refNext : nextH.materialize = nextB) :
   materializeResult resultH = resultB :=
   eachStepChar.go.refines resultB resultH h h' refCurrent refNext
 
 theorem captureNext.go.refines {currentH currentB resultB resultH}
-  (h : captureNext.go (BufferStrategy s bufferSize) nfa wf pos matchedB currentB nextB = resultB)
-  (h' : captureNext.go (HistoryStrategy s) nfa wf pos matchedH currentH nextH = resultH)
+  (h : captureNext.go (vectorTracker s bufferSize) nfa wf pos matchedB currentB nextB = resultB)
+  (h' : captureNext.go (listTracker s) nfa wf pos matchedH currentH nextH = resultH)
   (refMatched : matchedH.map (materializeUpdates bufferSize) = matchedB)
   (refCurrent : currentH.materialize = currentB)
   (refNext : nextH.materialize = nextB) :
   resultH.map (materializeUpdates bufferSize) = resultB := by
-  induction pos, matchedH, currentH, nextH using captureNext.go.induct' (HistoryStrategy s) nfa wf generalizing matchedB currentB nextB resultB resultH with
+  induction pos, matchedH, currentH, nextH using captureNext.go.induct' (listTracker s) nfa wf generalizing matchedB currentB nextB resultB resultH with
   | not_found matched' current' next' =>
     rw [captureNext.go_not_found] at h'
     rw [captureNext.go_not_found] at h
@@ -202,8 +203,8 @@ theorem captureNext.go.refines {currentH currentB resultB resultH}
     simp [←h', ←h, refMatched]
   | ind_not_found pos matchedH currentH nextH ne steppedH expandedH isNoneH₁ =>
     rename_i isNoneH₂ ih
-    let steppedB := eachStepChar (BufferStrategy s bufferSize) nfa wf pos ne currentB nextB
-    let expandedB := εClosure (BufferStrategy s bufferSize) nfa wf (pos.next ne) .none steppedB.2 [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
+    let steppedB := eachStepChar (vectorTracker s bufferSize) nfa wf pos ne currentB nextB
+    let expandedB := εClosure (vectorTracker s bufferSize) nfa wf (pos.next ne) .none steppedB.2 [(Vector.replicate bufferSize (.sentinel s), ⟨nfa.start, wf.start_lt⟩)]
 
     have refStepped := eachStepChar.refines steppedB steppedH rfl rfl refCurrent refNext
     have refExpanded := εClosure.refines expandedB expandedH rfl rfl rfl (by simp [←refStepped, materializeResult]) rfl
@@ -217,8 +218,8 @@ theorem captureNext.go.refines {currentH currentB resultB resultH}
     exact ih h h' (by simp [←refExpanded, materializeResult]) (by simp [←refExpanded, materializeResult]) (by simp [SearchState.materialize, ←refCurrent])
   | ind_found pos matchedH currentH nextH ne steppedH hempH isSomeH =>
     rename_i ih
-    let steppedB : Option (Buffer s bufferSize) × SearchState (BufferStrategy s bufferSize) nfa :=
-      eachStepChar (BufferStrategy s bufferSize) nfa wf pos ne currentB nextB
+    let steppedB : Option (Vector (PosPlusOne s) bufferSize) × SearchState (Vector (PosPlusOne s) bufferSize) nfa :=
+      eachStepChar (vectorTracker s bufferSize) nfa wf pos ne currentB nextB
 
     have refStepped := eachStepChar.refines steppedB steppedH rfl rfl refCurrent refNext
     have refMatched' :  (steppedH.1 <|> matchedH).map (materializeUpdates bufferSize) = (steppedB.1 <|> matchedB) := by
@@ -235,13 +236,13 @@ theorem captureNext.go.refines {currentH currentB resultB resultH}
     exact ih h h' refMatched' (by simp [←refStepped, materializeResult]) (by simp [SearchState.materialize, ←refCurrent])
 
 theorem captureNext.refines :
-  (captureNext (HistoryStrategy s) nfa wf pos).map (materializeUpdates bufferSize) = (captureNext (BufferStrategy s bufferSize) nfa wf pos) := by
+  (captureNext (listTracker s) nfa wf pos).map (materializeUpdates bufferSize) = (captureNext (vectorTracker s bufferSize) nfa wf pos) := by
   unfold captureNext
   simp
-  generalize hexpandH : εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expandedH
-  generalize hexpandB : εClosure (BufferStrategy s bufferSize) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size Buffer.empty⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expandedB
+  generalize hexpandH : εClosure (listTracker s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expandedH
+  generalize hexpandB : εClosure (vectorTracker s bufferSize) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size (Vector.replicate bufferSize (.sentinel s))⟩ [(Vector.replicate bufferSize (.sentinel s), ⟨nfa.start, wf.start_lt⟩)] = expandedB
 
-  have refExpanded := εClosure.refines expandedB expandedH hexpandB hexpandH rfl (by simp [SearchState.materialize, Buffer.empty]) rfl
-  exact captureNext.go.refines rfl rfl (by simp [←refExpanded, materializeResult]) (by simp [←refExpanded, materializeResult]) (by simp [SearchState.materialize, Buffer.empty])
+  have refExpanded := εClosure.refines expandedB expandedH hexpandB hexpandH rfl (by simp [SearchState.materialize]) rfl
+  exact captureNext.go.refines rfl rfl (by simp [←refExpanded, materializeResult]) (by simp [←refExpanded, materializeResult]) (by simp [SearchState.materialize])
 
 end Regex.VM
