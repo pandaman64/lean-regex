@@ -9,6 +9,7 @@ import Regex.Strategy
 open Regex (NFA)
 open Regex.Data (BitMatrix BVPos)
 open Regex.Strategy (materializeUpdates materializeUpdates_snoc)
+open Regex.PosTracker (listTracker vectorTracker)
 open String (Pos PosPlusOne)
 namespace Regex.Backtracker
 

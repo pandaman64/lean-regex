@@ -6,6 +6,7 @@ import Regex.Strategy
 
 open Regex.Data (SparseSet)
 open Regex (NFA)
+open Regex.PosTracker (listTracker)
 open String (Pos)
 
 namespace Regex.VM

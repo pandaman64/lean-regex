@@ -9,6 +9,7 @@ import RegexCorrectness.Data.String
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.NFA (εStep' εClosure' CharStep)
+open Regex.PosTracker (listTracker)
 open String (Pos)
 
 namespace Regex.VM

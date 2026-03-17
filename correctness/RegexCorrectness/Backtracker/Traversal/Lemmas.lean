@@ -4,6 +4,7 @@ import all RegexCorrectness.Backtracker.Traversal.Invariants
 import Regex.Strategy
 
 open Regex.Data (BitMatrix BVPos)
+open Regex.PosTracker (listTracker)
 open String (Pos)
 
 namespace Regex.Backtracker

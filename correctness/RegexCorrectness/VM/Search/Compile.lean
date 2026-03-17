@@ -6,6 +6,7 @@ import all RegexCorrectness.VM.Search.Lemmas
 open Regex.Data (SparseSet CaptureGroups)
 open Regex (NFA)
 open Regex.NFA (EquivUpdate)
+open Regex.PosTracker (listTracker)
 open String (Pos)
 
 namespace Regex.VM

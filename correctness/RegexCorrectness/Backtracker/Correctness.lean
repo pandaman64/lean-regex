@@ -9,6 +9,7 @@ public import RegexCorrectness.Strategy.Materialize
 open Regex (NFA)
 open Regex.Data (Expr CaptureGroups)
 open Regex.Strategy (EquivMaterializedUpdate materializeRegexGroups materializeUpdates)
+open Regex.PosTracker (listTracker vectorTracker)
 open RegexCorrectness.Spec (SearchProblem)
 open String (Pos)
 

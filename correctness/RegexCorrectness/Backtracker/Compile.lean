@@ -7,6 +7,7 @@ import RegexCorrectness.NFA.Semantics
 open String (Pos)
 open Regex.NFA (EquivUpdate)
 open Regex.Data (CaptureGroups BitMatrix BVPos)
+open Regex.PosTracker (listTracker)
 
 namespace Regex.Backtracker
 

@@ -8,6 +8,7 @@ import Regex.Strategy
 open Regex.Data (SparseSet)
 open Regex (NFA)
 open Regex.Strategy (materializeUpdates)
+open Regex.PosTracker (listTracker vectorTracker)
 open String (Pos PosPlusOne)
 
 /-

@@ -6,6 +6,7 @@ import all RegexCorrectness.Backtracker.Basic
 import all RegexCorrectness.Backtracker.Path
 
 open Regex.Data (BitMatrix BVPos)
+open Regex.PosTracker (listTracker)
 open String (Pos)
 open Regex.NFA (Step)
 
