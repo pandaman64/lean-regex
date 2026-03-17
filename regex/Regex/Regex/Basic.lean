@@ -37,7 +37,7 @@ This is a lower-level function that powers the higher-level capture operations.
 * `p`: Valid position in the input string
 * Returns: A buffer containing the matched capture groups, or `none` if no match is found
 -/
-def captureNextBuf {s : String} (self : Regex) (bufferSize : Nat) (p : Pos s) : Option (Buffer s bufferSize) :=
+def captureNextBuf {s : String} (self : Regex) (bufferSize : Nat) (p : Pos s) : Option (Vector (PosPlusOne s) bufferSize) :=
   -- Skip to the next possible starting position
   let start := self.optimizationInfo.findStart p
   if self.useBacktracker then
