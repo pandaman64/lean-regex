@@ -85,7 +85,7 @@ inductive IsValid {s : String} : List (Action s) → Pos s → GroupMap s → Tr
     (h₂ : IsValid (.expr e :: as) p gs tOnce)
     (h₃ : IsValid as p gs tExit) :
     IsValid (.expr (.star greedy e) :: as) p gs
-      (if greedy then .choice tLoop tExit else .choice tExit tLoop)
+      (if greedy then .choice (.choice tLoop tOnce) tExit else .choice tExit (.choice tOnce tLoop))
   | progress {as : List (Action s)} {p p' : Pos s} {gs : GroupMap s} {t : Tree}
     (hp : p < p') (h : IsValid as p' gs t) :
     IsValid (.check p :: as) p' gs (.progress t)
