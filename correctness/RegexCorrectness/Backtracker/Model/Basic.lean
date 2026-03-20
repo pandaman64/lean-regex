@@ -36,7 +36,7 @@ def captureNextAux {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellForm
       grind only [= Finset.card_insert_of_notMem]
     match hn : nfa[state] with
     | .done => (pos, .some update, ⟨visited', by grind⟩)
-    | .fail => (pos, .none, ⟨visited, by simp⟩)
+    | .fail => (pos, .none, ⟨visited', by grind⟩)
     | .epsilon state' =>
       let (pos, result, visited'') := captureNextAux σ nfa wf visited' update ⟨state', wf.inBounds' state state.isLt hn⟩ pos
       (pos, result, ⟨visited'', by grind⟩)
@@ -94,7 +94,7 @@ theorem captureNextAux_done (hmem : (state, pos) ∉ visited) (hn : nfa[state] =
 
 @[grind =]
 theorem captureNextAux_fail (hmem : (state, pos) ∉ visited) (hn : nfa[state] = .fail) :
-  captureNextAux σ nfa wf visited update state pos = (pos, .none, ⟨visited, by simp⟩) := by
+  captureNextAux σ nfa wf visited update state pos = (pos, .none, ⟨insert (state, pos) visited, by simp⟩) := by
   grind only [captureNextAux]
 
 @[grind! .]
