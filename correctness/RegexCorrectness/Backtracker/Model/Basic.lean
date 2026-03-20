@@ -8,6 +8,7 @@ public import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.Data.Finite.Prod
 import Mathlib.Tactic.DepRewrite
+import RegexCorrectness.Data.String
 
 open String (Pos)
 
@@ -15,8 +16,9 @@ public section
 
 namespace Regex.Backtracker.Model
 
-private scoped instance {nfa : NFA} : Finite (Fin nfa.size) := sorry
-private scoped instance {s : String} : Finite (Pos s) := sorry
+private scoped instance {nfa : NFA} : Finite (Fin nfa.size) := Finite.of_fintype (Fin nfa.size)
+private scoped instance {s : String} : Fintype (Pos s) := ⟨⟨Pos.allPositions s, Pos.nodup_allPositions s⟩, Pos.mem_allPositions s⟩
+private scoped instance {s : String} : Finite (Pos s) := Finite.of_fintype (Pos s)
 private noncomputable scoped instance {s : String} {nfa : NFA} : Fintype (Fin nfa.size × Pos s) := Fintype.ofFinite _
 
 private noncomputable abbrev argUniv (s : String) (nfa : NFA) : Finset (Fin nfa.size × Pos s) := Finset.univ

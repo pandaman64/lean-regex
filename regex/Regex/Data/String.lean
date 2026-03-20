@@ -141,6 +141,38 @@ theorem lt_next_iff_lt_or_eq {s} {pos pos' : Pos s} (h' : pos' ≠ s.endPos) :
   pos < pos'.next h' ↔ pos < pos' ∨ pos = pos' :=
   lt_next_iff.trans le_iff_lt_or_eq
 
+-- Useful for proving that `Pos s` is Fintype.
+private def allPositionsAux (s : String) (pos : Pos s) : List (Pos s) :=
+  if h : pos = s.endPos then
+    [pos]
+  else
+    pos :: allPositionsAux s (pos.next h)
+termination_by pos
+
+def allPositions (s : String) : List (Pos s) := allPositionsAux s s.startPos
+
+theorem lt_iff_next_le {s : String} {pos pos' : Pos s} (ne : pos ≠ s.endPos) : pos < pos' ↔ pos.next ne ≤ pos' := by
+  induction pos' using Pos.posRevInduction with
+  | endPos => grind only [le_endPos, lt_of_le_of_ne]
+  | next pos' h ih => grind only [le_next_iff, lt_next_iff, next_inj, next_le_of_lt,
+    next.congr_simp, le_iff_lt_or_eq, lt_of_le_of_ne]
+
+private theorem mem_allPositionsAux_iff_le {s : String} {pos pos' : Pos s} : pos' ∈ allPositionsAux s pos ↔ pos ≤ pos' := by
+  fun_induction allPositionsAux
+  next => grind only [le_iff_lt_or_eq, = List.mem_cons, ne_endPos_of_lt, ← List.not_mem_nil]
+  next pos ne ih => grind only [le_iff_lt_or_eq, le_trans, = List.mem_cons, lt_iff_next_le]
+
+theorem mem_allPositions (s : String) (pos : Pos s) : pos ∈ allPositions s :=
+  mem_allPositionsAux_iff_le.mpr (Pos.startPos_le pos)
+
+private theorem allPositionsAux_nodup {s : String} {pos : Pos s} : (allPositionsAux s pos).Nodup := by
+  fun_induction allPositionsAux
+  next => grind
+  next pos ne ih => grind [Pos.lt_next, mem_allPositionsAux_iff_le]
+
+theorem nodup_allPositions (s : String) : (allPositions s).Nodup :=
+  allPositionsAux_nodup
+
 end String.Pos
 
 namespace String
