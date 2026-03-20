@@ -100,7 +100,8 @@ theorem captureNextAux_fail (hmem : (state, pos) ∉ visited) (hn : nfa[state] =
 @[grind! .]
 theorem captureNextAux_epsilon (hmem : (state, pos) ∉ visited) (hn : nfa[state] = .epsilon state') :
   letI result := captureNextAux σ nfa wf (insert (state, pos) visited) update ⟨state', wf.inBounds' state state.isLt hn⟩ pos
-  captureNextAux σ nfa wf visited update state pos = ⟨result.1, result.2.1, ⟨result.2.2, by grind⟩⟩ := by
+  captureNextAux σ nfa wf visited update state pos =
+    ⟨result.1, result.2.1, ⟨result.2.2.val, by grind⟩⟩ := by
   grind only [captureNextAux]
 
 @[grind! .]
@@ -110,9 +111,9 @@ theorem captureNextAux_split (hmem : (state, pos) ∉ visited) (hn : nfa[state] 
   letI result₂ := captureNextAux σ nfa wf result₁.2.2 update ⟨state₂, isLt.2⟩ pos
   captureNextAux σ nfa wf visited update state pos =
     if result₁.2.1.isSome then
-      ⟨result₁.1, result₁.2.1, ⟨result₁.2.2, by grind⟩⟩
+      ⟨result₁.1, result₁.2.1, ⟨result₁.2.2.val, by grind⟩⟩
     else
-      ⟨result₂.1, result₂.2.1, ⟨result₂.2.2, by grind⟩⟩ := by
+      ⟨result₂.1, result₂.2.1, ⟨result₂.2.2.val, by grind⟩⟩ := by
   conv =>
     lhs
     unfold captureNextAux
@@ -124,14 +125,16 @@ theorem captureNextAux_split (hmem : (state, pos) ∉ visited) (hn : nfa[state] 
 theorem captureNextAux_save (hmem : (state, pos) ∉ visited) (hn : nfa[state] = .save offset state') :
   haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   letI result := captureNextAux σ nfa wf (insert (state, pos) visited) (σ.write update offset pos) ⟨state', isLt⟩ pos
-  captureNextAux σ nfa wf visited update state pos = ⟨result.1, result.2.1, ⟨result.2.2, by grind⟩⟩ := by
+  captureNextAux σ nfa wf visited update state pos =
+    ⟨result.1, result.2.1, ⟨result.2.2.val, by grind⟩⟩ := by
   grind only [captureNextAux]
 
 @[grind! .]
 theorem captureNextAux_anchor_pos (hmem : (state, pos) ∉ visited) (hn : nfa[state] = .anchor a state') (h : a.test pos) :
   haveI isLt : state' < nfa.size := wf.inBounds' state state.isLt hn
   letI result := captureNextAux σ nfa wf (insert (state, pos) visited) update ⟨state', isLt⟩ pos
-  captureNextAux σ nfa wf visited update state pos = ⟨result.1, result.2.1, ⟨result.2.2, by grind⟩⟩ := by
+  captureNextAux σ nfa wf visited update state pos =
+    ⟨result.1, result.2.1, ⟨result.2.2.val, by grind⟩⟩ := by
   grind only [captureNextAux]
 
 @[grind! .]
@@ -142,7 +145,8 @@ theorem captureNextAux_anchor_neg (hmem : (state, pos) ∉ visited) (hn : nfa[st
 @[grind! .]
 theorem captureNextAux_char_pos (hmem : (state, pos) ∉ visited) (hn : nfa[state] = .char c state') (ne : pos ≠ s.endPos) (hc : pos.get ne = c) :
   letI result := captureNextAux σ nfa wf (insert (state, pos) visited) update ⟨state', wf.inBounds' state state.isLt hn⟩ (pos.next ne)
-  captureNextAux σ nfa wf visited update state pos = ⟨result.1, result.2.1, ⟨result.2.2, by grind⟩⟩ := by
+  captureNextAux σ nfa wf visited update state pos =
+    ⟨result.1, result.2.1, ⟨result.2.2.val, by grind⟩⟩ := by
   conv =>
     lhs
     unfold captureNextAux
@@ -158,7 +162,8 @@ theorem captureNextAux_char_neg (hmem : (state, pos) ∉ visited) (hn : nfa[stat
 @[grind! .]
 theorem captureNextAux_sparse_pos (hmem : (state, pos) ∉ visited) (hn : nfa[state] = .sparse cs state') (ne : pos ≠ s.endPos) (hc : pos.get ne ∈ cs) :
   letI result := captureNextAux σ nfa wf (insert (state, pos) visited) update ⟨state', wf.inBounds' state state.isLt hn⟩ (pos.next ne)
-  captureNextAux σ nfa wf visited update state pos = ⟨result.1, result.2.1, ⟨result.2.2, by grind⟩⟩ := by
+  captureNextAux σ nfa wf visited update state pos =
+    ⟨result.1, result.2.1, ⟨result.2.2.val, by grind⟩⟩ := by
   conv =>
     lhs
     unfold captureNextAux

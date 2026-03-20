@@ -47,6 +47,7 @@ inductive IsValid {s : String} (nfa : NFA) :
       (lt : i < nfa.size) (hm : (i, p) ∉ visIn) (hn : nfa[i] = .epsilon j) {next : Tree}
       (h : IsValid nfa j p us (insert (i, p) visIn) next visOut) :
       IsValid nfa i p us visIn (.epsilon next) visOut
+  -- NOTE: `visOut` refers to the visited set after both branches fail
   | split {i j₁ j₂ p us visIn visMid visOut}
       (lt : i < nfa.size) (hm : (i, p) ∉ visIn) (hn : nfa[i] = .split j₁ j₂) {t₁ t₂ : Tree}
       (h₁ : IsValid nfa j₁ p us (insert (i, p) visIn) t₁ visMid)
