@@ -158,15 +158,7 @@ theorem le_maxTag {tag next} (nfa : NFA) (i : Fin nfa.size) (eq : nfa[i] = .save
     simp [motive]
     intro j next lt₁ lt₂ eq
     split
-    next tag' next' heq =>
-      cases Nat.lt_succ_iff_lt_or_eq.mp lt₁ with
-      | inl lt =>
-        have := accum j next lt lt₂ eq
-        exact Nat.le_trans this (Nat.le_max_left ..)
-      | inr eq' =>
-        simp [eq', get_eq_nodes_get] at eq
-        simp [eq] at heq
-        exact heq.1 ▸ Nat.le_max_right ..
+    next tag' next' heq => grind
     next ne =>
       cases Nat.lt_succ_iff_lt_or_eq.mp lt₁ with
       | inl lt => exact accum j next lt lt₂ eq

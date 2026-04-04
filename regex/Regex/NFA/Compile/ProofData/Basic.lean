@@ -41,11 +41,11 @@ class Empty extends ProofData where
 
 namespace Empty
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next result} (_ : NFA.pushRegex nfa next .empty = result) : Empty :=
   { nfa, next, e := .empty, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) : Empty :=
   { nfa, next, e := .empty, expr_eq := rfl }
 
@@ -83,11 +83,11 @@ class Epsilon extends ProofData where
 
 namespace Epsilon
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next result} (_ : NFA.pushRegex nfa next .epsilon = result) : Epsilon :=
   { nfa, next, e := .epsilon, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) : Epsilon :=
   { nfa, next, e := .epsilon, expr_eq := rfl }
 
@@ -126,11 +126,11 @@ class Anchor extends ProofData where
 
 namespace Anchor
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next anchor result} (_ : NFA.pushRegex nfa next (.anchor anchor) = result) : Anchor :=
   { nfa, next, e := .anchor anchor, anchor, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (anchor : Data.Anchor) : Anchor :=
   { nfa, next, e := .anchor anchor, anchor, expr_eq := rfl }
 
@@ -169,11 +169,11 @@ class Char extends ProofData where
 
 namespace Char
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next c result} (_ : NFA.pushRegex nfa next (.char c) = result) : Char :=
   { nfa, next, e := .char c, c, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (c : _root_.Char) : Char :=
   { nfa, next, e := .char c, c, expr_eq := rfl }
 
@@ -212,11 +212,11 @@ class Classes extends ProofData where
 
 namespace Classes
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next cs result} (_ : NFA.pushRegex nfa next (.classes cs) = result) : Classes :=
   { nfa, next, e := .classes cs, cs, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (cs : Data.Classes) : Classes :=
   { nfa, next, e := .classes cs, cs, expr_eq := rfl }
 
@@ -256,11 +256,11 @@ class Group extends ProofData where
 
 namespace Group
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next tag e' result} (_ : NFA.pushRegex nfa next (.group tag e') = result) : Group :=
   { nfa, next, e := .group tag e', tag, e', expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (tag : Nat) (e' : Expr) : Group :=
   { nfa, next, e := .group tag e', tag, e', expr_eq := rfl }
 
@@ -321,11 +321,11 @@ class Alternate extends ProofData where
 
 namespace Alternate
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next e₁ e₂ result} (_ : NFA.pushRegex nfa next (.alternate e₁ e₂) = result) : Alternate :=
   { nfa, next, e := .alternate e₁ e₂, e₁, e₂, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (e₁ e₂ : Expr) : Alternate :=
   { nfa, next, e := .alternate e₁ e₂, e₁, e₂, expr_eq := rfl }
 
@@ -380,11 +380,11 @@ class Concat extends ProofData where
 
 namespace Concat
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next e₁ e₂ result} (_ : NFA.pushRegex nfa next (.concat e₁ e₂) = result) : Concat :=
   { nfa, next, e := .concat e₁ e₂, e₁, e₂, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (e₁ e₂ : Expr) : Concat :=
   { nfa, next, e := .concat e₁ e₂, e₁, e₂, expr_eq := rfl }
 
@@ -429,11 +429,11 @@ class Star extends ProofData where
 
 namespace Star
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next greedy e' result} (_ : NFA.pushRegex nfa next (.star greedy e') = result) : Star :=
   { nfa, next, e := .star greedy e', greedy, e', expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (greedy : Bool) (e': Expr) : Star :=
   { nfa, next, e := .star greedy e', greedy, e', expr_eq := rfl }
 
@@ -492,6 +492,8 @@ theorem wfPatched (wf : nfa.WellFormed) (next_lt : next < nfa.size) : patched.We
 theorem start_eq : nfa'.start = nfaExpr.size := by
   simp [start, size_eq_quest, quest]
 
+-- TODO: remove this
+set_option backward.isDefEq.respectTransparency false in
 @[grind =]
 theorem get (i : Nat) (h : i < nfa'.size) :
   nfa'[i] =
