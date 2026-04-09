@@ -17,6 +17,8 @@ class ProofData where
   next : Nat
   e : Expr
 
+attribute [grind] ProofData.nfa ProofData.next ProofData.e
+
 namespace ProofData
 
 variable [ProofData]
@@ -124,6 +126,8 @@ class Anchor extends ProofData where
   anchor : Data.Anchor
   expr_eq : e = .anchor anchor
 
+attribute [grind] Anchor.anchor
+
 namespace Anchor
 
 @[implicit_reducible, grind =]
@@ -166,6 +170,8 @@ end Anchor
 class Char extends ProofData where
   c : _root_.Char
   expr_eq : e = .char c
+
+attribute [grind] Char.c
 
 namespace Char
 
@@ -210,6 +216,8 @@ class Classes extends ProofData where
   cs : Data.Classes
   expr_eq : e = .classes cs
 
+attribute [grind] Classes.cs
+
 namespace Classes
 
 @[implicit_reducible, grind =]
@@ -253,6 +261,8 @@ class Group extends ProofData where
   tag : Nat
   e' : Expr
   expr_eq : e = .group tag e'
+
+attribute [grind] Group.tag Group.e'
 
 namespace Group
 
@@ -319,6 +329,8 @@ class Alternate extends ProofData where
   e₂ : Expr
   expr_eq : e = .alternate e₁ e₂
 
+attribute [grind] Alternate.e₁ Alternate.e₂
+
 namespace Alternate
 
 @[implicit_reducible, grind =]
@@ -378,6 +390,8 @@ class Concat extends ProofData where
   e₂ : Expr
   expr_eq : e = .concat e₁ e₂
 
+attribute [grind] Concat.e₁ Concat.e₂
+
 namespace Concat
 
 @[implicit_reducible, grind =]
@@ -427,6 +441,8 @@ class Star extends ProofData where
   e' : Expr
   expr_eq : e = .star greedy e'
 
+attribute [grind] Star.greedy Star.e'
+
 namespace Star
 
 @[implicit_reducible, grind =]
@@ -474,6 +490,10 @@ theorem size_eq_patched : nfa'.size = patched.size := by
 
 @[grind =]
 theorem size_eq_quest : nfa'.size = quest.size := by
+  grind
+
+@[grind =]
+theorem size_eq_nfaExpr_plus_one : nfa'.size = nfaExpr.size + 1 := by
   grind
 
 theorem wfPlaceholder (wf : nfa.WellFormed) : nfaPlaceholder.WellFormed := by

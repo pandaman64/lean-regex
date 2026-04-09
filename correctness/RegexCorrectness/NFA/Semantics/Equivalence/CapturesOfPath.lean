@@ -53,7 +53,7 @@ theorem captures_of_path.alternate {e₁ e₂} (eq : nfa.pushRegex next (.altern
     exact ⟨groups, eqv, .alternateLeft c⟩
   | inr path₂ =>
     have wf₁ := wf₁ wf next_lt
-    have ⟨groups, eqv, c⟩ := ih₂ rfl wf₁ (by grind) path₂
+    have ⟨groups, eqv, c⟩ := ih₂ rfl wf₁ (Nat.lt_trans next_lt pd.nfa₁_property) path₂
     exact ⟨groups, eqv, .alternateRight c⟩
 
 theorem captures_of_path.concat {e₁ e₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
@@ -116,6 +116,8 @@ theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy 
     intro pos pos' update path
     have path := castToExpr wf path
     have wfPlaceholder := wfPlaceholder wf
+    -- Since v4.29.0, many tactics and defeqs cannot reduce `Star.into`. So we do it here manually.
+    have : e = pd.e' := by with_reducible_and_instances rfl
     exact ih (by grind) wfPlaceholder wfPlaceholder.start_lt path
 
 public theorem captures_of_path (eq : nfa.pushRegex next e = result)

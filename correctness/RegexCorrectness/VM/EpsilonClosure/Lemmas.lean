@@ -360,13 +360,13 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
   refine ⟨?mem_stack, ?mem_next⟩
   case mem_stack =>
     intro update j mem
-    simp [hstack] at mem
+    simp only [hstack, List.mem_append] at mem
     cases mem with
     | inl mem =>
       have ⟨update', equ, cls⟩ := inv.mem_stack entry.1 entry.2 (by simp)
       have ⟨update'', equ', step⟩ := h update j mem
       have := cls.snoc step
-      exact ⟨update' ++ List.ofOption update'', by simp [equ, equ'], cls.snoc step⟩
+      exact ⟨update' ++ List.ofOption update'', by simp [equ, equ', HistoryStrategy.update_def], cls.snoc step⟩
     | inr mem => exact inv.mem_stack update j (by simp [mem])
   case mem_next =>
     intro j mem
@@ -400,21 +400,23 @@ theorem preserves {update : List (Nat × Pos s)} {state : Fin nfa.size} (wf : nf
     simp [pushNext.epsilon rfl]
     -- Lean slows down when deciding which term to unify with `entry`.
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state', inBounds⟩)] (by simp) not_mem
-    simp [HistoryStrategy, εStep'.epsilon hn]
+    simp [εStep'.epsilon hn]
+    grind [HistoryStrategy.update_def]
   | split update state state₁ state₂ inBounds =>
     simp [pushNext.split rfl]
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state₁, inBounds.1⟩), (update, ⟨state₂, inBounds.2⟩)] (by simp) not_mem
-    simp [HistoryStrategy, ←and_or_left, εStep'.split hn]
-    rw [forall_swap]
-    simp
+    simp [εStep'.split hn]
+    grind [HistoryStrategy.update_def]
   | save update state offset state' inBounds =>
     simp [pushNext.save rfl]
     apply inv.preserves' (entry := (update, state)) hn [((HistoryStrategy s).write update offset pos₀, ⟨state', inBounds⟩)] (by simp) not_mem
-    simp [HistoryStrategy, εStep'.save hn]
+    simp [εStep'.save hn]
+    rfl
   | anchor_pos update state anchor state' inBounds ht =>
     simp [pushNext.anchor_pos rfl ht]
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state', inBounds⟩)] (by simp) not_mem
-    simp [HistoryStrategy, εStep'.anchor hn, ht]
+    simp [εStep'.anchor hn, ht]
+    grind [HistoryStrategy.update_def]
   | anchor_neg update state anchor state' inBounds ht =>
     simp [pushNext.anchor_neg rfl ht]
     exact inv.preserves' (entry := (update, state)) hn [] (by simp) not_mem (by simp)
@@ -442,7 +444,7 @@ theorem upper_boundAux (states₀ : SparseSet nfa.size) (pos₀ : Pos s) (i₀ :
   UpperInv states₀ pos₀ i₀ update₀ next' []  := by
   induction matched, next, stack using εClosure.induct' (HistoryStrategy s) nfa wf pos₀ with
   | base matched next =>
-    simp [↓εClosure.base] at h
+    simp [↓εClosure.base, HistoryStrategy.update_def] at h
     simp [h] at inv₀
     exact inv₀
   | visited matched next update state stack mem ih =>
@@ -468,8 +470,8 @@ theorem UpperInv.intro {i₀ update₀} (pos₀ : Pos s) :
   εClosure.UpperInv next.states pos₀ i₀ update₀ next [(update₀, i₀)] := by
   refine ⟨?mem_stack, ?mem_next⟩
   case mem_stack =>
-    simp [HistoryStrategy]
-    exact .base
+    simp
+    exact ⟨[], by simp [HistoryStrategy.update_def], .base⟩
   case mem_next =>
     intro j mem
     exact .inl mem

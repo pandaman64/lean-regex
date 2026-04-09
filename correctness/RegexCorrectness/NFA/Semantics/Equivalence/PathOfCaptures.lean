@@ -28,7 +28,7 @@ theorem path_of_captures.group {tag} (eq : nfa.pushRegex next (.group tag e) = r
   exact ⟨
     (2 * tag, pos) :: updates ++ [(2 * tag + 1, pos')],
     .group eqv,
-    (pd.path_start_iff wf next_lt).mpr (by grind)
+    (pd.path_start_iff wf next_lt).mpr ⟨updates, by simp; rfl, path⟩
   ⟩
 
 theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
@@ -43,7 +43,7 @@ theorem path_of_captures.alternateLeft {e₁ e₂} (eq : nfa.pushRegex next (.al
   simp only [eq_result eq]
 
   have ⟨update, eqv, path⟩ := ih (show nfa.pushRegex next e₁ = nfa₁ from rfl) wf next_lt
-  exact ⟨update, eqv, (pd.path_start_iff wf next_lt).mpr (by grind)⟩
+  exact ⟨update, eqv, (pd.path_start_iff wf next_lt).mpr (.inl path)⟩
 
 theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.alternate e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -58,7 +58,7 @@ theorem path_of_captures.alternateRight {e₁ e₂} (eq : nfa.pushRegex next (.a
 
   have wf₁ := wf₁ wf next_lt
   have ⟨update, eqv, path⟩ := ih (show nfa₁.pushRegex next e₂ = nfa₂ from rfl) wf₁ (Nat.lt_trans next_lt nfa₁_property)
-  exact ⟨update, eqv, (pd.path_start_iff wf next_lt).mpr (by grind)⟩
+  exact ⟨update, eqv, (pd.path_start_iff wf next_lt).mpr (.inr path)⟩
 
 theorem path_of_captures.concat {pos'' e₁ e₂ groups₁ groups₂} (eq : nfa.pushRegex next (.concat e₁ e₂) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -78,7 +78,11 @@ theorem path_of_captures.concat {pos'' e₁ e₂ groups₁ groups₂} (eq : nfa.
   have wf₂ := wf₂ wf next_lt
   have ⟨update₁, eqv₁, path₁⟩ := ih₁ eq_push.symm wf₂ wf₂.start_lt
   have ⟨update₂, eqv₂, path₂⟩ := ih₂ (show nfa.pushRegex next e₂ = nfa₂ from rfl) wf next_lt
-  exact ⟨update₁ ++ update₂, .concat eqv₁ eqv₂, (pd.path_start_iff wf next_lt).mpr (by grind)⟩
+  exact ⟨
+    update₁ ++ update₂,
+    .concat eqv₁ eqv₂,
+    (pd.path_start_iff wf next_lt).mpr ⟨pos', update₁, update₂, rfl, path₁, path₂⟩
+  ⟩
 
 theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : nfa.pushRegex next (.star greedy e) = result)
   (wf : nfa.WellFormed) (next_lt : next < nfa.size)
@@ -95,6 +99,8 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
   let pd := Star.intro eq
   simp only [pd.eq_result eq]
 
+  -- Since v4.29.0, many tactics and defeqs cannot reduce `Star.into`. So we do it here manually.
+  have : e = pd.e' := by with_reducible_and_instances rfl
   have wfPlaceholder := wfPlaceholder wf
   have ⟨updates₁, eqv₁, path₁⟩ :=
     ih₁ (show nfaPlaceholder.pushRegex nfaPlaceholder.start e = nfaExpr by grind) wfPlaceholder wfPlaceholder.start_lt
@@ -103,12 +109,13 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
   apply (pd.path_start_iff next_lt).mpr (.inr ?_)
 
   have path₁ : nfa'.Path nfa.size nfaExpr.start pos nfaPlaceholder.start pos' updates₁ :=
-    (castFromExpr path₁).liftBound (by grind)
+    (castFromExpr path₁).liftBound (show pd.nfa.size ≤ pd.nfaPlaceholder.size by grind)
   have path₂ : nfa'.Path nfa.size nfaPlaceholder.start pos' next pos'' updates₂ := by
     have wf' : nfa'.WellFormed := pushRegex_wf wf next_lt
     apply path₂.castHead
     . simp [pd.get_placeholder_start, pd.get_start]
-    . grind only [nfaPlaceholder, Star.intro, = start.eq_1, = pushNode_start]
+    . show pd.nfa.size ≤ pd.nfaPlaceholder.start
+      grind
     . exact wf'.start_lt
     . exact path₁.lt_right wf'
 

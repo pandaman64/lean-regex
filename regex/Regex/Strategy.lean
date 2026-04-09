@@ -54,7 +54,8 @@ def HistoryStrategy (s : String) : Strategy s where
   empty := []
   write update offset pos := update ++ [(offset, pos)]
 
-@[simp]
+-- For some reason, this simp lemma causes breakage in v4.29.0
+-- @[simp]
 theorem HistoryStrategy.update_def {s} : (HistoryStrategy s).Update = List (Nat × Pos s) := rfl
 
 @[simp]

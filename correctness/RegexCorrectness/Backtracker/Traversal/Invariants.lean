@@ -55,8 +55,7 @@ def StackInv (wf : nfa.WellFormed) (bvpos : BVPos startPos) (stack : List (Stack
 namespace StackInv
 
 theorem intro (bvpos : BVPos startPos) : StackInv wf bvpos [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩] := by
-  simp [StackInv, HistoryStrategy]
-  exact .init
+  simpa [StackInv] using .init
 
 theorem path {bvpos : BVPos startPos} {entry : StackEntry (HistoryStrategy s) nfa startPos} {stack' : List (StackEntry (HistoryStrategy s) nfa startPos)}
   (inv : StackInv wf bvpos (entry :: stack')) :

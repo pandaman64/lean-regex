@@ -67,13 +67,13 @@ theorem captureNextAux.refines {s} (nfa wf startPos bufferSize visited) {stackH 
   induction visited, stackH using captureNextAux.induct' (HistoryStrategy s) nfa wf startPos generalizing stackB with
   | base visited =>
     simp at refStack
-    simp [refStack, captureNextAux_base, materializeResultAux]
+    simp [refStack, captureNextAux_base, materializeResultAux, HistoryStrategy.update_def]
   | visited visited update state' pos stackH mem ih =>
     simp at refStack
     simpa [←refStack, StackEntry.materialize, captureNextAux_visited mem] using ih rfl
   | done visited update state' pos stackH mem hn =>
     simp at refStack
-    simp [←refStack, StackEntry.materialize, captureNextAux_done mem hn, materializeResultAux]
+    simp [←refStack, StackEntry.materialize, captureNextAux_done mem hn, materializeResultAux, HistoryStrategy.update_def]
   | next visited update state' pos stackH mem hn ih =>
     simp at refStack
     simp [←refStack, StackEntry.materialize, captureNextAux_next mem hn]
@@ -85,7 +85,7 @@ theorem captureNext.go.refines {s} (nfa wf startPos bufferSize bvpos visited) :
   | found bvpos visited updateH visitedH hauxH =>
     have hauxB := captureNextAux.refines nfa wf startPos bufferSize visited rfl (stackB := materializeStack [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩])
     simp [↓hauxH, materializeResultAux] at hauxB
-    simp [captureNext.go_found hauxH, captureNext.go_found hauxB.symm, materializeResult]
+    simp [captureNext.go_found hauxH, captureNext.go_found hauxB.symm, materializeResult, HistoryStrategy.update_def]
   | not_found_next bvpos visited visitedH hauxH ne ih =>
     have hauxB := captureNextAux.refines nfa wf startPos bufferSize visited rfl (stackB := materializeStack [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩])
     simp [↓hauxH, materializeResultAux] at hauxB
@@ -93,7 +93,7 @@ theorem captureNext.go.refines {s} (nfa wf startPos bufferSize bvpos visited) :
   | not_found_end bvpos visited visitedH hauxH ne =>
     have hauxB := captureNextAux.refines nfa wf startPos bufferSize visited rfl (stackB := materializeStack [⟨(HistoryStrategy s).empty, ⟨nfa.start, wf.start_lt⟩, bvpos⟩])
     simp [↓hauxH, materializeResultAux] at hauxB
-    simp [captureNext.go_not_found_end hauxH ne, captureNext.go_not_found_end hauxB.symm ne, materializeResult]
+    simp [captureNext.go_not_found_end hauxH ne, captureNext.go_not_found_end hauxB.symm ne, materializeResult, HistoryStrategy.update_def]
 
 theorem captureNext.refines {s} (nfa wf bufferSize pos) :
   materializeResult (captureNext (HistoryStrategy s) nfa wf pos) = captureNext (BufferStrategy s bufferSize) nfa wf pos := by

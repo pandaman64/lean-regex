@@ -36,7 +36,11 @@ theorem captureNext.go.inv {s : String} {nfa wf} {pos₀ pos : Pos s} {matched c
       have ⟨state, mem, hn, equpdate⟩ : ∃ i ∈ expanded.2.states, nfa[i] = .done ∧ expanded.2.updates[i] = expanded.1.get isSome :=
         εClosure.matched_inv rfl (by simp) isSome
       have ⟨update, path, write⟩ := curr_inv' state mem
-      exact ⟨state, pos.next ne, hn, by rw [←equpdate, write (by simp [εClosure.writeUpdate, hn])]; exact path⟩
+      refine ⟨state, pos.next ne, hn, ?_⟩--by rw [←equpdate, write (by simp [εClosure.writeUpdate, hn])]; exact path⟩
+      apply Eq.subst (Eq.symm ?_) path
+      calc expanded.1.get isSome
+        _ = expanded.2.updates[state] := equpdate.symm
+        _ = update := write (by simp [hn, εClosure.writeUpdate])
     exact ih h le' curr_inv' (by simp) matched_inv'
   | ind_found pos matched current next ne stepped hemp isSome ih =>
     rw [captureNext.go_ind_found stepped rfl hemp isSome] at h
@@ -45,8 +49,8 @@ theorem captureNext.go.inv {s : String} {nfa wf} {pos₀ pos : Pos s} {matched c
       match h : stepped.1 with
       | .none => simpa using matched_inv
       | .some matched' =>
-        simp
-        have ⟨state, mem, hn, equpdate⟩ := eachStepChar.done_of_matched_some (matched' := stepped.1) (next' := stepped.2) rfl (by simp [h])
+        simp only [Option.orElse_eq_orElse, Option.orElse_eq_or, Option.some_or]
+        have ⟨state, mem, hn, equpdate⟩ := eachStepChar.done_of_matched_some (matched' := stepped.1) (next' := stepped.2) rfl (by simp [h, HistoryStrategy.update_def])
         have ⟨update, path, write⟩ := curr_inv' state mem
         intro _
         have hwu : εClosure.writeUpdate nfa[state] := by

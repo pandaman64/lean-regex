@@ -26,7 +26,7 @@ theorem captureNext_soundness {s e bufferSize pos matchedB}
   match hresH : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos with
   | .some matchedH =>
     have refResult := hresH ▸ hresB ▸ captureNext.refines
-    simp [materializeUpdates] at refResult
+    simp [materializeUpdates, HistoryStrategy.update_def] at refResult
     have ⟨pos', pos'', groups, le, c, eqv⟩ := captureNext.captures_of_some_compile hresH (by simp)
     have eqv' : EquivMaterializedUpdate (materializeRegexGroups groups) (materializeUpdates bufferSize matchedH) :=
       eqv.materialize c disj

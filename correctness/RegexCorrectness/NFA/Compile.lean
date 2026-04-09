@@ -106,15 +106,30 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
     let pd := Star.intro eq
     simp [pd.eq_result eq] at step h₂
 
+    have of_get_eq_split (get : pd.nfa'[i] = pd.split) : j = next ∨ nfa.size ≤ j := by
+      unfold Star.split at get
+      split at get
+      next =>
+        simp [get, Node.charStep, Node.εStep] at step
+        cases step with
+        | inl eq => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
+        | inr eq => exact .inl eq
+      next =>
+        simp [get, Node.charStep, Node.εStep] at step
+        cases step with
+        | inl eq => exact .inl eq
+        | inr eq => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) (eq ▸ ge_pushRegex_start rfl))
+
     have nlt : ¬i < pd.nfa.size := Nat.not_lt_of_ge h₁
     have get := pd.get i h₂
     simp [nlt] at get
     split_ifs at get
-    next => grind [Node.charStep, Node.εStep]
+    next => exact of_get_eq_split get
     next h₁' =>
-      have := ih rfl (by grind) h₁' (get ▸ step)
-      grind only [= Star.intro, = Star.nfaPlaceholder, = pushNode_size]
-    next => grind [Node.charStep, Node.εStep]
+      cases ih rfl (by grind) h₁' (get ▸ step) with
+      | inl eq => exact .inr (Nat.le_of_eq eq.symm)
+      | inr le => exact .inr (Nat.le_trans (Nat.le_of_lt pd.nfaPlaceholder_property) le)
+    next => exact of_get_eq_split get
 
 theorem mem_save_of_mem_tags_pushRegex {nfa : NFA} {next e tag} (h : tag ∈ e.tags) :
   ∃ (i : Fin (nfa.pushRegex next e).size) (offset : Nat), (nfa.pushRegex next e)[i] = .save (2 * tag + 1) offset := by
@@ -155,7 +170,27 @@ theorem mem_save_of_mem_tags_pushRegex {nfa : NFA} {next e tag} (h : tag ∈ e.t
 
     let pd := Compile.ProofData.Star.intro' nfa next greedy e
     show ∃ (i : Fin pd.nfa'.size) (offset : Nat), pd.nfa'[i] = .save (2 * tag + 1) offset
-    refine ⟨⟨i, by grind⟩, offset, by grind⟩
+    have lt' : i < pd.nfa'.size := Nat.lt_trans i.isLt (show pd.nfaExpr.size < pd.nfa'.size by grind)
+    have eq' : pd.nfa'[i] = compiled[i] := by
+      have get := pd.get i lt'
+      split_ifs at get
+      next h =>
+        have eq' : compiled[i.val] = nfa[i.val] := by
+          unfold compiled placeholder
+          rw [pushRegex_get_lt i (Nat.lt_trans h (show nfa.size < _ by grind)), pushNode_get_lt i (show i < nfa.size from h)]
+        exact eq' ▸ get
+      next h =>
+        have eq' : (placeholder.pushRegex patchAt e)[i.val] = .fail := by
+          have lt : i < (nfa.pushNode .fail).size := by
+            show i < (pd.nfa.pushNode .fail).size
+            grind only [= pushNode_size]
+          unfold placeholder
+          rw! [pushRegex_get_lt i lt, h]
+          exact pushNode_get_eq
+        simp [eq'] at eq
+      next h => exact get
+      next h => exact (h i.isLt).elim
+    exact ⟨⟨i, lt'⟩, offset, eq' ▸ eq⟩
 
 theorem mem_save_of_mem_tags_compile {e tag} (h : tag ∈ e.tags) :
   ∃ (i : Fin (compile e).size) (offset : Nat), (compile e)[i] = .save (2 * tag + 1) offset :=
@@ -175,9 +210,14 @@ theorem ne_done_of_pushRegex_ge {nfa next e} (i : Nat)
     show pd.nfa'[i] ≠ .done
     let get := pd.get i h₂
     split_ifs at get
-    next => grind only [= Compile.ProofData.Star.intro']
+    next h => exact (Nat.not_le_of_lt h h₁).elim
     next => grind only [= Compile.ProofData.Star.split]
-    next => exact get ▸ ih (by grind) (by grind)
+    next h =>
+      refine get ▸ ih ?_ h
+      unfold placeholder
+      rw [pushNode_size]
+      show pd.nfa.size + 1 ≤ i
+      grind
     next => grind only [= Compile.ProofData.Star.split]
   all_goals grind
 
@@ -191,8 +231,8 @@ theorem done_iff_zero_compile {e} (i : Nat) (h : i < (compile e).size) :
     else
       exact (ne_done_of_pushRegex_ge i (by grind [NFA.done]) h eq).elim
   . intro eq
-    show (pushRegex NFA.done 0 e)[i] = .done
-    rw [pushRegex_get_lt i (by grind [NFA.done])]
+    unfold compile
+    rw! [eq, pushRegex_get_lt 0 (by grind [NFA.done])]
     grind [NFA.done]
 
 theorem lt_zero_size_compile {e} : 0 < (compile e).size := by
