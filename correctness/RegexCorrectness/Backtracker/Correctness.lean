@@ -26,7 +26,7 @@ theorem captureNext_soundness {s : String} {e : Expr} {bufferSize : Nat} {pos : 
   match hresH : captureNext (HistoryStrategy s) (NFA.compile e) NFA.compile_wf pos with
   | .some matchedH =>
     have refResult := hresH ▸ hresB ▸ captureNext.refines (NFA.compile e) NFA.compile_wf bufferSize pos
-    simp [materializeResult] at refResult
+    simp [materializeResult, HistoryStrategy.update_def] at refResult
     have ⟨pos', pos'', groups, le, c, eqv⟩ := captureNext.capture_of_some_compile hresH
     exact ⟨pos', pos'', groups, le, c, refResult ▸ eqv.materialize c disj⟩
   | .none =>

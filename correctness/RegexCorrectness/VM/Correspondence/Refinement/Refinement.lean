@@ -47,12 +47,15 @@ theorem εClosure.pushNext.refines {state : Fin nfa.size} {update} {buffer} (wf 
   εStack.materialize (pushNext (HistoryStrategy s) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) update stackH)
     = (pushNext (BufferStrategy s bufferSize) nfa pos nfa[state] (wf.inBounds' state state.isLt rfl) buffer stackB) := by
   cases nfa[state], wf.inBounds' state state.isLt rfl, update, stackH using pushNext.fun_cases' (HistoryStrategy s) nfa pos with
-  | epsilon _ _ state' inBounds => simp only [pushNext.epsilon rfl, εStack.materialize.cons, h₁, h₂]
-  | split _ _ state₁ state₂ inBounds => simp only [pushNext.split rfl, εStack.materialize.cons, h₁, h₂]
+  | epsilon _ _ state' inBounds =>
+    simp only [pushNext.epsilon rfl, εStack.materialize.cons, h₁, h₂, BufferStrategy.update_def]
+  | split _ _ state₁ state₂ inBounds =>
+    simp only [pushNext.split rfl, εStack.materialize.cons, h₁, h₂, BufferStrategy.update_def]
   | save _ _ offset state' inBounds =>
     simp only [pushNext.save rfl, εStack.materialize.cons]
     simp [h₁, h₂]
-  | anchor_pos _ _ a state' inBounds ht => simp only [pushNext.anchor_pos rfl ht, εStack.materialize.cons, h₁, h₂]
+  | anchor_pos _ _ a state' inBounds ht =>
+    simp only [pushNext.anchor_pos rfl ht, εStack.materialize.cons, h₁, h₂, BufferStrategy.update_def]
   | anchor_neg _ _ a state' inBounds ht => simp [pushNext.anchor_neg rfl ht, h₂]
   | done => simp [pushNext.done, h₂]
   | fail => simp [pushNext.fail, h₂]
@@ -69,13 +72,15 @@ theorem εClosure.refines (resultB resultH)
   induction matchedH, nextH, stackH using εClosure.induct' (HistoryStrategy s) nfa wf pos generalizing matchedB nextB stackB resultB resultH with
   | base matchedH nextH =>
     simp [εStack.materialize] at refStack
-    subst stackB
-    rw [εClosure.base] at h' h
-    simp [←h', ←h, materializeResult, refMatched, refState]
+    grind [εClosure.base, materializeResult]
   | visited matched' next' update state' stack' mem ih =>
     simp only [εStack.materialize.cons] at refStack
     subst stackB
     rw [εClosure.visited mem] at h'
+    -- `rw` is no longer be able to find the pattern in v4.29.0.
+    -- For some reason, just restating the theorem works (the statement is a verbatim copy from the tactic state!)
+    have h : Regex.VM.εClosure (BufferStrategy s bufferSize) nfa wf pos matchedB nextB ((materializeUpdates bufferSize update, state') :: stack'.materialize) = resultB :=
+      h
     rw [εClosure.visited (refState ▸ mem)] at h
     exact ih resultB resultH h h' refMatched refState rfl
   | not_visited matched' next' update state' stack' mem node =>
@@ -83,16 +88,20 @@ theorem εClosure.refines (resultB resultH)
     simp only [εStack.materialize.cons] at refStack
     subst stackB
     rw [εClosure.not_visited mem] at h'
+    -- `rw` is no longer be able to find the pattern in v4.29.0.
+    -- For some reason, just restating the theorem works (the statement is a verbatim copy from the tactic state!)
+    have h : Regex.VM.εClosure (BufferStrategy s bufferSize) nfa wf pos matchedB nextB ((materializeUpdates bufferSize update, state') :: stack'.materialize) = resultB :=
+      h
     rw [εClosure.not_visited (refState ▸ mem)] at h
     refine ih resultB resultH h h' ?_ ?_ ?_
     . split
-      next eq => simp [matched'', node, eq, ←refMatched]
+      next eq => simp +instances [matched'', node, eq, ←refMatched]; grind only
       next eq =>
         simp at eq
         simp [matched'', node, eq, refMatched]
     . simp [SearchState.materialize] at refState
       simp [SearchState.materialize, states'', ←refState]
-      split <;> simp [updates'', node, *]
+      split <;> grind
     . exact pushNext.refines wf rfl rfl
 
 theorem stepChar.refines {currentUpdatesH currentUpdatesB state} (resultB resultH)
@@ -105,10 +114,11 @@ theorem stepChar.refines {currentUpdatesH currentUpdatesB state} (resultB result
   split at h'
   next state' hn =>
     simp [hn] at h
-    exact εClosure.refines resultB resultH h h' rfl refState (by simp [εStack.materialize, ←refUpdates])
+    exact εClosure.refines resultB resultH h h' rfl refState (by simp [εStack.materialize, ←refUpdates]; grind)
   next hn =>
     simp [hn] at h
-    simpa [←h', ←h, materializeResult] using refState
+    simp [←h', ←h, materializeResult]
+    grind
 
 theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH)
   (h : eachStepChar.go (BufferStrategy s bufferSize) nfa wf pos ne currentB i hleB nextB = resultB)
@@ -122,7 +132,7 @@ theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH
     simp [←refCurrent] at h
     have eqi : currentH.states.count = (currentH.materialize (bufferSize := bufferSize)).states.count := by
       simp
-    simp [←h', ←h, eqi, ←refNext, materializeResult]
+    simp +instances [←h', ←h, eqi, ←refNext, materializeResult, HistoryStrategy.update_def]
   | done i hltH nextH hnH =>
     have hltB : i < currentB.states.count := by
       simpa [←refCurrent] using hltH
@@ -130,7 +140,7 @@ theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH
       simpa [←refCurrent] using hnH
     simp [eachStepChar.go_done hltH hnH] at h'
     simp [eachStepChar.go_done hltB hnB] at h
-    simp [←h', ←h, ←refNext, materializeResult]
+    simp +instances [←h', ←h, ←refNext, materializeResult, HistoryStrategy.update_def]
   | found i hltH nextH hnH matchedH nextH' hstepH isSomeH =>
     have hltB : i < currentB.states.count := by
       simpa [←refCurrent] using hltH
@@ -222,7 +232,7 @@ theorem captureNext.go.refines {currentH currentB resultB resultH}
 
     have refStepped := eachStepChar.refines steppedB steppedH rfl rfl refCurrent refNext
     have refMatched' :  (steppedH.1 <|> matchedH).map (materializeUpdates bufferSize) = (steppedB.1 <|> matchedB) := by
-      simp [←refStepped, ←refMatched, materializeResult, Option.map_or]
+      simp +instances [←refStepped, ←refMatched, materializeResult, Option.map_or, HistoryStrategy.update_def]
 
     have hempB (h : matchedB.isSome) : ¬currentB.states.isEmpty := by
       simp [←refMatched] at h
@@ -236,12 +246,15 @@ theorem captureNext.go.refines {currentH currentB resultB resultH}
 
 theorem captureNext.refines :
   (captureNext (HistoryStrategy s) nfa wf pos).map (materializeUpdates bufferSize) = (captureNext (BufferStrategy s bufferSize) nfa wf pos) := by
-  unfold captureNext
-  simp
-  generalize hexpandH : εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)] = expandedH
-  generalize hexpandB : εClosure (BufferStrategy s bufferSize) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size Buffer.empty⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)] = expandedB
+  let expandedH := εClosure (HistoryStrategy s) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size []⟩ [([], ⟨nfa.start, wf.start_lt⟩)]
+  let expandedB := εClosure (BufferStrategy s bufferSize) nfa wf pos .none ⟨.empty, Vector.replicate nfa.size Buffer.empty⟩ [(Buffer.empty, ⟨nfa.start, wf.start_lt⟩)]
+  have refExpanded := εClosure.refines expandedB expandedH rfl rfl rfl (by simp +instances [SearchState.materialize, Buffer.empty, HistoryStrategy.update_def]) rfl
 
-  have refExpanded := εClosure.refines expandedB expandedH hexpandB hexpandH rfl (by simp [SearchState.materialize, Buffer.empty]) rfl
-  exact captureNext.go.refines rfl rfl (by simp [←refExpanded, materializeResult]) (by simp [←refExpanded, materializeResult]) (by simp [SearchState.materialize, Buffer.empty])
+  show (captureNext.go (HistoryStrategy s) nfa wf pos expandedH.1 expandedH.2 ⟨.empty, Vector.replicate nfa.size []⟩).map (materializeUpdates bufferSize) =
+    captureNext.go (BufferStrategy s bufferSize) nfa wf pos expandedB.1 expandedB.2 ⟨.empty, Vector.replicate nfa.size Buffer.empty⟩
+  exact captureNext.go.refines rfl rfl
+    (by simp [←refExpanded, materializeResult])
+    (by simp [←refExpanded, materializeResult])
+    (by simp [SearchState.materialize, Buffer.empty, HistoryStrategy.update_def])
 
 end Regex.VM

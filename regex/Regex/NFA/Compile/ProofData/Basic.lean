@@ -17,6 +17,8 @@ class ProofData where
   next : Nat
   e : Expr
 
+attribute [grind] ProofData.nfa ProofData.next ProofData.e
+
 namespace ProofData
 
 variable [ProofData]
@@ -41,11 +43,11 @@ class Empty extends ProofData where
 
 namespace Empty
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next result} (_ : NFA.pushRegex nfa next .empty = result) : Empty :=
   { nfa, next, e := .empty, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) : Empty :=
   { nfa, next, e := .empty, expr_eq := rfl }
 
@@ -83,11 +85,11 @@ class Epsilon extends ProofData where
 
 namespace Epsilon
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next result} (_ : NFA.pushRegex nfa next .epsilon = result) : Epsilon :=
   { nfa, next, e := .epsilon, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) : Epsilon :=
   { nfa, next, e := .epsilon, expr_eq := rfl }
 
@@ -124,13 +126,15 @@ class Anchor extends ProofData where
   anchor : Data.Anchor
   expr_eq : e = .anchor anchor
 
+attribute [grind] Anchor.anchor
+
 namespace Anchor
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next anchor result} (_ : NFA.pushRegex nfa next (.anchor anchor) = result) : Anchor :=
   { nfa, next, e := .anchor anchor, anchor, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (anchor : Data.Anchor) : Anchor :=
   { nfa, next, e := .anchor anchor, anchor, expr_eq := rfl }
 
@@ -167,13 +171,15 @@ class Char extends ProofData where
   c : _root_.Char
   expr_eq : e = .char c
 
+attribute [grind] Char.c
+
 namespace Char
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next c result} (_ : NFA.pushRegex nfa next (.char c) = result) : Char :=
   { nfa, next, e := .char c, c, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (c : _root_.Char) : Char :=
   { nfa, next, e := .char c, c, expr_eq := rfl }
 
@@ -210,13 +216,15 @@ class Classes extends ProofData where
   cs : Data.Classes
   expr_eq : e = .classes cs
 
+attribute [grind] Classes.cs
+
 namespace Classes
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next cs result} (_ : NFA.pushRegex nfa next (.classes cs) = result) : Classes :=
   { nfa, next, e := .classes cs, cs, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (cs : Data.Classes) : Classes :=
   { nfa, next, e := .classes cs, cs, expr_eq := rfl }
 
@@ -254,13 +262,15 @@ class Group extends ProofData where
   e' : Expr
   expr_eq : e = .group tag e'
 
+attribute [grind] Group.tag Group.e'
+
 namespace Group
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next tag e' result} (_ : NFA.pushRegex nfa next (.group tag e') = result) : Group :=
   { nfa, next, e := .group tag e', tag, e', expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (tag : Nat) (e' : Expr) : Group :=
   { nfa, next, e := .group tag e', tag, e', expr_eq := rfl }
 
@@ -319,13 +329,15 @@ class Alternate extends ProofData where
   e₂ : Expr
   expr_eq : e = .alternate e₁ e₂
 
+attribute [grind] Alternate.e₁ Alternate.e₂
+
 namespace Alternate
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next e₁ e₂ result} (_ : NFA.pushRegex nfa next (.alternate e₁ e₂) = result) : Alternate :=
   { nfa, next, e := .alternate e₁ e₂, e₁, e₂, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (e₁ e₂ : Expr) : Alternate :=
   { nfa, next, e := .alternate e₁ e₂, e₁, e₂, expr_eq := rfl }
 
@@ -378,13 +390,15 @@ class Concat extends ProofData where
   e₂ : Expr
   expr_eq : e = .concat e₁ e₂
 
+attribute [grind] Concat.e₁ Concat.e₂
+
 namespace Concat
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next e₁ e₂ result} (_ : NFA.pushRegex nfa next (.concat e₁ e₂) = result) : Concat :=
   { nfa, next, e := .concat e₁ e₂, e₁, e₂, expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (e₁ e₂ : Expr) : Concat :=
   { nfa, next, e := .concat e₁ e₂, e₁, e₂, expr_eq := rfl }
 
@@ -427,13 +441,15 @@ class Star extends ProofData where
   e' : Expr
   expr_eq : e = .star greedy e'
 
+attribute [grind] Star.greedy Star.e'
+
 namespace Star
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro {nfa next greedy e' result} (_ : NFA.pushRegex nfa next (.star greedy e') = result) : Star :=
   { nfa, next, e := .star greedy e', greedy, e', expr_eq := rfl }
 
-@[grind =]
+@[implicit_reducible, grind =]
 def intro' (nfa : NFA) (next : Nat) (greedy : Bool) (e': Expr) : Star :=
   { nfa, next, e := .star greedy e', greedy, e', expr_eq := rfl }
 
@@ -476,6 +492,10 @@ theorem size_eq_patched : nfa'.size = patched.size := by
 theorem size_eq_quest : nfa'.size = quest.size := by
   grind
 
+@[grind =]
+theorem size_eq_nfaExpr_plus_one : nfa'.size = nfaExpr.size + 1 := by
+  grind
+
 theorem wfPlaceholder (wf : nfa.WellFormed) : nfaPlaceholder.WellFormed := by
   grind
 
@@ -492,6 +512,8 @@ theorem wfPatched (wf : nfa.WellFormed) (next_lt : next < nfa.size) : patched.We
 theorem start_eq : nfa'.start = nfaExpr.size := by
   simp [start, size_eq_quest, quest]
 
+-- TODO: remove this
+set_option backward.isDefEq.respectTransparency false in
 @[grind =]
 theorem get (i : Nat) (h : i < nfa'.size) :
   nfa'[i] =

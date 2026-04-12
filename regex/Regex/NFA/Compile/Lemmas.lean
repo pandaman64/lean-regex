@@ -41,6 +41,8 @@ theorem pushRegex_wf {nfa : NFA} {next e} (wf : nfa.WellFormed) (next_lt : next 
 theorem compile_wf {e} : (compile e).WellFormed :=
   pushRegex_wf done_WellFormed done_WellFormed.size_lt
 
+-- TODO: remove this
+set_option backward.isDefEq.respectTransparency false in
 @[grind =]
 theorem pushRegex_get_lt {nfa next e} (i : Nat) (h : i < nfa.size) :
   (pushRegex nfa next e)[i]'(Nat.lt_trans h pushRegex_size_lt) = nfa[i] := by

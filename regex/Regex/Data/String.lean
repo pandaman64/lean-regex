@@ -53,11 +53,6 @@ end Regex.Data.String
 
 namespace String.Pos
 
-theorem ne_endPos_of_lt {s : String} {pos pos' : Pos s} (lt : pos < pos') : pos ≠ s.endPos := by
-  intro eq
-  have : pos'.offset ≤ s.endPos.offset := pos'.isValid.le_rawEndPos
-  exact Nat.not_le_of_lt (eq ▸ lt) this
-
 @[grind ., simp]
 theorem ne_next {s : String} {pos : Pos s} {ne : pos ≠ s.endPos} : pos ≠ pos.next ne := by
   intro eq
@@ -77,7 +72,7 @@ def posRevInduction.{u} {s : String} {motive : Pos s → Sort u}
 theorem splits_of_next {s l r : String} {p : Pos s} {h : p ≠ s.endPos}
   (sp : (p.next h).Splits (l ++ singleton (p.get h)) r) : p.Splits l (singleton (p.get h) ++ r) where
   eq_append := by simp only [sp.eq_append, String.append_assoc]
-  offset_eq_rawEndPos := by simpa [Pos.next, Pos.Raw.ext_iff] using sp.offset_eq_rawEndPos
+  offset_eq_rawEndPos := by simpa [Pos.Raw.ext_iff] using sp.offset_eq_rawEndPos
 
 theorem splits_get_singleton {s l r : String} {c : Char} {p : Pos s} (sp : p.Splits l (singleton c ++ r)) :
   p.get sp.ne_endPos_of_singleton = c := by

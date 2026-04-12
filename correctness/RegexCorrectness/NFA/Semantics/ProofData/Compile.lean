@@ -33,16 +33,41 @@ theorem Step.eq_or_ge_of_pushRegex
   (step : (nfa.pushRegex next e).Step nfa.size i pos j pos' update) :
   j = next ∨ nfa.size ≤ j := by
   fun_induction pushRegex
+  next => grind
+  next => grind
+  next => grind
+  next => grind
+  next => grind
+  next => grind
+  next => grind
+  next => grind
   case case9 nfa next greedy e patchAt placeholder compiled split quest patched ih =>
-    have eq : pushRegex nfa next (.star greedy e) = patched := rfl
-    cases (eq ▸ step).eq_or_lt_of_pushRegex with
-    | inl ge =>
-      let pd := Compile.ProofData.Star.intro' nfa next greedy e
-      have step' : pd.nfa'.Step nfa.size i pos j pos' update := by grind
-      have get := pd.get i step.lt
-      split_ifs at get <;> grind
-    | inr lt => exact (Nat.not_le_of_lt lt.1 step.ge).elim
-  all_goals grind
+    let pd := Compile.ProofData.Star.intro' nfa next greedy e
+    have of_get_eq_split (get : pd.nfa'[i]'step.lt = pd.split) : j = next ∨ nfa.size ≤ j := by
+      unfold Compile.ProofData.Star.split at get
+      split at get
+      next =>
+        have ⟨_, h, _⟩ := (Step.iff_split get).mp step
+        cases h with
+        | inl h => exact .inr (show pd.nfa.size ≤ j by grind)
+        | inr h => exact .inl h
+      next =>
+        have ⟨_, h, _⟩ := (Step.iff_split get).mp step
+        cases h with
+        | inl h => exact .inl h
+        | inr h => exact .inr (show pd.nfa.size ≤ j by grind)
+
+    have get := pd.get i step.lt
+    split_ifs at get
+    next lt => exact (Nat.not_le_of_lt lt step.ge).elim
+    next => exact of_get_eq_split get
+    next =>
+      have step' : pd.nfa'.Step nfa.size i pos j pos' update := step
+      have stepExpr : pd.nfaExpr.Step nfa.size i pos j pos' update := step'.cast get
+      cases ih (stepExpr.liftBound' (show pd.nfaPlaceholder.size ≤ i by grind)) with
+      | inl eq => grind only
+      | inr le => grind only [= pushNode_size]
+    next => exact of_get_eq_split get
 
 theorem Path.eq_or_path_next (eq : nfa.pushRegex next e = result)
   (jlt : j < nfa.size) (ige : i ≥ nfa.size)

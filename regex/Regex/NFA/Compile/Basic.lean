@@ -22,7 +22,7 @@ theorem pushNode_get_lt {nfa : NFA} {node : Node}
   (i : Nat) (h : i < nfa.size) :
   (nfa.pushNode node)[i]'(Nat.lt_trans h (by simp only [pushNode_size, Nat.lt_add_one])) = nfa[i] := by
   simp only [pushNode, get_eq_nodes_get]
-  rw [Array.getElem_push_lt]
+  grind
 
 @[simp, grind =]
 theorem pushNode_get_eq {nfa : NFA} {node : Node} :

@@ -74,7 +74,7 @@ theorem mem_next_of_stepChar {i j k update}
       simp [hc] at hn
     next ne₁ ne₂ =>
       have := step.char_or_sparse
-      simp_all only [Prod.mk.injEq, imp_false, Fin.getElem_fin, exists_const, or_self]
+      simp_all only [imp_false, Fin.getElem_fin, exists_const, or_self]
 
 theorem write_updates_of_mem_next {i k}
   (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
@@ -126,8 +126,8 @@ theorem go.lower_bound {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   εClosure.LowerBound (pos.next ne) next'.states := by
   induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
-  | base next => simp_all
-  | done i hlt next hn => simp_all
+  | base next => simp_all [HistoryStrategy.update_def]
+  | done i hlt next hn => simp_all [HistoryStrategy.update_def]
   | found i hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
     simp_all
@@ -144,7 +144,7 @@ theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (HistoryStrategy 
   | done i hlt next hn => grind
   | found i hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
-    simp at h
+    simp [HistoryStrategy.update_def] at h
     simp [h] at h'
     exact stepChar.done_of_matched_some h' isSome'
   | not_found i hlt next hn matched next'' h' not_found ih =>
@@ -157,8 +157,8 @@ theorem go.inv {pos₀ idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf 
   (invNext : next.Inv nfa wf pos₀ (pos.next ne)) :
   next'.Inv nfa wf pos₀ (pos.next ne) := by
   induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
-  | base next => simp_all
-  | done i hlt next hn => simp_all
+  | base next => simp_all [HistoryStrategy.update_def]
+  | done i hlt next hn => simp_all [HistoryStrategy.update_def]
   | found idx hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
     simp_all
@@ -190,13 +190,13 @@ theorem go.subset {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf pos 
   next.states ⊆ next'.states := by
   induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
   | base next =>
-    simp [eachStepChar.go_base] at h
+    simp [eachStepChar.go_base, HistoryStrategy.update_def] at h
     exact h.2 ▸ SparseSet.subset_self
   | done i hlt next hn =>
-    simp [eachStepChar.go_done hlt hn] at h
+    simp [eachStepChar.go_done hlt hn, HistoryStrategy.update_def] at h
     exact h.2 ▸ SparseSet.subset_self
   | found i hlt next hn matched next'' h' found =>
-    simp [eachStepChar.go_found hlt hn h' found] at h
+    simp [eachStepChar.go_found hlt hn h' found, HistoryStrategy.update_def] at h
     exact h.2 ▸ stepChar.subset h'
   | not_found i hlt next hn matched next'' h' notFound ih =>
     simp [eachStepChar.go_not_found hlt hn h' notFound] at h
