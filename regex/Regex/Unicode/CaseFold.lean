@@ -67,7 +67,7 @@ theorem mem_buildCaseFoldInvMap_iff {c c' : Char} {rs : Array (Char × Char)} :
   · ⇓⟨cursor, table⟩ =>
     ⌜(∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ cursor.prefix.toArray⌝
   case vc1.step pref cur suff eq table inv => grind
-  case vc2.a.pre => simp
+  case vc2.pre => simp
 
 def caseFoldInvMap : Thunk (Std.HashMap Char (Array Char)) :=
   Thunk.mk fun _ => buildCaseFoldInvMap caseFoldRepresentatives.get

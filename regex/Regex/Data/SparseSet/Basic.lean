@@ -89,6 +89,7 @@ def insert (s : SparseSet n) (i : Fin n) (mem : i ∉ s) : SparseSet n :=
     | inl eq => grind
     | inr lt =>
       have : dense'[j] = s.dense[j] := by grind
+      have : s.dense[j] ≠ i := fun eq => mem (eq ▸ mem_dense_of_lt lt)
       grind [mem_dense_of_lt, s.sparse_dense]
   ⟨s.count + 1, dense', sparse', sparse_dense', isLt⟩
 

@@ -33,7 +33,7 @@ def CapturedGroups.get (self : CapturedGroups haystack) (index : Nat) : Option S
   if h : stop.isValid && start ≤ stop then
     have isStopPosValid : stop.isValid := by grind
     have isStartPosValid : start.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-    return ⟨haystack, start.asPos isStartPosValid, stop.asPos isStopPosValid, by simpa [PosPlusOne.asPos_def] using PosPlusOne.le_iff.mp (by grind)⟩
+    return ⟨haystack, start.asPos isStartPosValid, stop.asPos isStopPosValid, String.Pos.le_iff.mpr (by grind)⟩
   else
     throw ()
 
