@@ -47,6 +47,7 @@ theorem repeatConcat_go_tags_subset (e : Expr) (accum : Expr) (n : Nat) :
     simpa [Expr.tags] using ih (accum.concat e)
 
 theorem repeatConcat_tags (e : Expr) (n : Nat) : (repeatConcat e n).tags = e.tags := by
+  unfold repeatConcat
   refine Finset.Subset.antisymm ?_ ?_
   . simpa using repeatConcat_go_tags_subset e e (n - 1)
   . exact subset_repeatConcat_go_tags e e (n - 1) (by simp)

@@ -37,7 +37,7 @@ theorem String.empty_or_eq_singleton_append (s : String) :
   obtain ⟨cs, rfl⟩ := String.exists_eq_ofList s
   match cs with
   | [] => exact .inl rfl
-  | c :: cs => exact .inr ⟨c, String.ofList cs, by simp [String.singleton_eq_ofList, ←String.ofList_append]⟩
+  | c :: cs => exact .inr ⟨c, String.ofList cs, by simp only [String.singleton_eq_ofList, ←String.ofList_append, List.singleton_append]⟩
 
 namespace Regex.Data.String
 

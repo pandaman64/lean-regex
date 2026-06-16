@@ -28,19 +28,26 @@ theorem lower_bound (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdat
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   εClosure.LowerBound (pos.next ne) next'.states := by
   simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
-  grind [εClosure.lower_bound]
+  split at h
+  · expose_names; exact εClosure.lower_bound h lb
+  · grind only
 
 theorem eq_updates_of_mem_next {i k} (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
   (mem : k ∈ next.states) :
   next'.updates[k] = next.updates[k] := by
   simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
-  grind [εClosure.eq_updates_of_mem_next]
+  split at h
+  · · expose_names; exact εClosure.eq_updates_of_mem_next h mem
+  · grind only
+
 
 theorem done_of_matched_some (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next state = (matched', next'))
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
   simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
-  grind [εClosure.matched_inv]
+  split at h
+  · exact εClosure.matched_inv h (fun isSome => Bool.noConfusion isSome) isSome'
+  · grind only [= Option.isSome_none]
 
 theorem mem_next_of_stepChar {i j k update}
   (h : stepChar (HistoryStrategy s) nfa wf pos ne currentUpdates next i = (matched', next'))
@@ -53,14 +60,18 @@ theorem mem_next_of_stepChar {i j k update}
     have eqj : j = state' := by
       split at hn
       next hn' =>
-        simp at hn
-        simp [NFA.CharStep.char hn'] at step
-        simp [Fin.ext_iff, step, ←hn.2]
+        split at hn
+        · injection hn with hn
+          simp [NFA.CharStep.char hn'] at step
+          simp [Fin.ext_iff, step, ←hn]
+        · contradiction
       next hn' =>
-        simp at hn
-        simp [NFA.CharStep.sparse hn'] at step
-        simp [Fin.ext_iff, step, ←hn.2]
-      next => simp at hn
+        split at hn
+        · injection hn with hn
+          simp [NFA.CharStep.sparse hn'] at step
+          simp [Fin.ext_iff, step, ←hn]
+        · contradiction
+      next => contradiction
     exact εClosure.mem_next h lb (eqj ▸ cls)
   next hn =>
     split at hn
@@ -88,8 +99,15 @@ theorem write_updates_of_mem_next {i k}
   next state' hn =>
     match εClosure.write_updates_of_mem_next h mem with
     | .inl mem => exact .inl mem
-    | .inr ⟨update', cls, write⟩ => exact .inr ⟨state', update', (by grind), cls, write⟩
-  next => grind
+    | .inr ⟨update', cls, write⟩ =>
+      have step : nfa.CharStep pos i state' := by
+        grind only [usr Fin.isLt, = CharStep.fail, = Fin.getElem_fin, => CharStep.char,
+          => CharStep.sparse, #6698, #51e9, #8818, #5c18, #c184]
+      exact .inr ⟨state', update', step, cls, write⟩
+  next hn =>
+    injection h with _ hnext
+    subst hnext
+    exact .inl mem
 
 theorem inv {pos₀ idx} (hlt : idx < current.states.count)
   (h : stepChar (HistoryStrategy s) nfa wf pos ne current.updates next current.states[idx] = (matched', next'))
@@ -126,8 +144,10 @@ theorem go.lower_bound {idx hle} (h : eachStepChar.go (HistoryStrategy s) nfa wf
   (lb : εClosure.LowerBound (pos.next ne) next.states) :
   εClosure.LowerBound (pos.next ne) next'.states := by
   induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
-  | base next => simp_all [HistoryStrategy.update_def]
-  | done i hlt next hn => simp_all [HistoryStrategy.update_def]
+  | base next =>
+    simp_all [eachStepChar.go_base, HistoryStrategy.update_def]
+  | done i hlt next hn =>
+    simp_all [eachStepChar.go_done, HistoryStrategy.update_def]
   | found i hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
     simp_all
@@ -140,8 +160,12 @@ theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (HistoryStrategy 
   (isSome' : matched'.isSome) :
   ∃ state' ∈ next'.states, nfa[state'] = .done ∧ next'.updates[state'] = matched'.get isSome' := by
   induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
-  | base next => grind
-  | done i hlt next hn => grind
+  | base next =>
+    simp [eachStepChar.go_base] at h
+    injection h with h1 _; subst h1; contradiction
+  | done i hlt next hn =>
+    simp [eachStepChar.go_done hlt hn] at h
+    injection h with h1 _; subst h1; contradiction
   | found i hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
     simp [HistoryStrategy.update_def] at h

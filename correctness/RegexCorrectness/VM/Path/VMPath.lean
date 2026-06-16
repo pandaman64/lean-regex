@@ -20,9 +20,9 @@ theorem Step.εStep_or_charStep {i j : Nat} (wf : nfa.WellFormed) (step : nfa.St
   grind
 
 inductive VMPath (nfa : NFA) (wf : nfa.WellFormed) (pos₀ : Pos s) : Pos s → Fin nfa.size → List (Nat × Pos s) → Prop where
-  | init {pos i update} (le : pos₀ ≤ pos) (cls : nfa.εClosure' pos ⟨nfa.start, wf.start_lt⟩ i update) :
+  | init {pos : Pos s} {i : Fin nfa.size} {update : List (Nat × Pos s)} (le : pos₀ ≤ pos) (cls : nfa.εClosure' pos ⟨nfa.start, wf.start_lt⟩ i update) :
     VMPath nfa wf pos₀ pos i update
-  | more {i j k pos pos' update₁ update₂ update₃} (prev : VMPath nfa wf pos₀ pos i update₁) (step : nfa.CharStep pos i j) (cls : nfa.εClosure' (pos.next step.ne) j k update₂)
+  | more {i j k : Fin nfa.size} {pos pos' : Pos s} {update₁ update₂ update₃ : List (Nat × Pos s)} (prev : VMPath nfa wf pos₀ pos i update₁) (step : nfa.CharStep pos i j) (cls : nfa.εClosure' (pos.next step.ne) j k update₂)
     (hupdate : update₃ = update₁ ++ update₂) (hpos : pos' = pos.next step.ne) :
     VMPath nfa wf pos₀ pos' k update₃
 

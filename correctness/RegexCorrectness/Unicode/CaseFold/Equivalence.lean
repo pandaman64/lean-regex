@@ -41,7 +41,7 @@ public def CaseFoldEquiv (c₁ c₂ : Char) : Prop :=
 def CaseFoldEquiv' (c₁ c₂ : Char) : Prop :=
   getCaseFoldEquivChars c₁ = getCaseFoldEquivChars c₂
 
-instance instCaseFoldEquivEquivalence' : Equivalence CaseFoldEquiv' where
+theorem instCaseFoldEquivEquivalence' : Equivalence CaseFoldEquiv' where
   refl := by grind [CaseFoldEquiv']
   symm := by grind [CaseFoldEquiv']
   trans := by grind [CaseFoldEquiv']
@@ -98,7 +98,7 @@ theorem caseFoldEquiv'_iff_caseFoldEquiv {c₁ c₂ : Char} : CaseFoldEquiv' c�
 theorem caseFoldEquiv'_eq_caseFoldEquiv : CaseFoldEquiv' = CaseFoldEquiv := by
   grind [caseFoldEquiv'_iff_caseFoldEquiv]
 
-public instance instCaseFoldEquivEquivalence : Equivalence CaseFoldEquiv :=
+public theorem instCaseFoldEquivEquivalence : Equivalence CaseFoldEquiv :=
   caseFoldEquiv'_eq_caseFoldEquiv ▸ instCaseFoldEquivEquivalence'
 
 end Regex.Unicode
