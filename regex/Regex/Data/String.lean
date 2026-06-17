@@ -53,12 +53,6 @@ end Regex.Data.String
 
 namespace String.Pos
 
-@[grind ., simp]
-theorem ne_next {s : String} {pos : Pos s} {ne : pos ≠ s.endPos} : pos ≠ pos.next ne := by
-  intro eq
-  have : pos.next ne < pos.next ne := eq ▸ pos.lt_next
-  exact (Nat.lt_irrefl _ this).elim
-
 def posRevInduction.{u} {s : String} {motive : Pos s → Sort u}
   (endPos : motive s.endPos)
   (next : ∀ p : Pos s, (h : p ≠ s.endPos) → motive (p.next h) → motive p)
@@ -240,7 +234,11 @@ theorem lt_iff_remainingBytes_lt {p₁ p₂ : PosPlusOne s} : p₁ < p₂ ↔ p�
   grind
 
 theorem wellFounded_gt : WellFounded (fun (p : PosPlusOne s) q => q < p) := by
-  simpa [lt_iff_remainingBytes_lt] using InvImage.wf remainingBytes Nat.lt_wfRel.wf
+  have h : (fun (p : PosPlusOne s) q => q < p) = InvImage (fun x y => x < y) remainingBytes := by
+    funext p q
+    exact propext lt_iff_remainingBytes_lt
+  rw [h]
+  exact (measure remainingBytes).wf
 
 instance : WellFoundedRelation (PosPlusOne s) where
   rel p q := q < p

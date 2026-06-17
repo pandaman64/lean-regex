@@ -376,7 +376,8 @@ theorem preserves' {stack'} {node} (hn : nfa[entry.2] = node) (nextEntries) (hst
       simp [eq]
       have ⟨update', equpdate, cls⟩ := inv.mem_stack entry.1 entry.2 (by simp)
       refine .inr ⟨update', cls, fun write => ?_⟩
-      simpa [←hn, write] using equpdate
+      simp [←hn, write]
+      exact equpdate
     | inr mem =>
       match inv.mem_next j mem with
       | .inl mem => exact .inl mem
