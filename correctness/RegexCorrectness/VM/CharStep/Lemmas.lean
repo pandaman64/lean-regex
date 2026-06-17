@@ -37,7 +37,7 @@ theorem eq_updates_of_mem_next {i k} (h : stepChar (HistoryStrategy s) nfa wf po
   next'.updates[k] = next.updates[k] := by
   simp only [HistoryStrategy.update_def, stepChar, Fin.getElem_fin] at h
   split at h
-  · · expose_names; exact εClosure.eq_updates_of_mem_next h mem
+  · expose_names; exact εClosure.eq_updates_of_mem_next h mem
   · grind only
 
 
