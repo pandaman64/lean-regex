@@ -1,5 +1,6 @@
 module
 
+import Std.Data.HashSet.Lemmas
 import all Regex.Data.Expr.Optimization
 public import RegexCorrectness.Data.Expr.Semantics
 
