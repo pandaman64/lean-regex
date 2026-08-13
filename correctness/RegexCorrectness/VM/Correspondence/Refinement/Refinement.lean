@@ -105,7 +105,7 @@ theorem εClosure.refines (resultB resultH)
       split
       next =>
         clear ih h h'
-        cases matched' <;> simp [←refMatched] <;> rfl
+        cases matched' <;> simp [←refMatched]
       next =>
         clear ih h h'
         simp [←refMatched]
@@ -136,7 +136,6 @@ theorem stepChar.refines {currentUpdatesH currentUpdatesB state} (resultB result
     simp [hn] at h
     rw [←h', ←h]
     simp [materializeResult, refState]
-    rfl
 
 theorem eachStepChar.go.refines {currentH currentB i hleB hleH} (resultB resultH)
   (h : eachStepChar.go (BufferStrategy s bufferSize) nfa wf pos ne currentB i hleB nextB = resultB)

@@ -177,8 +177,9 @@ theorem mem_save_of_mem_tags_pushRegex {nfa : NFA} {next e tag} (h : tag ∈ e.t
       next h =>
         have eq' : compiled[i.val] = nfa[i.val] := by
           unfold compiled placeholder
-          rw [pushRegex_get_lt i (Nat.lt_trans h (show nfa.size < _ by grind)), pushNode_get_lt i (show i < nfa.size from h)]
-        exact eq' ▸ get
+          rw [pushRegex_get_lt i (Nat.lt_trans h (show nfa.size < _ by grind))]
+          exact pushNode_get_lt i (show i < nfa.size from h)
+        exact get.trans eq'.symm
       next h =>
         have eq' : (placeholder.pushRegex patchAt e)[i.val] = .fail := by
           have lt : i < (nfa.pushNode .fail).size := by

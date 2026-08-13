@@ -5,11 +5,12 @@ defaultTargets = ["RegexCorrectness"]
 
 [leanOptions]
 autoImplicit = false
+backward.isDefEq.respectTransparency = false
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.32.0"
+rev = "v4.34.0-rc1"
 
 [[require]]
 name = "Regex"

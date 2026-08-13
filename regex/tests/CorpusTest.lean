@@ -244,7 +244,7 @@ def getTomlOrThrow (toml : Except Lean.MessageLog Lake.Toml.Table) : IO Lake.Tom
 
 def load (filePath : String) : IO Lake.Toml.Table := do
   let tomlContent ← IO.FS.readFile filePath
-  let fileMap := tomlContent.toFileMap
+  let fileMap := Lean.FileMap.ofString tomlContent
   let toml ← getTomlOrThrow (←(Lake.Toml.loadToml {
     inputString := tomlContent,
     fileName := filePath,
@@ -255,7 +255,7 @@ def load (filePath : String) : IO Lake.Toml.Table := do
 def loadTestCases (filePath : System.FilePath) : IO (Array RegexTest) := do
   let group := filePath.fileStem |>.getD ""
   let tomlContent ← IO.FS.readFile filePath
-  let fileMap := tomlContent.toFileMap
+  let fileMap := Lean.FileMap.ofString tomlContent
   let toml ← getTomlOrThrow (←(Lake.Toml.loadToml {
     inputString := tomlContent,
     fileName := filePath.toString,
