@@ -412,7 +412,6 @@ theorem preserves {update : List (Nat × Pos s)} {state : Fin nfa.size} (wf : nf
     simp [pushNext.save rfl]
     apply inv.preserves' (entry := (update, state)) hn [((HistoryStrategy s).write update offset pos₀, ⟨state', inBounds⟩)] (by simp) not_mem
     simp [εStep'.save hn]
-    rfl
   | anchor_pos update state anchor state' inBounds ht =>
     simp [pushNext.anchor_pos rfl ht]
     apply inv.preserves' (entry := (update, state)) hn [(update, ⟨state', inBounds⟩)] (by simp) not_mem

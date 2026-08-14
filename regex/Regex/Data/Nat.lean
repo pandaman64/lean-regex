@@ -78,10 +78,10 @@ public theorem popcount_or_one_shiftLeft (n i : Nat) : popcount (n ||| (1 <<< i)
   induction i generalizing n with
   | zero =>
     split
-    next h => simp [popcount_ne, or_ne_zero, or_one_mod_two, or_div_two, popcount_odd h]
-    next h => simp [popcount_ne, or_ne_zero, or_one_mod_two, or_div_two, popcount_even h]
+    next h => simp [popcount_ne, or_one_mod_two, or_div_two, popcount_odd h]
+    next h => simp [popcount_ne, or_one_mod_two, or_div_two, popcount_even h]
   | succ i ih =>
-    simp [popcount_ne, or_one_shiftLeft_ne_zero, or_div_two, or_one_shiftLeft_succ_mod_two]
+    simp [popcount_ne, or_div_two, or_one_shiftLeft_succ_mod_two]
     rw [one_shiftLeft_succ_div_two, ih (n / 2), ←testBit_succ]
     if h' : n.testBit (i + 1) then
       simp [h']

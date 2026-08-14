@@ -162,10 +162,14 @@ theorem go.done_of_matched_some {idx hle} (h : eachStepChar.go (HistoryStrategy 
   induction idx, hle, next using eachStepChar.go.induct' (HistoryStrategy s) nfa wf pos ne current with
   | base next =>
     simp [eachStepChar.go_base] at h
-    injection h with h1 _; subst h1; contradiction
+    rcases h with ⟨hmatched, _⟩
+    subst matched'
+    contradiction
   | done i hlt next hn =>
     simp [eachStepChar.go_done hlt hn] at h
-    injection h with h1 _; subst h1; contradiction
+    rcases h with ⟨hmatched, _⟩
+    subst matched'
+    contradiction
   | found i hlt next hn matched next'' h' found =>
     rw [eachStepChar.go_found hlt hn h' found] at h
     simp [HistoryStrategy.update_def] at h

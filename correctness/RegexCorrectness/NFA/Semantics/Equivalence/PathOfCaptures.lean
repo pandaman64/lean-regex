@@ -100,7 +100,9 @@ theorem path_of_captures.starConcat {pos'' greedy e groups₁ groups₂} (eq : n
   simp only [pd.eq_result eq]
 
   -- Since v4.29.0, many tactics and defeqs cannot reduce `Star.into`. So we do it here manually.
-  have : e = pd.e' := by with_reducible_and_instances rfl
+  have : e = pd.e' := by
+    have h : Expr.star greedy e = Expr.star pd.greedy pd.e' := pd.expr_eq
+    injection h
   have wfPlaceholder := wfPlaceholder wf
   have ⟨updates₁, eqv₁, path₁⟩ :=
     ih₁ (show nfaPlaceholder.pushRegex nfaPlaceholder.start e = nfaExpr by grind) wfPlaceholder wfPlaceholder.start_lt

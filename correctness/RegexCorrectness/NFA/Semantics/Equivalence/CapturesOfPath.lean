@@ -117,7 +117,9 @@ theorem captures_of_path.star {greedy e} (eq : nfa.pushRegex next (.star greedy 
     have path := castToExpr wf path
     have wfPlaceholder := wfPlaceholder wf
     -- Since v4.29.0, many tactics and defeqs cannot reduce `Star.into`. So we do it here manually.
-    have : e = pd.e' := by with_reducible_and_instances rfl
+    have : e = pd.e' := by
+      have h : Expr.star greedy e = Expr.star pd.greedy pd.e' := pd.expr_eq
+      injection h
     exact ih (by grind) wfPlaceholder wfPlaceholder.start_lt path
 
 public theorem captures_of_path (eq : nfa.pushRegex next e = result)
