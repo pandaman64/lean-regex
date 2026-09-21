@@ -7,6 +7,7 @@ import Mathlib.Tactic.DepRewrite
 
 open Regex.Data (BitMatrix BVPos)
 open String (Pos)
+open Regex.Backtracker.captureNextAux (pushNext)
 
 namespace Regex.Backtracker
 
@@ -155,7 +156,8 @@ theorem fun_cases' (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos
 
 end captureNextAux.pushNext
 
-theorem captureNextAux.induct' {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s)
+/-- Induction principle for `captureNextAux` (public name; avoids clashing with the private `captureNextAux.induct'`). -/
+theorem captureNextAuxRecOn {s : String} (σ : Strategy s) (nfa : NFA) (wf : nfa.WellFormed) (startPos : Pos s)
   (motive : BitMatrix nfa.size (startPos.remainingBytes + 1) → List (StackEntry σ nfa startPos) → Prop)
   (base : ∀ (visited : BitMatrix nfa.size (startPos.remainingBytes + 1)), motive visited [])
   (visited : ∀ (visited : BitMatrix nfa.size (startPos.remainingBytes + 1)) (update : σ.Update) (state : Fin nfa.size) (pos : BVPos startPos) (stack' : List (StackEntry σ nfa startPos)),

@@ -64,7 +64,7 @@ theorem captureNextAux.pushNext.refines {s nfa wf startPos bufferSize stackH sta
 
 theorem captureNextAux.refines {s} (nfa wf startPos bufferSize visited) {stackH stackB} (refStack : materializeStack stackH = stackB) :
   materializeResultAux (captureNextAux (HistoryStrategy s) nfa wf startPos visited stackH) = captureNextAux (BufferStrategy s bufferSize) nfa wf startPos visited stackB := by
-  induction visited, stackH using captureNextAux.induct' (HistoryStrategy s) nfa wf startPos generalizing stackB with
+  induction visited, stackH using captureNextAuxRecOn (HistoryStrategy s) nfa wf startPos generalizing stackB with
   | base visited =>
     simp at refStack
     simp [refStack, captureNextAux_base, materializeResultAux, HistoryStrategy.update_def]
