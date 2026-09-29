@@ -116,20 +116,38 @@ def charInClass : Parser.LT s Error (Char ⊕ PerlClass) :=
     else .ok (.inl c)
   )
 
+/-- Like `charInClass`, but rejects an unescaped `-`. See `range`. -/
+def rangeEnd : Parser.LT s Error (Char ⊕ PerlClass) :=
+  escapedChar <|> (anyCharOrError.guard fun c =>
+    if c = '[' ∨ c = ']' ∨ c = '\\' ∨ c = '-' then throw (.unexpectedChar c)
+    else .ok (.inl c)
+  )
+
+/--
+A range `lo-hi` in a bracketed class.
+
+Reading `lo-hi` backtracks on failure, so the `-` in `[a-]` is a literal. Since `rangeEnd` rejects
+an unescaped `-`, the `--` in `[a--[b]]` is the difference operator rather than the end of a range
+from `a` to `-`. This follows Rust's regex-syntax; a range ending in `-` is written `[!-\-]`.
+
+Once `lo-hi` has been read it can only be a range, so its checks are committed: `[z-a]` and
+`[\d-a]` are errors rather than a union of three items.
+-/
 def range : Parser.LT s Error Class :=
-  ((Prod.mk <$> charInClass) <*> (charOrError '-' *> charInClass))
-  |>.guard fun (f, s) => do
-    let f ← expectsChar f
-    let s ← expectsChar s
-    if f ≤ s then
-      pure (.range f s)
-    else
-      throw (.invalidRange f s)
+  ((Prod.mk <$> charInClass) <*> (charOrError '-' *> rangeEnd))
+  |>.bindOr fun (lo, hi) =>
+    Parser.commit (show Parser.LE s Error Class from do
+      let lo ← expectsChar lo
+      let hi ← expectsChar hi
+      if lo ≤ hi then
+        pure (.range lo hi)
+      else
+        throw (.invalidRange lo hi))
 where
-  expectsChar (c : Char ⊕ PerlClass) : Except Error Char :=
+  expectsChar (c : Char ⊕ PerlClass) : Parser.LE s Error Char :=
     match c with
-    | .inl c => .ok c
-    | .inr cls => .error (.unexpectedPerlClassInRange cls)
+    | .inl c => pure c
+    | .inr cls => throw (.unexpectedPerlClassInRange cls)
 
 def singleClass : Parser.LT s Error Class :=
   range <|> (charToClass <$> charInClass)
