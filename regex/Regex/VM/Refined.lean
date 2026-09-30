@@ -12,7 +12,7 @@ public import Regex.VM.ClassTable
 public import Regex.VM.FlatBuffer
 public import Regex.VM.Wide
 
-open Regex.Data (Anchor)
+open Regex.Data (Anchor Class Classes PerlClass)
 open Regex.VM.ClassTable (ClassTable)
 open Regex.VM.FlatBuffer
 open Regex.VM.Wide (WordArray)
@@ -121,28 +121,44 @@ def anchorOf (k : UInt32) : Anchor :=
   else .nonWordBoundary
 
 /--
-Previous character, using the C UTF-8 walker (`lean_string_utf8_prev`).
+Word characters as a class table. Today this is the ASCII set behind
+`Char.isWordChar` (`PerlClassKind.word`). A Unicode property is the same
+table with high runs filled in.
+-/
+def wordTable : ClassTable :=
+  ClassTable.compile (.atom (.perl { negated := false, kind := .word }))
+
+/-- Scalar at `p`. The caller must not pass the end position: `Pos.Raw.get` returns `'A'` there. -/
+@[inline]
+def charAt {s : String} (p : Pos s) : Char :=
+  String.Pos.Raw.get s p.offset
+
+@[inline]
+unsafe def currWord {s : String} (p : Pos s) : Bool :=
+  if p == s.endPos then false else wordTable.contains (charAt p)
+
+/--
+Previous scalar, using the C UTF-8 walker (`lean_string_utf8_prev`).
 
 `String.Pos.prev` builds a `Slice` and scans backward in Lean. The walker steps
-at most four bytes to the previous scalar, which is what a Unicode word
-property needs. Classification stays `Char.isWordChar`.
+at most four bytes to the previous scalar.
 -/
 @[inline]
-def prevWord {s : String} (p : Pos s) : Bool :=
+unsafe def prevWord {s : String} (p : Pos s) : Bool :=
   if p == s.startPos then
     false
   else
-    Char.isWordChar (String.Pos.Raw.get s (String.Pos.Raw.prev s p.offset))
+    wordTable.contains (String.Pos.Raw.get s (String.Pos.Raw.prev s p.offset))
 
-/-- Start, end, or a word-boundary test. Word characters still go through `Char.isWordChar`. -/
+/-- Start, end, or a word-boundary test against `wordTable`. -/
 @[inline]
-def anchorTest {s : String} (k : UInt32) (p : Pos s) : Bool :=
+unsafe def anchorTest {s : String} (k : UInt32) (p : Pos s) : Bool :=
   if k == 0 then
     p == s.startPos
   else if k == 1 then
     p == s.endPos
   else
-    let curr := Regex.Data.String.isCurrWord p
+    let curr := currWord p
     let prev := prevWord p
     if k == 2 then curr != prev else curr == prev
 
