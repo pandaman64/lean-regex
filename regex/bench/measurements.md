@@ -130,3 +130,21 @@ Same session, two binaries, refined engine only. Unchecked is `b42f6f6`. The `!`
 | synthetic `\w+` | 3 | 546.241397 | 638.373057 | +16.9% |
 
 `words` at `-n 3` was too short to trust (the first pair flipped direction). At `-n 20` it matches the other word-heavy benches. The check was not left on the hot path. `WordArray.uget` / `uset` again call the unchecked extern with `lcProof`.
+
+## `SW_CPU_CLOCK` after `FlatBuffer`
+
+Same sampler as above (200 µs, every thread, lost samples 0), refined engine only, current unchecked word loads. `-n` was chosen so each run was about 2.2 s of wall time and about 11–12k samples. `Refined.search` contains the inlined `eval` loop.
+
+| Benchmark | `-n` | Samples | `search` | Next largest symbol |
+| --- | ---: | ---: | ---: | --- |
+| `curated/literal/sherlock-en` | 80 | 11033 | 98.4% | `findStart` 0.3% |
+| `curated/literal/sherlock-casei-en` | 50 | 11658 | 75.8% | `Classes.mem` 22.9% |
+| `curated/literal/sherlock-zh` | 250 | 12395 | 88.9% | `utf8_get_fast_cold` 4.8%, `findStart` 3.1%, `utf8_next_fast_cold` 1.9% |
+| `curated/literal-alternate/sherlock-en` | 20 | 12268 | 98.7% | under 0.2% each |
+| `curated/words/all-english` | 250 | 11937 | 50.4% | `Classes.mem` 16.3%, `mi_malloc_small` 7.5%, `isValidForSlice` 6.1%, `isPrevWord` 5.5%, `Anchor.test` 3.1%, `mi_free` 2.9% |
+| `curated/bounded-repeat/letters-en` | 150 | 11508 | 65.3% | `Classes.mem` 32.8% |
+| `curated/cloud-flare-redos/simplified-long` | 1400 | 11103 | 84.5% | `Classes.mem` 14.4% |
+
+Inside `search` on the literal benches, the hottest blocks are the sparse-set probe (`sparse[state]` then `dense[si]`, about 13% of all samples on sherlock-en), the closure epilogue that bumps `nCount` and spills the phase-machine values (about 12%), the character-step tag load (about 7%), and the three-word node load after a sparse miss (about 7%). `lean_copy_byte_array` itself was not sampled; the in-place capture-row store is about 1–3%. Alloc and RC outside `search` are under 1% on the literal benches.
+
+`Classes.mem` walks the boxed `Classes` tree (range, perl class, union). `isPrevWord` calls `mi_malloc_small`. `Anchor.test` calls `isPrevWord`.
