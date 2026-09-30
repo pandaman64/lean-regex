@@ -266,3 +266,5 @@ Refined only, milliseconds per iteration. The forward binary is the engine befor
 | `\w+` on zh-sampled | 80 | 11.729 | 12.382 |
 
 Every row is slower, from 3.8% on `simplified-long` to 9.7% on `letters-en`. The literal, whose NFA is a handful of nodes, moved with the rest, so the gap is not only a long backward chain.
+
+The tip drops `771c078`. `ofNFA` stores nodes in compilation order again.
