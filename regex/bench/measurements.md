@@ -161,3 +161,57 @@ Shares are of all samples. The bitmap column is that `bt` block. The linear colu
 On the ASCII class benches the bitmap is one block among several inside `search`. On `letters-en` it is the hottest block, at 10%. The next blocks are the sparse-set probe (9.0%), the loop reload that increments a reference count and restores the live set (8.1%), and the node load of tag, next, and extra (6.5%). On `sherlock-casei-en` the node load is ahead of the bitmap, 12.3% against 7.3%.
 
 `words/all-english` leaves `search` for the word-boundary helpers: `mi_malloc_small` 8.0%, `String.Pos.Raw.isValidForSlice` 7.6%, `String.isPrevWord` 6.3%, `mi_free` 3.8%, `Anchor.test` 3.2%. The Chinese haystacks add the UTF-8 cold path: `lean_string_utf8_get_fast_cold` 2.7% and `lean_string_utf8_next_fast_cold` 1.0% on `[A-Za-z]{8,13}`, and 2.7% / 1.2% on `\w+`. The `lean_copy_byte_array` call instructions themselves were not sampled.
+
+## Word boundaries
+
+`words/all-english` is `\b[0-9A-Za-z_]+\b`. After the class table, `search` was about 61% of that bench. The rest was `String.Pos.prev`: it allocates a `Slice` and walks backward through `isValidForSlice`. Three changes, each benched and profiled against the previous binary. `Anchor.test` and `Char.isWordChar` stay the specification. The refined loop uses `anchorTest`. `bench --check` agreed with the stock VM, including `café`, `漢字`, and `\B`. Match counts agreed on every timing run: words 15008, `letters-en` 1833, `\b\w+\b` on zh-sampled 9913.
+
+| Commit | Change |
+| --- | --- |
+| `23eaf00` | `String.Pos.Raw.prev` (`lean_string_utf8_prev`) instead of `String.Pos.prev`. Classification is still `Char.isWordChar` |
+| `4929469` | Classify with `wordTable`, the Latin-1 bitmap plus high runs of a perl word class. Today that set is ASCII. A Unicode `\w` fills the high runs; the boundary stays `mem(curr) ≠ mem(prev)` |
+| `3b12a5f` | Carry three `UInt64`s through every `eval` tail call: the byte offset just classified, the next scalar's offset, and three bits (previous word, current word, ready). The same offset reuses the bits. The next scalar reuses the old current bit as its previous bit, so `utf8_prev` runs only on a cold offset. Each `findAll` search starts the latch clear, so the first boundary of a match is still cold |
+
+Same-session pairs, refined engine only, milliseconds per iteration. `letters-en` has no `\b`. It moves a few percent across rebuilds; the larger gap on the latch is the extra parameters.
+
+| Benchmark | `-n` | base (`5c68581`) | `23eaf00` `utf8_prev` |
+| --- | ---: | ---: | ---: |
+| `words/all-english` | 100 | 6.701 | 6.195 |
+| `letters-en` | 40 | 10.616 | 10.160 |
+| `\b\w+\b` on zh-sampled | 30 | 18.095 | 14.737 |
+
+| Benchmark | `-n` | `23eaf00` | `4929469` table | `3b12a5f` scalar latch |
+| --- | ---: | ---: | ---: | ---: |
+| `words/all-english` | 100 | 6.210 | 6.507 | 6.418 |
+| `letters-en` | 40 | 10.183 | 10.646 | 11.435 |
+| `\b\w+\b` on zh-sampled | 30 | 14.692 | 16.540 | 14.957 |
+
+The first step is the speed change. The `Slice` allocation and the Lean backward scan leave the profile, and the Chinese haystack drops from 18.1 ms to 14.7 ms. The class table is slower than `Char.isWordChar` (words 6.21 → 6.51, zh 14.7 → 16.5) because a table probe after a full decode does not beat a few ASCII compares. It is the representation a Unicode property can fill. The scalar latch takes `utf8_prev` off the hot samples and brings zh back to 15.0 ms, near the first step, but it does not beat that step on English words (6.42 against 6.21). `letters-en` goes from about 10.2 ms to 11.4 ms with the profile still inside `search`.
+
+A `WordLatch` structure was measured in between and not kept. Constructing it on a position change allocated. Same session as the table binary it was built from, milliseconds per iteration: words 6.515 → 7.541, letters 10.633 → 11.103, zh 16.482 → 17.183.
+
+### Profiles
+
+Refined only, period 200 µs, lost samples 0, four threads. Shares are of all samples.
+
+`words/all-english`:
+
+| Step | `-n` | Samples | `search` | Outside `search` |
+| --- | ---: | ---: | ---: | --- |
+| base | 330 | 11392 | 62.6% | `mi_malloc_small` 7.6%, `isValidForSlice` 7.5%, `isPrevWord` 6.2%, `mi_free` 3.5%, `Anchor.test` 3.1%, `IsUTF8FirstByte` 2.1% |
+| `23eaf00` | 330 | 10608 | 85.7% | `mi_free` 2.7%, `mi_malloc_small` 2.2%, `utf8_prev` 2.1%, `utf8_get` 1.8%. `isPrevWord`, `isValidForSlice`, and `Anchor.test` took no samples |
+| `4929469` | 330 | 11156 | 84.8% | `utf8_get` 3.6%, `mi_malloc_small` 2.4%, `utf8_prev` 1.8%, `mi_free` 1.6% |
+| `3b12a5f` | 340 | 11135 | 88.2% | `mi_malloc_small` 2.3%, `mi_free` 2.3%, `utf8_get` 1.4%. `utf8_prev` 0.2% |
+
+`\b\w+\b` on zh-sampled:
+
+| Step | `-n` | Samples | `search` | Outside `search` |
+| --- | ---: | ---: | ---: | --- |
+| base | 120 | 11202 | 54.2% | `isValidForSlice` 11.6%, `isPrevWord` 6.9%, `mi_malloc_small` 6.8%, `Anchor.test` 4.4%, `IsUTF8FirstByte` 3.6%, `utf8_get_fast_cold` 3.0% |
+| `23eaf00` | 150 | 11104 | 83.0% | `utf8_prev` 4.5%, `utf8_get_core` 3.5%, `utf8_get` 2.4%, `utf8_get_fast_cold` 2.4% |
+| `4929469` | 130 | 10990 | 81.0% | `utf8_get_core` 6.5%, `utf8_get` 4.5%, `utf8_prev` 4.1% |
+| `3b12a5f` | 150 | 11405 | 87.0% | `utf8_get_core` 4.9%, `utf8_get` 2.5%, `utf8_next_fast_cold` 1.9%. `utf8_prev` 0.1% |
+
+`letters-en` on `3b12a5f`, `-n` 190, 11040 samples: `search` 98.3%. No other symbol reached 0.3%. The slowdown is the extra words on the tail call, not a new helper.
+
+The discarded structure, on words, was `search` 79.7%, `mi_malloc_small` 6.4%, `mi_free` 5.8% (11141 samples). On zh it was `search` 75.6%, `mi_malloc_small` 6.9%, `mi_free` 6.8% (10683 samples). `utf8_prev` was already 0.2% / 0.1% there; the allocation was the cost.
