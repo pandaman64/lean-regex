@@ -109,3 +109,24 @@ Sample counts in that run: stock / refined = 15446 / 7720, 14377 / 7476, 11705 /
 | `curated/literal-alternate/sherlock-en` | 10 | 1051 | 12 | 5254 |
 | `curated/words/all-english` | 100 | 846 | 129 | 4228 |
 | `curated/bounded-repeat/letters-en` | 70 | 990 | 17 | 4951 |
+
+## Lean `ugetUInt32LE!` (not kept)
+
+Tried a safe bounds check in Lean in front of the existing wide load. `ugetUInt32LE!` / `usetUInt32LE!` tested `off.toNat + 4 ≤ a.size`. The in-range arm called `lean_regex_uget_u32le` / `lean_regex_uset_u32le`. Out of range, a load returned `0` and a store returned the array unchanged. `WordArray.uget` / `uset` used that path, so NFA word traffic no longer passed `lcProof`.
+
+`--check` passed, and every paired run below found the same match count as the unchecked engine. After LTO the scalar arm is not a call to `lean_nat_add`: it unboxes, adds 4, compares the tagged sizes, and then does the wide `movl`. The heap-`Nat` helpers sit on the overflow arm. That still adds several arithmetic instructions to every word load and store. The refined loop loads three words per state, so the extra work shows up.
+
+Same session, two binaries, refined engine only. Unchecked is `b42f6f6`. The `!` column is the build that wired `WordArray` to the Lean check. Milliseconds per iteration.
+
+| Benchmark | `-n` | Unchecked | `uget!` | Change |
+| --- | ---: | ---: | ---: | ---: |
+| `curated/literal/sherlock-en` | 3 | 26.876081 | 28.478139 | +6.0% |
+| `curated/literal/sherlock-casei-en` | 3 | 42.707268 | 50.287682 | +17.7% |
+| `curated/literal-alternate/sherlock-en` | 3 | 105.803729 | 134.052459 | +26.7% |
+| `curated/literal-alternate/sherlock-en` | 5 | 105.242534 | 142.608889 | +35.5% |
+| `curated/words/all-english` | 20 | 8.282900 | 9.652657 | +16.5% |
+| `curated/bounded-repeat/letters-en` | 3 | 13.810801 | 16.338624 | +18.3% |
+| synthetic `def` | 3 | 199.054414 | 208.670633 | +4.8% |
+| synthetic `\w+` | 3 | 546.241397 | 638.373057 | +16.9% |
+
+`words` at `-n 3` was too short to trust (the first pair flipped direction). At `-n 20` it matches the other word-heavy benches. The check was not left on the hot path. `WordArray.uget` / `uset` again call the unchecked extern with `lcProof`.

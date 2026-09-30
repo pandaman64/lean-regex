@@ -27,9 +27,8 @@ allocate a node, a cons cell, or a search-state wrapper.
 `WordArray` (`Regex.VM.Wide`) is a one-field wrapper around a `ByteArray`. Lean erases that
 wrapper, and each `UInt32` occupies four raw bytes. An `Array UInt32` would not: `Array` is
 polymorphic, so every slot is a `lean_object*` and each `UInt32` is passed through
-`lean_box_uint32`. Loads and stores go through `ByteArray.ugetUInt32LE!` /
-`usetUInt32LE!`: one bounds check, then the wide reader adapted from lean-zip
-on the in-range arm. Each state is three contiguous words
+`lean_box_uint32`. Loads and stores go through `ByteArray.ugetUInt32LE` /
+`usetUInt32LE`, the wide reader adapted from lean-zip. Each state is three contiguous words
 (tag, next, extra), twelve bytes from a single base offset. Sparse-set state ids and the
 ε-stack of state ids use the same buffer. Capture slots use `FlatBuffer`, an
 unboxed `ByteArray` of `UInt64` byte offsets, instead of `BufferStrategy`'s
