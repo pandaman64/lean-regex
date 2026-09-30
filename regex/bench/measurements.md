@@ -217,3 +217,34 @@ Refined only, period 200 µs, lost samples 0, four threads. Shares are of all sa
 The discarded structure, on words, was `search` 79.7%, `mi_malloc_small` 6.4%, `mi_free` 5.8% (11141 samples). On zh it was `search` 75.6%, `mi_malloc_small` 6.9%, `mi_free` 6.8% (10683 samples). `utf8_prev` was already 0.2% / 0.1% there; the allocation was the cost.
 
 The tip keeps `23eaf00` only. `4929469` and `3b12a5f` were slower on these benches, so both were reverted. Classification stays `Char.isWordChar`. The class table and the scalar latch remain in the history above.
+
+## `SW_CPU_CLOCK` inside `search` after `utf8_prev`
+
+Refined only, on `2adb885`, period 200 µs, lost samples 0, four threads. `Refined.search` contains the inlined `eval` loop. Shares in the second table are of the samples inside that symbol. `lean_copy_byte_array` call instructions took no samples. The `call` instructions for `utf8_prev` and `utf8_get` took none either; those samples sit in the callees, outside `search`.
+
+| Benchmark | `-n` | ms/iter | Samples | `search` |
+| --- | ---: | ---: | ---: | ---: |
+| `letters-en` `[A-Za-z]` | 220 | 10.475 | 11657 | 98.1% |
+| `sherlock-casei-en` | 70 | 33.714 | 11927 | 98.8% |
+| `words/all-english` | 360 | 6.872 | 12474 | 86.2% |
+| `simplified-long` `.` | 1850 | 1.264 | 11795 | 98.9% |
+| `sherlock-en` literal | 95 | 22.821 | 10953 | 98.6% |
+| `[A-Za-z]{8,13}` on zh-sampled | 180 | 12.248 | 11131 | 95.0% |
+| `\w+` on zh-sampled | 190 | 11.762 | 11289 | 91.3% |
+
+| Part of `search` | letters | casei | words | redos | literal | letters-zh | word-zh |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Tail reload (refcount inc, restore the live set) | 10.7% | 11.1% | 11.0% | 11.5% | 11.8% | 10.4% | 11.2% |
+| Sparse-set probe (`nSpa[state]`, `si < nCount`) | 6.2% | 5.7% | 9.9% | 10.4% | 14.1% | 8.1% | 11.2% |
+| Probe hit (`nDen[si] == state`, then the same reload) | 4.4% | 0.6% | 1.3% | 2.2% | 0.0% | 1.5% | 0.0% |
+| Closure miss: capture-row `imul`, load tag/next/extra | 6.8% | 11.7% | 9.4% | 10.4% | 12.1% | 11.1% | 11.0% |
+| Step: `cDen[i]`, times 12, load tag | 4.7% | 6.0% | 6.2% | 6.2% | 5.5% | 4.7% | 6.2% |
+| Enter `phaseStep` and reload | 5.2% | 6.8% | 4.4% | 3.3% | 6.8% | 6.4% | 6.2% |
+| Refcount decrement | 5.6% | 5.7% | 4.0% | 3.9% | 3.9% | 5.0% | 4.1% |
+| Latin-1 bitmap `bt` | 10.8% | 7.8% | 2.4% | 4.0% | 0.0% | 4.9% | 2.9% |
+| Class-table pointer and the haystack byte | 5.5% | 4.1% | 1.7% | 1.4% | 0.0% | 5.6% | 2.7% |
+| Inlined `Char.isWordChar` | 0.0% | 0.0% | 2.7% | 0.0% | 0.0% | 0.0% | 0.0% |
+
+Nothing inside the loop is a majority. The three blocks that lead on every bench except the pure ASCII class are the tail reload, the sparse-set probe, and the closure-miss node load. Each is about 10–14% of `search`. The hottest instruction on `words/all-english` is the probe's `cmp` of `si` with `nCount`, 5.0% of `search`. On `sherlock-en` that same `cmp` is 7.6%. On `letters-en` the hottest instruction is the bitmap `bt`, 8.0% of `search`, and that block is still the largest there at 10.8%. On `sherlock-casei-en` the closure-miss node load leads the bitmap, 11.7% against 7.8%.
+
+`words/all-english` is 86.2% `search`. Outside it: `mi_malloc_small` 2.3%, `utf8_prev` 2.1%, `mi_free` 1.9%, `utf8_get` 1.9%. The inlined ASCII word test is 2.7% of `search` (2.4% of all samples). The Chinese haystacks still pay the UTF-8 cold path outside `search`: `utf8_get_fast_cold` 2.7% and `utf8_next_fast_cold` 1.0% on `[A-Za-z]{8,13}`, and 3.5% / 1.1% on `\w+`.
