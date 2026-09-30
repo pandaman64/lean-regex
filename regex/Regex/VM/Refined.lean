@@ -8,10 +8,12 @@ public import Regex.Regex.Basic
 public import Regex.Regex.OptimizationInfo
 public import Regex.Regex.Utilities
 public import Regex.Strategy
+public import Regex.VM.ClassTable
 public import Regex.VM.FlatBuffer
 public import Regex.VM.Wide
 
-open Regex.Data (Anchor Classes)
+open Regex.Data (Anchor)
+open Regex.VM.ClassTable (ClassTable)
 open Regex.VM.FlatBuffer
 open Regex.VM.Wide (WordArray)
 open String (Pos PosPlusOne Slice)
@@ -53,10 +55,10 @@ abbrev tagSparse : UInt32 := 7
 /-- Twelve bytes per state: tag, next, extra, each a little-endian `UInt32`. -/
 abbrev strideBytes : USize := 12
 
-/-- Flat NFA. `classes` holds the boxed character-class payloads referenced by `.sparse` states. -/
+/-- Flat NFA. `classes` holds one compiled table per `.sparse` state. -/
 structure FlatNFA where
   words : WordArray
-  classes : Array Classes
+  classes : Array ClassTable
   size : UInt32
   start : UInt32
 
@@ -66,7 +68,7 @@ def anchorKind : Anchor → UInt32
   | .wordBoundary => 2
   | .nonWordBoundary => 3
 
-def encode (classes : Array Classes) : NFA.Node → Option (UInt32 × UInt32 × UInt32 × Array Classes)
+def encode (classes : Array ClassTable) : NFA.Node → Option (UInt32 × UInt32 × UInt32 × Array ClassTable)
   | .done => some (tagDone, 0, 0, classes)
   | .fail => some (tagFail, 0, 0, classes)
   | .epsilon next => some (tagEpsilon, next.toUInt32, 0, classes)
@@ -80,7 +82,7 @@ def encode (classes : Array Classes) : NFA.Node → Option (UInt32 × UInt32 × 
       none
   | .sparse cs next =>
     if classes.size < UInt32.size then
-      some (tagSparse, next.toUInt32, classes.size.toUInt32, classes.push cs)
+      some (tagSparse, next.toUInt32, classes.size.toUInt32, classes.push (ClassTable.compile cs))
     else
       none
 
@@ -96,7 +98,7 @@ def ofNFA (nfa : NFA) : Option FlatNFA :=
   else
     go 0 (WordArray.emptyWithCapacity (nfa.size * 3)) #[]
 where
-  go (i : Nat) (words : WordArray) (classes : Array Classes) : Option FlatNFA :=
+  go (i : Nat) (words : WordArray) (classes : Array ClassTable) : Option FlatNFA :=
     if h : i < nfa.nodes.size then
       match encode classes nfa.nodes[i] with
       | none => none
@@ -189,7 +191,7 @@ progress: the remaining states of this character must still be tested at `p` if 
 does not reach `.done`.
 -/
 unsafe def eval {s : String}
-    (words : WordArray) (classes : Array Classes) (start : UInt32)
+    (words : WordArray) (classes : Array ClassTable) (start : UInt32)
     (nSlots : Nat) (nStates : UInt32) (slots : USize) (sent : UInt64)
     (cRow0 nRow0 stackRow0 : USize)
     (p cp : Pos s) (matched clos : Bool)
@@ -254,7 +256,7 @@ unsafe def eval {s : String}
       else if tag == tagSparse then
         let extra := words.uget (base + 8)
         let cs := classes.uget extra.toUSize lcProof
-        if p.get hp ∈ cs then
+        if cs.contains (p.get hp) then
           let nextW := words.uget (base + 4)
           let caps := copyRow caps (rowOff stackRow0 slots)
             (rowOff (cRow0 + state.toUSize) slots) slots
@@ -528,6 +530,10 @@ unsafe def selfCheck : Array String :=
     ("a$", "ba\na"),
     ("\\bword\\b", "a word wordy word"),
     ("[a-z]+", "AbCdefGHI"),
+    ("[^A-Za-z]+", "aあb漢c"),
+    ("[あ-ん]+", "アあいうア"),
+    ("\\w", "あa_"),
+    (".", "あ\nb"),
     ("[0-9]+", "id 42 and 7"),
     ("\\w+", "foo_bar baz"),
     ("a{2,4}", "aaaaaaaa"),
