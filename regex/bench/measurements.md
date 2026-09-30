@@ -268,3 +268,21 @@ Refined only, milliseconds per iteration. The forward binary is the engine befor
 Every row is slower, from 3.8% on `simplified-long` to 9.7% on `letters-en`. The literal, whose NFA is a handful of nodes, moved with the rest, so the gap is not only a long backward chain.
 
 The tip drops `771c078`. `ofNFA` stores nodes in compilation order again.
+
+## Stock versus refined after `utf8_prev`
+
+`8d2c203`. Both engines in one process (`-E both`, stock first). Milliseconds per iteration. Match counts agreed on every row. The earlier paired run, before `utf8_prev`, is the "Stock versus bitmap+linear" table above.
+
+| Benchmark | `-n` | Stock | Refined | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| `letters-en` `[A-Za-z]` | 40 | 34.146 | 10.140 | 3.37× |
+| `sherlock-casei-en` | 20 | 116.249 | 32.350 | 3.59× |
+| `words/all-english` `\b…\b` | 50 | 23.317 | 6.155 | 3.79× |
+| `simplified-long` `.` | 300 | 3.888 | 1.249 | 3.11× |
+| `sherlock-en` literal | 20 | 78.632 | 21.922 | 3.59× |
+| `sherlock-zh` literal | 20 | 23.618 | 7.473 | 3.16× |
+| `literal-alternate/sherlock-en` | 10 | 306.175 | 101.813 | 3.01× |
+| `[A-Za-z]{8,13}` on zh-sampled | 20 | 40.901 | 12.033 | 3.40× |
+| `\w+` on zh-sampled | 20 | 41.210 | 11.759 | 3.50× |
+
+`words/all-english` is the row that moved. In the earlier pair it was 23.209 / 6.650 (3.49×). The refined time is the `utf8_prev` walk. The other rows stay near 3.0× to 3.6×.
