@@ -6,7 +6,7 @@ open Regex.VM.Refined (FlatNFA)
 def printUsage : IO Unit := do
   IO.println "Usage: bench -e <regex_pattern> [-n <iterations>] [-E vm|refined|both] <file_path>"
   IO.println "       bench --check"
-  IO.println "       bench --rebar [-n <iterations>] [-E vm|refined|both] [--rebar-dir <dir>]"
+  IO.println "       bench --rebar [-n <iterations>] [-E vm|refined|both] [--rebar-dir <dir>] [--rebar-only <name>]"
   IO.println "Example: bench -e 'def' -n 1000 -E both ./file.lean"
   IO.println "         bench --rebar -n 3"
   IO.println "Engines: vm (stock PikeVM), refined (flat NFA), both (default)"
@@ -97,6 +97,8 @@ structure Arguments where
   check : Bool
   rebar : Bool
   rebarDir : String
+  /-- When set, only the curated benchmark with this exact name is run. -/
+  rebarOnly : Option String
 
 /--
 One curated rebar benchmark.
@@ -169,11 +171,17 @@ partial def takeLines (s : String) (n : Nat) : String :=
       s.endPos
   s.extract s.startPos (go s.startPos 0)
 
-unsafe def runRebar (dir : String) (iterations : Nat) (engine : Engine) : IO Unit := do
+unsafe def runRebar (dir : String) (iterations : Nat) (engine : Engine) (only : Option String) : IO Unit := do
   IO.println "rebar curated benchmarks"
   IO.println "https://github.com/BurntSushi/rebar"
   IO.println "Definitions and haystacks are from that repository. See bench/rebar/README.md."
-  for bench in rebarBenches do
+  let benches :=
+    match only with
+    | none => rebarBenches
+    | some name => rebarBenches.filter (·.name == name)
+  if benches.isEmpty then
+    throw (IO.userError s!"No rebar benchmark named {only.getD ""}")
+  for bench in benches do
     IO.println ""
     IO.println s!"--- {bench.name} ---"
     IO.println bench.source
@@ -209,41 +217,46 @@ unsafe def runRebar (dir : String) (iterations : Nat) (engine : Engine) : IO Uni
         IO.println s!"Count matches rebar's published count ({expected})"
 
 def parseArgs (pattern : Option String) (iterations : Option Nat) (filePath : Option String)
-    (engine : Engine) (check rebar : Bool) (rebarDir : String) (args : List String) :
-    Except String Arguments :=
+    (engine : Engine) (check rebar : Bool) (rebarDir : String) (rebarOnly : Option String)
+    (args : List String) : Except String Arguments :=
   match args with
-  | "--check" :: args => parseArgs pattern iterations filePath engine true rebar rebarDir args
-  | "--rebar" :: args => parseArgs pattern iterations filePath engine check true rebarDir args
-  | "--rebar-dir" :: dir :: args => parseArgs pattern iterations filePath engine check rebar dir args
-  | "-e" :: pattern :: args => parseArgs (some pattern) iterations filePath engine check rebar rebarDir args
+  | "--check" :: args => parseArgs pattern iterations filePath engine true rebar rebarDir rebarOnly args
+  | "--rebar" :: args => parseArgs pattern iterations filePath engine check true rebarDir rebarOnly args
+  | "--rebar-dir" :: dir :: args =>
+    parseArgs pattern iterations filePath engine check rebar dir rebarOnly args
+  | "--rebar-only" :: name :: args =>
+    parseArgs pattern iterations filePath engine check rebar rebarDir (some name) args
+  | "-e" :: pattern :: args =>
+    parseArgs (some pattern) iterations filePath engine check rebar rebarDir rebarOnly args
   | "-E" :: name :: args => do
     let engine ← Engine.parse name
-    parseArgs pattern iterations filePath engine check rebar rebarDir args
+    parseArgs pattern iterations filePath engine check rebar rebarDir rebarOnly args
   | "-n" :: n :: args => do
     let n ← n.toNat?.getDM (throw "Iterations must be a number")
     if n < 0 then
       throw "Iterations must be a positive number"
     else
-      parseArgs pattern (some n) filePath engine check rebar rebarDir args
-  | filePath :: args => parseArgs pattern iterations (some filePath) engine check rebar rebarDir args
+      parseArgs pattern (some n) filePath engine check rebar rebarDir rebarOnly args
+  | filePath :: args =>
+    parseArgs pattern iterations (some filePath) engine check rebar rebarDir rebarOnly args
   | [] => do
     let iterations := iterations.getD 1
     if check || rebar then
-      return ⟨pattern.getD "", iterations, filePath.getD "", engine, check, rebar, rebarDir⟩
+      return ⟨pattern.getD "", iterations, filePath.getD "", engine, check, rebar, rebarDir, rebarOnly⟩
     else
       let pattern ← pattern.getDM (throw "Pattern is required")
       let filePath ← filePath.getDM (throw "File path is required")
-      return ⟨pattern, iterations, filePath, engine, false, false, rebarDir⟩
+      return ⟨pattern, iterations, filePath, engine, false, false, rebarDir, none⟩
 
 unsafe def main (args : List String) : IO UInt32 := do
-  match parseArgs .none .none .none .both false false "bench/rebar/haystacks" args with
+  match parseArgs .none .none .none .both false false "bench/rebar/haystacks" none args with
   | .ok args =>
     if args.check then
       let code ← runSelfCheck
       if code != 0 then
         return code
     if args.rebar then
-      runRebar args.rebarDir args.iterations args.engine
+      runRebar args.rebarDir args.iterations args.engine args.rebarOnly
     else if !args.check then
       processFile args.pattern args.filePath args.iterations args.engine
     return 0
