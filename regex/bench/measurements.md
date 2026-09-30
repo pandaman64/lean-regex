@@ -114,18 +114,16 @@ Sample counts in that run: stock / refined = 15446 / 7720, 14377 / 7476, 11705 /
 
 `Classes` is still the tree. `ofNFA` compiles each tree into runs once: complement, intersection, difference, and symmetric difference are set algebra on those runs, and a perl class is the ASCII ranges for digit, space, or word. The match loop does not branch on the operator.
 
-A Latin-1 bitmap answers only `c < 256`. Probe 0 sends every larger code point back to `Classes.mem`. Probes 1 and 2 scan the full run list and have no tree fallback. Probes 3 and 4 use the bitmap below 256 and the runs clipped to `≥ 256` above it, so an empty high list means the character is not in the set.
+The kept table is a Latin-1 bitmap for `c < 256` and a linear scan of the runs clipped to `≥ 256`. An empty high list means the character is not in the set. Bitmap-only, full-run linear, full-run binary, and bitmap-plus-binary were measured on a fatter struct and then removed. The bitmap was the ASCII win. A linear or binary scan of one to four runs did not beat the tree on the two-code-point case-insensitive classes, and binary did not beat linear at those run counts. Bitmap-only was slower than the tree on the zh letter class, because every non-ASCII character fell back to `Classes.mem`.
 
-Same session, refined engine, milliseconds per iteration. `tree` is `b42f6f6`. Match counts agreed on every row. `sherlock-en` has no character class; it moved anyway, so a gap versus `tree` is not only the class probe.
+Same session after that removal, refined engine, milliseconds per iteration. `tree` is `b42f6f6`. This column is the slim bitmap-plus-linear binary. Match counts agreed on every row (1833, 522, 15008, 1, 513, 668, 9913). `sherlock-en` has no character class; it moved anyway, so a gap versus `tree` is not only the class probe.
 
-| Benchmark | `-n` | tree | bitmap | linear | binary | bitmap+linear | bitmap+binary |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `letters-en` `[A-Za-z]` | 40 | 13.772 | 10.307 | 11.842 | 11.243 | 10.419 | 10.984 |
-| `sherlock-casei-en` | 20 | 42.238 | 33.953 | 42.706 | 42.310 | 34.216 | 36.215 |
-| `words/all-english` `\w` | 50 | 8.208 | 6.867 | 7.314 | 7.013 | 7.112 | 7.216 |
-| `simplified-long` `.` | 300 | 1.511 | 1.203 | 1.314 | 1.232 | 1.236 | 1.281 |
-| `sherlock-en` literal | 20 | 26.848 | 23.431 | 24.848 | 23.643 | 24.013 | 25.748 |
-| `[A-Za-z]{8,13}` on zh-sampled | 20 | 15.796 | 16.612 | 13.219 | 13.012 | 12.229 | 13.157 |
-| `\w+` on zh-sampled | 20 | 13.180 | 13.043 | 12.862 | 12.819 | 11.943 | 12.946 |
-
-A second pass, engines in a different order, kept the same ranking on `letters-en`, `sherlock-casei-en`, the literal, and the zh class. The bitmap is what speeds ASCII class tests. Linear and binary stay near the tree on `sherlock-casei-en`, whose classes are two code points. Binary search does not beat a linear scan at these run counts. Bitmap-only is slower than the tree on the zh letter class, because every non-ASCII character takes the `Classes.mem` fallback. Bitmap plus a linear high-run scan is the complete probe: tied with bitmap-only on ASCII, and the fastest on the zh misses. `classProbe` is `3`.
+| Benchmark | `-n` | `b42f6f6` tree | bitmap+linear |
+| --- | ---: | ---: | ---: |
+| `letters-en` `[A-Za-z]` | 40 | 13.766 | 10.327 |
+| `sherlock-casei-en` | 20 | 42.775 | 32.395 |
+| `words/all-english` `\w` | 50 | 8.248 | 6.766 |
+| `simplified-long` `.` | 300 | 1.495 | 1.173 |
+| `sherlock-en` literal | 20 | 26.687 | 23.073 |
+| `[A-Za-z]{8,13}` on zh-sampled | 20 | 15.529 | 12.306 |
+| `\w+` on zh-sampled | 20 | 13.099 | 11.624 |

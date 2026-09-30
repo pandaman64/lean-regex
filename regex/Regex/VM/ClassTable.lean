@@ -12,26 +12,14 @@ Compiled character-class tables for the refined PikeVM.
 symmetric difference are evaluated here, once, into a sorted list of inclusive
 code-point runs. The match loop never dispatches on those operators.
 
-A Latin-1 bitmap is that same set restricted to `U+0000`–`U+00FF`. It is a
-complete answer only below 256. `classProbe = 0` therefore sends every other
-code point back to `Classes.mem`. The interval probes do not: runs that start
-at 256 or above are the rest of the set, so an empty high list means "no".
+A Latin-1 bitmap answers `U+0000`–`U+00FF`. Code points at or above 256 are a
+linear scan of the same runs, clipped so each lower endpoint is at least 256.
+An empty high list means the character is not in the set.
 -/
 
 public section
 
 namespace Regex.VM.ClassTable
-
-/--
-Which probe the refined loop uses.
-
-* `0` Latin-1 bitmap; `c ≥ 256` falls back to `Classes.mem`
-* `1` sorted runs, linear scan
-* `2` sorted runs, binary search
-* `3` bitmap, then linear scan of runs at or above 256
-* `4` bitmap, then binary search of those high runs
--/
-abbrev classProbe : Nat := 3
 
 private def univHi : UInt32 := 0x10FFFF
 
@@ -181,31 +169,23 @@ private def packBits (runs : Array (UInt32 × UInt32)) : UInt64 × UInt64 × UIn
   termination_by 256 - i
   go 0 0 0 0 0
 
-/-- Bitmap words for `U+0000`–`U+00FF`, full runs, and runs at or above 256. -/
+/-- Bitmap words for `U+0000`–`U+00FF`, plus runs at or above 256. -/
 structure ClassTable where
   b0 : UInt64
   b1 : UInt64
   b2 : UInt64
   b3 : UInt64
-  /-- Number of full runs. Stored so the probe does not recompute it from the byte size. -/
-  nRuns : UInt32
-  /-- Number of runs at or above 256. -/
+  /-- Number of high runs. Stored so the probe does not recompute it from the byte size. -/
   nHigh : UInt32
-  runs : ByteArray
   high : ByteArray
-  /-- Original tree. Consulted only by the bitmap-only probe, for `c ≥ 256`. -/
-  source : Classes
 
 def ClassTable.compile (cs : Classes) : ClassTable :=
   let runs := runsOf cs
   let high := highRuns runs
   let (b0, b1, b2, b3) := packBits runs
   { b0, b1, b2, b3
-    nRuns := runs.size.toUInt32
     nHigh := high.size.toUInt32
-    runs := packRuns runs
-    high := packRuns high
-    source := cs }
+    high := packRuns high }
 
 @[inline]
 private unsafe def bitmapMem (t : ClassTable) (c : UInt32) : Bool :=
@@ -235,38 +215,11 @@ private unsafe def linearMem (runs : ByteArray) (n c : UInt32) : Bool :=
       false
   go 0
 
-@[inline]
-private unsafe def binaryMem (runs : ByteArray) (n c : UInt32) : Bool :=
-  let rec go (lo hi : UInt32) : Bool :=
-    if lo < hi then
-      let mid := (lo + hi) / 2
-      let off := mid.toUSize * 8
-      let rlo := runs.ugetUInt32LE off lcProof
-      let rhi := runs.ugetUInt32LE (off + 4) lcProof
-      if c < rlo then
-        go lo mid
-      else if rhi < c then
-        go (mid + 1) hi
-      else
-        true
-    else
-      false
-  go 0 n
-
-/-- Probe selected by `classProbe`. Dead arms are the other representations. -/
+/-- Bitmap below 256, then a linear scan of the high runs. -/
 @[inline]
 unsafe def ClassTable.contains (t : ClassTable) (c : Char) : Bool :=
   let v := c.val
-  if classProbe == 0 then
-    if v < 256 then bitmapMem t v else c ∈ t.source
-  else if classProbe == 1 then
-    linearMem t.runs t.nRuns v
-  else if classProbe == 2 then
-    binaryMem t.runs t.nRuns v
-  else if classProbe == 3 then
-    if v < 256 then bitmapMem t v else linearMem t.high t.nHigh v
-  else
-    if v < 256 then bitmapMem t v else binaryMem t.high t.nHigh v
+  if v < 256 then bitmapMem t v else linearMem t.high t.nHigh v
 
 end Regex.VM.ClassTable
 
