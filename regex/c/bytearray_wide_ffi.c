@@ -39,6 +39,34 @@ LEAN_EXPORT uint32_t lean_regex_uget_u32le(b_lean_obj_arg a, size_t off) {
         | ((uint32_t)p[3] << 24);
 }
 
+LEAN_EXPORT uint64_t lean_regex_uget_u64le(b_lean_obj_arg a, size_t off) {
+    const uint8_t *p = lean_sarray_cptr(a) + off;
+    return (uint64_t)p[0]
+        | ((uint64_t)p[1] << 8)
+        | ((uint64_t)p[2] << 16)
+        | ((uint64_t)p[3] << 24)
+        | ((uint64_t)p[4] << 32)
+        | ((uint64_t)p[5] << 40)
+        | ((uint64_t)p[6] << 48)
+        | ((uint64_t)p[7] << 56);
+}
+
+LEAN_EXPORT lean_obj_res lean_regex_uset_u64le(lean_obj_arg a, size_t off, uint64_t v) {
+    lean_obj_res r;
+    if (lean_is_exclusive(a)) r = a;
+    else r = lean_copy_byte_array(a);
+    uint8_t *p = lean_sarray_cptr(r) + off;
+    p[0] = (uint8_t)v;
+    p[1] = (uint8_t)(v >> 8);
+    p[2] = (uint8_t)(v >> 16);
+    p[3] = (uint8_t)(v >> 24);
+    p[4] = (uint8_t)(v >> 32);
+    p[5] = (uint8_t)(v >> 40);
+    p[6] = (uint8_t)(v >> 48);
+    p[7] = (uint8_t)(v >> 56);
+    return r;
+}
+
 LEAN_EXPORT lean_obj_res lean_regex_uset_u32le(lean_obj_arg a, size_t off, uint32_t v) {
     lean_obj_res r;
     if (lean_is_exclusive(a)) r = a;
@@ -53,8 +81,8 @@ LEAN_EXPORT lean_obj_res lean_regex_uset_u32le(lean_obj_arg a, size_t off, uint3
 
 /*
  * `n` zero bytes in one scalar array. `lean_alloc_sarray` does not clear the
- * payload, so the bytes are memset here. Scratch buffers are rebuilt for every
- * match; filling them with `ByteArray.push` made that setup dominate `\w+`.
+ * payload, so the bytes are written here. Filling the block with
+ * `ByteArray.push` made scratch setup dominate `\w+`.
  */
 LEAN_EXPORT lean_obj_res lean_regex_zero_byte_array(size_t n) {
     lean_obj_res a = lean_alloc_sarray(1, n, n);

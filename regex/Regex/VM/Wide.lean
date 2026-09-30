@@ -54,10 +54,48 @@ def usetUInt32LE (a : ByteArray) (off : USize) (v : UInt32)
         (off.toNat + 3) (v >>> 24).toUInt8 (by simp only [ByteArray.size_set]; omega))
 
 /--
+Load the little-endian `UInt64` at byte offset `off`.
+
+Capture slots in the refined PikeVM are byte offsets. A `UInt32` would truncate
+a string longer than 4 GiB; eight bytes cover every index that fits in this
+runtime. The reference body is the specification. The C implementation reads
+those eight bytes in one wide load.
+-/
+@[extern "lean_regex_uget_u64le"]
+def ugetUInt64LE (a : @& ByteArray) (off : USize)
+    (h : off.toNat + 8 ≤ a.size := by get_elem_tactic) : UInt64 :=
+  (a[off.toNat]'(by omega)).toUInt64 |||
+    ((a[off.toNat + 1]'(by omega)).toUInt64 <<< 8) |||
+    ((a[off.toNat + 2]'(by omega)).toUInt64 <<< 16) |||
+    ((a[off.toNat + 3]'(by omega)).toUInt64 <<< 24) |||
+    ((a[off.toNat + 4]'(by omega)).toUInt64 <<< 32) |||
+    ((a[off.toNat + 5]'(by omega)).toUInt64 <<< 40) |||
+    ((a[off.toNat + 6]'(by omega)).toUInt64 <<< 48) |||
+    ((a[off.toNat + 7]'(by omega)).toUInt64 <<< 56)
+
+/--
+Store the little-endian `UInt64` `v` at byte offset `off`.
+
+The reference body is eight `ByteArray.set`s. The C implementation writes an
+exclusive buffer in place and copies a shared buffer first.
+-/
+@[extern "lean_regex_uset_u64le"]
+def usetUInt64LE (a : ByteArray) (off : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size := by get_elem_tactic) : ByteArray :=
+  ((((((((a.set off.toNat v.toUInt8 (by omega)).set
+        (off.toNat + 1) (v >>> 8).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
+        (off.toNat + 2) (v >>> 16).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
+        (off.toNat + 3) (v >>> 24).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
+        (off.toNat + 4) (v >>> 32).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
+        (off.toNat + 5) (v >>> 40).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
+        (off.toNat + 6) (v >>> 48).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
+        (off.toNat + 7) (v >>> 56).toUInt8 (by simp only [ByteArray.size_set]; omega))
+
+/--
 `n` zero bytes.
 
 The reference body is `n` pushes. The C implementation allocates one scalar
-array and clears it. Scratch buffers are rebuilt on every match, so the
+array and clears it. Callers allocate scratch as one block, so the
 compiled path must not walk the bytes in Lean.
 -/
 @[extern "lean_regex_zero_byte_array"]

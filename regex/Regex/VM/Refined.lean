@@ -8,9 +8,11 @@ public import Regex.Regex.Basic
 public import Regex.Regex.OptimizationInfo
 public import Regex.Regex.Utilities
 public import Regex.Strategy
+public import Regex.VM.FlatBuffer
 public import Regex.VM.Wide
 
 open Regex.Data (Anchor Classes)
+open Regex.VM.FlatBuffer
 open Regex.VM.Wide (WordArray)
 open String (Pos PosPlusOne Slice)
 
@@ -28,8 +30,10 @@ polymorphic, so every slot is a `lean_object*` and each `UInt32` is passed throu
 `lean_box_uint32`. Loads and stores go through `ByteArray.ugetUInt32LE` /
 `usetUInt32LE`, the wide reader adapted from lean-zip. Each state is three contiguous words
 (tag, next, extra), twelve bytes from a single base offset. Sparse-set state ids and the
-ε-stack of state ids use the same buffer; capture updates stay in an `Array` because they
-are heap objects.
+ε-stack of state ids use the same buffer. Capture slots use `FlatBuffer`, an
+unboxed `ByteArray` of `UInt64` byte offsets, instead of `BufferStrategy`'s
+`Array` of `Vector`s. The hot loop is hard-coded to that layout: a save writes
+one word into a preallocated row and does not allocate a capture buffer.
 -/
 
 public section
@@ -131,78 +135,89 @@ def writesUpdate (tag : UInt32) : Bool :=
   tag == tagDone || tag == tagChar || tag == tagSparse
 
 /--
-Reusable sparse-set and ε-stack buffers. Counts are not stored: each search starts them at zero,
-which is the usual sparse-set clear.
+Reusable sparse-set, ε-stack, and capture-slot buffers.
+
+`caps` is one flat capture buffer (`FlatBuffer`). Row 0 holds the accepted
+match, row 1 the closure match, then `nStates` rows for the set being read,
+`nStates` rows for the set being written, and `stkS.size` stack rows. Counts
+are not stored: each search starts them at zero, which is the usual sparse-set
+clear. Capture rows are overwritten before they are read, so the block is not
+refilled per match.
 -/
-structure Scratch {s : String} (σ : Strategy s) where
+structure Scratch where
   cDen : WordArray
   cSpa : WordArray
   nDen : WordArray
   nSpa : WordArray
   stkS : WordArray
-  cUpd : Array σ.Update
-  nUpd : Array σ.Update
-  stkU : Array σ.Update
+  caps : ByteArray
+  nSlots : Nat
+  nStates : UInt32
 
-def Scratch.mkFor {s : String} (σ : Strategy s) (n : Nat) : Scratch σ :=
-  let cap := max (n * 4) 8
+def Scratch.mkFor (nStates nSlots : Nat) : Scratch :=
+  let cap := max (nStates * 4) 8
   {
-    cDen := WordArray.zeros n
-    cSpa := WordArray.zeros n
-    nDen := WordArray.zeros n
-    nSpa := WordArray.zeros n
+    cDen := WordArray.zeros nStates
+    cSpa := WordArray.zeros nStates
+    nDen := WordArray.zeros nStates
+    nSpa := WordArray.zeros nStates
     stkS := WordArray.zeros cap
-    cUpd := Array.replicate n σ.empty
-    nUpd := Array.replicate n σ.empty
-    stkU := Array.replicate cap σ.empty
+    caps := ByteArray.zero ((2 + 2 * nStates + cap) * nSlots * 8).toUSize
+    nSlots
+    nStates := nStates.toUInt32
   }
 
-structure SearchRun {s : String} (σ : Strategy s) where
-  result : Option σ.Update
-  scratch : Scratch σ
+structure SearchRun where
+  matched : Bool
+  scratch : Scratch
 
 @[inline]
-def SearchRun.pack {s : String} {σ : Strategy s} (result : Option σ.Update)
-    (cDen cSpa nDen nSpa stkS : WordArray) (cUpd nUpd stkU : Array σ.Update) : SearchRun σ :=
-  { result, scratch := { cDen, cSpa, nDen, nSpa, stkS, cUpd, nUpd, stkU } }
+def SearchRun.pack (matched : Bool) (nSlots : Nat) (nStates : UInt32)
+    (cDen cSpa nDen nSpa stkS : WordArray) (caps : ByteArray) : SearchRun :=
+  { matched, scratch := { cDen, cSpa, nDen, nSpa, stkS, caps, nSlots, nStates } }
 
 /--
-Tail-recursive PikeVM. Every recursive call is in tail position so the buffers stay unique:
-`usetWord` updates the sparse sets and the ε-stack in place. `c*` is the set being read, `n*` the
-set being written. `clos` is the match found by the closure currently running; `matched` is the
-match already accepted by the search.
+Tail-recursive PikeVM. Every recursive call is in tail position so the buffers stay unique.
+`c*` is the set being read, `n*` the set being written. Capture slots live in `caps`; `cRow0`
+and `nRow0` are the first rows of those two sets and are swapped, not copied, when a closure
+finishes. `clos` means row 1 holds the match found by the closure in progress; `matched` means
+row 0 holds the match already accepted.
 
 `p` is the position of the active `eachStepChar` loop. `cp` is the position of the closure
 (where saves and anchors run). They differ only while a character transition's closure is in
 progress: the remaining states of this character must still be tested at `p` if that closure
 does not reach `.done`.
 -/
-unsafe def eval {s : String} (σ : Strategy s)
+unsafe def eval {s : String}
     (words : WordArray) (classes : Array Classes) (start : UInt32)
-    (p cp : Pos s) (matched clos : Option σ.Update)
-    (cCount : UInt32) (cDen cSpa : WordArray) (cUpd : Array σ.Update)
-    (nCount : UInt32) (nDen nSpa : WordArray) (nUpd : Array σ.Update)
-    (stkU : Array σ.Update) (stkS : WordArray) (sp : Nat)
-    (phase i : UInt32) : SearchRun σ :=
+    (nSlots : Nat) (nStates : UInt32) (slots : USize) (sent : UInt64)
+    (cRow0 nRow0 stackRow0 : USize)
+    (p cp : Pos s) (matched clos : Bool)
+    (cCount : UInt32) (cDen cSpa : WordArray)
+    (nCount : UInt32) (nDen nSpa : WordArray)
+    (stkS : WordArray) (caps : ByteArray) (sp : Nat)
+    (phase i : UInt32) : SearchRun :=
   if phase == phaseStep then
     if hp : p = s.endPos then
-      SearchRun.pack matched cDen cSpa nDen nSpa stkS cUpd nUpd stkU
-    else if i == 0 && cCount == 0 && matched.isSome then
-      SearchRun.pack matched cDen cSpa nDen nSpa stkS cUpd nUpd stkU
+      SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
+    else if i == 0 && cCount == 0 && matched then
+      SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
     else if i == cCount then
-      if matched.isNone then
-        let stkU := stkU.uset 0 σ.empty lcProof
+      if !matched then
+        let caps := fillRow caps (rowOff stackRow0 slots) slots sent
         let stkS := stkS.usetWord 0 start
-        eval σ words classes start (p.next hp) (p.next hp) none none
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS 1
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          (p.next hp) (p.next hp) false false
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps 1
           phaseClosure 0
       else
-        eval σ words classes start (p.next hp) (p.next hp) matched none
-          nCount nDen nSpa nUpd
-          (0 : UInt32) cDen cSpa cUpd
-          stkU stkS 0
+        eval words classes start nSlots nStates slots sent nRow0 cRow0 stackRow0
+          (p.next hp) (p.next hp) matched false
+          nCount nDen nSpa
+          (0 : UInt32) cDen cSpa
+          stkS caps 0
           phaseStep 0
     else
       let state := cDen.ugetWord i.toUSize
@@ -210,196 +225,272 @@ unsafe def eval {s : String} (σ : Strategy s)
       let tag := words.uget base
       if tag == tagDone then
         -- Lower-priority threads lose to the `.done` state already in this set.
-        eval σ words classes start p p matched none
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS sp
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          p p matched false
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps sp
           phaseStep cCount
       else if tag == tagChar then
         let extra := words.uget (base + 8)
         if (p.get hp).val == extra then
           let nextW := words.uget (base + 4)
-          let update := cUpd.uget state.toUSize lcProof
-          let stkU := stkU.uset 0 update lcProof
+          let caps := copyRow caps (rowOff stackRow0 slots)
+            (rowOff (cRow0 + state.toUSize) slots) slots
           let stkS := stkS.usetWord 0 nextW
-          eval σ words classes start p (p.next hp) matched none
-            cCount cDen cSpa cUpd
-            nCount nDen nSpa nUpd
-            stkU stkS 1
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p (p.next hp) matched false
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps 1
             phaseStepClosure i
         else
-          eval σ words classes start p p matched none
-            cCount cDen cSpa cUpd
-            nCount nDen nSpa nUpd
-            stkU stkS sp
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p p matched false
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps sp
             phaseStep (i + 1)
       else if tag == tagSparse then
         let extra := words.uget (base + 8)
         let cs := classes.uget extra.toUSize lcProof
         if p.get hp ∈ cs then
           let nextW := words.uget (base + 4)
-          let update := cUpd.uget state.toUSize lcProof
-          let stkU := stkU.uset 0 update lcProof
+          let caps := copyRow caps (rowOff stackRow0 slots)
+            (rowOff (cRow0 + state.toUSize) slots) slots
           let stkS := stkS.usetWord 0 nextW
-          eval σ words classes start p (p.next hp) matched none
-            cCount cDen cSpa cUpd
-            nCount nDen nSpa nUpd
-            stkU stkS 1
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p (p.next hp) matched false
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps 1
             phaseStepClosure i
         else
-          eval σ words classes start p p matched none
-            cCount cDen cSpa cUpd
-            nCount nDen nSpa nUpd
-            stkU stkS sp
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p p matched false
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps sp
             phaseStep (i + 1)
       else
-        eval σ words classes start p p matched none
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS sp
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          p p matched false
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps sp
           phaseStep (i + 1)
   else if sp == 0 then
     -- `phaseClosure` always installs the closure result and steps at `cp`. A step-closure does
     -- too when it reached `.done`; otherwise the rest of this character is tested at `p`.
-    if phase == phaseClosure || clos.isSome then
-      eval σ words classes start cp cp clos none
-        nCount nDen nSpa nUpd
-        (0 : UInt32) cDen cSpa cUpd
-        stkU stkS 0
+    if phase == phaseClosure || clos then
+      let caps :=
+        if clos then copyRow caps (rowOff 0 slots) (rowOff 1 slots) slots else caps
+      eval words classes start nSlots nStates slots sent nRow0 cRow0 stackRow0
+        cp cp clos false
+        nCount nDen nSpa
+        (0 : UInt32) cDen cSpa
+        stkS caps 0
         phaseStep 0
     else
-      eval σ words classes start p p matched none
-        cCount cDen cSpa cUpd
-        nCount nDen nSpa nUpd
-        stkU stkS 0
+      eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+        p p matched false
+        cCount cDen cSpa
+        nCount nDen nSpa
+        stkS caps 0
         phaseStep (i + 1)
   else
     let sp' := sp - 1
-    let update := stkU.uget sp'.toUSize lcProof
+    let stkOff := rowOff (stackRow0 + sp'.toUSize) slots
     let state := stkS.ugetWord sp'.toUSize
     let si := nSpa.ugetWord state.toUSize
     let seen := if si < nCount then nDen.ugetWord si.toUSize == state else false
     if seen then
-      eval σ words classes start p cp matched clos
-        cCount cDen cSpa cUpd
-        nCount nDen nSpa nUpd
-        stkU stkS sp'
+      eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+        p cp matched clos
+        cCount cDen cSpa
+        nCount nDen nSpa
+        stkS caps sp'
         phase i
     else
       let base := state.toUSize * strideBytes
       let tag := words.uget base
       let nextW := words.uget (base + 4)
       let extra := words.uget (base + 8)
-      let clos := if tag == tagDone then clos <|> some update else clos
+      -- First `.done` wins. Copy into row 1 before any later save mutates this stack row.
+      let caps :=
+        if tag == tagDone && !clos then
+          copyRow caps (rowOff 1 slots) stkOff slots
+        else
+          caps
+      let clos := tag == tagDone || clos
+      let caps :=
+        if writesUpdate tag then
+          copyRow caps (rowOff (nRow0 + state.toUSize) slots) stkOff slots
+        else
+          caps
       let nDen := nDen.usetWord nCount.toUSize state
       let nSpa := nSpa.usetWord state.toUSize nCount
       let nCount := nCount + 1
-      let nUpd := if writesUpdate tag then nUpd.uset state.toUSize update lcProof else nUpd
       -- Two free slots cover a `.split` (next₂ under next₁, so next₁ is popped first).
-      let stkU := if sp' + 2 <= stkU.size then stkU else stkU.push σ.empty |>.push σ.empty
-      let stkS := if sp' + 2 <= stkS.size then stkS else stkS.push 0 |>.push 0
+      let grew := sp' + 2 > stkS.size
+      let caps := if grew then growRows caps 2 nSlots else caps
+      let stkS := if grew then stkS.push 0 |>.push 0 else stkS
       if tag == tagEpsilon then
-        let stkU := stkU.uset sp'.toUSize update lcProof
         let stkS := stkS.usetWord sp'.toUSize nextW
-        eval σ words classes start p cp matched clos
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS (sp' + 1)
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          p cp matched clos
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps (sp' + 1)
           phase i
       else if tag == tagSplit then
-        let stkU := stkU.uset sp'.toUSize update lcProof
+        -- The two branches must not share one mutable row.
+        let caps := copyRow caps (rowOff (stackRow0 + (sp' + 1).toUSize) slots) stkOff slots
         let stkS := stkS.usetWord sp'.toUSize extra
-        let stkU := stkU.uset (sp' + 1).toUSize update lcProof
         let stkS := stkS.usetWord (sp' + 1).toUSize nextW
-        eval σ words classes start p cp matched clos
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS (sp' + 2)
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          p cp matched clos
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps (sp' + 2)
           phase i
       else if tag == tagSave then
-        let update := σ.write update extra.toNat cp
-        let stkU := stkU.uset sp'.toUSize update lcProof
+        -- `setIfInBounds`: a save past the buffer leaves the row unchanged.
+        let caps :=
+          if extra.toNat < nSlots then
+            uset caps (stkOff + extra.toUSize * slotBytes) (encodePos cp)
+          else
+            caps
         let stkS := stkS.usetWord sp'.toUSize nextW
-        eval σ words classes start p cp matched clos
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS (sp' + 1)
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          p cp matched clos
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps (sp' + 1)
           phase i
       else if tag == tagAnchor then
         if anchorTest extra cp then
-          let stkU := stkU.uset sp'.toUSize update lcProof
           let stkS := stkS.usetWord sp'.toUSize nextW
-          eval σ words classes start p cp matched clos
-            cCount cDen cSpa cUpd
-            nCount nDen nSpa nUpd
-            stkU stkS (sp' + 1)
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p cp matched clos
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps (sp' + 1)
             phase i
         else
-          eval σ words classes start p cp matched clos
-            cCount cDen cSpa cUpd
-            nCount nDen nSpa nUpd
-            stkU stkS sp'
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p cp matched clos
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps sp'
             phase i
       else
-        eval σ words classes start p cp matched clos
-          cCount cDen cSpa cUpd
-          nCount nDen nSpa nUpd
-          stkU stkS sp'
+        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+          p cp matched clos
+          cCount cDen cSpa
+          nCount nDen nSpa
+          stkS caps sp'
           phase i
 
-unsafe def search {s : String} (σ : Strategy s) (nfa : FlatNFA) (scratch : Scratch σ) (p : Pos s) :
-    SearchRun σ :=
+unsafe def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt64) (p : Pos s) :
+    SearchRun :=
   if nfa.size == 0 then
-    { result := none, scratch }
+    { matched := false, scratch }
   else
     let words := nfa.words
     let classes := nfa.classes
     let start := nfa.start
-    let { cDen, cSpa, nDen, nSpa, stkS, cUpd, nUpd, stkU } := scratch
-    let stkU := stkU.uset 0 σ.empty lcProof
+    let { cDen, cSpa, nDen, nSpa, stkS, caps, nSlots, nStates } := scratch
+    let slots := nSlots.toUSize
+    let cRow0 : USize := 2
+    let nRow0 : USize := 2 + nStates.toUSize
+    let stackRow0 : USize := nRow0 + nStates.toUSize
+    let caps := fillRow caps (rowOff stackRow0 slots) slots sent
     let stkS := stkS.usetWord 0 start
-    eval σ words classes start p p none none
-      (0 : UInt32) cDen cSpa cUpd
-      (0 : UInt32) nDen nSpa nUpd
-      stkU stkS 1
+    eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+      p p false false
+      (0 : UInt32) cDen cSpa
+      (0 : UInt32) nDen nSpa
+      stkS caps 1
       phaseClosure 0
-
-unsafe def captureNext {s : String} (σ : Strategy s) (nfa : FlatNFA) (p : Pos s) : Option σ.Update :=
-  (search σ nfa (Scratch.mkFor σ nfa.size.toNat) p).result
 
 unsafe def captureNextBuf {s : String} (nfa : FlatNFA) (bufferSize : Nat) (p : Pos s) :
     Option (Buffer s bufferSize) :=
-  captureNext (BufferStrategy s bufferSize) nfa p
+  let run := search nfa (Scratch.mkFor nfa.size.toNat bufferSize) (sentinelWord s) p
+  if run.matched then
+    some (toBuffer run.scratch.caps bufferSize)
+  else
+    none
 
 /-- All non-overlapping matches, using the same empty-match advance as `Regex.Matches.next?`. -/
-unsafe def findAll (nfa : FlatNFA) (info : OptimizationInfo) (haystack : String) : Array Slice :=
-  let rec go (pos : PosPlusOne haystack) (accum : Array Slice) : Array Slice :=
-    if h : pos.isValid then
-      let start := info.findStart (pos.asPos h)
-      match captureNextBuf nfa 2 start with
-      | none => accum
-      | some slots =>
-        let startPos := slots[0]
-        let stopPos := slots[1]
-        if hv : stopPos.isValid && startPos ≤ stopPos then
-          have isStopPosValid : stopPos.isValid := by grind
-          have h' : startPos.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid (by grind)
-          let slice : Slice :=
-            ⟨haystack, startPos.asPos h', stopPos.asPos isStopPosValid, String.Pos.le_iff.mpr (by grind)⟩
-          let nextPos := PosPlusOne.pos (stopPos.asPos isStopPosValid)
-          let next := if pos < nextPos then nextPos else pos.next h
-          go next (accum.push slice)
-        else
-          accum
+unsafe def findAll.go (nfa : FlatNFA) (info : OptimizationInfo) (haystack : String)
+    (sent : UInt64) (pos : PosPlusOne haystack) (accum : Array Slice) (scratch : Scratch) : Array Slice :=
+  if h : pos.isValid then
+    let start := info.findStart (pos.asPos h)
+    let run := search nfa scratch sent start
+    if run.matched then
+      let startPos := decode (uget run.scratch.caps 0)
+      let stopPos := decode (uget run.scratch.caps slotBytes)
+      if hv : stopPos.isValid = true ∧ startPos ≤ stopPos then
+        have isStopPosValid : stopPos.isValid := hv.1
+        have h' : startPos.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid hv.2
+        have hle : (startPos.asPos h').offset ≤ (stopPos.asPos isStopPosValid).offset := by
+          simpa [PosPlusOne.asPos_def] using (PosPlusOne.le_iff.mp hv.2)
+        let slice : Slice :=
+          ⟨haystack, startPos.asPos h', stopPos.asPos isStopPosValid, String.Pos.le_iff.mpr hle⟩
+        let nextPos := PosPlusOne.pos (stopPos.asPos isStopPosValid)
+        let next := if pos < nextPos then nextPos else pos.next h
+        findAll.go nfa info haystack sent next (accum.push slice) run.scratch
+      else
+        accum
     else
       accum
-  go haystack.startPosPlusOne #[]
+  else
+    accum
+
+unsafe def findAll (nfa : FlatNFA) (info : OptimizationInfo) (haystack : String) : Array Slice :=
+  -- One scratch block for every match. Capture rows are overwritten in place.
+  findAll.go nfa info haystack (sentinelWord haystack) haystack.startPosPlusOne #[]
+    (Scratch.mkFor nfa.size.toNat 2)
 
 unsafe def count (nfa : FlatNFA) (info : OptimizationInfo) (haystack : String) : Nat :=
   (findAll nfa info haystack).size
 
 unsafe def byteSpans (slices : Array Slice) : Array (Nat × Nat) :=
   slices.map fun s => (s.startInclusive.offset.byteIdx, s.endExclusive.offset.byteIdx)
+
+/-- Byte offsets of a capture buffer. Proof fields are not compared. -/
+def bufferOffsets {s : String} {n : Nat} (b : Buffer s n) : List Nat :=
+  List.ofFn fun i : Fin n => (b[i]).offset.byteIdx
+
+/--
+Compare capture slots against the stock `BufferStrategy` at every position.
+`none` means every slot offset agrees.
+-/
+unsafe def buffersAgree.go {haystack : String} (pattern : String) (re : Regex) (flat : FlatNFA)
+    (bufSize : Nat) (pos : PosPlusOne haystack) : Option String :=
+  if h : pos.isValid then
+    let p := pos.asPos h
+    let stock := re.captureNextBuf bufSize p
+    let refined := captureNextBuf flat bufSize (re.optimizationInfo.findStart p)
+    let same :=
+      match stock, refined with
+      | none, none => true
+      | some a, some b => bufferOffsets a == bufferOffsets b
+      | _, _ => false
+    if same then
+      buffersAgree.go pattern re flat bufSize (pos.next h)
+    else
+      some s!"buffer mismatch /{pattern}/ at {p.offset.byteIdx}"
+  else
+    none
+
+unsafe def buffersAgree (pattern haystack : String) : Option String :=
+  let re := Regex.parse! pattern
+  match ofNFA re.nfa with
+  | none => some s!"flat conversion failed for /{pattern}/"
+  | some flat =>
+    buffersAgree.go pattern re flat (re.maxTag + 1) haystack.startPosPlusOne
 
 /-- Compare match spans against the stock VM. `none` means they agree. -/
 unsafe def mismatch? (pattern haystack : String) : Option String :=
@@ -447,7 +538,7 @@ unsafe def selfCheck : Array String :=
     (".", "é"),
     ("é+", "aéééb")
   ]
-  cases.filterMap fun (pat, hay) => mismatch? pat hay
+  cases.filterMap fun (pat, hay) => mismatch? pat hay <|> buffersAgree pat hay
 
 end Regex.VM.Refined
 
