@@ -248,3 +248,21 @@ Refined only, on `2adb885`, period 200 µs, lost samples 0, four threads. `Refin
 Nothing inside the loop is a majority. The three blocks that lead on every bench except the pure ASCII class are the tail reload, the sparse-set probe, and the closure-miss node load. Each is about 10–14% of `search`. The hottest instruction on `words/all-english` is the probe's `cmp` of `si` with `nCount`, 5.0% of `search`. On `sherlock-en` that same `cmp` is 7.6%. On `letters-en` the hottest instruction is the bitmap `bt`, 8.0% of `search`, and that block is still the largest there at 10.8%. On `sherlock-casei-en` the closure-miss node load leads the bitmap, 11.7% against 7.8%.
 
 `words/all-english` is 86.2% `search`. Outside it: `mi_malloc_small` 2.3%, `utf8_prev` 2.1%, `mi_free` 1.9%, `utf8_get` 1.9%. The inlined ASCII word test is 2.7% of `search` (2.4% of all samples). The Chinese haystacks still pay the UTF-8 cold path outside `search`: `utf8_get_fast_cold` 2.7% and `utf8_next_fast_cold` 1.0% on `[A-Za-z]{8,13}`, and 3.5% / 1.1% on `\w+`.
+
+## Reversed flat nodes
+
+`771c078` stores the flat buffer last node first and rewrites state ids, so a transition that compilation pointed at an earlier node now points forward. `done` and `fail` keep a zero successor. A split's second successor moves with the nodes. Save slots and class-table indexes do not. The match loop source is unchanged. The two `search` functions are the same 2140 instructions once branch targets are ignored. `bench --check` agreed with the stock VM. Match counts agreed.
+
+Refined only, milliseconds per iteration. The forward binary is the engine before this commit.
+
+| Benchmark | `-n` | Forward | `771c078` reversed |
+| --- | ---: | ---: | ---: |
+| `letters-en` `[A-Za-z]` | 100 | 10.264 | 11.260 |
+| `sherlock-casei-en` | 40 | 33.120 | 35.282 |
+| `words/all-english` | 150 | 6.193 | 6.565 |
+| `simplified-long` `.` | 800 | 1.262 | 1.310 |
+| `sherlock-en` literal | 50 | 22.150 | 24.155 |
+| `[A-Za-z]{8,13}` on zh-sampled | 80 | 12.089 | 12.877 |
+| `\w+` on zh-sampled | 80 | 11.729 | 12.382 |
+
+Every row is slower, from 3.8% on `simplified-long` to 9.7% on `letters-en`. The literal, whose NFA is a handful of nodes, moved with the rest, so the gap is not only a long backward chain.
