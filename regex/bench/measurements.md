@@ -116,9 +116,9 @@ Sample counts in that run: stock / refined = 15446 / 7720, 14377 / 7476, 11705 /
 
 The kept table is a Latin-1 bitmap for `c < 256` and a linear scan of the runs clipped to `≥ 256`. An empty high list means the character is not in the set. Bitmap-only, full-run linear, full-run binary, and bitmap-plus-binary were measured on a fatter struct and then removed. The bitmap was the ASCII win. A linear or binary scan of one to four runs did not beat the tree on the two-code-point case-insensitive classes, and binary did not beat linear at those run counts. Bitmap-only was slower than the tree on the zh letter class, because every non-ASCII character fell back to `Classes.mem`.
 
-Same session after that removal, refined engine, milliseconds per iteration. `tree` is `b42f6f6`. This column is the slim bitmap-plus-linear binary. Match counts agreed on every row (1833, 522, 15008, 1, 513, 668, 9913). `sherlock-en` has no character class; it moved anyway, so a gap versus `tree` is not only the class probe.
+Same session after that removal, refined engine, milliseconds per iteration. `tree` is `b42f6f6`. `ef3489f` is the slim bitmap-plus-linear binary. Match counts agreed on every row (1833, 522, 15008, 1, 513, 668, 9913). `sherlock-en` has no character class; it moved anyway, so a gap versus `tree` is not only the class probe.
 
-| Benchmark | `-n` | `b42f6f6` tree | bitmap+linear |
+| Benchmark | `-n` | `b42f6f6` tree | `ef3489f` bitmap+linear |
 | --- | ---: | ---: | ---: |
 | `letters-en` `[A-Za-z]` | 40 | 13.766 | 10.327 |
 | `sherlock-casei-en` | 20 | 42.775 | 32.395 |
