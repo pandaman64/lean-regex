@@ -54,6 +54,30 @@ def usetUInt32LE (a : ByteArray) (off : USize) (v : UInt32)
         (off.toNat + 3) (v >>> 24).toUInt8 (by simp only [ByteArray.size_set]; omega))
 
 /--
+Load the little-endian `UInt32` at `off`, or `0` when those four bytes do not fit.
+
+One bounds check. The in-range arm calls `ugetUInt32LE`, the unchecked wide
+load. Out of range returns the default `UInt32` rather than panicking.
+-/
+@[inline]
+def ugetUInt32LE! (a : @& ByteArray) (off : USize) : UInt32 :=
+  if h : off.toNat + 4 ≤ a.size then
+    a.ugetUInt32LE off h
+  else
+    0
+
+/--
+Store the little-endian `UInt32` at `off`, or return `a` when those four bytes
+do not fit. The in-range arm calls `usetUInt32LE`.
+-/
+@[inline]
+def usetUInt32LE! (a : ByteArray) (off : USize) (v : UInt32) : ByteArray :=
+  if h : off.toNat + 4 ≤ a.size then
+    a.usetUInt32LE off v h
+  else
+    a
+
+/--
 Load the little-endian `UInt64` at byte offset `off`.
 
 Capture slots in the refined PikeVM are byte offsets. A `UInt32` would truncate
@@ -151,24 +175,30 @@ where
     | i + 1, a => go i (a.push v)
   termination_by i => i
 
-/-- Read the word at byte offset `off`. `off` is a multiple of 4 and in range. -/
-@[inline]
-unsafe def WordArray.uget (a : WordArray) (off : USize) : UInt32 :=
-  a.data.ugetUInt32LE off lcProof
+/--
+Read the word at byte offset `off`.
 
-/-- Write the word at byte offset `off`. -/
+`ugetUInt32LE!` checks the four bytes once and calls the wide load on the
+in-range arm. The PikeVM only reads offsets it wrote, so that arm is the one
+that runs. Out of range the word is `0`.
+-/
 @[inline]
-unsafe def WordArray.uset (a : WordArray) (off : USize) (v : UInt32) : WordArray :=
-  ⟨a.data.usetUInt32LE off v lcProof⟩
+def WordArray.uget (a : WordArray) (off : USize) : UInt32 :=
+  a.data.ugetUInt32LE! off
+
+/-- Write the word at byte offset `off`. Out of range the buffer is unchanged. -/
+@[inline]
+def WordArray.uset (a : WordArray) (off : USize) (v : UInt32) : WordArray :=
+  ⟨a.data.usetUInt32LE! off v⟩
 
 /-- Read word index `i`. -/
 @[inline]
-unsafe def WordArray.ugetWord (a : WordArray) (i : USize) : UInt32 :=
+def WordArray.ugetWord (a : WordArray) (i : USize) : UInt32 :=
   a.uget (i * wordBytes)
 
 /-- Write word index `i`. -/
 @[inline]
-unsafe def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32) : WordArray :=
+def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32) : WordArray :=
   a.uset (i * wordBytes) v
 
 end Regex.VM.Wide
