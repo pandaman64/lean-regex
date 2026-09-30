@@ -47,6 +47,16 @@ private def test (input : String) (expected : Ast) : Bool :=
 #guard test r"[\da]" (.classes (.union (.atom (.perl ⟨false, .digit⟩)) (.atom (.single 'a'))))
 #guard test "[-]" (.classes (.atom (.single '-')))
 #guard test "[a-]" (.classes (.union (.atom (.single 'a')) (.atom (.single '-'))))
+#guard test r"[\d-]" (.classes (.union (.atom (.perl ⟨false, .digit⟩)) (.atom (.single '-'))))
+-- a range must be ordered, and its ends must be characters
+#guard parseAst "[z-a]" = .error (.invalidRange 'z' 'a')
+#guard parseAst r"[a-\-]" = .error (.invalidRange 'a' '-')
+#guard parseAst r"[\d-a]" = .error (.unexpectedPerlClassInRange ⟨false, .digit⟩)
+#guard parseAst r"[a-\d]" = .error (.unexpectedPerlClassInRange ⟨false, .digit⟩)
+-- an unescaped '-' does not end a range, so '--' after a character is the difference operator
+#guard test "[a--[b]]" (.classes (.difference (.atom (.single 'a')) (.atom (.single 'b'))))
+#guard parseAst "[!--]" = .error (.unexpectedChar ']')
+#guard test r"[!-\-]" (.classes (.atom (.range '!' '-')))
 -- special characters are allowed in classes
 #guard test r"[(){}*+?|^$.\--]" (
   .classes ("){}*+?|^$.--".foldl (fun acc c => .union acc (.atom (.single c))) (.atom (.single '(')))
