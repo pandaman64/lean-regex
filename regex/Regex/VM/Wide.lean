@@ -53,6 +53,22 @@ def usetUInt32LE (a : ByteArray) (off : USize) (v : UInt32)
         (off.toNat + 2) (v >>> 16).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
         (off.toNat + 3) (v >>> 24).toUInt8 (by simp only [ByteArray.size_set]; omega))
 
+/--
+`n` zero bytes.
+
+The reference body is `n` pushes. The C implementation allocates one scalar
+array and clears it. Scratch buffers are rebuilt on every match, so the
+compiled path must not walk the bytes in Lean.
+-/
+@[extern "lean_regex_zero_byte_array"]
+def zero (n : USize) : ByteArray :=
+  go n.toNat .empty
+where
+  go : Nat → ByteArray → ByteArray
+    | 0, a => a
+    | i + 1, a => go i (a.push 0)
+  termination_by i => i
+
 end ByteArray
 
 namespace Regex.VM.Wide
@@ -82,8 +98,15 @@ def WordArray.push (a : WordArray) (v : UInt32) : WordArray :=
       |>.push (v >>> 16).toUInt8
       |>.push (v >>> 24).toUInt8⟩
 
+/-- `nWords` zeros, one allocation. -/
+def WordArray.zeros (nWords : Nat) : WordArray :=
+  ⟨ByteArray.zero (nWords.toUSize * wordBytes)⟩
+
 def WordArray.replicate (n : Nat) (v : UInt32) : WordArray :=
-  go n (WordArray.emptyWithCapacity n)
+  if v == 0 then
+    WordArray.zeros n
+  else
+    go n (WordArray.emptyWithCapacity n)
 where
   go : Nat → WordArray → WordArray
     | 0, a => a

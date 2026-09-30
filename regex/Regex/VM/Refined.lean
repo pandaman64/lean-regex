@@ -147,11 +147,11 @@ structure Scratch {s : String} (σ : Strategy s) where
 def Scratch.mkFor {s : String} (σ : Strategy s) (n : Nat) : Scratch σ :=
   let cap := max (n * 4) 8
   {
-    cDen := WordArray.replicate n 0
-    cSpa := WordArray.replicate n 0
-    nDen := WordArray.replicate n 0
-    nSpa := WordArray.replicate n 0
-    stkS := WordArray.replicate cap 0
+    cDen := WordArray.zeros n
+    cSpa := WordArray.zeros n
+    nDen := WordArray.zeros n
+    nSpa := WordArray.zeros n
+    stkS := WordArray.zeros cap
     cUpd := Array.replicate n σ.empty
     nUpd := Array.replicate n σ.empty
     stkU := Array.replicate cap σ.empty

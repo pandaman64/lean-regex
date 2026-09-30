@@ -50,3 +50,15 @@ LEAN_EXPORT lean_obj_res lean_regex_uset_u32le(lean_obj_arg a, size_t off, uint3
     p[3] = (uint8_t)(v >> 24);
     return r;
 }
+
+/*
+ * `n` zero bytes in one scalar array. `lean_alloc_sarray` does not clear the
+ * payload, so the bytes are memset here. Scratch buffers are rebuilt for every
+ * match; filling them with `ByteArray.push` made that setup dominate `\w+`.
+ */
+LEAN_EXPORT lean_obj_res lean_regex_zero_byte_array(size_t n) {
+    lean_obj_res a = lean_alloc_sarray(1, n, n);
+    uint8_t *p = lean_sarray_cptr(a);
+    for (size_t i = 0; i < n; i++) p[i] = 0;
+    return a;
+}
