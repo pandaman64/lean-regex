@@ -8,8 +8,10 @@ public import Regex.Regex.Basic
 public import Regex.Regex.OptimizationInfo
 public import Regex.Regex.Utilities
 public import Regex.Strategy
+public import Regex.VM.Wide
 
 open Regex.Data (Anchor Classes)
+open Regex.VM.Wide (WordArray)
 open String (Pos PosPlusOne Slice)
 
 /-!
@@ -20,10 +22,14 @@ This module keeps the same Thompson NFA and the same left-biased PikeVM schedule
 states in a flat scalar buffer and the ε-stack in reusable arrays so the hot loop does not
 allocate a node, a cons cell, or a search-state wrapper.
 
-`WordArray` is a one-field wrapper around an array of unboxed `UInt32`s. Lean erases that
-wrapper (trivial-structure elimination), the same way it inlines the `ByteArray` and `FloatArray`
-constructors and keeps only the scalar payload. Each state is three contiguous words
-(tag, next, extra), loaded once from a single base index.
+`WordArray` (`Regex.VM.Wide`) is a one-field wrapper around a `ByteArray`. Lean erases that
+wrapper, and each `UInt32` occupies four raw bytes. An `Array UInt32` would not: `Array` is
+polymorphic, so every slot is a `lean_object*` and each `UInt32` is passed through
+`lean_box_uint32`. Loads and stores go through `ByteArray.ugetUInt32LE` /
+`usetUInt32LE`, the wide reader adapted from lean-zip. Each state is three contiguous words
+(tag, next, extra), twelve bytes from a single base offset. Sparse-set state ids and the
+ε-stack of state ids use the same buffer; capture updates stay in an `Array` because they
+are heap objects.
 -/
 
 public section
@@ -40,23 +46,8 @@ abbrev tagSplit : UInt32 := 5
 abbrev tagSave : UInt32 := 6
 abbrev tagSparse : UInt32 := 7
 
-/--
-Flat word buffer. The single field is erased, so a `WordArray` is the underlying array at runtime.
--/
-structure WordArray where
-  data : Array UInt32
-
-/-- Three `UInt32`s per state: tag, next, extra. `abbrev` so the scale folds to an immediate. -/
-abbrev stride : USize := 3
-
-@[inline]
-def push3 (a : Array UInt32) (tag next extra : UInt32) : Array UInt32 :=
-  a.push tag |>.push next |>.push extra
-
-/-- One unboxed word. `UInt32` is a tagged scalar, so the array load does not chase a node. -/
-@[inline]
-unsafe def wordGet (a : Array UInt32) (i : USize) : UInt32 :=
-  a.uget i lcProof
+/-- Twelve bytes per state: tag, next, extra, each a little-endian `UInt32`. -/
+abbrev strideBytes : USize := 12
 
 /-- Flat NFA. `classes` holds the boxed character-class payloads referenced by `.sparse` states. -/
 structure FlatNFA where
@@ -99,17 +90,17 @@ def ofNFA (nfa : NFA) : Option FlatNFA :=
   if nfa.size = 0 || nfa.size ≥ UInt32.size then
     none
   else
-    go 0 (Array.emptyWithCapacity (nfa.size * 3)) #[]
+    go 0 (WordArray.emptyWithCapacity (nfa.size * 3)) #[]
 where
-  go (i : Nat) (words : Array UInt32) (classes : Array Classes) : Option FlatNFA :=
+  go (i : Nat) (words : WordArray) (classes : Array Classes) : Option FlatNFA :=
     if h : i < nfa.nodes.size then
       match encode classes nfa.nodes[i] with
       | none => none
       | some (tag, next, extra, classes') =>
-        go (i + 1) (push3 words tag next extra) classes'
+        go (i + 1) (words.push tag |>.push next |>.push extra) classes'
     else
       some {
-        words := ⟨words⟩
+        words
         classes
         size := nfa.size.toUInt32
         start := nfa.start.toUInt32
@@ -144,11 +135,11 @@ Reusable sparse-set and ε-stack buffers. Counts are not stored: each search sta
 which is the usual sparse-set clear.
 -/
 structure Scratch {s : String} (σ : Strategy s) where
-  cDen : Array UInt32
-  cSpa : Array UInt32
-  nDen : Array UInt32
-  nSpa : Array UInt32
-  stkS : Array UInt32
+  cDen : WordArray
+  cSpa : WordArray
+  nDen : WordArray
+  nSpa : WordArray
+  stkS : WordArray
   cUpd : Array σ.Update
   nUpd : Array σ.Update
   stkU : Array σ.Update
@@ -156,11 +147,11 @@ structure Scratch {s : String} (σ : Strategy s) where
 def Scratch.mkFor {s : String} (σ : Strategy s) (n : Nat) : Scratch σ :=
   let cap := max (n * 4) 8
   {
-    cDen := Array.replicate n (0 : UInt32)
-    cSpa := Array.replicate n (0 : UInt32)
-    nDen := Array.replicate n (0 : UInt32)
-    nSpa := Array.replicate n (0 : UInt32)
-    stkS := Array.replicate cap (0 : UInt32)
+    cDen := WordArray.replicate n 0
+    cSpa := WordArray.replicate n 0
+    nDen := WordArray.replicate n 0
+    nSpa := WordArray.replicate n 0
+    stkS := WordArray.replicate cap 0
     cUpd := Array.replicate n σ.empty
     nUpd := Array.replicate n σ.empty
     stkU := Array.replicate cap σ.empty
@@ -172,12 +163,12 @@ structure SearchRun {s : String} (σ : Strategy s) where
 
 @[inline]
 def SearchRun.pack {s : String} {σ : Strategy s} (result : Option σ.Update)
-    (cDen cSpa nDen nSpa stkS : Array UInt32) (cUpd nUpd stkU : Array σ.Update) : SearchRun σ :=
+    (cDen cSpa nDen nSpa stkS : WordArray) (cUpd nUpd stkU : Array σ.Update) : SearchRun σ :=
   { result, scratch := { cDen, cSpa, nDen, nSpa, stkS, cUpd, nUpd, stkU } }
 
 /--
 Tail-recursive PikeVM. Every recursive call is in tail position so the buffers stay unique:
-`uset` updates the sparse sets and the ε-stack in place. `c*` is the set being read, `n*` the
+`usetWord` updates the sparse sets and the ε-stack in place. `c*` is the set being read, `n*` the
 set being written. `clos` is the match found by the closure currently running; `matched` is the
 match already accepted by the search.
 
@@ -187,11 +178,11 @@ progress: the remaining states of this character must still be tested at `p` if 
 does not reach `.done`.
 -/
 unsafe def eval {s : String} (σ : Strategy s)
-    (words : Array UInt32) (classes : Array Classes) (start : UInt32)
+    (words : WordArray) (classes : Array Classes) (start : UInt32)
     (p cp : Pos s) (matched clos : Option σ.Update)
-    (cCount : UInt32) (cDen cSpa : Array UInt32) (cUpd : Array σ.Update)
-    (nCount : UInt32) (nDen nSpa : Array UInt32) (nUpd : Array σ.Update)
-    (stkU : Array σ.Update) (stkS : Array UInt32) (sp : Nat)
+    (cCount : UInt32) (cDen cSpa : WordArray) (cUpd : Array σ.Update)
+    (nCount : UInt32) (nDen nSpa : WordArray) (nUpd : Array σ.Update)
+    (stkU : Array σ.Update) (stkS : WordArray) (sp : Nat)
     (phase i : UInt32) : SearchRun σ :=
   if phase == phaseStep then
     if hp : p = s.endPos then
@@ -201,7 +192,7 @@ unsafe def eval {s : String} (σ : Strategy s)
     else if i == cCount then
       if matched.isNone then
         let stkU := stkU.uset 0 σ.empty lcProof
-        let stkS := stkS.uset 0 start lcProof
+        let stkS := stkS.usetWord 0 start
         eval σ words classes start (p.next hp) (p.next hp) none none
           cCount cDen cSpa cUpd
           nCount nDen nSpa nUpd
@@ -214,9 +205,9 @@ unsafe def eval {s : String} (σ : Strategy s)
           stkU stkS 0
           phaseStep 0
     else
-      let state := wordGet cDen i.toUSize
-      let base := state.toUSize * stride
-      let tag := wordGet words base
+      let state := cDen.ugetWord i.toUSize
+      let base := state.toUSize * strideBytes
+      let tag := words.uget base
       if tag == tagDone then
         -- Lower-priority threads lose to the `.done` state already in this set.
         eval σ words classes start p p matched none
@@ -225,12 +216,12 @@ unsafe def eval {s : String} (σ : Strategy s)
           stkU stkS sp
           phaseStep cCount
       else if tag == tagChar then
-        let extra := wordGet words (base + 2)
+        let extra := words.uget (base + 8)
         if (p.get hp).val == extra then
-          let nextW := wordGet words (base + 1)
+          let nextW := words.uget (base + 4)
           let update := cUpd.uget state.toUSize lcProof
           let stkU := stkU.uset 0 update lcProof
-          let stkS := stkS.uset 0 nextW lcProof
+          let stkS := stkS.usetWord 0 nextW
           eval σ words classes start p (p.next hp) matched none
             cCount cDen cSpa cUpd
             nCount nDen nSpa nUpd
@@ -243,13 +234,13 @@ unsafe def eval {s : String} (σ : Strategy s)
             stkU stkS sp
             phaseStep (i + 1)
       else if tag == tagSparse then
-        let extra := wordGet words (base + 2)
+        let extra := words.uget (base + 8)
         let cs := classes.uget extra.toUSize lcProof
         if p.get hp ∈ cs then
-          let nextW := wordGet words (base + 1)
+          let nextW := words.uget (base + 4)
           let update := cUpd.uget state.toUSize lcProof
           let stkU := stkU.uset 0 update lcProof
-          let stkS := stkS.uset 0 nextW lcProof
+          let stkS := stkS.usetWord 0 nextW
           eval σ words classes start p (p.next hp) matched none
             cCount cDen cSpa cUpd
             nCount nDen nSpa nUpd
@@ -285,9 +276,9 @@ unsafe def eval {s : String} (σ : Strategy s)
   else
     let sp' := sp - 1
     let update := stkU.uget sp'.toUSize lcProof
-    let state := stkS.uget sp'.toUSize lcProof
-    let si := wordGet nSpa state.toUSize
-    let seen := if si < nCount then wordGet nDen si.toUSize == state else false
+    let state := stkS.ugetWord sp'.toUSize
+    let si := nSpa.ugetWord state.toUSize
+    let seen := if si < nCount then nDen.ugetWord si.toUSize == state else false
     if seen then
       eval σ words classes start p cp matched clos
         cCount cDen cSpa cUpd
@@ -295,21 +286,21 @@ unsafe def eval {s : String} (σ : Strategy s)
         stkU stkS sp'
         phase i
     else
-      let base := state.toUSize * stride
-      let tag := wordGet words base
-      let nextW := wordGet words (base + 1)
-      let extra := wordGet words (base + 2)
+      let base := state.toUSize * strideBytes
+      let tag := words.uget base
+      let nextW := words.uget (base + 4)
+      let extra := words.uget (base + 8)
       let clos := if tag == tagDone then clos <|> some update else clos
-      let nDen := nDen.uset nCount.toUSize state lcProof
-      let nSpa := nSpa.uset state.toUSize nCount lcProof
+      let nDen := nDen.usetWord nCount.toUSize state
+      let nSpa := nSpa.usetWord state.toUSize nCount
       let nCount := nCount + 1
       let nUpd := if writesUpdate tag then nUpd.uset state.toUSize update lcProof else nUpd
       -- Two free slots cover a `.split` (next₂ under next₁, so next₁ is popped first).
       let stkU := if sp' + 2 <= stkU.size then stkU else stkU.push σ.empty |>.push σ.empty
-      let stkS := if sp' + 2 <= stkS.size then stkS else stkS.push (0 : UInt32) |>.push 0
+      let stkS := if sp' + 2 <= stkS.size then stkS else stkS.push 0 |>.push 0
       if tag == tagEpsilon then
         let stkU := stkU.uset sp'.toUSize update lcProof
-        let stkS := stkS.uset sp'.toUSize nextW lcProof
+        let stkS := stkS.usetWord sp'.toUSize nextW
         eval σ words classes start p cp matched clos
           cCount cDen cSpa cUpd
           nCount nDen nSpa nUpd
@@ -317,9 +308,9 @@ unsafe def eval {s : String} (σ : Strategy s)
           phase i
       else if tag == tagSplit then
         let stkU := stkU.uset sp'.toUSize update lcProof
-        let stkS := stkS.uset sp'.toUSize extra lcProof
+        let stkS := stkS.usetWord sp'.toUSize extra
         let stkU := stkU.uset (sp' + 1).toUSize update lcProof
-        let stkS := stkS.uset (sp' + 1).toUSize nextW lcProof
+        let stkS := stkS.usetWord (sp' + 1).toUSize nextW
         eval σ words classes start p cp matched clos
           cCount cDen cSpa cUpd
           nCount nDen nSpa nUpd
@@ -328,7 +319,7 @@ unsafe def eval {s : String} (σ : Strategy s)
       else if tag == tagSave then
         let update := σ.write update extra.toNat cp
         let stkU := stkU.uset sp'.toUSize update lcProof
-        let stkS := stkS.uset sp'.toUSize nextW lcProof
+        let stkS := stkS.usetWord sp'.toUSize nextW
         eval σ words classes start p cp matched clos
           cCount cDen cSpa cUpd
           nCount nDen nSpa nUpd
@@ -337,7 +328,7 @@ unsafe def eval {s : String} (σ : Strategy s)
       else if tag == tagAnchor then
         if anchorTest extra cp then
           let stkU := stkU.uset sp'.toUSize update lcProof
-          let stkS := stkS.uset sp'.toUSize nextW lcProof
+          let stkS := stkS.usetWord sp'.toUSize nextW
           eval σ words classes start p cp matched clos
             cCount cDen cSpa cUpd
             nCount nDen nSpa nUpd
@@ -361,12 +352,12 @@ unsafe def search {s : String} (σ : Strategy s) (nfa : FlatNFA) (scratch : Scra
   if nfa.size == 0 then
     { result := none, scratch }
   else
-    let words := nfa.words.data
+    let words := nfa.words
     let classes := nfa.classes
     let start := nfa.start
     let { cDen, cSpa, nDen, nSpa, stkS, cUpd, nUpd, stkU } := scratch
     let stkU := stkU.uset 0 σ.empty lcProof
-    let stkS := stkS.uset 0 start lcProof
+    let stkS := stkS.usetWord 0 start
     eval σ words classes start p p none none
       (0 : UInt32) cDen cSpa cUpd
       (0 : UInt32) nDen nSpa nUpd
