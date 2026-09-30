@@ -127,3 +127,17 @@ Same session after that removal, refined engine, milliseconds per iteration. `tr
 | `sherlock-en` literal | 20 | 26.687 | 23.073 |
 | `[A-Za-z]{8,13}` on zh-sampled | 20 | 15.529 | 12.306 |
 | `\w+` on zh-sampled | 20 | 13.099 | 11.624 |
+
+Same binary, stock PikeVM and refined in one process (`-E both`, stock first). Milliseconds per iteration. Match counts agreed.
+
+| Benchmark | `-n` | Stock | Refined | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| `letters-en` `[A-Za-z]` | 40 | 33.985 | 10.238 | 3.32× |
+| `sherlock-casei-en` | 20 | 118.335 | 32.358 | 3.66× |
+| `words/all-english` `\w` | 50 | 23.209 | 6.650 | 3.49× |
+| `simplified-long` `.` | 300 | 3.917 | 1.187 | 3.30× |
+| `sherlock-en` literal | 20 | 78.937 | 23.024 | 3.43× |
+| `sherlock-zh` literal | 20 | 23.479 | 7.595 | 3.09× |
+| `literal-alternate/sherlock-en` | 10 | 308.398 | 93.068 | 3.31× |
+| `[A-Za-z]{8,13}` on zh-sampled | 20 | 40.975 | 12.313 | 3.33× |
+| `\w+` on zh-sampled | 20 | 41.214 | 11.721 | 3.52× |
