@@ -141,3 +141,23 @@ Same binary, stock PikeVM and refined in one process (`-E both`, stock first). M
 | `literal-alternate/sherlock-en` | 10 | 308.398 | 93.068 | 3.31× |
 | `[A-Za-z]{8,13}` on zh-sampled | 20 | 40.975 | 12.313 | 3.33× |
 | `\w+` on zh-sampled | 20 | 41.214 | 11.721 | 3.52× |
+
+## `SW_CPU_CLOCK` after the class table
+
+Refined only, period 200 µs, lost samples 0, four threads. Each run is about 2.2 s of sampled CPU. `Classes.mem` took no samples. The probe is inlined into `Refined.search`: a Latin-1 `bt` on the bitmap, and a linear scan of the high runs only when the code point is at least 256.
+
+Shares are of all samples. The bitmap column is that `bt` block. The linear column is the high-run loop. Before this table, on the tree walk, `Classes.mem` was 32.8% of `letters-en`, 22.9% of `sherlock-casei-en`, 16.3% of `words/all-english`, and 14.4% of `simplified-long`.
+
+| Benchmark | `-n` | Samples | `search` | Bitmap | Linear high |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `letters-en` `[A-Za-z]` | 220 | 11885 | 98.1% | 10.0% | 0.0% |
+| `sherlock-casei-en` | 70 | 11550 | 98.9% | 7.3% | 0.0% |
+| `words/all-english` `\w` | 330 | 11405 | 61.2% | 1.9% | 0.0% |
+| `simplified-long` `.` | 1850 | 11224 | 98.8% | 3.6% | 0.0% |
+| `sherlock-en` literal | 95 | 12125 | 98.6% | 0.0% | 0.0% |
+| `[A-Za-z]{8,13}` on zh-sampled | 180 | 11430 | 95.0% | 4.7% | 1.7% |
+| `\w+` on zh-sampled | 190 | 11827 | 92.3% | 2.9% | 0.7% |
+
+On the ASCII class benches the bitmap is one block among several inside `search`. On `letters-en` it is the hottest block, at 10%. The next blocks are the sparse-set probe (9.0%), the loop reload that increments a reference count and restores the live set (8.1%), and the node load of tag, next, and extra (6.5%). On `sherlock-casei-en` the node load is ahead of the bitmap, 12.3% against 7.3%.
+
+`words/all-english` leaves `search` for the word-boundary helpers: `mi_malloc_small` 8.0%, `String.Pos.Raw.isValidForSlice` 7.6%, `String.isPrevWord` 6.3%, `mi_free` 3.8%, `Anchor.test` 3.2%. The Chinese haystacks add the UTF-8 cold path: `lean_string_utf8_get_fast_cold` 2.7% and `lean_string_utf8_next_fast_cold` 1.0% on `[A-Za-z]{8,13}`, and 2.7% / 1.2% on `\w+`. The `lean_copy_byte_array` call instructions themselves were not sampled.
