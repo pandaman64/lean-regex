@@ -11,6 +11,8 @@ Run them from the `regex` package directory:
 lake exe Bench --rebar -n 3 -E both
 ```
 
+Recorded timings for each engine commit are in `bench/measurements.md`.
+
 `--rebar-dir` overrides the haystack directory. The default is
 `bench/rebar/haystacks`.
 
