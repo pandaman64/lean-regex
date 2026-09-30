@@ -86,8 +86,31 @@ def encode (classes : Array ClassTable) : NFA.Node → Option (UInt32 × UInt32 
     else
       none
 
+/-- Old state `i` after the node array is stored last-to-first. -/
+def placeState (n : Nat) (i : UInt32) : UInt32 :=
+  (n - 1 - i.toNat).toUInt32
+
 /--
-Translate `nfa` into the flat buffer.
+Rewrite successor indexes for the reversed buffer.
+
+`done` and `fail` have no successor. A split stores its second successor in
+`extra`. A save slot and a class-table index are not states.
+-/
+def placeEdges (n : Nat) (tag next extra : UInt32) : UInt32 × UInt32 :=
+  if tag == tagDone || tag == tagFail then
+    (next, extra)
+  else if tag == tagSplit then
+    (placeState n next, placeState n extra)
+  else
+    (placeState n next, extra)
+
+/--
+Translate `nfa` into the flat buffer, last node first.
+
+Compilation pushes the start node last and points each transition at an earlier
+node, so a forward layout walks backward through the buffer. Reversing the
+nodes makes those loads go forward. State ids in `next` and in a split's
+`extra` are rewritten. The match loop is unchanged.
 
 Returns `none` when a state index or a save slot does not fit in `UInt32` (the packed word
 width). Compiled expressions used by the benchmark fit comfortably.
@@ -98,20 +121,23 @@ def ofNFA (nfa : NFA) : Option FlatNFA :=
   else
     go 0 (WordArray.emptyWithCapacity (nfa.size * 3)) #[]
 where
-  go (i : Nat) (words : WordArray) (classes : Array ClassTable) : Option FlatNFA :=
-    if h : i < nfa.nodes.size then
-      match encode classes nfa.nodes[i] with
+  go (k : Nat) (words : WordArray) (classes : Array ClassTable) : Option FlatNFA :=
+    if h : k < nfa.nodes.size then
+      let src := nfa.nodes.size - 1 - k
+      have hsrc : src < nfa.nodes.size := by omega
+      match encode classes nfa.nodes[src] with
       | none => none
       | some (tag, next, extra, classes') =>
-        go (i + 1) (words.push tag |>.push next |>.push extra) classes'
+        let (next, extra) := placeEdges nfa.nodes.size tag next extra
+        go (k + 1) (words.push tag |>.push next |>.push extra) classes'
     else
       some {
         words
         classes
         size := nfa.size.toUInt32
-        start := nfa.start.toUInt32
+        start := placeState nfa.size nfa.start.toUInt32
       }
-  termination_by nfa.nodes.size - i
+  termination_by nfa.nodes.size - k
 
 @[inline]
 def anchorOf (k : UInt32) : Anchor :=
