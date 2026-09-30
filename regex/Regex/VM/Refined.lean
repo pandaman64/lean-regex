@@ -120,9 +120,31 @@ def anchorOf (k : UInt32) : Anchor :=
   else if k == 2 then .wordBoundary
   else .nonWordBoundary
 
+/--
+Previous character, using the C UTF-8 walker (`lean_string_utf8_prev`).
+
+`String.Pos.prev` builds a `Slice` and scans backward in Lean. The walker steps
+at most four bytes to the previous scalar, which is what a Unicode word
+property needs. Classification stays `Char.isWordChar`.
+-/
+@[inline]
+def prevWord {s : String} (p : Pos s) : Bool :=
+  if p == s.startPos then
+    false
+  else
+    Char.isWordChar (String.Pos.Raw.get s (String.Pos.Raw.prev s p.offset))
+
+/-- Start, end, or a word-boundary test. Word characters still go through `Char.isWordChar`. -/
 @[inline]
 def anchorTest {s : String} (k : UInt32) (p : Pos s) : Bool :=
-  (anchorOf k).test p
+  if k == 0 then
+    p == s.startPos
+  else if k == 1 then
+    p == s.endPos
+  else
+    let curr := Regex.Data.String.isCurrWord p
+    let prev := prevWord p
+    if k == 2 then curr != prev else curr == prev
 
 /-- After this closure, the filled next-buffer becomes current and stepping starts. -/
 abbrev phaseClosure : UInt32 := 0
@@ -529,6 +551,8 @@ unsafe def selfCheck : Array String :=
     ("^a", "a\na"),
     ("a$", "ba\na"),
     ("\\bword\\b", "a word wordy word"),
+    ("\\b\\w+\\b", "pre café word 漢字 _x"),
+    ("\\B\\w", "abcあ_"),
     ("[a-z]+", "AbCdefGHI"),
     ("[^A-Za-z]+", "aあb漢c"),
     ("[あ-ん]+", "アあいうア"),
