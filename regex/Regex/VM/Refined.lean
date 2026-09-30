@@ -12,7 +12,7 @@ public import Regex.VM.ClassTable
 public import Regex.VM.FlatBuffer
 public import Regex.VM.Wide
 
-open Regex.Data (Anchor Class Classes PerlClass)
+open Regex.Data (Anchor)
 open Regex.VM.ClassTable (ClassTable)
 open Regex.VM.FlatBuffer
 open Regex.VM.Wide (WordArray)
@@ -121,56 +121,30 @@ def anchorOf (k : UInt32) : Anchor :=
   else .nonWordBoundary
 
 /--
-Word characters as a class table. Today this is the ASCII set behind
-`Char.isWordChar` (`PerlClassKind.word`). A Unicode property is the same
-table with high runs filled in.
--/
-def wordTable : ClassTable :=
-  ClassTable.compile (.atom (.perl { negated := false, kind := .word }))
-
-/-- Scalar at `p`. The caller must not pass the end position: `Pos.Raw.get` returns `'A'` there. -/
-@[inline]
-def charAt {s : String} (p : Pos s) : Char :=
-  String.Pos.Raw.get s p.offset
-
-@[inline]
-unsafe def currWord {s : String} (p : Pos s) : Bool :=
-  if p == s.endPos then false else wordTable.contains (charAt p)
-
-/--
-Previous scalar, using the C UTF-8 walker (`lean_string_utf8_prev`).
+Previous character, using the C UTF-8 walker (`lean_string_utf8_prev`).
 
 `String.Pos.prev` builds a `Slice` and scans backward in Lean. The walker steps
-at most four bytes to the previous scalar.
+at most four bytes to the previous scalar, which is what a Unicode word
+property needs. Classification stays `Char.isWordChar`.
 -/
 @[inline]
-unsafe def prevWord {s : String} (p : Pos s) : Bool :=
+def prevWord {s : String} (p : Pos s) : Bool :=
   if p == s.startPos then
     false
   else
-    wordTable.contains (String.Pos.Raw.get s (String.Pos.Raw.prev s p.offset))
+    Char.isWordChar (String.Pos.Raw.get s (String.Pos.Raw.prev s p.offset))
 
-/-- Start, end, or a word-boundary test against `wordTable`. -/
+/-- Start, end, or a word-boundary test. Word characters still go through `Char.isWordChar`. -/
 @[inline]
-unsafe def anchorTest {s : String} (k : UInt32) (p : Pos s) : Bool :=
+def anchorTest {s : String} (k : UInt32) (p : Pos s) : Bool :=
   if k == 0 then
     p == s.startPos
   else if k == 1 then
     p == s.endPos
   else
-    let curr := currWord p
+    let curr := Regex.Data.String.isCurrWord p
     let prev := prevWord p
     if k == 2 then curr != prev else curr == prev
-
-/-- Byte index of `p`. A scalar, so the latch does not allocate. -/
-@[inline]
-def posByte {s : String} (p : Pos s) : UInt64 :=
-  UInt64.ofNat p.offset.byteIdx
-
-/-- `wBits` layout: bit 0 previous word, bit 1 current word, bit 2 ready. -/
-@[inline] def wordBitPrev : UInt64 := 1
-@[inline] def wordBitCurr : UInt64 := 2
-@[inline] def wordBitReady : UInt64 := 4
 
 /-- After this closure, the filled next-buffer becomes current and stepping starts. -/
 abbrev phaseClosure : UInt32 := 0
@@ -246,7 +220,6 @@ unsafe def eval {s : String}
     (cCount : UInt32) (cDen cSpa : WordArray)
     (nCount : UInt32) (nDen nSpa : WordArray)
     (stkS : WordArray) (caps : ByteArray) (sp : Nat)
-    (wOff wNext wBits : UInt64)
     (phase i : UInt32) : SearchRun :=
   if phase == phaseStep then
     if hp : p = s.endPos then
@@ -262,9 +235,6 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps 1
-          wOff
-          wNext
-          wBits
           phaseClosure 0
       else
         eval words classes start nSlots nStates slots sent nRow0 cRow0 stackRow0
@@ -272,9 +242,6 @@ unsafe def eval {s : String}
           nCount nDen nSpa
           (0 : UInt32) cDen cSpa
           stkS caps 0
-          wOff
-          wNext
-          wBits
           phaseStep 0
     else
       let state := cDen.ugetWord i.toUSize
@@ -287,9 +254,6 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps sp
-          wOff
-          wNext
-          wBits
           phaseStep cCount
       else if tag == tagChar then
         let extra := words.uget (base + 8)
@@ -303,9 +267,6 @@ unsafe def eval {s : String}
             cCount cDen cSpa
             nCount nDen nSpa
             stkS caps 1
-            wOff
-            wNext
-            wBits
             phaseStepClosure i
         else
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -313,9 +274,6 @@ unsafe def eval {s : String}
             cCount cDen cSpa
             nCount nDen nSpa
             stkS caps sp
-            wOff
-            wNext
-            wBits
             phaseStep (i + 1)
       else if tag == tagSparse then
         let extra := words.uget (base + 8)
@@ -330,9 +288,6 @@ unsafe def eval {s : String}
             cCount cDen cSpa
             nCount nDen nSpa
             stkS caps 1
-            wOff
-            wNext
-            wBits
             phaseStepClosure i
         else
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -340,9 +295,6 @@ unsafe def eval {s : String}
             cCount cDen cSpa
             nCount nDen nSpa
             stkS caps sp
-            wOff
-            wNext
-            wBits
             phaseStep (i + 1)
       else
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -350,9 +302,6 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps sp
-          wOff
-          wNext
-          wBits
           phaseStep (i + 1)
   else if sp == 0 then
     -- `phaseClosure` always installs the closure result and steps at `cp`. A step-closure does
@@ -365,9 +314,6 @@ unsafe def eval {s : String}
         nCount nDen nSpa
         (0 : UInt32) cDen cSpa
         stkS caps 0
-        wOff
-        wNext
-        wBits
         phaseStep 0
     else
       eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -375,9 +321,6 @@ unsafe def eval {s : String}
         cCount cDen cSpa
         nCount nDen nSpa
         stkS caps 0
-        wOff
-        wNext
-        wBits
         phaseStep (i + 1)
   else
     let sp' := sp - 1
@@ -391,9 +334,6 @@ unsafe def eval {s : String}
         cCount cDen cSpa
         nCount nDen nSpa
         stkS caps sp'
-        wOff
-        wNext
-        wBits
         phase i
     else
       let base := state.toUSize * strideBytes
@@ -426,9 +366,6 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps (sp' + 1)
-          wOff
-          wNext
-          wBits
           phase i
       else if tag == tagSplit then
         -- The two branches must not share one mutable row.
@@ -440,9 +377,6 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps (sp' + 2)
-          wOff
-          wNext
-          wBits
           phase i
       else if tag == tagSave then
         -- `setIfInBounds`: a save past the buffer leaves the row unchanged.
@@ -457,50 +391,15 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps (sp' + 1)
-          wOff
-          wNext
-          wBits
           phase i
       else if tag == tagAnchor then
-        -- Same offset reuses the bits. The next scalar reuses the old current
-        -- bit as its previous bit, so `utf8_prev` runs only on a cold offset.
-        -- The three words stay scalars; a structure here was a heap object.
-        let off := posByte cp
-        let wordAnchor := extra == 2 || extra == 3
-        let ready := wBits &&& wordBitReady != 0
-        let same := wordAnchor && ready && wOff == off
-        let carry := wordAnchor && ready && wNext == off && wNext != wOff
-        let curr :=
-          if !wordAnchor || same then wBits &&& wordBitCurr != 0 else currWord cp
-        let prev :=
-          if !wordAnchor || same then wBits &&& wordBitPrev != 0
-          else if carry then wBits &&& wordBitCurr != 0
-          else prevWord cp
-        let wOff := if wordAnchor && !same then off else wOff
-        let wNext :=
-          if wordAnchor && !same then
-            if h : cp = s.endPos then off else posByte (cp.next h)
-          else
-            wNext
-        let wBits :=
-          if wordAnchor && !same then
-            (if prev then wordBitPrev else 0) ||| (if curr then wordBitCurr else 0) ||| wordBitReady
-          else
-            wBits
-        let ok :=
-          if extra == 2 then curr != prev
-          else if extra == 3 then curr == prev
-          else anchorTest extra cp
-        if ok then
+        if anchorTest extra cp then
           let stkS := stkS.usetWord sp'.toUSize nextW
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
             p cp matched clos
             cCount cDen cSpa
             nCount nDen nSpa
             stkS caps (sp' + 1)
-            wOff
-            wNext
-            wBits
             phase i
         else
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -508,9 +407,6 @@ unsafe def eval {s : String}
             cCount cDen cSpa
             nCount nDen nSpa
             stkS caps sp'
-            wOff
-            wNext
-            wBits
             phase i
       else
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -518,9 +414,6 @@ unsafe def eval {s : String}
           cCount cDen cSpa
           nCount nDen nSpa
           stkS caps sp'
-          wOff
-          wNext
-          wBits
           phase i
 
 unsafe def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt64) (p : Pos s) :
@@ -538,17 +431,11 @@ unsafe def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt6
     let stackRow0 : USize := nRow0 + nStates.toUSize
     let caps := fillRow caps (rowOff stackRow0 slots) slots sent
     let stkS := stkS.usetWord 0 start
-    let wOff : UInt64 := 0
-    let wNext : UInt64 := 0
-    let wBits : UInt64 := 0
     eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
       p p false false
       (0 : UInt32) cDen cSpa
       (0 : UInt32) nDen nSpa
       stkS caps 1
-      wOff
-      wNext
-      wBits
       phaseClosure 0
 
 unsafe def captureNextBuf {s : String} (nfa : FlatNFA) (bufferSize : Nat) (p : Pos s) :

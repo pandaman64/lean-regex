@@ -215,3 +215,5 @@ Refined only, period 200 µs, lost samples 0, four threads. Shares are of all sa
 `letters-en` on `3b12a5f`, `-n` 190, 11040 samples: `search` 98.3%. No other symbol reached 0.3%. The slowdown is the extra words on the tail call, not a new helper.
 
 The discarded structure, on words, was `search` 79.7%, `mi_malloc_small` 6.4%, `mi_free` 5.8% (11141 samples). On zh it was `search` 75.6%, `mi_malloc_small` 6.9%, `mi_free` 6.8% (10683 samples). `utf8_prev` was already 0.2% / 0.1% there; the allocation was the cost.
+
+The tip keeps `23eaf00` only. `4929469` and `3b12a5f` were slower on these benches, so both were reverted. Classification stays `Char.isWordChar`. The class table and the scalar latch remain in the history above.
