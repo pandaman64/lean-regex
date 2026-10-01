@@ -229,7 +229,7 @@ unsafe def eval {s : String}
     else if i == cCount then
       if !matched then
         let caps := fillRow caps (rowOff stackRow0 slots) slots sent
-        let stkS := stkS.usetWord 0 start
+        let stkS := stkS.usetWord 0 start lcProof
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
           (p.next hp) (p.next hp) false false
           cCount cDen cSpa
@@ -244,9 +244,9 @@ unsafe def eval {s : String}
           stkS caps 0
           phaseStep 0
     else
-      let state := cDen.ugetWord i.toUSize
+      let state := cDen.ugetWord i.toUSize lcProof
       let base := state.toUSize * strideBytes
-      let tag := words.uget base
+      let tag := words.uget base lcProof
       if tag == tagDone then
         -- Lower-priority threads lose to the `.done` state already in this set.
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -256,12 +256,12 @@ unsafe def eval {s : String}
           stkS caps sp
           phaseStep cCount
       else if tag == tagChar then
-        let extra := words.uget (base + 8)
+        let extra := words.uget (base + 8) lcProof
         if (p.get hp).val == extra then
-          let nextW := words.uget (base + 4)
+          let nextW := words.uget (base + 4) lcProof
           let caps := copyRow caps (rowOff stackRow0 slots)
             (rowOff (cRow0 + state.toUSize) slots) slots
-          let stkS := stkS.usetWord 0 nextW
+          let stkS := stkS.usetWord 0 nextW lcProof
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
             p (p.next hp) matched false
             cCount cDen cSpa
@@ -276,13 +276,13 @@ unsafe def eval {s : String}
             stkS caps sp
             phaseStep (i + 1)
       else if tag == tagSparse then
-        let extra := words.uget (base + 8)
+        let extra := words.uget (base + 8) lcProof
         let cs := classes.uget extra.toUSize lcProof
         if cs.contains (p.get hp) then
-          let nextW := words.uget (base + 4)
+          let nextW := words.uget (base + 4) lcProof
           let caps := copyRow caps (rowOff stackRow0 slots)
             (rowOff (cRow0 + state.toUSize) slots) slots
-          let stkS := stkS.usetWord 0 nextW
+          let stkS := stkS.usetWord 0 nextW lcProof
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
             p (p.next hp) matched false
             cCount cDen cSpa
@@ -325,9 +325,9 @@ unsafe def eval {s : String}
   else
     let sp' := sp - 1
     let stkOff := rowOff (stackRow0 + sp'.toUSize) slots
-    let state := stkS.ugetWord sp'.toUSize
-    let si := nSpa.ugetWord state.toUSize
-    let seen := if si < nCount then nDen.ugetWord si.toUSize == state else false
+    let state := stkS.ugetWord sp'.toUSize lcProof
+    let si := nSpa.ugetWord state.toUSize lcProof
+    let seen := if si < nCount then nDen.ugetWord si.toUSize lcProof == state else false
     if seen then
       eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
         p cp matched clos
@@ -337,9 +337,9 @@ unsafe def eval {s : String}
         phase i
     else
       let base := state.toUSize * strideBytes
-      let tag := words.uget base
-      let nextW := words.uget (base + 4)
-      let extra := words.uget (base + 8)
+      let tag := words.uget base lcProof
+      let nextW := words.uget (base + 4) lcProof
+      let extra := words.uget (base + 8) lcProof
       -- First `.done` wins. Copy into row 1 before any later save mutates this stack row.
       let caps :=
         if tag == tagDone && !clos then
@@ -352,15 +352,15 @@ unsafe def eval {s : String}
           copyRow caps (rowOff (nRow0 + state.toUSize) slots) stkOff slots
         else
           caps
-      let nDen := nDen.usetWord nCount.toUSize state
-      let nSpa := nSpa.usetWord state.toUSize nCount
+      let nDen := nDen.usetWord nCount.toUSize state lcProof
+      let nSpa := nSpa.usetWord state.toUSize nCount lcProof
       let nCount := nCount + 1
       -- Two free slots cover a `.split` (next₂ under next₁, so next₁ is popped first).
       let grew := sp' + 2 > stkS.size
       let caps := if grew then growRows caps 2 nSlots else caps
       let stkS := if grew then stkS.push 0 |>.push 0 else stkS
       if tag == tagEpsilon then
-        let stkS := stkS.usetWord sp'.toUSize nextW
+        let stkS := stkS.usetWord sp'.toUSize nextW lcProof
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
           p cp matched clos
           cCount cDen cSpa
@@ -370,8 +370,8 @@ unsafe def eval {s : String}
       else if tag == tagSplit then
         -- The two branches must not share one mutable row.
         let caps := copyRow caps (rowOff (stackRow0 + (sp' + 1).toUSize) slots) stkOff slots
-        let stkS := stkS.usetWord sp'.toUSize extra
-        let stkS := stkS.usetWord (sp' + 1).toUSize nextW
+        let stkS := stkS.usetWord sp'.toUSize extra lcProof
+        let stkS := stkS.usetWord (sp' + 1).toUSize nextW lcProof
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
           p cp matched clos
           cCount cDen cSpa
@@ -382,10 +382,10 @@ unsafe def eval {s : String}
         -- `setIfInBounds`: a save past the buffer leaves the row unchanged.
         let caps :=
           if extra.toNat < nSlots then
-            uset caps (stkOff + extra.toUSize * slotBytes) (encodePos cp)
+            uset caps (stkOff + extra.toUSize * slotBytes) (encodePos cp) lcProof
           else
             caps
-        let stkS := stkS.usetWord sp'.toUSize nextW
+        let stkS := stkS.usetWord sp'.toUSize nextW lcProof
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
           p cp matched clos
           cCount cDen cSpa
@@ -394,7 +394,7 @@ unsafe def eval {s : String}
           phase i
       else if tag == tagAnchor then
         if anchorTest extra cp then
-          let stkS := stkS.usetWord sp'.toUSize nextW
+          let stkS := stkS.usetWord sp'.toUSize nextW lcProof
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
             p cp matched clos
             cCount cDen cSpa
@@ -430,7 +430,7 @@ unsafe def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt6
     let nRow0 : USize := 2 + nStates.toUSize
     let stackRow0 : USize := nRow0 + nStates.toUSize
     let caps := fillRow caps (rowOff stackRow0 slots) slots sent
-    let stkS := stkS.usetWord 0 start
+    let stkS := stkS.usetWord 0 start lcProof
     eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
       p p false false
       (0 : UInt32) cDen cSpa
@@ -453,8 +453,8 @@ unsafe def findAll.go (nfa : FlatNFA) (info : OptimizationInfo) (haystack : Stri
     let start := info.findStart (pos.asPos h)
     let run := search nfa scratch sent start
     if run.matched then
-      let startPos := decode (uget run.scratch.caps 0)
-      let stopPos := decode (uget run.scratch.caps slotBytes)
+      let startPos := decode (uget run.scratch.caps 0 lcProof)
+      let stopPos := decode (uget run.scratch.caps slotBytes lcProof)
       if hv : stopPos.isValid = true ∧ startPos ≤ stopPos then
         have isStopPosValid : stopPos.isValid := hv.1
         have h' : startPos.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid hv.2

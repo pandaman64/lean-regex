@@ -153,23 +153,26 @@ where
 
 /-- Read the word at byte offset `off`. `off` is a multiple of 4 and in range. -/
 @[inline]
-unsafe def WordArray.uget (a : WordArray) (off : USize) : UInt32 :=
-  a.data.ugetUInt32LE off lcProof
+def WordArray.uget (a : WordArray) (off : USize) (h : off.toNat + 4 ≤ a.data.size) : UInt32 :=
+  a.data.ugetUInt32LE off h
 
 /-- Write the word at byte offset `off`. -/
 @[inline]
-unsafe def WordArray.uset (a : WordArray) (off : USize) (v : UInt32) : WordArray :=
-  ⟨a.data.usetUInt32LE off v lcProof⟩
+def WordArray.uset (a : WordArray) (off : USize) (v : UInt32) (h : off.toNat + 4 ≤ a.data.size) :
+    WordArray :=
+  ⟨a.data.usetUInt32LE off v h⟩
 
 /-- Read word index `i`. -/
 @[inline]
-unsafe def WordArray.ugetWord (a : WordArray) (i : USize) : UInt32 :=
-  a.uget (i * wordBytes)
+def WordArray.ugetWord (a : WordArray) (i : USize) (h : (i * wordBytes).toNat + 4 ≤ a.data.size) :
+    UInt32 :=
+  a.uget (i * wordBytes) h
 
 /-- Write word index `i`. -/
 @[inline]
-unsafe def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32) : WordArray :=
-  a.uset (i * wordBytes) v
+def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32)
+    (h : (i * wordBytes).toNat + 4 ≤ a.data.size) : WordArray :=
+  a.uset (i * wordBytes) v h
 
 end Regex.VM.Wide
 
