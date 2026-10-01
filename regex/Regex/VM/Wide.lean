@@ -1,5 +1,7 @@
 module
 
+public import Init.Data.UInt.Lemmas
+
 /-!
 Little-endian `UInt32` loads and stores on a `ByteArray`.
 
@@ -114,6 +116,26 @@ where
 end ByteArray
 
 namespace Regex.VM.Wide
+
+/-- `2^32` fits in `USize` on every platform Lean supports (`numBits` is 32 or 64). -/
+theorem two_pow_32_le_usize : 2 ^ 32 ≤ USize.size := by
+  rw [USize.size_eq_two_pow]
+  exact Nat.pow_le_pow_right (by decide) System.Platform.le_numBits
+
+/-- A natural below `2^32` is still below `2^numBits`. -/
+theorem lt_two_pow_numBits_of_lt_2_pow_32 {n : Nat} (h : n < 2 ^ 32) :
+    n < 2 ^ System.Platform.numBits := by
+  rw [← USize.size_eq_two_pow]
+  exact Nat.lt_of_lt_of_le h two_pow_32_le_usize
+
+/-- A natural below `2^32` survives the round trip through `USize`. -/
+theorem toNat_toUSize_of_lt_2_pow_32 {n : Nat} (h : n < 2 ^ 32) : n.toUSize.toNat = n := by
+  rw [Nat.toUSize, USize.toNat_ofNat']
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
+
+theorem toNat_uSize_ofNat_of_lt (n : Nat) (h : n < 2 ^ 32) : (OfNat.ofNat n : USize).toNat = n := by
+  rw [USize.toNat_ofNat]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
 
 /--
 Flat little-endian word buffer.

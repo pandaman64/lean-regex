@@ -82,18 +82,23 @@ def encode (classes : Array ClassTable) : NFA.Node → Option (UInt32 × UInt32 
       none
   | .sparse cs next =>
     if classes.size < UInt32.size then
-      some (tagSparse, next.toUInt32, classes.size.toUInt32, classes.push (ClassTable.compile cs))
+      match ClassTable.compile cs with
+      | some table =>
+        some (tagSparse, next.toUInt32, classes.size.toUInt32, classes.push table)
+      | none => none
     else
       none
 
 /--
 Translate `nfa` into the flat buffer.
 
-Returns `none` when a state index or a save slot does not fit in `UInt32` (the packed word
-width). Compiled expressions used by the benchmark fit comfortably.
+Returns `none` when the NFA is empty, when `nfa.size * 12` does not fit in `2^32`
+(a state byte offset would not round-trip through `USize` on a 32-bit platform),
+when a save slot does not fit in `UInt32`, or when a character class's high runs
+do not fit in a 32-bit offset.
 -/
 def ofNFA (nfa : NFA) : Option FlatNFA :=
-  if nfa.size = 0 || nfa.size ≥ UInt32.size then
+  if nfa.size = 0 || nfa.size > 2 ^ 32 / 12 then
     none
   else
     go 0 (WordArray.emptyWithCapacity (nfa.size * 3)) #[]
@@ -144,28 +149,34 @@ private theorem ofNFA.go_some {nfa : NFA} {flat : FlatNFA} (i : Nat) (words : Wo
     exact ⟨by rw [hlen, ieq], rfl, rfl⟩
 termination_by nfa.nodes.size - i
 
-/-- A successful flattening fits in `UInt32` and stores three words per state. -/
+/--
+A successful flattening stores three words per state, and the state window fits in `2^32` bytes.
+-/
 theorem ofNFA_spec {nfa : NFA} {flat : FlatNFA} (h : ofNFA nfa = some flat) :
-    0 < nfa.size ∧ nfa.size < UInt32.size ∧ flat.size.toNat = nfa.size ∧
-      flat.start.toNat = nfa.start ∧ flat.words.data.size = 12 * nfa.size ∧
-      flat.words.size = nfa.size * 3 := by
+    0 < nfa.size ∧ nfa.size < UInt32.size ∧ nfa.size * 12 ≤ 2 ^ 32 ∧
+      flat.size.toNat = nfa.size ∧ flat.start.toNat = nfa.start ∧
+      flat.words.data.size = 12 * nfa.size ∧ flat.words.size = nfa.size * 3 := by
   unfold ofNFA at h
   split at h
   · simp at h
   · rename_i hok
-    have hnot : decide (nfa.size = 0) = false ∧ decide (nfa.size ≥ UInt32.size) = false := by
+    have hnot : decide (nfa.size = 0) = false ∧ decide (nfa.size > 2 ^ 32 / 12) = false := by
       simpa [Bool.or_eq_true] using hok
     have hpos : 0 < nfa.size := by
       have : ¬ nfa.size = 0 := by simpa using hnot.1
       omega
+    have hwindow : nfa.size ≤ 2 ^ 32 / 12 := by
+      have : ¬ nfa.size > 2 ^ 32 / 12 := by simpa using hnot.2
+      omega
+    have hbytes : nfa.size * 12 ≤ 2 ^ 32 := Nat.mul_le_of_le_div 12 nfa.size (2 ^ 32) hwindow
     have hfit : nfa.size < UInt32.size := by
-      have : ¬ nfa.size ≥ UInt32.size := by simpa using hnot.2
-      exact Nat.lt_of_not_ge this
+      have : 2 ^ 32 / 12 < UInt32.size := by decide
+      exact Nat.lt_of_le_of_lt hwindow this
     have hempty : (WordArray.emptyWithCapacity (nfa.size * 3)).data.size = 12 * 0 := by
       simp [WordArray.emptyWithCapacity_data_size]
     obtain ⟨hdata, hsize, hstart⟩ :=
       ofNFA.go_some 0 (WordArray.emptyWithCapacity (nfa.size * 3)) #[] (Nat.zero_le _) hempty h
-    refine ⟨hpos, hfit, ?_, ?_, ?_, ?_⟩
+    refine ⟨hpos, hfit, hbytes, ?_, ?_, ?_, ?_⟩
     · rw [hsize, toNat_toUInt32_of_lt hfit]
     · have hstartLt : nfa.start < UInt32.size := by
         have hs : nfa.start = nfa.size - 1 := rfl
@@ -179,6 +190,12 @@ theorem ofNFA_spec {nfa : NFA} {flat : FlatNFA} (h : ofNFA nfa = some flat) :
 /-- State `state` occupies bytes `[12 * state, 12 * state + 12)`. -/
 theorem ofNFA_stateBytes {nfa : NFA} {flat : FlatNFA} (h : ofNFA nfa = some flat)
     (state : Nat) (hs : state < nfa.size) : state * 12 + 12 ≤ flat.words.data.size := by
+  have spec := ofNFA_spec h
+  omega
+
+/-- The byte offset of `state` is below `2^32`, so it round-trips through `USize`. -/
+theorem ofNFA_stateOff_lt {nfa : NFA} {flat : FlatNFA} (h : ofNFA nfa = some flat)
+    (state : Nat) (hs : state < nfa.size) : state * 12 < 2 ^ 32 := by
   have spec := ofNFA_spec h
   omega
 

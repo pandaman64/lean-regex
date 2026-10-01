@@ -23,6 +23,8 @@ public section
 
 namespace Regex.VM.ClassTable
 
+open Regex.VM.Wide (lt_two_pow_numBits_of_lt_2_pow_32 toNat_uSize_ofNat_of_lt)
+
 private def univHi : UInt32 := 0x10FFFF
 
 /-- Insert `[lo, hi]` into a sorted, disjoint, non-adjacent run list. -/
@@ -192,33 +194,19 @@ structure ClassTable where
   high : ByteArray
   /-- The `nHigh` packed runs occupy `8 * nHigh` bytes at the front of `high`. -/
   packed : nHigh.toNat * 8 ≤ high.size
+  /-- Those bytes fit in a 32-bit offset, so `USize` index arithmetic does not wrap. -/
+  fits : nHigh.toNat * 8 < 2 ^ 32
 
-/-- This build's `USize` is 64 bits, so a `UInt32` index times 8 does not wrap. -/
-private theorem usize_eq_two_pow_64 : USize.size = 2 ^ 64 := by
-  native_decide
+/-- `i.toNat * 8 < 2^32`, so scaling the run index by 8 does not wrap `USize`. -/
+private theorem toNat_u32_mul8 {i : UInt32} (h : i.toNat * 8 < 2 ^ 32) :
+    (i.toUSize * 8).toNat = i.toNat * 8 := by
+  rw [USize.toNat_mul, UInt32.toNat_toUSize, toNat_uSize_ofNat_of_lt 8 (by decide)]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
 
-private theorem two_pow_numBits_eq : 2 ^ System.Platform.numBits = 2 ^ 64 := by
-  rw [← USize.size_eq_two_pow, usize_eq_two_pow_64]
-
-private theorem toNat_uSize_literal (n : Nat) (h : n < 2 ^ 64) : (OfNat.ofNat n : USize).toNat = n := by
-  rw [USize.toNat_ofNat]
-  apply Nat.mod_eq_of_lt
-  rw [two_pow_numBits_eq]
-  exact h
-
-private theorem toNat_u32_mul8 (i : UInt32) : (i.toUSize * 8).toNat = i.toNat * 8 := by
-  rw [USize.toNat_mul, UInt32.toNat_toUSize, toNat_uSize_literal 8 (by decide)]
-  apply Nat.mod_eq_of_lt
-  rw [two_pow_numBits_eq]
-  have := UInt32.toNat_lt i
-  omega
-
-private theorem toNat_uSize_add (off : USize) (k : Nat) (hk : k < 2 ^ 64) (h : off.toNat + k < 2 ^ 64) :
+private theorem toNat_uSize_add (off : USize) (k : Nat) (hk : k < 2 ^ 32) (h : off.toNat + k < 2 ^ 32) :
     (off + OfNat.ofNat k).toNat = off.toNat + k := by
-  rw [USize.toNat_add, toNat_uSize_literal k hk]
-  apply Nat.mod_eq_of_lt
-  rw [two_pow_numBits_eq]
-  exact h
+  rw [USize.toNat_add, toNat_uSize_ofNat_of_lt k hk]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
 
 private theorem toNat_add_one_of_lt {i n : UInt32} (h : i < n) : (i + 1).toNat = i.toNat + 1 := by
   have hlt : i.toNat < n.toNat := (UInt32.lt_iff_toNat_lt).mp h
@@ -228,19 +216,34 @@ private theorem toNat_add_one_of_lt {i n : UInt32} (h : i < n) : (i + 1).toNat =
   have := UInt32.toNat_lt n
   omega
 
-def ClassTable.compile (cs : Classes) : ClassTable :=
+/--
+Compile `cs` to a bitmap plus packed high runs.
+
+Returns `none` when the high-run table does not fit in a 32-bit byte offset.
+Each run is 8 bytes, so that is `high.size < 2^29`.
+-/
+def ClassTable.compile (cs : Classes) : Option ClassTable :=
   let runs := runsOf cs
   let high := highRuns runs
-  let (b0, b1, b2, b3) := packBits runs
-  let bytes := packRuns high
-  have hpack : high.size.toUInt32.toNat * 8 ≤ bytes.size := by
-    rw [packRuns_size]
-    have : high.size.toUInt32.toNat = high.size % 2 ^ 32 := by simp [Nat.toUInt32_eq]
-    omega
-  { b0, b1, b2, b3
-    nHigh := high.size.toUInt32
-    high := bytes
-    packed := hpack }
+  if hsz : high.size < 2 ^ 29 then
+    let (b0, b1, b2, b3) := packBits runs
+    let bytes := packRuns high
+    have hn : high.size.toUInt32.toNat = high.size := by
+      have h32 : high.size < UInt32.size := by
+        have : high.size < 2 ^ 32 := by omega
+        simpa [UInt32.size] using this
+      rw [Nat.toUInt32_eq]
+      simp [UInt32.ofNat, UInt32.toNat, BitVec.toNat_ofNat,
+        Nat.mod_eq_of_lt (by simpa [UInt32.size] using h32)]
+    have hpack : high.size.toUInt32.toNat * 8 ≤ bytes.size := by
+      rw [hn, packRuns_size]
+      exact Nat.le_refl _
+    have hfits : high.size.toUInt32.toNat * 8 < 2 ^ 32 := by
+      rw [hn]
+      omega
+    some ⟨b0, b1, b2, b3, high.size.toUInt32, bytes, hpack, hfits⟩
+  else
+    none
 
 @[inline]
 private def bitmapMem (t : ClassTable) (c : UInt32) : Bool :=
@@ -254,20 +257,20 @@ private def bitmapMem (t : ClassTable) (c : UInt32) : Bool :=
   ((w >>> bit) &&& 1) == 1
 
 @[inline]
-private def linearMem (runs : ByteArray) (n c : UInt32) (hpack : n.toNat * 8 ≤ runs.size) : Bool :=
+private def linearMem (runs : ByteArray) (n c : UInt32)
+    (hpack : n.toNat * 8 ≤ runs.size) (hfits : n.toNat * 8 < 2 ^ 32) : Bool :=
   let rec go (i : UInt32) : Bool :=
     if hik : i < n then
       let off := i.toUSize * 8
-      have hoff : off.toNat = i.toNat * 8 := toNat_u32_mul8 i
       have hlt : i.toNat < n.toNat := (UInt32.lt_iff_toNat_lt).mp hik
-      have hspan : i.toNat * 8 + 8 ≤ runs.size := by
-        have : i.toNat + 1 ≤ n.toNat := Nat.succ_le_of_lt hlt
-        omega
+      have hstep : i.toNat + 1 ≤ n.toNat := Nat.succ_le_of_lt hlt
+      have hmul : i.toNat * 8 + 8 < 2 ^ 32 := by omega
+      have hoff : off.toNat = i.toNat * 8 := toNat_u32_mul8 (by omega)
+      have hspan : i.toNat * 8 + 8 ≤ runs.size := by omega
       have hlo : off.toNat + 4 ≤ runs.size := by omega
       have hadd : (off + 4).toNat = off.toNat + 4 := by
         apply toNat_uSize_add off 4 (by decide)
         rw [hoff]
-        have := UInt32.toNat_lt i
         omega
       have hhi : (off + 4).toNat + 4 ≤ runs.size := by omega
       let lo := runs.ugetUInt32LE off hlo
@@ -290,7 +293,7 @@ private def linearMem (runs : ByteArray) (n c : UInt32) (hpack : n.toNat * 8 ≤
 @[inline]
 def ClassTable.contains (t : ClassTable) (c : Char) : Bool :=
   let v := c.val
-  if v < 256 then bitmapMem t v else linearMem t.high t.nHigh v t.packed
+  if v < 256 then bitmapMem t v else linearMem t.high t.nHigh v t.packed t.fits
 
 end Regex.VM.ClassTable
 
