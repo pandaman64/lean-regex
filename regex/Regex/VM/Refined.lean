@@ -199,6 +199,338 @@ theorem ofNFA_stateOff_lt {nfa : NFA} {flat : FlatNFA} (h : ofNFA nfa = some fla
   have spec := ofNFA_spec h
   omega
 
+/--
+Read the word whose first byte is `off`.
+
+Out-of-range offsets are `0`. The in-range case does not mention the bound proofs,
+so a later rewrite of `off` stays type-correct.
+-/
+def wordAt (w : WordArray) (off : Nat) : UInt32 :=
+  if h : off + 4 ≤ w.data.size ∧ off < 2 ^ 32 then
+    w.uget off.toUSize (by
+      rw [Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 h.2]
+      exact h.1)
+  else
+    0
+
+/--
+Three words decode to `node`. A `.sparse` node stores the index of the table
+`ClassTable.compile` produced for its class.
+-/
+def Encodes (classes : Array ClassTable) (node : NFA.Node) (tag next extra : UInt32) : Prop :=
+  match node with
+  | .done => tag = tagDone ∧ next = 0 ∧ extra = 0
+  | .fail => tag = tagFail ∧ next = 0 ∧ extra = 0
+  | .epsilon nxt => tag = tagEpsilon ∧ next = nxt.toUInt32 ∧ extra = 0
+  | .anchor a nxt => tag = tagAnchor ∧ next = nxt.toUInt32 ∧ extra = anchorKind a
+  | .char c nxt => tag = tagChar ∧ next = nxt.toUInt32 ∧ extra = c.val
+  | .split n₁ n₂ => tag = tagSplit ∧ next = n₁.toUInt32 ∧ extra = n₂.toUInt32
+  | .save off nxt =>
+      off < UInt32.size ∧ tag = tagSave ∧ next = nxt.toUInt32 ∧ extra = off.toUInt32
+  | .sparse cs nxt =>
+      tag = tagSparse ∧ next = nxt.toUInt32 ∧
+        ∃ t : ClassTable, ClassTable.compile cs = some t ∧ classes[extra.toNat]? = some t
+
+private theorem encodes_push {classes : Array ClassTable} {node : NFA.Node} {tag next extra : UInt32}
+    {pushed : ClassTable} (h : Encodes classes node tag next extra) :
+    Encodes (classes.push pushed) node tag next extra := by
+  cases node with
+  | sparse cs nxt =>
+    simp only [Encodes] at h ⊢
+    rcases h with ⟨htag, hnext, table, hcomp, hget⟩
+    refine ⟨htag, hnext, table, hcomp, ?_⟩
+    rcases Array.getElem?_eq_some_iff.mp hget with ⟨hlt, hval⟩
+    rw [Array.getElem?_push_lt hlt]
+    exact congrArg some hval
+  | _ =>
+    simp only [Encodes] at h ⊢
+    exact h
+
+private theorem some_words_inj {a b c : UInt32} {xs : Array ClassTable}
+    {tag next extra : UInt32} {ys : Array ClassTable}
+    (h : some (a, b, c, xs) = some (tag, next, extra, ys)) :
+    tag = a ∧ next = b ∧ extra = c ∧ ys = xs := by
+  injection h with h
+  injection h with ha h
+  injection h with hb h
+  injection h with hc hys
+  exact ⟨ha.symm, hb.symm, hc.symm, hys.symm⟩
+
+/-- `encode` either keeps the class array or pushes the one table it just compiled. -/
+private theorem encode_classes (classes : Array ClassTable) (node : NFA.Node)
+    {tag next extra : UInt32} {classes' : Array ClassTable}
+    (h : encode classes node = some (tag, next, extra, classes')) :
+    classes' = classes ∨ ∃ t : ClassTable, classes' = classes.push t := by
+  unfold encode at h
+  split at h
+  · exact Or.inl (some_words_inj h).2.2.2
+  · exact Or.inl (some_words_inj h).2.2.2
+  · exact Or.inl (some_words_inj h).2.2.2
+  · exact Or.inl (some_words_inj h).2.2.2
+  · exact Or.inl (some_words_inj h).2.2.2
+  · exact Or.inl (some_words_inj h).2.2.2
+  · split at h
+    · exact Or.inl (some_words_inj h).2.2.2
+    · simp at h
+  · split at h
+    · split at h
+      · next table _ =>
+        exact Or.inr ⟨table, (some_words_inj h).2.2.2⟩
+      · simp at h
+    · simp at h
+
+private theorem encode_encodes (classes : Array ClassTable) (node : NFA.Node)
+    {tag next extra : UInt32} {classes' : Array ClassTable}
+    (h : encode classes node = some (tag, next, extra, classes')) :
+    Encodes classes' node tag next extra := by
+  unfold encode at h
+  split at h
+  · rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+    simp [Encodes]
+  · rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+    simp [Encodes]
+  · rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+    simp [Encodes]
+  · rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+    simp [Encodes]
+  · rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+    simp [Encodes]
+  · rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+    simp [Encodes]
+  · split at h
+    · rename_i off nxt hoff
+      rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+      exact ⟨hoff, rfl, rfl, rfl⟩
+    · simp at h
+  · split at h
+    · split at h
+      · rename_i _node cs nxt hsz _compiled table hc
+        rcases some_words_inj h with ⟨rfl, rfl, rfl, rfl⟩
+        refine ⟨rfl, rfl, table, hc, ?_⟩
+        rw [toNat_toUInt32_of_lt hsz]
+        exact Array.getElem?_push_size
+      · simp at h
+    · simp at h
+
+private theorem wordAt_push (w : WordArray) (v : UInt32) (off : Nat)
+    (hsize : off + 4 ≤ w.data.size) (hoff : off < 2 ^ 32) :
+    wordAt (w.push v) off = wordAt w off := by
+  have hpush : off + 4 ≤ (w.push v).data.size ∧ off < 2 ^ 32 := by
+    rw [WordArray.data_size_push]
+    exact ⟨by omega, hoff⟩
+  have hhere : off + 4 ≤ w.data.size ∧ off < 2 ^ 32 := ⟨hsize, hoff⟩
+  unfold wordAt
+  rw [dite_eq_left hpush, dite_eq_left hhere]
+  have hnat : off.toUSize.toNat + 4 ≤ w.data.size := by
+    rw [Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 hoff]
+    exact hsize
+  have raw := WordArray.uget_push_lt w v off.toUSize hnat
+  exact (congrArg (fun p => (w.push v).uget off.toUSize p) (proof_irrel _ _)).trans
+    (raw.trans (congrArg (fun p => w.uget off.toUSize p) (proof_irrel _ _)).symm)
+
+private theorem wordAt_push_new (w : WordArray) (v : UInt32) (hbase : w.data.size < 2 ^ 32) :
+    wordAt (w.push v) w.data.size = v := by
+  have hcond : w.data.size + 4 ≤ (w.push v).data.size ∧ w.data.size < 2 ^ 32 := by
+    rw [WordArray.data_size_push]
+    exact ⟨Nat.le_refl _, hbase⟩
+  unfold wordAt
+  rw [dite_eq_left hcond]
+  have harg : w.data.size.toUSize.toNat + 4 ≤ (w.push v).data.size := by
+    rw [Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 hbase, WordArray.data_size_push]
+    exact Nat.le_refl _
+  exact (congrArg (fun p => (w.push v).uget w.data.size.toUSize p) (proof_irrel _ harg)).trans
+    (WordArray.uget_push w v harg hbase)
+
+private theorem ofNFA.go_encodes {nfa : NFA} {flat : FlatNFA} (i : Nat) (words : WordArray)
+    (classes : Array ClassTable) (hi : i ≤ nfa.nodes.size) (hlen : words.data.size = 12 * i)
+    (hfit : 12 * nfa.nodes.size ≤ 2 ^ 32)
+    (hpref : ∀ j, (hj : j < i) →
+      Encodes classes nfa.nodes[j]
+        (wordAt words (12 * j))
+        (wordAt words (12 * j + 4))
+        (wordAt words (12 * j + 8)))
+    (h : ofNFA.go nfa i words classes = some flat) (j : Nat) (hj : j < nfa.nodes.size) :
+    Encodes flat.classes nfa.nodes[j]
+      (wordAt flat.words (12 * j))
+      (wordAt flat.words (12 * j + 4))
+      (wordAt flat.words (12 * j + 8)) := by
+  unfold ofNFA.go at h
+  by_cases ilt : i < nfa.nodes.size
+  · simp [ilt] at h
+    match henc : encode classes nfa.nodes[i] with
+    | none => simp [henc] at h
+    | some (tag, next, extra, classes') =>
+      simp [henc] at h
+      have hlen' : (((words.push tag).push next).push extra).data.size = 12 * (i + 1) := by
+        rw [push3_data_size, hlen]
+        omega
+      have hnew : Encodes classes' nfa.nodes[i] tag next extra :=
+        encode_encodes classes nfa.nodes[i] henc
+      have hpref' : ∀ k, (hk : k < i + 1) →
+          Encodes classes' nfa.nodes[k]
+            (wordAt (((words.push tag).push next).push extra) (12 * k))
+            (wordAt (((words.push tag).push next).push extra) (12 * k + 4))
+            (wordAt (((words.push tag).push next).push extra) (12 * k + 8)) := by
+        intro k hk
+        by_cases hk' : k < i
+        · have hmono : Encodes classes' nfa.nodes[k]
+              (wordAt words (12 * k))
+              (wordAt words (12 * k + 4))
+              (wordAt words (12 * k + 8)) := by
+            rcases encode_classes classes nfa.nodes[i] henc with rfl | ⟨_, rfl⟩
+            · exact hpref k hk'
+            · exact encodes_push (hpref k hk')
+          have stable (off : Nat) (hsz : off + 4 ≤ words.data.size) (h32 : off < 2 ^ 32) :
+              wordAt (((words.push tag).push next).push extra) off = wordAt words off :=
+            (wordAt_push ((words.push tag).push next) extra off
+                (by rw [WordArray.data_size_push, WordArray.data_size_push]; omega) h32).trans
+              ((wordAt_push (words.push tag) next off
+                  (by rw [WordArray.data_size_push]; omega) h32).trans
+                (wordAt_push words tag off hsz h32))
+          simpa [stable (12 * k) (by rw [hlen]; omega) (by omega),
+            stable (12 * k + 4) (by rw [hlen]; omega) (by omega),
+            stable (12 * k + 8) (by rw [hlen]; omega) (by omega)] using hmono
+        · have keq : k = i := by omega
+          subst k
+          have hbase : words.data.size < 2 ^ 32 := by rw [hlen]; omega
+          have hbase4 : words.data.size + 4 < 2 ^ 32 := by rw [hlen]; omega
+          have ht : wordAt (((words.push tag).push next).push extra) (12 * i) = tag := by
+            rw [show 12 * i = words.data.size by rw [hlen]]
+            exact (wordAt_push ((words.push tag).push next) extra words.data.size
+                (by
+                  rw [WordArray.data_size_push (words.push tag) next,
+                    WordArray.data_size_push words tag]
+                  exact Nat.le_add_right _ _) hbase).trans
+              ((wordAt_push (words.push tag) next words.data.size
+                  (by
+                    rw [WordArray.data_size_push words tag]
+                    exact Nat.le_refl _) hbase).trans
+                (wordAt_push_new words tag hbase))
+          have hn : wordAt (((words.push tag).push next).push extra) (12 * i + 4) = next := by
+            rw [show 12 * i + 4 = words.data.size + 4 by rw [hlen]]
+            have h4 : (words.push tag).data.size = words.data.size + 4 := WordArray.data_size_push _ _
+            rw [← h4]
+            exact (wordAt_push ((words.push tag).push next) extra (words.push tag).data.size
+                (by
+                  rw [WordArray.data_size_push (words.push tag) next]
+                  exact Nat.le_refl _)
+                (by rw [h4]; exact hbase4)).trans
+              (wordAt_push_new (words.push tag) next (by rw [h4]; exact hbase4))
+          have he : wordAt (((words.push tag).push next).push extra) (12 * i + 8) = extra := by
+            rw [show 12 * i + 8 = words.data.size + 8 by rw [hlen]]
+            have h8 : ((words.push tag).push next).data.size = words.data.size + 8 := by
+              rw [WordArray.data_size_push, WordArray.data_size_push]
+            rw [← h8]
+            exact wordAt_push_new ((words.push tag).push next) extra (by
+              rw [h8, hlen]
+              have hineq : i + 1 ≤ nfa.nodes.size := Nat.succ_le_of_lt ilt
+              have hmul : 12 * (i + 1) ≤ 12 * nfa.nodes.size := Nat.mul_le_mul_left 12 hineq
+              exact Nat.lt_of_lt_of_le (by omega : 12 * i + 8 < 12 * (i + 1)) (Nat.le_trans hmul hfit))
+          simpa [ht, hn, he] using hnew
+      exact ofNFA.go_encodes (i + 1) (((words.push tag).push next).push extra) classes'
+        (Nat.succ_le_of_lt ilt) hlen' hfit hpref' h j hj
+  · simp [ilt] at h
+    cases h
+    have ieq : i = nfa.nodes.size := Nat.le_antisymm hi (Nat.le_of_not_lt ilt)
+    have hj' : j < i := by rw [ieq]; exact hj
+    simpa [ieq] using hpref j hj'
+termination_by nfa.nodes.size - i
+
+/-- State `j` of a successful flattening is the three words of `nfa[j]`. -/
+theorem ofNFA_encodes {nfa : NFA} {flat : FlatNFA} (h : ofNFA nfa = some flat)
+    (j : Nat) (hj : j < nfa.size) :
+    Encodes flat.classes nfa[j]
+      (wordAt flat.words (12 * j))
+      (wordAt flat.words (12 * j + 4))
+      (wordAt flat.words (12 * j + 8)) := by
+  have spec := ofNFA_spec h
+  unfold ofNFA at h
+  split at h
+  · simp at h
+  · have hempty : (WordArray.emptyWithCapacity (nfa.size * 3)).data.size = 12 * 0 := by
+      simp [WordArray.emptyWithCapacity_data_size]
+    have hfit : 12 * nfa.nodes.size ≤ 2 ^ 32 := by
+      rw [show nfa.nodes.size = nfa.size from rfl]
+      omega
+    have hpref : ∀ k, (hk : k < 0) →
+        Encodes #[] nfa.nodes[k]
+          (wordAt (WordArray.emptyWithCapacity (nfa.size * 3)) (12 * k))
+          (wordAt (WordArray.emptyWithCapacity (nfa.size * 3)) (12 * k + 4))
+          (wordAt (WordArray.emptyWithCapacity (nfa.size * 3)) (12 * k + 8)) := by
+      intro k hk
+      omega
+    exact ofNFA.go_encodes 0 (WordArray.emptyWithCapacity (nfa.size * 3)) #[] (Nat.zero_le _) hempty
+      hfit hpref h j hj
+
+/--
+A transition target stored by `Encodes` is still below `nfa.size`.
+
+`.done` and `.fail` store next word `0`, and `inBounds` does not force the NFA
+to be nonempty, so the caller passes `0 < size` (from `WellFormed.size_lt`).
+-/
+theorem Encodes.next_lt {classes : Array ClassTable} {node : NFA.Node} {tag next extra : UInt32}
+    {size : Nat} (h0 : 0 < size) (h : Encodes classes node tag next extra)
+    (hb : node.inBounds size) (hs : size < 2 ^ 32) : next.toNat < size := by
+  cases node with
+  | done =>
+    simp [Encodes] at h
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, UInt32.toNat_zero]
+    exact h0
+  | fail =>
+    simp [Encodes] at h
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, UInt32.toNat_zero]
+    exact h0
+  | epsilon nxt =>
+    simp [Encodes, NFA.Node.inBounds] at h hb
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, toNat_toUInt32_of_lt (Nat.lt_trans hb hs)]
+    exact hb
+  | anchor _ nxt =>
+    simp [Encodes, NFA.Node.inBounds] at h hb
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, toNat_toUInt32_of_lt (Nat.lt_trans hb hs)]
+    exact hb
+  | char _ nxt =>
+    simp [Encodes, NFA.Node.inBounds] at h hb
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, toNat_toUInt32_of_lt (Nat.lt_trans hb hs)]
+    exact hb
+  | split n₁ n₂ =>
+    simp [Encodes, NFA.Node.inBounds] at h hb
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, toNat_toUInt32_of_lt (Nat.lt_trans hb.1 hs)]
+    exact hb.1
+  | save _ nxt =>
+    simp [Encodes, NFA.Node.inBounds] at h hb
+    rcases h with ⟨_, _, hnext, _⟩
+    rw [hnext, toNat_toUInt32_of_lt (Nat.lt_trans hb hs)]
+    exact hb
+  | sparse _ nxt =>
+    simp [Encodes, NFA.Node.inBounds] at h hb
+    rcases h with ⟨_, hnext, _⟩
+    rw [hnext, toNat_toUInt32_of_lt (Nat.lt_trans hb hs)]
+    exact hb
+
+/-- The second target of a `.split` is below `nfa.size`. -/
+theorem Encodes.split_extra_lt {classes : Array ClassTable} {n₁ n₂ : Nat} {tag next extra : UInt32}
+    {size : Nat} (h : Encodes classes (.split n₁ n₂) tag next extra)
+    (hb : n₂ < size) (hs : size < 2 ^ 32) : extra.toNat < size := by
+  simp [Encodes] at h
+  rcases h with ⟨_, _, hextra⟩
+  rw [hextra, toNat_toUInt32_of_lt (Nat.lt_trans hb hs)]
+  exact hb
+
+/-- A `.sparse` word indexes the class table that was compiled for that node. -/
+theorem Encodes.sparse_idx {classes : Array ClassTable} {cs : Regex.Data.Classes} {nxt : Nat}
+    {tag next extra : UInt32} (h : Encodes classes (.sparse cs nxt) tag next extra) :
+    extra.toNat < classes.size := by
+  simp [Encodes] at h
+  rcases h with ⟨_, _, _, _, hget⟩
+  rcases Array.getElem?_eq_some_iff.mp hget with ⟨hlt, _⟩
+  exact hlt
+
 @[inline]
 def anchorOf (k : UInt32) : Anchor :=
   if k == 0 then .start
