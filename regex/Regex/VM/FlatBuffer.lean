@@ -66,6 +66,9 @@ theorem uset_size (a : ByteArray) (off : USize) (v : UInt64) (h : off.toNat + 8 
     (uset a off v h).size = a.size := by
   simp [uset, ByteArray.usetUInt64LE_size]
 
+theorem uset_irrel (a : ByteArray) (off : USize) (v : UInt64)
+    (h₁ h₂ : off.toNat + 8 ≤ a.size) : uset a off v h₁ = uset a off v h₂ := rfl
+
 private theorem uget_uset (a : ByteArray) (off : USize) (v : UInt64)
     (h : off.toNat + 8 ≤ a.size) :
     uget (uset a off v h) off (by rw [uset_size]; exact h) = v := by
@@ -76,6 +79,30 @@ private theorem uget_uset_disjoint (a : ByteArray) (off off' : USize) (v : UInt6
     (hdisj : off'.toNat + 8 ≤ off.toNat ∨ off.toNat + 8 ≤ off'.toNat) :
     uget (uset a off v h) off' (by rw [uset_size]; exact h') = uget a off' h' := by
   simpa [uget, uset] using ByteArray.ugetUInt64LE_uset_disjoint a off off' v h h' hdisj
+
+theorem uget_congr (a : ByteArray) (off₁ off₂ : USize) (heq : off₁ = off₂)
+    (h₁ : off₁.toNat + 8 ≤ a.size) (h₂ : off₂.toNat + 8 ≤ a.size) :
+    uget a off₁ h₁ = uget a off₂ h₂ := by
+  subst heq
+  exact uget_irrel a off₁ h₁ h₂
+
+theorem uget_uset_self (a : ByteArray) (off : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) (h' : off.toNat + 8 ≤ (uset a off v h).size) :
+    uget (uset a off v h) off h' = v := by
+  have hcanon : uget (uset a off v h) off (by rw [uset_size]; exact h) = v := uget_uset a off v h
+  exact uget_irrel (uset a off v h) off (by rw [uset_size]; exact h) h' ▸ hcanon
+
+theorem uget_uset_ne (a : ByteArray) (off off' : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) (h' : off'.toNat + 8 ≤ a.size)
+    (hdisj : off'.toNat + 8 ≤ off.toNat ∨ off.toNat + 8 ≤ off'.toNat)
+    (hSlot : off'.toNat + 8 ≤ (uset a off v h).size) :
+    uget (uset a off v h) off' hSlot = uget a off' h' := by
+  have hcanon := uget_uset_disjoint a off off' v h h' hdisj
+  exact uget_irrel (uset a off v h) off' (by rw [uset_size]; exact h') hSlot ▸ hcanon
+
+theorem uget_zero (n off : USize) (h : off.toNat + 8 ≤ (ByteArray.zero n).size) :
+    uget (ByteArray.zero n) off h = 0 := by
+  simpa [uget] using ByteArray.ugetUInt64LE_zero n off h
 
 /-- A slot start is strictly below `2^32` when the whole row window fits in `2^32`. -/
 private theorem slotOff_lt {base count k : Nat} (hk : k < count) (hfit : base + count * 8 ≤ 2 ^ 32) :
@@ -627,6 +654,33 @@ theorem SlotWord.encode {s : String} (p : Pos s) (h : p.offset.byteIdx < 2 ^ 64)
   unfold encodePos
   rw [Nat.toUInt64, UInt64.toNat_ofNat']
   exact Nat.mod_eq_of_lt (by simpa using h)
+
+/-- A zero word is the start position. -/
+theorem SlotWord.zero {s : String} : SlotWord s 0 :=
+  Or.inr ⟨s.startPos, by simp [String.offset_startPos]⟩
+
+/-- Every position of a string that fits in `UInt64` encodes as a capture word. -/
+theorem SlotWord.of_pos {s : String} (p : Pos s) (h : s.utf8ByteSize + 1 < 2 ^ 64) :
+    SlotWord s (encodePos p) := by
+  apply SlotWord.encode
+  have hle : p.offset.byteIdx ≤ s.utf8ByteSize := by simp
+  omega
+
+theorem uset_slotWord {s : String} (a : ByteArray) (off : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) (hv : SlotWord s v)
+    (hSlot : off.toNat + 8 ≤ (uset a off v h).size) :
+    SlotWord s (uget (uset a off v h) off hSlot) := by
+  rw [uget_uset_self]
+  exact hv
+
+theorem uset_slotWord_disjoint {s : String} (a : ByteArray) (off off' : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) (h' : off'.toNat + 8 ≤ a.size)
+    (hw : SlotWord s (uget a off' h'))
+    (hdisj : off'.toNat + 8 ≤ off.toNat ∨ off.toNat + 8 ≤ off'.toNat)
+    (hSlot : off'.toNat + 8 ≤ (uset a off v h).size) :
+    SlotWord s (uget (uset a off v h) off' hSlot) := by
+  rw [uget_uset_ne a off off' v h h' hdisj hSlot]
+  exact hw
 
 theorem fillRow_slotWord {s : String} (a : ByteArray) (dst nSlots : USize) (v : UInt64)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
