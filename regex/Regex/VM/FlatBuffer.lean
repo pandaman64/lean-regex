@@ -25,7 +25,8 @@ public section
 
 namespace Regex.VM.FlatBuffer
 
-open Regex.VM.Wide (toNat_toUSize_of_lt_2_pow_32)
+open Regex.VM.Wide (toNat_toUSize_of_lt_2_pow_32 lt_two_pow_numBits_of_lt_2_pow_32
+  toNat_uSize_ofNat_of_lt)
 
 /-- Eight bytes per capture slot. -/
 abbrev slotBytes : USize := 8
@@ -72,85 +73,153 @@ private theorem slotOff_le {base count k size : Nat} (hk : k < count) (h : base 
   have : k + 1 ≤ count := Nat.succ_le_of_lt hk
   omega
 
+private theorem rowMul8_le {base count : Nat} (h : base + count * 8 ≤ 2 ^ 32) :
+    count * 8 ≤ 2 ^ 32 := by
+  omega
+
+private theorem index_mul8_lt {k count : Nat} (hk : k < count) (h : count * 8 ≤ 2 ^ 32) :
+    k * 8 < 2 ^ 32 := by
+  omega
+
+private theorem index_succ_lt {k count : Nat} (hk : k < count) (h : count * 8 ≤ 2 ^ 32) :
+    k + 1 < 2 ^ 32 := by
+  omega
+
+private theorem toNat_slotBytes : slotBytes.toNat = 8 := by
+  unfold slotBytes
+  exact toNat_uSize_ofNat_of_lt 8 (by decide)
+
+private theorem toNat_one_usize : (1 : USize).toNat = 1 :=
+  toNat_uSize_ofNat_of_lt 1 (by decide)
+
+private theorem lt_of_ne_slots {k n : USize} (hk : k.toNat ≤ n.toNat) (hne : k ≠ n) :
+    k.toNat < n.toNat :=
+  Nat.lt_of_le_of_ne hk (fun h => hne (USize.toNat_inj.mp h))
+
+private theorem mul_slotBytes_toNat (k : USize) (hk : k.toNat * 8 < 2 ^ 32) :
+    (k * slotBytes).toNat = k.toNat * 8 := by
+  rw [USize.toNat_mul, toNat_slotBytes]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 hk)
+
+private theorem add_usize_toNat (a b : USize) (h : a.toNat + b.toNat < 2 ^ 32) :
+    (a + b).toNat = a.toNat + b.toNat := by
+  rw [USize.toNat_add]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
+
+/-- `base + k * 8` computed with `USize` arithmetic, which does not wrap under `hsum`. -/
+private theorem slotAddr_toNat (base k : USize) (hk : k.toNat * 8 < 2 ^ 32)
+    (hsum : base.toNat + k.toNat * 8 < 2 ^ 32) :
+    (base + k * slotBytes).toNat = base.toNat + k.toNat * 8 := by
+  have hm : (k * slotBytes).toNat = k.toNat * 8 := mul_slotBytes_toNat k hk
+  rw [add_usize_toNat base (k * slotBytes) (by rw [hm]; exact hsum), hm]
+
+private theorem succ_k_toNat (k : USize) (hk : k.toNat + 1 < 2 ^ 32) :
+    (k + 1).toNat = k.toNat + 1 := by
+  rw [USize.toNat_add, toNat_one_usize]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 hk)
+
+/-- Unfolding `(k + 1).toNat` exposes a modulus; it is the identity below `2^32`. -/
+private theorem slot_measure_lt {k nSlots : USize}
+    (hk : k.toNat ≤ nSlots.toNat) (hne : ¬k = nSlots) (hfit : nSlots.toNat * 8 ≤ 2 ^ 32) :
+    nSlots.toNat - (k + 1).toNat < nSlots.toNat - k.toNat := by
+  have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hne
+  rw [succ_k_toNat k (index_succ_lt hlt hfit)]
+  exact Nat.sub_succ_lt_self _ _ hlt
+
+/--
+`k`-th slot of a row, as a `USize`.
+
+`@[inline]` exports the erased-proof specialization. The function is recursive, so
+callers are not inlined into the loop; they are rewritten to that specialization.
+-/
+@[inline]
+def copySlots (dst src nSlots : USize)
+    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
+    (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
+    (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
+  if hk' : k = nSlots then
+    a
+  else
+    have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hk'
+    have hMul : k.toNat * 8 < 2 ^ 32 := index_mul8_lt hlt (rowMul8_le hSrcFit)
+    have hSucc : k.toNat + 1 < 2 ^ 32 := index_succ_lt hlt (rowMul8_le hSrcFit)
+    have hSrcSum : src.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hSrcFit
+    have hDstSum : dst.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
+    let srcOff := src + k * slotBytes
+    let dstOff := dst + k * slotBytes
+    have hSrcNat : srcOff.toNat = src.toNat + k.toNat * 8 := slotAddr_toNat src k hMul hSrcSum
+    have hDstNat : dstOff.toNat = dst.toNat + k.toNat * 8 := slotAddr_toNat dst k hMul hDstSum
+    have hRead : srcOff.toNat + 8 ≤ a.size := by rw [hSrcNat]; exact slotOff_le hlt hSrc
+    have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
+    let a' := uset a dstOff (uget a srcOff hRead) hWrite
+    have hsize : a'.size = a.size := uset_size a dstOff _ hWrite
+    copySlots dst src nSlots hDstFit hSrcFit (k + 1)
+      (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a'
+      (by rw [hsize]; exact hDst) (by rw [hsize]; exact hSrc)
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  rw [succ_k_toNat k hSucc]
+  exact Nat.sub_succ_lt_self _ _ hlt
+
+private theorem zero_le_toNat (n : Nat) : (0 : USize).toNat ≤ n := by
+  simp [USize.toNat_zero]
+
 /-- Copy `nSlots` slots from byte offset `src` onto `dst`. -/
+@[inline]
 def copyRow (a : ByteArray) (dst src nSlots : USize)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size)
     (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
     (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32) : ByteArray :=
-  go 0 (Nat.zero_le _) a hDst hSrc
-where
-  go (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
-      (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
-      (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
-    if hk' : k = nSlots.toNat then
-      a
-    else
-      have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-      have hSrcLt : src.toNat + k * 8 < 2 ^ 32 := slotOff_lt hlt hSrcFit
-      have hDstLt : dst.toNat + k * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
-      let srcOff := (src.toNat + k * 8).toUSize
-      let dstOff := (dst.toNat + k * 8).toUSize
-      have hSrcNat : srcOff.toNat = src.toNat + k * 8 := toNat_toUSize_of_lt_2_pow_32 hSrcLt
-      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt_2_pow_32 hDstLt
-      have hRead : srcOff.toNat + 8 ≤ a.size := by rw [hSrcNat]; exact slotOff_le hlt hSrc
-      have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
-      let a' := uset a dstOff (uget a srcOff hRead) hWrite
-      have hsize : a'.size = a.size := uset_size a dstOff _ hWrite
-      go (k + 1) (Nat.succ_le_of_lt hlt) a' (by rw [hsize]; exact hDst) (by rw [hsize]; exact hSrc)
-  termination_by nSlots.toNat - k
+  copySlots dst src nSlots hDstFit hSrcFit 0 (zero_le_toNat _) a hDst hSrc
 
-private theorem copyRow.go_size (dst src nSlots : USize)
+private theorem copySlots_size (dst src nSlots : USize)
     (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
     (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
-    (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size) :
-    (copyRow.go dst src nSlots hDstFit hSrcFit k hk a hDst hSrc).size = a.size := by
-  unfold copyRow.go
-  by_cases hk' : k = nSlots.toNat
+    (copySlots dst src nSlots hDstFit hSrcFit k hk a hDst hSrc).size = a.size := by
+  unfold copySlots
+  by_cases hk' : k = nSlots
   · simp only [hk', ↓reduceDIte]
   · simp only [hk', ↓reduceDIte]
-    exact (copyRow.go_size dst src nSlots hDstFit hSrcFit (k + 1)
-      (Nat.succ_le_of_lt (Nat.lt_of_le_of_ne hk hk'))
-      (uset a ((dst.toNat + k * 8).toUSize)
-        (uget a ((src.toNat + k * 8).toUSize) (by
-          rw [toNat_toUSize_of_lt_2_pow_32 (slotOff_lt (Nat.lt_of_le_of_ne hk hk') hSrcFit)]
-          exact slotOff_le (Nat.lt_of_le_of_ne hk hk') hSrc))
-        (by
-          rw [toNat_toUSize_of_lt_2_pow_32 (slotOff_lt (Nat.lt_of_le_of_ne hk hk') hDstFit)]
-          exact slotOff_le (Nat.lt_of_le_of_ne hk hk') hDst))
-      (by rw [uset_size]; exact hDst) (by rw [uset_size]; exact hSrc)).trans
-      (uset_size _ _ _ _)
-termination_by nSlots.toNat - k
+    apply Eq.trans
+    · apply copySlots_size
+    · apply uset_size
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  exact slot_measure_lt hk hk' (rowMul8_le hSrcFit)
 
 /-- A slot disjoint from the not-yet-copied suffix of the destination row is left unchanged. -/
-private theorem copyRow.go_outside (dst src nSlots : USize)
+private theorem copySlots_outside (dst src nSlots : USize)
     (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
     (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
-    (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size)
     (off : USize) (hoff : off.toNat + 8 ≤ a.size)
-    (hdisj : off.toNat + 8 ≤ dst.toNat + k * 8 ∨ dst.toNat + nSlots.toNat * 8 ≤ off.toNat) :
-    uget (copyRow.go dst src nSlots hDstFit hSrcFit k hk a hDst hSrc) off
-        (by rw [copyRow.go_size dst src nSlots hDstFit hSrcFit k hk a hDst hSrc]; exact hoff) =
+    (hdisj : off.toNat + 8 ≤ dst.toNat + k.toNat * 8 ∨ dst.toNat + nSlots.toNat * 8 ≤ off.toNat) :
+    uget (copySlots dst src nSlots hDstFit hSrcFit k hk a hDst hSrc) off
+        (by rw [copySlots_size dst src nSlots hDstFit hSrcFit k hk a hDst hSrc]; exact hoff) =
       uget a off hoff := by
-  unfold copyRow.go
-  by_cases hk' : k = nSlots.toNat
+  unfold copySlots
+  by_cases hk' : k = nSlots
   · simp only [hk', ↓reduceDIte]
   · simp only [hk', ↓reduceDIte]
-    have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-    have hSrcNat : ((src.toNat + k * 8).toUSize).toNat = src.toNat + k * 8 :=
-      toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hlt hSrcFit)
-    have hDstNat : ((dst.toNat + k * 8).toUSize).toNat = dst.toNat + k * 8 :=
-      toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hlt hDstFit)
-    have hRead : ((src.toNat + k * 8).toUSize).toNat + 8 ≤ a.size := by
-      rw [hSrcNat]; exact slotOff_le hlt hSrc
-    have hWrite : ((dst.toNat + k * 8).toUSize).toNat + 8 ≤ a.size := by
-      rw [hDstNat]; exact slotOff_le hlt hDst
-    let srcOff := (src.toNat + k * 8).toUSize
-    let dstOff := (dst.toNat + k * 8).toUSize
+    have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hk'
+    have hMul : k.toNat * 8 < 2 ^ 32 := index_mul8_lt hlt (rowMul8_le hSrcFit)
+    have hSucc : k.toNat + 1 < 2 ^ 32 := index_succ_lt hlt (rowMul8_le hSrcFit)
+    have hSrcSum : src.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hSrcFit
+    have hDstSum : dst.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
+    let srcOff := src + k * slotBytes
+    let dstOff := dst + k * slotBytes
+    have hSrcNat : srcOff.toNat = src.toNat + k.toNat * 8 := slotAddr_toNat src k hMul hSrcSum
+    have hDstNat : dstOff.toNat = dst.toNat + k.toNat * 8 := slotAddr_toNat dst k hMul hDstSum
+    have hRead : srcOff.toNat + 8 ≤ a.size := by rw [hSrcNat]; exact slotOff_le hlt hSrc
+    have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
     let a' := uset a dstOff (uget a srcOff hRead) hWrite
     have hWriteDisj : off.toNat + 8 ≤ dstOff.toNat ∨ dstOff.toNat + 8 ≤ off.toNat := by
       cases hdisj with
@@ -160,76 +229,97 @@ private theorem copyRow.go_outside (dst src nSlots : USize)
       | inr hge =>
         right
         rw [hDstNat]
-        have hk1 : k + 1 ≤ nSlots.toNat := Nat.succ_le_of_lt hlt
+        have hk1 : k.toNat + 1 ≤ nSlots.toNat := Nat.succ_le_of_lt hlt
         omega
-    have hdisj' : off.toNat + 8 ≤ dst.toNat + (k + 1) * 8 ∨
+    have hdisj' : off.toNat + 8 ≤ dst.toNat + (k + 1).toNat * 8 ∨
         dst.toNat + nSlots.toNat * 8 ≤ off.toNat := by
+      rw [succ_k_toNat k hSucc]
       cases hdisj with
       | inl hle =>
         left
         omega
       | inr hge =>
         exact Or.inr hge
-    have hRec := copyRow.go_outside dst src nSlots hDstFit hSrcFit (k + 1)
-      (Nat.succ_le_of_lt hlt) a' (by rw [uset_size]; exact hDst) (by rw [uset_size]; exact hSrc)
+    have hRec := copySlots_outside dst src nSlots hDstFit hSrcFit (k + 1)
+      (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt)
+      a' (by rw [uset_size]; exact hDst) (by rw [uset_size]; exact hSrc)
       off (by rw [uset_size]; exact hoff) hdisj'
     have hKeep := uget_uset_disjoint a dstOff off (uget a srcOff hRead) hWrite hoff hWriteDisj
     exact (uget_irrel _ _ _ _).trans (hRec.trans hKeep)
-termination_by nSlots.toNat - k
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  exact slot_measure_lt hk hk' (rowMul8_le hSrcFit)
+
+private theorem uget_eq_off (a : ByteArray) (off1 off2 : USize) (heq : off1 = off2)
+    (h1 : off1.toNat + 8 ≤ a.size) (h2 : off2.toNat + 8 ≤ a.size) :
+    uget a off1 h1 = uget a off2 h2 := by
+  subst heq
+  exact uget_irrel a off1 h1 h2
 
 /--
 Slot `j` of the suffix still to be copied equals slot `j` of the source, when the two
 windows are the same row or do not overlap.
 -/
-private theorem copyRow.go_uget (dst src nSlots : USize)
+private theorem copySlots_uget (dst src nSlots : USize)
     (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
     (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
     (hsep : dst.toNat = src.toNat ∨ dst.toNat + nSlots.toNat * 8 ≤ src.toNat ∨
       src.toNat + nSlots.toNat * 8 ≤ dst.toNat)
-    (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size)
-    (j : Nat) (hj : j < nSlots.toNat) (hkj : k ≤ j) :
-    uget (copyRow.go dst src nSlots hDstFit hSrcFit k hk a hDst hSrc) ((dst.toNat + j * 8).toUSize)
+    (j : Nat) (hj : j < nSlots.toNat) (hkj : k.toNat ≤ j) :
+    uget (copySlots dst src nSlots hDstFit hSrcFit k hk a hDst hSrc) ((dst.toNat + j * 8).toUSize)
       (by
-        rw [copyRow.go_size dst src nSlots hDstFit hSrcFit k hk a hDst hSrc]
+        rw [copySlots_size dst src nSlots hDstFit hSrcFit k hk a hDst hSrc]
         rw [toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hDstFit)]
         exact slotOff_le hj hDst) =
       uget a ((src.toNat + j * 8).toUSize) (by
         rw [toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hSrcFit)]
         exact slotOff_le hj hSrc) := by
-  unfold copyRow.go
-  by_cases hk' : k = nSlots.toNat
-  · simp only [hk'] at hkj
+  unfold copySlots
+  by_cases hk' : k = nSlots
+  · have hkNat : k.toNat = nSlots.toNat := by rw [hk']
     omega
   · simp only [hk', ↓reduceDIte]
-    have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-    have hSrcNat : ((src.toNat + k * 8).toUSize).toNat = src.toNat + k * 8 :=
-      toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hlt hSrcFit)
-    have hDstNat : ((dst.toNat + k * 8).toUSize).toNat = dst.toNat + k * 8 :=
-      toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hlt hDstFit)
-    have hRead : ((src.toNat + k * 8).toUSize).toNat + 8 ≤ a.size := by
-      rw [hSrcNat]; exact slotOff_le hlt hSrc
-    have hWrite : ((dst.toNat + k * 8).toUSize).toNat + 8 ≤ a.size := by
-      rw [hDstNat]; exact slotOff_le hlt hDst
-    let srcOff := (src.toNat + k * 8).toUSize
-    let dstOff := (dst.toNat + k * 8).toUSize
+    have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hk'
+    have hMul : k.toNat * 8 < 2 ^ 32 := index_mul8_lt hlt (rowMul8_le hSrcFit)
+    have hSucc : k.toNat + 1 < 2 ^ 32 := index_succ_lt hlt (rowMul8_le hSrcFit)
+    have hSrcSum : src.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hSrcFit
+    have hDstSum : dst.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
+    let srcOff := src + k * slotBytes
+    let dstOff := dst + k * slotBytes
+    have hSrcNat : srcOff.toNat = src.toNat + k.toNat * 8 := slotAddr_toNat src k hMul hSrcSum
+    have hDstNat : dstOff.toNat = dst.toNat + k.toNat * 8 := slotAddr_toNat dst k hMul hDstSum
+    have hRead : srcOff.toNat + 8 ≤ a.size := by rw [hSrcNat]; exact slotOff_le hlt hSrc
+    have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
     let word := uget a srcOff hRead
     let a' := uset a dstOff word hWrite
     have hDst' : dst.toNat + nSlots.toNat * 8 ≤ a'.size := by rw [uset_size]; exact hDst
     have hSrc' : src.toNat + nSlots.toNat * 8 ≤ a'.size := by rw [uset_size]; exact hSrc
-    by_cases hjk : j = k
-    · subst j
-      have hTail : dstOff.toNat + 8 ≤ dst.toNat + (k + 1) * 8 := by
-        rw [hDstNat]
+    by_cases hjk : j = k.toNat
+    · have hTail : dstOff.toNat + 8 ≤ dst.toNat + (k + 1).toNat * 8 := by
+        rw [hDstNat, succ_k_toNat k hSucc]
         omega
-      have hOut := copyRow.go_outside dst src nSlots hDstFit hSrcFit (k + 1)
-        (Nat.succ_le_of_lt hlt) a' hDst' hSrc' dstOff (by rw [uset_size]; exact hWrite)
-        (Or.inl hTail)
-      exact (uget_irrel _ _ _ _).trans (hOut.trans (uget_uset a dstOff word hWrite))
-    · have hkj' : k + 1 ≤ j := by omega
-      have hRec := copyRow.go_uget dst src nSlots hDstFit hSrcFit hsep (k + 1)
-        (Nat.succ_le_of_lt hlt) a' hDst' hSrc' j hj hkj'
+      have hOut := copySlots_outside dst src nSlots hDstFit hSrcFit (k + 1)
+        (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a' hDst' hSrc'
+        dstOff (by rw [uset_size]; exact hWrite) (Or.inl hTail)
+      have hDstOff : dstOff = (dst.toNat + j * 8).toUSize := by
+        apply USize.toNat_inj.mp
+        rw [hDstNat, toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hDstFit), hjk]
+      have hSrcOff : srcOff = (src.toNat + j * 8).toUSize := by
+        apply USize.toNat_inj.mp
+        rw [hSrcNat, toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hSrcFit), hjk]
+      have hStep := hOut.trans (uget_uset a dstOff word hWrite)
+      exact ((uget_eq_off (copySlots dst src nSlots hDstFit hSrcFit (k + 1)
+            (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a' hDst' hSrc')
+          dstOff ((dst.toNat + j * 8).toUSize) hDstOff _ _).symm).trans
+        (hStep.trans (uget_eq_off a srcOff ((src.toNat + j * 8).toUSize) hSrcOff hRead _))
+    · have hkj' : (k + 1).toNat ≤ j := by
+        rw [succ_k_toNat k hSucc]
+        omega
+      have hRec := copySlots_uget dst src nSlots hDstFit hSrcFit hsep (k + 1)
+        (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a' hDst' hSrc' j hj hkj'
       let srcSlot := (src.toNat + j * 8).toUSize
       have hSrcSlotNat : srcSlot.toNat = src.toNat + j * 8 :=
         toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hSrcFit)
@@ -252,7 +342,9 @@ private theorem copyRow.go_uget (dst src nSlots : USize)
             omega
       have hStable := uget_uset_disjoint a dstOff srcSlot word hWrite hSrcSlot hSepSlots
       exact (uget_irrel _ _ _ _).trans (hRec.trans hStable)
-termination_by nSlots.toNat - k
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  exact slot_measure_lt hk hk' (rowMul8_le hSrcFit)
 
 /--
 Destination slot `j` equals source slot `j` when the rows are the same or do not overlap.
@@ -272,8 +364,8 @@ theorem copyRow_uget (a : ByteArray) (dst src nSlots : USize)
       uget a ((src.toNat + j * 8).toUSize) hSrcSlot := by
   unfold copyRow
   exact (uget_irrel _ _ _ _).trans
-    ((copyRow.go_uget dst src nSlots hDstFit hSrcFit hsep 0 (Nat.zero_le _) a hDst hSrc j hj
-      (Nat.zero_le _)).trans (uget_irrel _ _ _ _))
+    ((copySlots_uget dst src nSlots hDstFit hSrcFit hsep 0 (zero_le_toNat _) a hDst hSrc j hj
+      (zero_le_toNat _)).trans (uget_irrel _ _ _ _))
 
 /-- A slot that does not meet the destination row is unchanged. -/
 theorem copyRow_uget_disjoint (a : ByteArray) (dst src nSlots : USize)
@@ -287,67 +379,81 @@ theorem copyRow_uget_disjoint (a : ByteArray) (dst src nSlots : USize)
     uget (copyRow a dst src nSlots hDst hSrc hDstFit hSrcFit) off hSlot = uget a off hoff := by
   unfold copyRow
   exact (uget_irrel _ _ _ _).trans
-    (copyRow.go_outside dst src nSlots hDstFit hSrcFit 0 (Nat.zero_le _) a hDst hSrc off hoff hdisj)
+    (copySlots_outside dst src nSlots hDstFit hSrcFit 0 (zero_le_toNat _) a hDst hSrc off hoff
+      (by simpa [USize.toNat_zero] using hdisj))
+
+/--
+`k`-th slot of a filled row. See `copySlots` for why this is `@[inline]` and recursive.
+-/
+@[inline]
+def fillSlots (dst nSlots : USize) (v : UInt64)
+    (hFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
+    (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
+  if hk' : k = nSlots then
+    a
+  else
+    have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hk'
+    have hMul : k.toNat * 8 < 2 ^ 32 := index_mul8_lt hlt (rowMul8_le hFit)
+    have hSucc : k.toNat + 1 < 2 ^ 32 := index_succ_lt hlt (rowMul8_le hFit)
+    have hDstSum : dst.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hFit
+    let dstOff := dst + k * slotBytes
+    have hDstNat : dstOff.toNat = dst.toNat + k.toNat * 8 := slotAddr_toNat dst k hMul hDstSum
+    have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
+    let a' := uset a dstOff v hWrite
+    have hsize : a'.size = a.size := uset_size a dstOff v hWrite
+    fillSlots dst nSlots v hFit (k + 1)
+      (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a'
+      (by rw [hsize]; exact hDst)
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  rw [succ_k_toNat k hSucc]
+  exact Nat.sub_succ_lt_self _ _ hlt
 
 /-- Fill one row with `v`. Used to install an empty (`PosPlusOne.sentinel`) buffer. -/
+@[inline]
 def fillRow (a : ByteArray) (dst nSlots : USize) (v : UInt64)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32) : ByteArray :=
-  go 0 (Nat.zero_le _) a hDst
-where
-  go (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
-      (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
-    if hk' : k = nSlots.toNat then
-      a
-    else
-      have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-      have hDstLt : dst.toNat + k * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
-      let dstOff := (dst.toNat + k * 8).toUSize
-      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt_2_pow_32 hDstLt
-      have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
-      let a' := uset a dstOff v hWrite
-      have hsize : a'.size = a.size := uset_size a dstOff v hWrite
-      go (k + 1) (Nat.succ_le_of_lt hlt) a' (by rw [hsize]; exact hDst)
-  termination_by nSlots.toNat - k
+  fillSlots dst nSlots v hDstFit 0 (zero_le_toNat _) a hDst
 
-private theorem fillRow.go_size (dst nSlots : USize) (v : UInt64)
+private theorem fillSlots_size (dst nSlots : USize) (v : UInt64)
     (hFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
-    (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size) :
-    (fillRow.go dst nSlots v hFit k hk a hDst).size = a.size := by
-  unfold fillRow.go
-  by_cases hk' : k = nSlots.toNat
+    (fillSlots dst nSlots v hFit k hk a hDst).size = a.size := by
+  unfold fillSlots
+  by_cases hk' : k = nSlots
   · simp only [hk', ↓reduceDIte]
   · simp only [hk', ↓reduceDIte]
-    exact (fillRow.go_size dst nSlots v hFit (k + 1)
-      (Nat.succ_le_of_lt (Nat.lt_of_le_of_ne hk hk'))
-      (uset a ((dst.toNat + k * 8).toUSize) v (by
-        rw [toNat_toUSize_of_lt_2_pow_32 (slotOff_lt (Nat.lt_of_le_of_ne hk hk') hFit)]
-        exact slotOff_le (Nat.lt_of_le_of_ne hk hk') hDst))
-      (by rw [uset_size]; exact hDst)).trans
-      (uset_size _ _ _ _)
-termination_by nSlots.toNat - k
+    apply Eq.trans
+    · apply fillSlots_size
+    · apply uset_size
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  exact slot_measure_lt hk hk' (rowMul8_le hFit)
 
 /-- A slot disjoint from the not-yet-written suffix of the row is left unchanged. -/
-private theorem fillRow.go_outside (dst nSlots : USize) (v : UInt64)
+private theorem fillSlots_outside (dst nSlots : USize) (v : UInt64)
     (hFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
-    (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (off : USize) (hoff : off.toNat + 8 ≤ a.size)
-    (hdisj : off.toNat + 8 ≤ dst.toNat + k * 8 ∨ dst.toNat + nSlots.toNat * 8 ≤ off.toNat) :
-    uget (fillRow.go dst nSlots v hFit k hk a hDst) off
-        (by rw [fillRow.go_size dst nSlots v hFit k hk a hDst]; exact hoff) =
+    (hdisj : off.toNat + 8 ≤ dst.toNat + k.toNat * 8 ∨ dst.toNat + nSlots.toNat * 8 ≤ off.toNat) :
+    uget (fillSlots dst nSlots v hFit k hk a hDst) off
+        (by rw [fillSlots_size dst nSlots v hFit k hk a hDst]; exact hoff) =
       uget a off hoff := by
-  unfold fillRow.go
-  by_cases hk' : k = nSlots.toNat
+  unfold fillSlots
+  by_cases hk' : k = nSlots
   · simp only [hk', ↓reduceDIte]
   · simp only [hk', ↓reduceDIte]
-    have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-    have hDstNat : ((dst.toNat + k * 8).toUSize).toNat = dst.toNat + k * 8 :=
-      toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hlt hFit)
-    have hWrite : ((dst.toNat + k * 8).toUSize).toNat + 8 ≤ a.size := by
-      rw [hDstNat]; exact slotOff_le hlt hDst
-    let dstOff := (dst.toNat + k * 8).toUSize
+    have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hk'
+    have hMul : k.toNat * 8 < 2 ^ 32 := index_mul8_lt hlt (rowMul8_le hFit)
+    have hSucc : k.toNat + 1 < 2 ^ 32 := index_succ_lt hlt (rowMul8_le hFit)
+    have hDstSum : dst.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hFit
+    let dstOff := dst + k * slotBytes
+    have hDstNat : dstOff.toNat = dst.toNat + k.toNat * 8 := slotAddr_toNat dst k hMul hDstSum
+    have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
     have hWriteDisj : off.toNat + 8 ≤ dstOff.toNat ∨ dstOff.toNat + 8 ≤ off.toNat := by
       cases hdisj with
       | inl hle =>
@@ -356,59 +462,73 @@ private theorem fillRow.go_outside (dst nSlots : USize) (v : UInt64)
       | inr hge =>
         right
         rw [hDstNat]
-        have hk1 : k + 1 ≤ nSlots.toNat := Nat.succ_le_of_lt hlt
+        have hk1 : k.toNat + 1 ≤ nSlots.toNat := Nat.succ_le_of_lt hlt
         omega
-    have hdisj' : off.toNat + 8 ≤ dst.toNat + (k + 1) * 8 ∨
+    have hdisj' : off.toNat + 8 ≤ dst.toNat + (k + 1).toNat * 8 ∨
         dst.toNat + nSlots.toNat * 8 ≤ off.toNat := by
+      rw [succ_k_toNat k hSucc]
       cases hdisj with
       | inl hle =>
         left
         omega
       | inr hge =>
         exact Or.inr hge
-    have hRec := fillRow.go_outside dst nSlots v hFit (k + 1) (Nat.succ_le_of_lt hlt)
+    have hRec := fillSlots_outside dst nSlots v hFit (k + 1)
+      (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt)
       (uset a dstOff v hWrite) (by rw [uset_size]; exact hDst) off
       (by rw [uset_size]; exact hoff) hdisj'
     have hKeep := uget_uset_disjoint a dstOff off v hWrite hoff hWriteDisj
     exact (uget_irrel _ _ _ _).trans (hRec.trans hKeep)
-termination_by nSlots.toNat - k
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  exact slot_measure_lt hk hk' (rowMul8_le hFit)
 
-/-- Slot `j` of the suffix that `go` still has to fill reads back as `v`. -/
-private theorem fillRow.go_uget (dst nSlots : USize) (v : UInt64)
+/-- Slot `j` of the suffix that `fillSlots` still has to fill reads back as `v`. -/
+private theorem fillSlots_uget (dst nSlots : USize) (v : UInt64)
     (hFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
-    (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+    (k : USize) (hk : k.toNat ≤ nSlots.toNat) (a : ByteArray)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
-    (j : Nat) (hj : j < nSlots.toNat) (hkj : k ≤ j) :
-    uget (fillRow.go dst nSlots v hFit k hk a hDst) ((dst.toNat + j * 8).toUSize)
+    (j : Nat) (hj : j < nSlots.toNat) (hkj : k.toNat ≤ j) :
+    uget (fillSlots dst nSlots v hFit k hk a hDst) ((dst.toNat + j * 8).toUSize)
       (by
-        rw [fillRow.go_size dst nSlots v hFit k hk a hDst]
+        rw [fillSlots_size dst nSlots v hFit k hk a hDst]
         rw [toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hFit)]
         exact slotOff_le hj hDst) = v := by
-  unfold fillRow.go
-  by_cases hk' : k = nSlots.toNat
-  · simp only [hk'] at hkj
+  unfold fillSlots
+  by_cases hk' : k = nSlots
+  · have hkNat : k.toNat = nSlots.toNat := by rw [hk']
     omega
   · simp only [hk', ↓reduceDIte]
-    have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-    have hDstNat : ((dst.toNat + k * 8).toUSize).toNat = dst.toNat + k * 8 :=
-      toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hlt hFit)
-    have hWrite : ((dst.toNat + k * 8).toUSize).toNat + 8 ≤ a.size := by
-      rw [hDstNat]; exact slotOff_le hlt hDst
-    let dstOff := (dst.toNat + k * 8).toUSize
+    have hlt : k.toNat < nSlots.toNat := lt_of_ne_slots hk hk'
+    have hMul : k.toNat * 8 < 2 ^ 32 := index_mul8_lt hlt (rowMul8_le hFit)
+    have hSucc : k.toNat + 1 < 2 ^ 32 := index_succ_lt hlt (rowMul8_le hFit)
+    have hDstSum : dst.toNat + k.toNat * 8 < 2 ^ 32 := slotOff_lt hlt hFit
+    let dstOff := dst + k * slotBytes
+    have hDstNat : dstOff.toNat = dst.toNat + k.toNat * 8 := slotAddr_toNat dst k hMul hDstSum
+    have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
     let a' := uset a dstOff v hWrite
     have hDst' : dst.toNat + nSlots.toNat * 8 ≤ a'.size := by rw [uset_size]; exact hDst
-    by_cases hjk : j = k
-    · subst j
-      have hTail : dstOff.toNat + 8 ≤ dst.toNat + (k + 1) * 8 := by
-        rw [hDstNat]
+    by_cases hjk : j = k.toNat
+    · have hTail : dstOff.toNat + 8 ≤ dst.toNat + (k + 1).toNat * 8 := by
+        rw [hDstNat, succ_k_toNat k hSucc]
         omega
-      have hOut := fillRow.go_outside dst nSlots v hFit (k + 1) (Nat.succ_le_of_lt hlt) a' hDst'
+      have hOut := fillSlots_outside dst nSlots v hFit (k + 1)
+        (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a' hDst'
         dstOff (by rw [uset_size]; exact hWrite) (Or.inl hTail)
-      exact (uget_irrel _ _ _ _).trans (hOut.trans (uget_uset a dstOff v hWrite))
-    · have hRec := fillRow.go_uget dst nSlots v hFit (k + 1) (Nat.succ_le_of_lt hlt) a' hDst'
-        j hj (by omega)
+      have hDstOff : dstOff = (dst.toNat + j * 8).toUSize := by
+        apply USize.toNat_inj.mp
+        rw [hDstNat, toNat_toUSize_of_lt_2_pow_32 (slotOff_lt hj hFit), hjk]
+      have hStep := hOut.trans (uget_uset a dstOff v hWrite)
+      exact (uget_eq_off (fillSlots dst nSlots v hFit (k + 1)
+          (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a' hDst')
+        dstOff ((dst.toNat + j * 8).toUSize) hDstOff _ _).symm.trans hStep
+    · have hRec := fillSlots_uget dst nSlots v hFit (k + 1)
+        (by rw [succ_k_toNat k hSucc]; exact Nat.succ_le_of_lt hlt) a' hDst' j hj
+        (by rw [succ_k_toNat k hSucc]; omega)
       exact (uget_irrel _ _ _ _).trans hRec
-termination_by nSlots.toNat - k
+termination_by nSlots.toNat - k.toNat
+decreasing_by
+  exact slot_measure_lt hk hk' (rowMul8_le hFit)
 
 /-- Every slot of a filled row reads back as `v`. -/
 theorem fillRow_uget (a : ByteArray) (dst nSlots : USize) (v : UInt64)
@@ -419,7 +539,7 @@ theorem fillRow_uget (a : ByteArray) (dst nSlots : USize) (v : UInt64)
     uget (fillRow a dst nSlots v hDst hFit) ((dst.toNat + j * 8).toUSize) hSlot = v := by
   unfold fillRow
   exact (uget_irrel _ _ _ _).trans
-    (fillRow.go_uget dst nSlots v hFit 0 (Nat.zero_le _) a hDst j hj (Nat.zero_le _))
+    (fillSlots_uget dst nSlots v hFit 0 (zero_le_toNat _) a hDst j hj (zero_le_toNat _))
 
 /-- A slot that does not meet the filled row is unchanged. -/
 theorem fillRow_uget_disjoint (a : ByteArray) (dst nSlots : USize) (v : UInt64)
@@ -431,7 +551,8 @@ theorem fillRow_uget_disjoint (a : ByteArray) (dst nSlots : USize) (v : UInt64)
     uget (fillRow a dst nSlots v hDst hFit) off hSlot = uget a off hoff := by
   unfold fillRow
   exact (uget_irrel _ _ _ _).trans
-    (fillRow.go_outside dst nSlots v hFit 0 (Nat.zero_le _) a hDst off hoff hdisj)
+    (fillSlots_outside dst nSlots v hFit 0 (zero_le_toNat _) a hDst off hoff
+      (by simpa [USize.toNat_zero] using hdisj))
 
 /-- Append `rows` zeroed rows. The caller overwrites them before they are read. -/
 def growRows (a : ByteArray) (rows nSlots : Nat) : ByteArray :=
