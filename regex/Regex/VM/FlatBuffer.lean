@@ -36,6 +36,21 @@ abbrev slotBytes : USize := 8
 def rowOff (row nSlots : USize) : USize :=
   row * nSlots * slotBytes
 
+theorem rowOff_toNat (row slots : USize) (h : row.toNat * slots.toNat * 8 < 2 ^ 32) :
+    (rowOff row slots).toNat = row.toNat * slots.toNat * 8 := by
+  unfold rowOff slotBytes
+  have h8 : ((8 : USize)).toNat = 8 := toNat_uSize_ofNat_of_lt 8 (by decide)
+  have hpair : row.toNat * slots.toNat < 2 ^ 32 := by omega
+  have hmul : (row * slots).toNat = row.toNat * slots.toNat := by
+    rw [USize.toNat_mul]
+    exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 hpair)
+  rw [USize.toNat_mul, hmul, h8]
+  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
+
+theorem rowOff_slots_zero (row : USize) : (rowOff row 0).toNat = 0 := by
+  rw [rowOff_toNat row 0 (by simp [USize.toNat_zero])]
+  simp [USize.toNat_zero]
+
 @[inline]
 def uget (a : ByteArray) (off : USize) (h : off.toNat + 8 ≤ a.size) : UInt64 :=
   a.ugetUInt64LE off h
@@ -192,6 +207,16 @@ private theorem copySlots_size (dst src nSlots : USize)
 termination_by nSlots.toNat - k.toNat
 decreasing_by
   exact slot_measure_lt hk hk' (rowMul8_le hSrcFit)
+
+/-- Copying a row does not change the buffer length. -/
+theorem copyRow_size (a : ByteArray) (dst src nSlots : USize)
+    (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
+    (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32) :
+    (copyRow a dst src nSlots hDst hSrc hDstFit hSrcFit).size = a.size := by
+  unfold copyRow
+  exact copySlots_size dst src nSlots hDstFit hSrcFit 0 (zero_le_toNat _) a hDst hSrc
 
 /-- A slot disjoint from the not-yet-copied suffix of the destination row is left unchanged. -/
 private theorem copySlots_outside (dst src nSlots : USize)
@@ -432,6 +457,14 @@ private theorem fillSlots_size (dst nSlots : USize) (v : UInt64)
 termination_by nSlots.toNat - k.toNat
 decreasing_by
   exact slot_measure_lt hk hk' (rowMul8_le hFit)
+
+/-- Filling a row does not change the buffer length. -/
+theorem fillRow_size (a : ByteArray) (dst nSlots : USize) (v : UInt64)
+    (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32) :
+    (fillRow a dst nSlots v hDst hFit).size = a.size := by
+  unfold fillRow
+  exact fillSlots_size dst nSlots v hFit 0 (zero_le_toNat _) a hDst
 
 /-- A slot disjoint from the not-yet-written suffix of the row is left unchanged. -/
 private theorem fillSlots_outside (dst nSlots : USize) (v : UInt64)
