@@ -25,6 +25,8 @@ public section
 
 namespace Regex.VM.FlatBuffer
 
+open Regex.VM.Wide (toNat_toUSize_of_lt_2_pow_32)
+
 /-- Eight bytes per capture slot. -/
 abbrev slotBytes : USize := 8
 
@@ -45,21 +47,9 @@ theorem uset_size (a : ByteArray) (off : USize) (v : UInt64) (h : off.toNat + 8 
     (uset a off v h).size = a.size := by
   simp [uset, ByteArray.usetUInt64LE_size]
 
-/-- This build's `USize` is 64 bits. The same fact is used by `ClassTable`. -/
-private theorem usize_eq_two_pow_64 : USize.size = 2 ^ 64 := by
-  native_decide
-
-private theorem two_pow_numBits_eq : 2 ^ System.Platform.numBits = 2 ^ 64 := by
-  rw [← USize.size_eq_two_pow, usize_eq_two_pow_64]
-
-private theorem toNat_toUSize_of_lt {n : Nat} (h : n < 2 ^ 64) : n.toUSize.toNat = n := by
-  rw [Nat.toUSize, USize.toNat_ofNat']
-  apply Nat.mod_eq_of_lt
-  rw [two_pow_numBits_eq]
-  exact h
-
-private theorem slotOff_lt {base count k : Nat} (hk : k < count) (hfit : base + count * 8 ≤ 2 ^ 64) :
-    base + k * 8 < 2 ^ 64 := by
+/-- A slot start is strictly below `2^32` when the whole row window fits in `2^32`. -/
+private theorem slotOff_lt {base count k : Nat} (hk : k < count) (hfit : base + count * 8 ≤ 2 ^ 32) :
+    base + k * 8 < 2 ^ 32 := by
   have : k + 1 ≤ count := Nat.succ_le_of_lt hk
   omega
 
@@ -72,8 +62,8 @@ private theorem slotOff_le {base count k size : Nat} (hk : k < count) (h : base 
 def copyRow (a : ByteArray) (dst src nSlots : USize)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
     (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size)
-    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 64)
-    (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 64) : ByteArray :=
+    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32)
+    (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 32) : ByteArray :=
   let rec go (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
       (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
       (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
@@ -81,12 +71,12 @@ def copyRow (a : ByteArray) (dst src nSlots : USize)
       a
     else
       have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-      have hSrcLt : src.toNat + k * 8 < 2 ^ 64 := slotOff_lt hlt hSrcFit
-      have hDstLt : dst.toNat + k * 8 < 2 ^ 64 := slotOff_lt hlt hDstFit
+      have hSrcLt : src.toNat + k * 8 < 2 ^ 32 := slotOff_lt hlt hSrcFit
+      have hDstLt : dst.toNat + k * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
       let srcOff := (src.toNat + k * 8).toUSize
       let dstOff := (dst.toNat + k * 8).toUSize
-      have hSrcNat : srcOff.toNat = src.toNat + k * 8 := toNat_toUSize_of_lt hSrcLt
-      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt hDstLt
+      have hSrcNat : srcOff.toNat = src.toNat + k * 8 := toNat_toUSize_of_lt_2_pow_32 hSrcLt
+      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt_2_pow_32 hDstLt
       have hRead : srcOff.toNat + 8 ≤ a.size := by rw [hSrcNat]; exact slotOff_le hlt hSrc
       have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
       let a' := uset a dstOff (uget a srcOff hRead) hWrite
@@ -98,16 +88,16 @@ def copyRow (a : ByteArray) (dst src nSlots : USize)
 /-- Fill one row with `v`. Used to install an empty (`PosPlusOne.sentinel`) buffer. -/
 def fillRow (a : ByteArray) (dst nSlots : USize) (v : UInt64)
     (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
-    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 64) : ByteArray :=
+    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 32) : ByteArray :=
   let rec go (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
       (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
     if hk' : k = nSlots.toNat then
       a
     else
       have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
-      have hDstLt : dst.toNat + k * 8 < 2 ^ 64 := slotOff_lt hlt hDstFit
+      have hDstLt : dst.toNat + k * 8 < 2 ^ 32 := slotOff_lt hlt hDstFit
       let dstOff := (dst.toNat + k * 8).toUSize
-      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt hDstLt
+      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt_2_pow_32 hDstLt
       have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
       let a' := uset a dstOff v hWrite
       have hsize : a'.size = a.size := uset_size a dstOff v hWrite
