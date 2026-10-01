@@ -1,5 +1,8 @@
 module
 
+public import Init.Data.ByteArray.Lemmas
+public import Init.Data.Nat.Bitwise.Lemmas
+public import Init.Data.UInt.Bitwise
 public import Init.Data.UInt.Lemmas
 
 /-!
@@ -174,6 +177,96 @@ theorem WordArray.emptyWithCapacity_data_size (n : Nat) :
   unfold emptyWithCapacity ByteArray.emptyWithCapacity
   rfl
 
+private theorem orLow (low high i : Nat) (hlt : low < 2 ^ i) :
+    low ||| (high <<< i) = low + high * 2 ^ i := by
+  rw [Nat.shiftLeft_eq, Nat.mul_comm high (2 ^ i), Nat.or_comm]
+  exact Nat.add_comm _ _ ▸ (Nat.two_pow_add_eq_or_of_lt hlt high).symm
+
+private theorem shiftRight_add (a k m : Nat) : (a >>> k) >>> m = a >>> (k + m) := by
+  simp [Nat.shiftRight_eq_div_pow, Nat.div_div_eq_div_mul, ← Nat.pow_add]
+
+private theorem splitByte (m : Nat) : m = m % 256 + (m >>> 8) * 256 := by
+  have e : (256 : Nat) = 2 ^ 8 := by decide
+  rw [e, Nat.shiftRight_eq_div_pow, Nat.mul_comm]
+  exact (Nat.mod_add_div m (2 ^ 8)).symm
+
+/-- Four little-endian bytes reassemble the original `UInt32`. -/
+private theorem u32_of_le_bytes (v : UInt32) :
+    v.toUInt8.toUInt32 |||
+      ((v >>> 8).toUInt8.toUInt32 <<< 8) |||
+      ((v >>> 16).toUInt8.toUInt32 <<< 16) |||
+      ((v >>> 24).toUInt8.toUInt32 <<< 24) = v := by
+  apply UInt32.toNat_inj.mp
+  have h8 : (8 : UInt32).toNat = 8 := by decide
+  have h16 : (16 : UInt32).toNat = 16 := by decide
+  have h24 : (24 : UInt32).toNat = 24 := by decide
+  simp only [UInt32.toNat_or, UInt32.toNat_shiftLeft, UInt32.toNat_shiftRight,
+    UInt32.toNat_toUInt8, UInt8.toNat_toUInt32, h8, h16, h24,
+    show 8 % 32 = 8 by decide, show 16 % 32 = 16 by decide, show 24 % 32 = 24 by decide]
+  have modShift (b k : Nat) (hb : b < 256) (hk : k ≤ 24) : (b <<< k) % 2 ^ 32 = b <<< k := by
+    apply Nat.mod_eq_of_lt
+    rw [Nat.shiftLeft_eq]
+    have hb' : b ≤ 255 := Nat.lt_succ_iff.mp hb
+    have hmul : b * 2 ^ k ≤ 255 * 2 ^ 24 :=
+      Nat.mul_le_mul hb' (Nat.pow_le_pow_right (by decide) hk)
+    have h255 : 255 * 2 ^ 24 < 2 ^ 32 := by decide
+    omega
+  have hb1 : v.toNat >>> 8 % 256 < 256 := Nat.mod_lt _ (by decide)
+  have hb2 : v.toNat >>> 16 % 256 < 256 := Nat.mod_lt _ (by decide)
+  have hb3 : v.toNat >>> 24 % 256 < 256 := Nat.mod_lt _ (by decide)
+  rw [modShift _ 8 hb1 (by decide), modShift _ 16 hb2 (by decide), modShift _ 24 hb3 (by decide)]
+  have assemble (n : Nat) (hn : n < 2 ^ 32) :
+      n % 256 ||| (n >>> 8 % 256) <<< 8 ||| (n >>> 16 % 256) <<< 16 ||| (n >>> 24 % 256) <<< 24 = n := by
+    have hz : n >>> 32 = 0 := Nat.shiftRight_eq_zero n 32 hn
+    have s24 : n >>> 24 = n >>> 24 % 256 := by
+      have h := splitByte (n >>> 24)
+      rw [shiftRight_add n 24 8, show 24 + 8 = 32 by decide, hz, Nat.zero_mul, Nat.add_zero] at h
+      exact h
+    have s16 : n >>> 16 = n >>> 16 % 256 + (n >>> 24 % 256) * 256 := by
+      have h := splitByte (n >>> 16)
+      rw [shiftRight_add n 16 8, show 16 + 8 = 24 by decide, s24] at h
+      exact h
+    have s8 : n >>> 8 = n >>> 8 % 256 + (n >>> 16) * 256 := by
+      have h := splitByte (n >>> 8)
+      rw [shiftRight_add n 8 8, show 8 + 8 = 16 by decide] at h
+      exact h
+    have sum :
+        n = n % 256 + (n >>> 8 % 256) * 256 + (n >>> 16 % 256) * 65536 +
+          (n >>> 24 % 256) * 16777216 := by
+      have h := splitByte n
+      rw [s8, Nat.right_distrib, Nat.mul_assoc] at h
+      rw [show 256 * 256 = 65536 by decide, s16, Nat.right_distrib, Nat.mul_assoc] at h
+      rw [show 256 * 65536 = 16777216 by decide] at h
+      omega
+    have e8 : (256 : Nat) = 2 ^ 8 := by decide
+    have b0 : n % 256 < 2 ^ 8 := by simpa [e8] using Nat.mod_lt n (by decide : 0 < 256)
+    have low8 : n % 256 + (n >>> 8 % 256) * 2 ^ 8 < 2 ^ 16 := by
+      have hb0 : n % 256 ≤ 255 := Nat.lt_succ_iff.mp (Nat.mod_lt _ (by decide))
+      have hb1 : n >>> 8 % 256 ≤ 255 := Nat.lt_succ_iff.mp (Nat.mod_lt _ (by decide))
+      omega
+    have low16 : n % 256 + (n >>> 8 % 256) * 2 ^ 8 + (n >>> 16 % 256) * 2 ^ 16 < 2 ^ 24 := by
+      have hb0 : n % 256 ≤ 255 := Nat.lt_succ_iff.mp (Nat.mod_lt _ (by decide))
+      have hb1 : n >>> 8 % 256 ≤ 255 := Nat.lt_succ_iff.mp (Nat.mod_lt _ (by decide))
+      have hb2 : n >>> 16 % 256 ≤ 255 := Nat.lt_succ_iff.mp (Nat.mod_lt _ (by decide))
+      omega
+    have h01 := orLow (n % 256) (n >>> 8 % 256) 8 b0
+    have h012 := orLow (n % 256 ||| (n >>> 8 % 256) <<< 8) (n >>> 16 % 256) 16 (by rwa [h01])
+    have h0123 := orLow ((n % 256 ||| (n >>> 8 % 256) <<< 8) ||| (n >>> 16 % 256) <<< 16)
+        (n >>> 24 % 256) 24 (by rwa [h012, h01])
+    rw [h0123, h012, h01, ← sum]
+  exact assemble v.toNat (UInt32.toNat_lt v)
+
+@[simp]
+private theorem ByteArray.get_push_lt (a : ByteArray) (b : UInt8) (i : Nat) (hi : i < a.size) :
+    (a.push b)[i]'(by rw [ByteArray.size_push]; omega) = a[i] := by
+  simp [ByteArray.getElem_eq_getElem_data, ByteArray.data_push, Array.getElem_push_lt hi]
+
+@[simp]
+private theorem ByteArray.get_push_eq (a : ByteArray) (b : UInt8) :
+    (a.push b)[a.size]'(by rw [ByteArray.size_push]; omega) = b := by
+  simp [ByteArray.getElem_eq_getElem_data, ByteArray.data_push, ← ByteArray.size_data,
+    Array.getElem_push_eq]
+
 /-- `nWords` zeros, one allocation. -/
 def WordArray.zeros (nWords : Nat) : WordArray :=
   ⟨ByteArray.zero (nWords.toUSize * wordBytes)⟩
@@ -211,6 +304,102 @@ def WordArray.ugetWord (a : WordArray) (i : USize) (h : (i * wordBytes).toNat + 
 def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32)
     (h : (i * wordBytes).toNat + 4 ≤ a.data.size) : WordArray :=
   a.uset (i * wordBytes) v h
+
+private theorem ByteArray.get_push4_lt (a : ByteArray) (b0 b1 b2 b3 : UInt8) (i : Nat)
+    (hi : i < a.size) :
+    ((((a.push b0).push b1).push b2).push b3)[i]'(by simp only [ByteArray.size_push]; omega) = a[i] := by
+  have h1 : i < (a.push b0).size := by rw [ByteArray.size_push]; omega
+  have h2 : i < ((a.push b0).push b1).size := by rw [ByteArray.size_push, ByteArray.size_push]; omega
+  have h3 : i < (((a.push b0).push b1).push b2).size := by
+    rw [ByteArray.size_push, ByteArray.size_push, ByteArray.size_push]; omega
+  exact (ByteArray.get_push_lt _ b3 i h3).trans
+    ((ByteArray.get_push_lt _ b2 i h2).trans
+      ((ByteArray.get_push_lt _ b1 i h1).trans (ByteArray.get_push_lt a b0 i hi)))
+
+private theorem ByteArray.get_push4_eq0 (a : ByteArray) (b0 b1 b2 b3 : UInt8) :
+    ((((a.push b0).push b1).push b2).push b3)[a.size]'(by simp only [ByteArray.size_push]; omega) = b0 := by
+  have h1 : a.size < (a.push b0).size := by rw [ByteArray.size_push]; omega
+  have h2 : a.size < ((a.push b0).push b1).size := by
+    rw [ByteArray.size_push, ByteArray.size_push]; omega
+  have h3 : a.size < (((a.push b0).push b1).push b2).size := by
+    rw [ByteArray.size_push, ByteArray.size_push, ByteArray.size_push]; omega
+  exact (ByteArray.get_push_lt _ b3 a.size h3).trans
+    ((ByteArray.get_push_lt _ b2 a.size h2).trans
+      ((ByteArray.get_push_lt _ b1 a.size h1).trans (ByteArray.get_push_eq a b0)))
+
+private theorem ByteArray.get_push_eq_idx (a : ByteArray) (b : UInt8) (i : Nat) (hi : i = a.size) :
+    (a.push b)[i]'(by rw [hi, ByteArray.size_push]; omega) = b := by
+  subst hi
+  exact ByteArray.get_push_eq a b
+
+private theorem ByteArray.get_push4_eq1 (a : ByteArray) (b0 b1 b2 b3 : UInt8) :
+    ((((a.push b0).push b1).push b2).push b3)[a.size + 1]'(by simp only [ByteArray.size_push]; omega) =
+      b1 := by
+  have h2 : a.size + 1 < ((a.push b0).push b1).size := by
+    rw [ByteArray.size_push, ByteArray.size_push]; omega
+  have h3 : a.size + 1 < (((a.push b0).push b1).push b2).size := by
+    rw [ByteArray.size_push, ByteArray.size_push, ByteArray.size_push]; omega
+  have hs : a.size + 1 = (a.push b0).size := by rw [ByteArray.size_push]
+  exact (ByteArray.get_push_lt _ b3 (a.size + 1) h3).trans
+    ((ByteArray.get_push_lt _ b2 (a.size + 1) h2).trans
+      (ByteArray.get_push_eq_idx (a.push b0) b1 (a.size + 1) hs))
+
+private theorem ByteArray.get_push4_eq2 (a : ByteArray) (b0 b1 b2 b3 : UInt8) :
+    ((((a.push b0).push b1).push b2).push b3)[a.size + 2]'(by simp only [ByteArray.size_push]; omega) =
+      b2 := by
+  have h3 : a.size + 2 < (((a.push b0).push b1).push b2).size := by
+    rw [ByteArray.size_push, ByteArray.size_push, ByteArray.size_push]; omega
+  have hs : a.size + 2 = ((a.push b0).push b1).size := by
+    rw [ByteArray.size_push, ByteArray.size_push]
+  exact (ByteArray.get_push_lt _ b3 (a.size + 2) h3).trans
+    (ByteArray.get_push_eq_idx ((a.push b0).push b1) b2 (a.size + 2) hs)
+
+private theorem ByteArray.get_push4_eq3 (a : ByteArray) (b0 b1 b2 b3 : UInt8) :
+    ((((a.push b0).push b1).push b2).push b3)[a.size + 3]'(by simp only [ByteArray.size_push]; omega) =
+      b3 := by
+  have hs : a.size + 3 = (((a.push b0).push b1).push b2).size := by
+    rw [ByteArray.size_push, ByteArray.size_push, ByteArray.size_push]
+  exact ByteArray.get_push_eq_idx (((a.push b0).push b1).push b2) b3 (a.size + 3) hs
+
+/-- Reading the word just pushed by `WordArray.push` returns that word. -/
+theorem WordArray.uget_push (a : WordArray) (v : UInt32)
+    (h : a.data.size.toUSize.toNat + 4 ≤ (a.push v).data.size) (hbase : a.data.size < 2 ^ 32) :
+    (a.push v).uget a.data.size.toUSize h = v := by
+  unfold WordArray.uget
+  have hd : (a.push v).data =
+      (((a.data.push v.toUInt8).push (v >>> 8).toUInt8).push (v >>> 16).toUInt8).push
+        (v >>> 24).toUInt8 := by
+    simp [WordArray.push]
+  have h' : a.data.size.toUSize.toNat + 4 ≤
+      ((((a.data.push v.toUInt8).push (v >>> 8).toUInt8).push (v >>> 16).toUInt8).push
+        (v >>> 24).toUInt8).size := by
+    simpa [hd] using h
+  unfold ByteArray.ugetUInt32LE
+  simp only [hd, toNat_toUSize_of_lt_2_pow_32 hbase,
+    ByteArray.get_push4_eq0 a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8,
+    ByteArray.get_push4_eq1 a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8,
+    ByteArray.get_push4_eq2 a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8,
+    ByteArray.get_push4_eq3 a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8]
+  exact u32_of_le_bytes v
+
+/-- A later `push` does not change a word that was already in range. -/
+theorem WordArray.uget_push_lt (a : WordArray) (v : UInt32) (off : USize)
+    (h : off.toNat + 4 ≤ a.data.size) :
+    (a.push v).uget off (by rw [WordArray.data_size_push]; omega) = a.uget off h := by
+  unfold WordArray.uget ByteArray.ugetUInt32LE
+  have hd : (a.push v).data =
+      (((a.data.push v.toUInt8).push (v >>> 8).toUInt8).push (v >>> 16).toUInt8).push
+        (v >>> 24).toUInt8 := by
+    simp [WordArray.push]
+  simp only [hd,
+    ByteArray.get_push4_lt a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8
+      off.toNat (by omega),
+    ByteArray.get_push4_lt a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8
+      (off.toNat + 1) (by omega),
+    ByteArray.get_push4_lt a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8
+      (off.toNat + 2) (by omega),
+    ByteArray.get_push4_lt a.data v.toUInt8 (v >>> 8).toUInt8 (v >>> 16).toUInt8 (v >>> 24).toUInt8
+      (off.toNat + 3) (by omega)]
 
 end Regex.VM.Wide
 
