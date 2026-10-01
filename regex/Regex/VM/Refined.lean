@@ -480,7 +480,7 @@ unsafe def findAll (nfa : FlatNFA) (info : OptimizationInfo) (haystack : String)
 unsafe def count (nfa : FlatNFA) (info : OptimizationInfo) (haystack : String) : Nat :=
   (findAll nfa info haystack).size
 
-unsafe def byteSpans (slices : Array Slice) : Array (Nat × Nat) :=
+def byteSpans (slices : Array Slice) : Array (Nat × Nat) :=
   slices.map fun s => (s.startInclusive.offset.byteIdx, s.endExclusive.offset.byteIdx)
 
 /-- Byte offsets of a capture buffer. Proof fields are not compared. -/

@@ -188,7 +188,7 @@ def ClassTable.compile (cs : Classes) : ClassTable :=
     high := packRuns high }
 
 @[inline]
-private unsafe def bitmapMem (t : ClassTable) (c : UInt32) : Bool :=
+private def bitmapMem (t : ClassTable) (c : UInt32) : Bool :=
   let word := c >>> 6
   let bit := (c &&& 63).toUInt64
   let w :=
