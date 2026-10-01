@@ -1,5 +1,6 @@
 module
 
+public import Init.Data.UInt.Lemmas
 public import Regex.Data.String
 public import Regex.VM.Wide
 
@@ -40,26 +41,79 @@ def uget (a : ByteArray) (off : USize) (h : off.toNat + 8 ≤ a.size) : UInt64 :
 def uset (a : ByteArray) (off : USize) (v : UInt64) (h : off.toNat + 8 ≤ a.size) : ByteArray :=
   a.usetUInt64LE off v h
 
+theorem uset_size (a : ByteArray) (off : USize) (v : UInt64) (h : off.toNat + 8 ≤ a.size) :
+    (uset a off v h).size = a.size := by
+  simp [uset, ByteArray.usetUInt64LE_size]
+
+/-- This build's `USize` is 64 bits. The same fact is used by `ClassTable`. -/
+private theorem usize_eq_two_pow_64 : USize.size = 2 ^ 64 := by
+  native_decide
+
+private theorem two_pow_numBits_eq : 2 ^ System.Platform.numBits = 2 ^ 64 := by
+  rw [← USize.size_eq_two_pow, usize_eq_two_pow_64]
+
+private theorem toNat_toUSize_of_lt {n : Nat} (h : n < 2 ^ 64) : n.toUSize.toNat = n := by
+  rw [Nat.toUSize, USize.toNat_ofNat']
+  apply Nat.mod_eq_of_lt
+  rw [two_pow_numBits_eq]
+  exact h
+
+private theorem slotOff_lt {base count k : Nat} (hk : k < count) (hfit : base + count * 8 ≤ 2 ^ 64) :
+    base + k * 8 < 2 ^ 64 := by
+  have : k + 1 ≤ count := Nat.succ_le_of_lt hk
+  omega
+
+private theorem slotOff_le {base count k size : Nat} (hk : k < count) (h : base + count * 8 ≤ size) :
+    base + k * 8 + 8 ≤ size := by
+  have : k + 1 ≤ count := Nat.succ_le_of_lt hk
+  omega
+
 /-- Copy `nSlots` slots from byte offset `src` onto `dst`. -/
-@[inline]
-unsafe def copyRow (a : ByteArray) (dst src nSlots : USize) : ByteArray :=
-  let rec go (k : USize) (a : ByteArray) : ByteArray :=
-    if k == nSlots then
+def copyRow (a : ByteArray) (dst src nSlots : USize)
+    (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 64)
+    (hSrcFit : src.toNat + nSlots.toNat * 8 ≤ 2 ^ 64) : ByteArray :=
+  let rec go (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+      (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
+      (hSrc : src.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
+    if hk' : k = nSlots.toNat then
       a
     else
-      let v := uget a (src + k * slotBytes) lcProof
-      go (k + 1) (uset a (dst + k * slotBytes) v lcProof)
-  go 0 a
+      have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
+      have hSrcLt : src.toNat + k * 8 < 2 ^ 64 := slotOff_lt hlt hSrcFit
+      have hDstLt : dst.toNat + k * 8 < 2 ^ 64 := slotOff_lt hlt hDstFit
+      let srcOff := (src.toNat + k * 8).toUSize
+      let dstOff := (dst.toNat + k * 8).toUSize
+      have hSrcNat : srcOff.toNat = src.toNat + k * 8 := toNat_toUSize_of_lt hSrcLt
+      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt hDstLt
+      have hRead : srcOff.toNat + 8 ≤ a.size := by rw [hSrcNat]; exact slotOff_le hlt hSrc
+      have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
+      let a' := uset a dstOff (uget a srcOff hRead) hWrite
+      have hsize : a'.size = a.size := uset_size a dstOff _ hWrite
+      go (k + 1) (Nat.succ_le_of_lt hlt) a' (by rw [hsize]; exact hDst) (by rw [hsize]; exact hSrc)
+  termination_by nSlots.toNat - k
+  go 0 (Nat.zero_le _) a hDst hSrc
 
 /-- Fill one row with `v`. Used to install an empty (`PosPlusOne.sentinel`) buffer. -/
-@[inline]
-unsafe def fillRow (a : ByteArray) (dst nSlots : USize) (v : UInt64) : ByteArray :=
-  let rec go (k : USize) (a : ByteArray) : ByteArray :=
-    if k == nSlots then
+def fillRow (a : ByteArray) (dst nSlots : USize) (v : UInt64)
+    (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size)
+    (hDstFit : dst.toNat + nSlots.toNat * 8 ≤ 2 ^ 64) : ByteArray :=
+  let rec go (k : Nat) (hk : k ≤ nSlots.toNat) (a : ByteArray)
+      (hDst : dst.toNat + nSlots.toNat * 8 ≤ a.size) : ByteArray :=
+    if hk' : k = nSlots.toNat then
       a
     else
-      go (k + 1) (uset a (dst + k * slotBytes) v lcProof)
-  go 0 a
+      have hlt : k < nSlots.toNat := Nat.lt_of_le_of_ne hk hk'
+      have hDstLt : dst.toNat + k * 8 < 2 ^ 64 := slotOff_lt hlt hDstFit
+      let dstOff := (dst.toNat + k * 8).toUSize
+      have hDstNat : dstOff.toNat = dst.toNat + k * 8 := toNat_toUSize_of_lt hDstLt
+      have hWrite : dstOff.toNat + 8 ≤ a.size := by rw [hDstNat]; exact slotOff_le hlt hDst
+      let a' := uset a dstOff v hWrite
+      have hsize : a'.size = a.size := uset_size a dstOff v hWrite
+      go (k + 1) (Nat.succ_le_of_lt hlt) a' (by rw [hsize]; exact hDst)
+  termination_by nSlots.toNat - k
+  go 0 (Nat.zero_le _) a hDst
 
 /-- Append `rows` zeroed rows. The caller overwrites them before they are read. -/
 def growRows (a : ByteArray) (rows nSlots : Nat) : ByteArray :=
