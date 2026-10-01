@@ -33,12 +33,12 @@ def rowOff (row nSlots : USize) : USize :=
   row * nSlots * slotBytes
 
 @[inline]
-unsafe def uget (a : ByteArray) (off : USize) : UInt64 :=
-  a.ugetUInt64LE off lcProof
+def uget (a : ByteArray) (off : USize) (h : off.toNat + 8 ≤ a.size) : UInt64 :=
+  a.ugetUInt64LE off h
 
 @[inline]
-unsafe def uset (a : ByteArray) (off : USize) (v : UInt64) : ByteArray :=
-  a.usetUInt64LE off v lcProof
+def uset (a : ByteArray) (off : USize) (v : UInt64) (h : off.toNat + 8 ≤ a.size) : ByteArray :=
+  a.usetUInt64LE off v h
 
 /-- Copy `nSlots` slots from byte offset `src` onto `dst`. -/
 @[inline]
@@ -47,8 +47,8 @@ unsafe def copyRow (a : ByteArray) (dst src nSlots : USize) : ByteArray :=
     if k == nSlots then
       a
     else
-      let v := uget a (src + k * slotBytes)
-      go (k + 1) (uset a (dst + k * slotBytes) v)
+      let v := uget a (src + k * slotBytes) lcProof
+      go (k + 1) (uset a (dst + k * slotBytes) v lcProof)
   go 0 a
 
 /-- Fill one row with `v`. Used to install an empty (`PosPlusOne.sentinel`) buffer. -/
@@ -58,7 +58,7 @@ unsafe def fillRow (a : ByteArray) (dst nSlots : USize) (v : UInt64) : ByteArray
     if k == nSlots then
       a
     else
-      go (k + 1) (uset a (dst + k * slotBytes) v)
+      go (k + 1) (uset a (dst + k * slotBytes) v lcProof)
   go 0 a
 
 /-- Append `rows` zeroed rows. The caller overwrites them before they are read. -/
@@ -96,7 +96,7 @@ unsafe def decode {s : String} (w : UInt64) : PosPlusOne s :=
 /-- Row 0 as a `Vector` of positions. One allocation, at the API boundary. -/
 unsafe def toBuffer {s : String} (a : ByteArray) (nSlots : Nat) : Vector (PosPlusOne s) nSlots :=
   Vector.ofFn fun i : Fin nSlots =>
-    decode (uget a (i.val.toUSize * slotBytes))
+    decode (uget a (i.val.toUSize * slotBytes) lcProof)
 
 end Regex.VM.FlatBuffer
 
