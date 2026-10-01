@@ -443,7 +443,7 @@ unsafe def captureNextBuf {s : String} (nfa : FlatNFA) (bufferSize : Nat) (p : P
     Option (Buffer s bufferSize) :=
   let run := search nfa (Scratch.mkFor nfa.size.toNat bufferSize) (sentinelWord s) p
   if run.matched then
-    some (toBuffer run.scratch.caps bufferSize)
+    some (toBuffer run.scratch.caps bufferSize lcProof lcProof)
   else
     none
 
@@ -454,8 +454,8 @@ unsafe def findAll.go (nfa : FlatNFA) (info : OptimizationInfo) (haystack : Stri
     let start := info.findStart (pos.asPos h)
     let run := search nfa scratch sent start
     if run.matched then
-      let startPos := decode (uget run.scratch.caps 0 lcProof)
-      let stopPos := decode (uget run.scratch.caps slotBytes lcProof)
+      let startPos := decode (uget run.scratch.caps 0 lcProof) lcProof
+      let stopPos := decode (uget run.scratch.caps slotBytes lcProof) lcProof
       if hv : stopPos.isValid = true ∧ startPos ≤ stopPos then
         have isStopPosValid : stopPos.isValid := hv.1
         have h' : startPos.isValid := PosPlusOne.isValid_of_isValid_of_le isStopPosValid hv.2

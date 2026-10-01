@@ -135,22 +135,53 @@ def encodePos {s : String} (p : Pos s) : UInt64 :=
   p.offset.byteIdx.toUInt64
 
 /--
+A capture word is either the sentinel (`utf8ByteSize + 1`) or the byte index of a
+valid position. `NFA.WellFormed` does not state this: saves copy positions the VM
+already holds.
+-/
+def SlotWord (s : String) (w : UInt64) : Prop :=
+  w.toNat = s.utf8ByteSize + 1 ∨ ∃ p : Pos s, w.toNat = p.offset.byteIdx
+
+theorem SlotWord.sentinel {s : String} (h : s.utf8ByteSize + 1 < 2 ^ 64) :
+    SlotWord s (sentinelWord s) := by
+  refine Or.inl ?_
+  unfold sentinelWord
+  rw [Nat.toUInt64, UInt64.toNat_ofNat']
+  exact Nat.mod_eq_of_lt (by simpa using h)
+
+theorem SlotWord.encode {s : String} (p : Pos s) (h : p.offset.byteIdx < 2 ^ 64) :
+    SlotWord s (encodePos p) := by
+  refine Or.inr ⟨p, ?_⟩
+  unfold encodePos
+  rw [Nat.toUInt64, UInt64.toNat_ofNat']
+  exact Nat.mod_eq_of_lt (by simpa using h)
+
+/--
 Decode one slot.
 
 A word equal to `sentinelWord` is `PosPlusOne.sentinel`. Any other word was
 written by `encodePos` from a valid position.
 -/
 @[inline]
-unsafe def decode {s : String} (w : UInt64) : PosPlusOne s :=
-  if w.toNat == s.utf8ByteSize + 1 then
+def decode {s : String} (w : UInt64) (h : SlotWord s w) : PosPlusOne s :=
+  if hw : w.toNat = s.utf8ByteSize + 1 then
     .sentinel s
   else
-    .pos ⟨⟨w.toNat⟩, lcProof⟩
+    .pos (String.pos s ⟨w.toNat⟩ (by
+      cases h with
+      | inl heq => exact absurd heq hw
+      | inr hex =>
+        obtain ⟨p, hidx⟩ := hex
+        have : (⟨w.toNat⟩ : Pos.Raw).byteIdx = p.offset.byteIdx := hidx
+        exact (Pos.Raw.ext this).symm ▸ p.isValid))
 
 /-- Row 0 as a `Vector` of positions. One allocation, at the API boundary. -/
-unsafe def toBuffer {s : String} (a : ByteArray) (nSlots : Nat) : Vector (PosPlusOne s) nSlots :=
+def toBuffer {s : String} (a : ByteArray) (nSlots : Nat)
+    (hSize : ∀ i : Fin nSlots, (i.val.toUSize * slotBytes).toNat + 8 ≤ a.size)
+    (hWord : ∀ i : Fin nSlots, SlotWord s (uget a (i.val.toUSize * slotBytes) (hSize i))) :
+    Vector (PosPlusOne s) nSlots :=
   Vector.ofFn fun i : Fin nSlots =>
-    decode (uget a (i.val.toUSize * slotBytes) lcProof)
+    decode (uget a (i.val.toUSize * slotBytes) (hSize i)) (hWord i)
 
 end Regex.VM.FlatBuffer
 
