@@ -17,8 +17,12 @@ def findCount (re : Regex) (content : String) : IO Nat :=
   re.count content |> pure
 
 @[noinline]
-unsafe def findCountRefined (flat : FlatNFA) (info : Regex.OptimizationInfo) (content : String) : IO Nat :=
-  pure (Regex.VM.Refined.count flat info content)
+def findCountRefined (regex : Regex) (flat : FlatNFA)
+    (hflat : Regex.VM.Refined.ofNFA regex.nfa = some flat) (content : String)
+    (hlayout : Regex.VM.Refined.layoutOk regex.nfa.size 2)
+    (hlen : content.utf8ByteSize + 1 < 2 ^ 64) : IO Nat :=
+  pure (Regex.VM.Refined.count regex.nfa regex.wf flat hflat regex.optimizationInfo content
+    hlayout hlen)
 
 def benchmark (name : String) (iterations : Nat) (step : IO Nat) : IO Nat := do
   let mut totalTime := 0
@@ -34,7 +38,7 @@ def benchmark (name : String) (iterations : Nat) (step : IO Nat) : IO Nat := do
   IO.println s!"[{name}] Found {count} matches"
   return count
 
-unsafe def runSelfCheck : IO UInt32 := do
+def runSelfCheck : IO UInt32 := do
   let errors := Regex.VM.Refined.selfCheck
   if errors.isEmpty then
     IO.println "refined PikeVM matches the stock VM on the built-in cases"
@@ -65,7 +69,7 @@ def Engine.parse : String → Except String Engine
   | "both" => .ok .both
   | other => .error s!"Unknown engine '{other}' (expected vm, refined, or both)"
 
-unsafe def processFile (pattern : String) (filePath : String) (iterations : Nat) (engine : Engine) : IO Unit := do
+def processFile (pattern : String) (filePath : String) (iterations : Nat) (engine : Engine) : IO Unit := do
   let content ←
     if filePath = "-" then
       readAll (← IO.getStdin)
@@ -75,9 +79,17 @@ unsafe def processFile (pattern : String) (filePath : String) (iterations : Nat)
     Regex.parse pattern |>.mapError (IO.userError s!"Regex parse error: {·}")
   let runVm : IO Nat := benchmark "vm" iterations (findCount regex content)
   let runRefined : IO Nat := do
-    match Regex.VM.Refined.ofNFA regex.nfa with
+    match hflat : Regex.VM.Refined.ofNFA regex.nfa with
     | none => throw (IO.userError "NFA does not fit in the flat UInt32 encoding")
-    | some flat => benchmark "refined" iterations (findCountRefined flat regex.optimizationInfo content)
+    | some flat =>
+      if hlen : content.utf8ByteSize + 1 < 2 ^ 64 then
+        if hlayout : Regex.VM.Refined.layoutOk regex.nfa.size 2 then
+          benchmark "refined" iterations
+            (findCountRefined regex flat hflat content hlayout hlen)
+        else
+          throw (IO.userError "capture layout does not fit")
+      else
+        throw (IO.userError "haystack does not fit in a capture word")
   match engine with
   | .vm => discard <| runVm
   | .refined => discard <| runRefined
@@ -171,7 +183,7 @@ partial def takeLines (s : String) (n : Nat) : String :=
       s.endPos
   s.extract s.startPos (go s.startPos 0)
 
-unsafe def runRebar (dir : String) (iterations : Nat) (engine : Engine) (only : Option String) : IO Unit := do
+def runRebar (dir : String) (iterations : Nat) (engine : Engine) (only : Option String) : IO Unit := do
   IO.println "rebar curated benchmarks"
   IO.println "https://github.com/BurntSushi/rebar"
   IO.println "Definitions and haystacks are from that repository. See bench/rebar/README.md."
@@ -195,9 +207,17 @@ unsafe def runRebar (dir : String) (iterations : Nat) (engine : Engine) (only : 
       Regex.parse bench.pattern |>.mapError (IO.userError s!"Regex parse error in {bench.name}: {·}")
     let runVm : IO Nat := benchmark "vm" iterations (findCount regex content)
     let runRefined : IO Nat := do
-      match Regex.VM.Refined.ofNFA regex.nfa with
+      match hflat : Regex.VM.Refined.ofNFA regex.nfa with
       | none => throw (IO.userError s!"NFA does not fit in the flat UInt32 encoding ({bench.name})")
-      | some flat => benchmark "refined" iterations (findCountRefined flat regex.optimizationInfo content)
+      | some flat =>
+        if hlen : content.utf8ByteSize + 1 < 2 ^ 64 then
+          if hlayout : Regex.VM.Refined.layoutOk regex.nfa.size 2 then
+            benchmark "refined" iterations
+              (findCountRefined regex flat hflat content hlayout hlen)
+          else
+            throw (IO.userError s!"capture layout does not fit ({bench.name})")
+        else
+          throw (IO.userError s!"haystack does not fit in a capture word ({bench.name})")
     let count ←
       match engine with
       | .vm => runVm
@@ -248,7 +268,7 @@ def parseArgs (pattern : Option String) (iterations : Option Nat) (filePath : Op
       let filePath ← filePath.getDM (throw "File path is required")
       return ⟨pattern, iterations, filePath, engine, false, false, rebarDir, none⟩
 
-unsafe def main (args : List String) : IO UInt32 := do
+def main (args : List String) : IO UInt32 := do
   match parseArgs .none .none .none .both false false "bench/rebar/haystacks" none args with
   | .ok args =>
     if args.check then

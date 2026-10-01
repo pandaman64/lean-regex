@@ -159,6 +159,48 @@ theorem zero_size (n : USize) : (zero n).size = n.toNat := by
   rw [zero.go_size]
   simp
 
+private theorem zero.go_get (n : Nat) (a : ByteArray)
+    (ha : ∀ j, (hj : j < a.size) → a[j] = 0) (i : Nat) (hi : i < (zero.go n a).size) :
+    (zero.go n a)[i] = 0 := by
+  match n with
+  | 0 =>
+    simp only [zero.go] at hi ⊢
+    exact ha i hi
+  | n + 1 =>
+    unfold zero.go at hi ⊢
+    exact zero.go_get n (a.push 0) (by
+      intro j hj
+      by_cases hlt : j < a.size
+      · have hpush : (a.push 0)[j] = a[j] := by
+          simp [ByteArray.getElem_eq_getElem_data, ByteArray.data_push,
+            Array.getElem_push_lt (by simpa [← ByteArray.size_data] using hlt)]
+        exact hpush.trans (ha j hlt)
+      · have hj' : j = a.size := by
+          rw [ByteArray.size_push] at hj
+          omega
+        simp [hj', ByteArray.getElem_eq_getElem_data, ByteArray.data_push, ← ByteArray.size_data,
+          Array.getElem_push_eq]) i hi
+termination_by n
+
+private theorem zero.get (n : USize) (i : Nat) (hi : i < (zero n).size) : (zero n)[i] = 0 := by
+  unfold zero at hi ⊢
+  rw [zero.go_size, ByteArray.size_empty] at hi
+  exact zero.go_get n.toNat .empty (fun j hj => by simp at hj) i (by
+    rwa [zero.go_size, ByteArray.size_empty])
+
+/-- Every wide load from a zero block is zero. -/
+theorem ugetUInt64LE_zero (n off : USize) (h : off.toNat + 8 ≤ (zero n).size) :
+    (zero n).ugetUInt64LE off h = 0 := by
+  unfold ugetUInt64LE
+  have b (k : Nat) (hk : k < 8) (hi : off.toNat + k < (zero n).size) :
+      (zero n)[off.toNat + k]'hi = 0 :=
+    get_irrel _ _ (by omega) hi ▸ zero.get n (off.toNat + k) (by omega)
+  have b0 : (zero n)[off.toNat]'(by omega) = 0 := by
+    simpa using b 0 (by decide) (by omega)
+  simp [b0, b 1 (by decide) (by omega), b 2 (by decide) (by omega), b 3 (by decide) (by omega),
+    b 4 (by decide) (by omega), b 5 (by decide) (by omega), b 6 (by decide) (by omega),
+    b 7 (by decide) (by omega)]
+
 theorem usetUInt32LE_size (a : ByteArray) (off : USize) (v : UInt32) (h : off.toNat + 4 ≤ a.size) :
     (a.usetUInt32LE off v h).size = a.size := by
   simp [usetUInt32LE, ByteArray.size_set]
