@@ -91,6 +91,10 @@ def usetUInt64LE (a : ByteArray) (off : USize) (v : UInt64)
         (off.toNat + 6) (v >>> 48).toUInt8 (by simp only [ByteArray.size_set]; omega)).set
         (off.toNat + 7) (v >>> 56).toUInt8 (by simp only [ByteArray.size_set]; omega))
 
+theorem usetUInt64LE_size (a : ByteArray) (off : USize) (v : UInt64) (h : off.toNat + 8 ≤ a.size) :
+    (a.usetUInt64LE off v h).size = a.size := by
+  simp [usetUInt64LE, ByteArray.size_set]
+
 /--
 `n` zero bytes.
 
