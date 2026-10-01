@@ -30,6 +30,36 @@ protected theorem size_set (a : ByteArray) (i : Nat) (v : UInt8) (h : i < a.size
     (a.set i v h).size = a.size := by
   simp only [← ByteArray.size_data, ByteArray.data_set, Array.size_set]
 
+private theorem get_set_self (a : ByteArray) (i : Nat) (v : UInt8) (h : i < a.size) :
+    (a.set i v h)[i]'(by rw [ByteArray.size_set]; exact h) = v := by
+  simp [ByteArray.getElem_eq_getElem_data, ByteArray.data_set, Array.getElem_set_self]
+
+private theorem get_set_ne (a : ByteArray) (i j : Nat) (v : UInt8)
+    (hi : i < a.size) (hj : j < a.size) (hne : i ≠ j) :
+    (a.set i v hi)[j]'(by rw [ByteArray.size_set]; exact hj) = a[j] := by
+  simp only [ByteArray.getElem_eq_getElem_data, ByteArray.data_set]
+  exact Array.getElem_set_ne (by simpa [← ByteArray.size_data] using hi)
+    (by simpa [← ByteArray.size_data] using hj) hne
+
+private theorem get_irrel (a : ByteArray) (i : Nat) (h1 h2 : i < a.size) :
+    a[i]'h1 = a[i]'h2 := rfl
+
+/-- `set` at `i` reads back `v`, for whichever in-bounds proof the reader carries. -/
+private theorem get_set_self_flex (a : ByteArray) (i : Nat) (v : UInt8) (hi : i < a.size)
+    (hi' : i < (a.set i v hi).size := by simp only [ByteArray.size_set]; omega) :
+    (a.set i v hi)[i]'hi' = v :=
+  (get_irrel (a.set i v hi) i hi' (by rw [ByteArray.size_set]; exact hi)).trans (get_set_self a i v hi)
+
+/-- `set` at `i` leaves every other in-range byte unchanged. -/
+private theorem get_set_skip (a : ByteArray) (i j : Nat) (v : UInt8)
+    (hi : i < a.size)
+    (hj : j < a.size := by first | omega | simp only [ByteArray.size_set]; omega)
+    (hne : i ≠ j := by omega)
+    (hj' : j < (a.set i v hi).size := by simp only [ByteArray.size_set]; omega) :
+    (a.set i v hi)[j]'hj' = a[j] :=
+  (get_irrel (a.set i v hi) j hj' (by rw [ByteArray.size_set]; exact hj)).trans
+    (get_set_ne a i j v hi hj hne)
+
 /--
 Load the little-endian `UInt32` at byte offset `off`.
 
@@ -256,6 +286,107 @@ private theorem u32_of_le_bytes (v : UInt32) :
     rw [h0123, h012, h01, ← sum]
   exact assemble v.toNat (UInt32.toNat_lt v)
 
+private theorem mod_mul_eq (n a b : Nat) (ha : 0 < a) (hb : 0 < b) :
+    n % (a * b) = n % a + (n / a % b) * a := by
+  have hdiv : a * (n / a) + n % a = n := Nat.div_add_mod n a
+  have hq : b * ((n / a) / b) + (n / a) % b = n / a := Nat.div_add_mod (n / a) b
+  have hreplace : a * (n / a) + n % a =
+      a * (b * ((n / a) / b) + (n / a) % b) + n % a := by
+    conv =>
+      lhs
+      arg 1
+      arg 2
+      rw [← hq]
+  have hexpand : n = (a * b) * ((n / a) / b) + (a * ((n / a) % b) + n % a) := by
+    calc
+      n = a * (n / a) + n % a := hdiv.symm
+      _ = a * (b * ((n / a) / b) + (n / a) % b) + n % a := hreplace
+      _ = a * (b * ((n / a) / b)) + a * ((n / a) % b) + n % a := by rw [Nat.mul_add]
+      _ = (a * b) * ((n / a) / b) + a * ((n / a) % b) + n % a := by rw [← Nat.mul_assoc]
+      _ = (a * b) * ((n / a) / b) + (a * ((n / a) % b) + n % a) := by rw [Nat.add_assoc]
+  have hr1 : n % a < a := Nat.mod_lt _ ha
+  have hr2 : (n / a) % b < b := Nat.mod_lt _ hb
+  have hlt : a * ((n / a) % b) + n % a < a * b := by
+    have hstep : a * ((n / a) % b) + n % a < a * ((n / a) % b) + a := Nat.add_lt_add_left hr1 _
+    have hmul : a * ((n / a) % b) + a = a * (((n / a) % b) + 1) := by
+      rw [Nat.mul_add, Nat.mul_one]
+    have hle : ((n / a) % b) + 1 ≤ b := hr2
+    rw [hmul] at hstep
+    exact Nat.lt_of_lt_of_le hstep (Nat.mul_le_mul_left a hle)
+  calc
+    n % (a * b) = ((a * b) * ((n / a) / b) + (a * ((n / a) % b) + n % a)) % (a * b) := by
+      rw [← hexpand]
+    _ = (a * ((n / a) % b) + n % a) % (a * b) := by rw [Nat.mul_add_mod_self_left]
+    _ = a * ((n / a) % b) + n % a := Nat.mod_eq_of_lt hlt
+    _ = n % a + ((n / a) % b) * a := by rw [Nat.add_comm, Nat.mul_comm]
+
+/-- Reassemble `k` little-endian bytes of `n`. -/
+private def packBytes (n k : Nat) : Nat :=
+  match k with
+  | 0 => 0
+  | k + 1 => packBytes n k ||| ((n >>> (8 * k)) % 256) <<< (8 * k)
+
+private theorem packBytes_mod (n k : Nat) : packBytes n k = n % 2 ^ (8 * k) := by
+  induction k with
+  | zero =>
+    simp [packBytes, Nat.pow_zero, Nat.mod_one]
+  | succ k ih =>
+    have e8k : 2 ^ (8 * (k + 1)) = 2 ^ (8 * k) * 256 := by
+      rw [Nat.mul_succ, Nat.pow_add, show (2 : Nat) ^ 8 = 256 by decide]
+    have low_lt : n % 2 ^ (8 * k) < 2 ^ (8 * k) := Nat.mod_lt _ (Nat.two_pow_pos _)
+    rw [packBytes, ih, Nat.shiftRight_eq_div_pow]
+    rw [orLow (n % 2 ^ (8 * k)) ((n / 2 ^ (8 * k)) % 256) (8 * k) low_lt]
+    have hdecomp := mod_mul_eq n (2 ^ (8 * k)) 256 (Nat.two_pow_pos _) (by decide)
+    rw [← e8k] at hdecomp
+    exact hdecomp.symm
+
+private theorem u64_nat (n : Nat) (hn : n < 2 ^ 64) :
+    n % 256 ||| (n >>> 8 % 256) <<< 8 ||| (n >>> 16 % 256) <<< 16 ||| (n >>> 24 % 256) <<< 24 |||
+      (n >>> 32 % 256) <<< 32 ||| (n >>> 40 % 256) <<< 40 ||| (n >>> 48 % 256) <<< 48 |||
+      (n >>> 56 % 256) <<< 56 = n := by
+  have hpack : packBytes n 8 =
+      n % 256 ||| (n >>> 8 % 256) <<< 8 ||| (n >>> 16 % 256) <<< 16 ||| (n >>> 24 % 256) <<< 24 |||
+        (n >>> 32 % 256) <<< 32 ||| (n >>> 40 % 256) <<< 40 ||| (n >>> 48 % 256) <<< 48 |||
+        (n >>> 56 % 256) <<< 56 := by
+    simp [packBytes, Nat.shiftLeft_zero, Nat.shiftRight_zero, Nat.zero_or]
+  rw [← hpack, packBytes_mod, show (8 : Nat) * 8 = 64 by decide]
+  exact Nat.mod_eq_of_lt hn
+
+/-- Eight little-endian bytes reassemble the original `UInt64`. -/
+private theorem u64_of_le_bytes (v : UInt64) :
+    v.toUInt8.toUInt64 |||
+      ((v >>> 8).toUInt8.toUInt64 <<< 8) |||
+      ((v >>> 16).toUInt8.toUInt64 <<< 16) |||
+      ((v >>> 24).toUInt8.toUInt64 <<< 24) |||
+      ((v >>> 32).toUInt8.toUInt64 <<< 32) |||
+      ((v >>> 40).toUInt8.toUInt64 <<< 40) |||
+      ((v >>> 48).toUInt8.toUInt64 <<< 48) |||
+      ((v >>> 56).toUInt8.toUInt64 <<< 56) = v := by
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_or, UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight,
+    UInt64.toNat_toUInt8, UInt8.toNat_toUInt64,
+    show (8 : UInt64).toNat = 8 by decide, show (16 : UInt64).toNat = 16 by decide,
+    show (24 : UInt64).toNat = 24 by decide, show (32 : UInt64).toNat = 32 by decide,
+    show (40 : UInt64).toNat = 40 by decide, show (48 : UInt64).toNat = 48 by decide,
+    show (56 : UInt64).toNat = 56 by decide,
+    show 8 % 64 = 8 by decide, show 16 % 64 = 16 by decide, show 24 % 64 = 24 by decide,
+    show 32 % 64 = 32 by decide, show 40 % 64 = 40 by decide, show 48 % 64 = 48 by decide,
+    show 56 % 64 = 56 by decide]
+  have modShift (b k : Nat) (hb : b < 256) (hk : k ≤ 56) : (b <<< k) % 2 ^ 64 = b <<< k := by
+    apply Nat.mod_eq_of_lt
+    rw [Nat.shiftLeft_eq]
+    have hb' : b ≤ 255 := Nat.lt_succ_iff.mp hb
+    have hmul : b * 2 ^ k ≤ 255 * 2 ^ 56 :=
+      Nat.mul_le_mul hb' (Nat.pow_le_pow_right (by decide) hk)
+    have h255 : 255 * 2 ^ 56 < 2 ^ 64 := by decide
+    omega
+  have hb (k : Nat) : v.toNat >>> k % 256 < 256 := Nat.mod_lt _ (by decide)
+  rw [modShift _ 8 (hb 8) (by decide), modShift _ 16 (hb 16) (by decide),
+    modShift _ 24 (hb 24) (by decide), modShift _ 32 (hb 32) (by decide),
+    modShift _ 40 (hb 40) (by decide), modShift _ 48 (hb 48) (by decide),
+    modShift _ 56 (hb 56) (by decide)]
+  exact u64_nat v.toNat (UInt64.toNat_lt v)
+
 @[simp]
 private theorem ByteArray.get_push_lt (a : ByteArray) (b : UInt8) (i : Nat) (hi : i < a.size) :
     (a.push b)[i]'(by rw [ByteArray.size_push]; omega) = a[i] := by
@@ -402,5 +533,114 @@ theorem WordArray.uget_push_lt (a : WordArray) (v : UInt32) (off : USize)
       (off.toNat + 3) (by omega)]
 
 end Regex.VM.Wide
+
+namespace ByteArray
+
+/-- The slot just written by `usetUInt64LE` reads back as `v`. -/
+theorem ugetUInt64LE_uset (a : ByteArray) (off : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) :
+    (a.usetUInt64LE off v h).ugetUInt64LE off (by rw [usetUInt64LE_size]; exact h) = v := by
+  unfold ugetUInt64LE
+  have b0 : (a.usetUInt64LE off v h)[off.toNat]'(by rw [usetUInt64LE_size]; omega) = v.toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b1 : (a.usetUInt64LE off v h)[off.toNat + 1]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 8).toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b2 : (a.usetUInt64LE off v h)[off.toNat + 2]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 16).toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b3 : (a.usetUInt64LE off v h)[off.toNat + 3]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 24).toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b4 : (a.usetUInt64LE off v h)[off.toNat + 4]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 32).toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b5 : (a.usetUInt64LE off v h)[off.toNat + 5]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 40).toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b6 : (a.usetUInt64LE off v h)[off.toNat + 6]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 48).toUInt8 := by
+    unfold usetUInt64LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b7 : (a.usetUInt64LE off v h)[off.toNat + 7]'(by rw [usetUInt64LE_size]; omega) =
+      (v >>> 56).toUInt8 := by
+    unfold usetUInt64LE
+    exact get_set_self_flex _ _ _ _
+  simp only [b0, b1, b2, b3, b4, b5, b6, b7]
+  exact Regex.VM.Wide.u64_of_le_bytes v
+
+private theorem usetUInt64LE_get_outside (a : ByteArray) (off : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) (j : Nat) (hj : j < a.size)
+    (hout : j < off.toNat ∨ off.toNat + 8 ≤ j) :
+    (a.usetUInt64LE off v h)[j]'(by rw [usetUInt64LE_size]; exact hj) = a[j] := by
+  unfold usetUInt64LE
+  exact (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans rfl
+
+/-- A little-endian store leaves a disjoint 8-byte slot unchanged. -/
+theorem ugetUInt64LE_uset_disjoint (a : ByteArray) (off off' : USize) (v : UInt64)
+    (h : off.toNat + 8 ≤ a.size) (h' : off'.toNat + 8 ≤ a.size)
+    (hdisj : off'.toNat + 8 ≤ off.toNat ∨ off.toNat + 8 ≤ off'.toNat) :
+    (a.usetUInt64LE off v h).ugetUInt64LE off' (by rw [usetUInt64LE_size]; exact h') =
+      a.ugetUInt64LE off' h' := by
+  unfold ugetUInt64LE
+  have bout (k : Nat) (hk : k < 8) :
+      (a.usetUInt64LE off v h)[off'.toNat + k]'(by rw [usetUInt64LE_size]; omega) =
+        a[off'.toNat + k]'(by omega) := by
+    have hout : off'.toNat + k < off.toNat ∨ off.toNat + 8 ≤ off'.toNat + k := by
+      cases hdisj with
+      | inl hle => omega
+      | inr hle => omega
+    exact usetUInt64LE_get_outside a off v h (off'.toNat + k) (by omega) hout
+  have b0 : (a.usetUInt64LE off v h)[off'.toNat]'(by rw [usetUInt64LE_size]; omega) =
+      a[off'.toNat]'(by omega) :=
+    usetUInt64LE_get_outside a off v h off'.toNat (by omega) (by
+      cases hdisj with
+      | inl hle => omega
+      | inr hle => omega)
+  simp only [b0, bout 1 (by decide), bout 2 (by decide), bout 3 (by decide),
+    bout 4 (by decide), bout 5 (by decide), bout 6 (by decide), bout 7 (by decide)]
+
+end ByteArray
 
 end
