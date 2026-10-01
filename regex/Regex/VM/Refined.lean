@@ -12,6 +12,8 @@ public import Regex.VM.ClassTable
 public import Regex.VM.FlatBuffer
 public import Regex.VM.Wide
 
+import Regex.Data.SparseSet.Bijection
+
 open Regex.Data (Anchor)
 open Regex.VM.ClassTable (ClassTable)
 open Regex.VM.FlatBuffer
@@ -814,6 +816,204 @@ theorem install (nWords nStates : Nat) (hwords : 0 < nWords)
     (by rw [(WordArray.zeros_spec nWords hbytes).1]; exact hwords) (by decide) start hstart
 
 end StackInv
+
+/--
+`state` occurs in the live prefix: the sparse word points at a dense slot that
+stores `state`.
+-/
+def SetMem (den spa : WordArray) (count state : Nat) : Prop :=
+  (wordAt spa (4 * state)).toNat < count ∧
+    (wordAt den (4 * (wordAt spa (4 * state)).toNat)).toNat = state
+
+/--
+Live members of one sparse set.
+
+`count ≤ n` is the set bound. Dense word `i < count` is a state id below `n`,
+and the sparse word at that id is `i`. Both arrays have `n` words and are 4-byte
+aligned. `n ≤ 2^30` keeps every index inside a 32-bit byte offset. This is the
+stock `SparseSet` invariant, read off the word buffers.
+-/
+structure SetInv (den spa : WordArray) (count n : Nat) : Prop where
+  count_le : count ≤ n
+  n_fit : n ≤ 2 ^ 30
+  den_size : den.size = n
+  spa_size : spa.size = n
+  den_div4 : 4 * den.size = den.data.size
+  spa_div4 : 4 * spa.size = spa.data.size
+  dense_lt : ∀ i, i < count → (wordAt den (4 * i)).toNat < n
+  sparse_dense : ∀ i, i < count →
+    wordAt spa (4 * (wordAt den (4 * i)).toNat) = i.toUInt32
+
+namespace SetInv
+
+variable {den spa : WordArray} {count n : Nat}
+
+private theorem u32 (h : SetInv den spa count n) (i : Nat) (hi : i < n) : i < UInt32.size := by
+  simpa [UInt32.size] using
+    Nat.lt_trans (Nat.lt_of_lt_of_le hi h.n_fit) (by decide : 2 ^ 30 < 2 ^ 32)
+
+theorem wordBound (h : SetInv den spa count n) (a : WordArray)
+    (hsize : a.size = n) (hdiv : 4 * a.size = a.data.size) (i : Nat) (hi : i < n) :
+    (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ a.data.size := by
+  have h30 : i < 2 ^ 30 := Nat.lt_of_lt_of_le hi h.n_fit
+  have hidx : i < a.size := by rw [hsize]; exact hi
+  rw [indexBytes i h30]
+  have hmul : 4 * (i + 1) ≤ 4 * a.size := Nat.mul_le_mul_left 4 (Nat.succ_le_of_lt hidx)
+  rw [hdiv] at hmul
+  omega
+
+theorem denBound (h : SetInv den spa count n) (i : Nat) (hi : i < n) :
+    (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ den.data.size :=
+  h.wordBound den h.den_size h.den_div4 i hi
+
+theorem spaBound (h : SetInv den spa count n) (i : Nat) (hi : i < n) :
+    (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ spa.data.size :=
+  h.wordBound spa h.spa_size h.spa_div4 i hi
+
+/-- The state id in dense slot `i`. -/
+def dense (h : SetInv den spa count n) (i : Nat) (hi : i < count) : Fin n :=
+  ⟨(wordAt den (4 * i)).toNat, h.dense_lt i hi⟩
+
+theorem empty (den spa : WordArray) (n : Nat) (hden : den.size = n) (hspa : spa.size = n)
+    (hden4 : 4 * den.size = den.data.size) (hspa4 : 4 * spa.size = spa.data.size)
+    (hfit : n ≤ 2 ^ 30) : SetInv den spa 0 n :=
+  ⟨Nat.zero_le _, hfit, hden, hspa, hden4, hspa4,
+    fun _ hi => by omega, fun _ hi => by omega⟩
+
+/-- A zeroed pair of `n`-word buffers, when the allocation length fits in 32 bits. -/
+theorem ofZeros (n : Nat) (hbytes : n * 4 < 2 ^ 32) (hfit : n ≤ 2 ^ 30) :
+    SetInv (WordArray.zeros n) (WordArray.zeros n) 0 n :=
+  empty _ _ n (WordArray.zeros_spec n hbytes).1 (WordArray.zeros_spec n hbytes).1
+    (WordArray.zeros_spec n hbytes).2 (WordArray.zeros_spec n hbytes).2 hfit
+
+/-- Dropping the count clears the set. The arrays are left as they are. -/
+theorem clear (h : SetInv den spa count n) : SetInv den spa 0 n :=
+  empty den spa n h.den_size h.spa_size h.den_div4 h.spa_div4 h.n_fit
+
+theorem mem_of_full (h : SetInv den spa count n) (heq : count = n) (state : Nat)
+    (hs : state < n) : SetMem den spa count state := by
+  let f : Fin n → Fin n := fun i =>
+    ⟨(wordAt den (4 * i.val)).toNat, h.dense_lt i.val (heq.symm ▸ i.isLt)⟩
+  have hinj : Function.Injective f := by
+    intro a b hab
+    have ha := h.sparse_dense a.val (heq.symm ▸ a.isLt)
+    have hb := h.sparse_dense b.val (heq.symm ▸ b.isLt)
+    have hdenEq : (wordAt den (4 * a.val)).toNat = (wordAt den (4 * b.val)).toNat := by
+      simpa [f] using congrArg (fun x : Fin n => (x : Nat)) hab
+    have hwords : a.val.toUInt32 = b.val.toUInt32 := by
+      rw [← ha, ← hb]
+      exact congrArg (fun k => wordAt spa (4 * k)) hdenEq
+    have haval : a.val = b.val := by
+      rw [← toNat_toUInt32_of_lt (u32 h a.val a.isLt), ← toNat_toUInt32_of_lt (u32 h b.val b.isLt)]
+      exact congrArg UInt32.toNat hwords
+    exact Fin.ext haval
+  rcases Regex.Data.SparseSet.Bijection.surj_of_inj f hinj ⟨state, hs⟩ with ⟨i, hi⟩
+  have hdense : (wordAt den (4 * i.val)).toNat = state := congrArg Fin.val hi
+  have hsp := h.sparse_dense i.val (heq.symm ▸ i.isLt)
+  have hread : wordAt spa (4 * state) = i.val.toUInt32 := by
+    simpa [hdense] using hsp
+  refine ⟨?_, ?_⟩
+  · rw [hread, toNat_toUInt32_of_lt (u32 h i.val i.isLt), heq]
+    exact i.isLt
+  · rw [hread, toNat_toUInt32_of_lt (u32 h i.val i.isLt)]
+    exact hdense
+
+/-- A missing state still has a free dense slot. -/
+theorem lt_of_not_mem (h : SetInv den spa count n) (state : Nat) (hs : state < n)
+    (hnot : ¬ SetMem den spa count state) : count < n := by
+  cases Nat.lt_or_ge count n with
+  | inl hlt => exact hlt
+  | inr hge => exact False.elim (hnot (mem_of_full h (Nat.le_antisymm h.count_le hge) state hs))
+
+private theorem slotBytes (h : SetInv den spa count n) (a : WordArray)
+    (hsize : a.size = n) (hdiv : 4 * a.size = a.data.size) (i : Nat) (hi : i < n) :
+    4 * i + 4 ≤ a.data.size := by
+  have hb := h.wordBound a hsize hdiv i hi
+  rw [indexBytes i (Nat.lt_of_lt_of_le hi h.n_fit)] at hb
+  exact hb
+
+/--
+Insert `state` at the end of the live prefix. `state` is not already a member,
+so the previous `sparse[dense i] = i` equations stay put.
+-/
+theorem insert (h : SetInv den spa count n) (state : Nat) (hs : state < n)
+    (hnot : ¬ SetMem den spa count state) :
+    SetInv (den.usetWord count.toUSize state.toUInt32
+        (h.denBound count (lt_of_not_mem h state hs hnot)))
+      (spa.usetWord state.toUSize count.toUInt32 (h.spaBound state hs)) (count + 1) n := by
+  have hroom : count < n := lt_of_not_mem h state hs hnot
+  have hdenB := h.denBound count hroom
+  have hspaB := h.spaBound state hs
+  have hcount30 : count < 2 ^ 30 := Nat.lt_of_lt_of_le hroom h.n_fit
+  have hstate30 : state < 2 ^ 30 := Nat.lt_of_lt_of_le hs h.n_fit
+  have hdenSz := WordArray.size_uset den (count.toUSize * Regex.VM.Wide.wordBytes) state.toUInt32 hdenB
+  have hspaSz := WordArray.size_uset spa (state.toUSize * Regex.VM.Wide.wordBytes) count.toUInt32 hspaB
+  refine ⟨?_, h.n_fit, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact hroom
+  · rw [WordArray.usetWord_eq, hdenSz.2]; exact h.den_size
+  · rw [WordArray.usetWord_eq, hspaSz.2]; exact h.spa_size
+  · rw [WordArray.usetWord_eq, hdenSz.1, hdenSz.2]; exact h.den_div4
+  · rw [WordArray.usetWord_eq, hspaSz.1, hspaSz.2]; exact h.spa_div4
+  · intro i hi
+    by_cases hie : i = count
+    · subst i
+      rw [wordAt_usetWord _ _ _ hdenB hcount30, toNat_toUInt32_of_lt (u32 h state hs)]
+      exact hs
+    · have hi' : i < count := Nat.lt_of_le_of_ne (Nat.le_of_lt_succ hi) hie
+      have hi30 : i < 2 ^ 30 := Nat.lt_of_lt_of_le hi' (Nat.le_trans h.count_le h.n_fit)
+      rw [wordAt_usetWord_ne _ _ _ _ hdenB hcount30 hi30 (Ne.symm hie)
+        (slotBytes h den h.den_size h.den_div4 i (Nat.lt_of_lt_of_le hi' h.count_le))]
+      exact h.dense_lt i hi'
+  · intro i hi
+    by_cases hie : i = count
+    · subst i
+      rw [wordAt_usetWord _ _ _ hdenB hcount30, toNat_toUInt32_of_lt (u32 h state hs)]
+      exact wordAt_usetWord _ _ _ hspaB hstate30
+    · have hi' : i < count := Nat.lt_of_le_of_ne (Nat.le_of_lt_succ hi) hie
+      have hi30 : i < 2 ^ 30 := Nat.lt_of_lt_of_le hi' (Nat.le_trans h.count_le h.n_fit)
+      have hold := h.dense_lt i hi'
+      have hsame := wordAt_usetWord_ne den count i state.toUInt32 hdenB hcount30 hi30 (Ne.symm hie)
+        (slotBytes h den h.den_size h.den_div4 i (Nat.lt_of_lt_of_le hi' h.count_le))
+      have hid : (wordAt den (4 * i)).toNat < n := hold
+      have hid30 : (wordAt den (4 * i)).toNat < 2 ^ 30 := Nat.lt_of_lt_of_le hid h.n_fit
+      have hne : state ≠ (wordAt den (4 * i)).toNat := by
+        intro heqId
+        apply hnot
+        have hsp := h.sparse_dense i hi'
+        have hread : wordAt spa (4 * state) = i.toUInt32 := by simpa [heqId] using hsp
+        refine ⟨?_, ?_⟩
+        · rw [hread, toNat_toUInt32_of_lt (u32 h i (Nat.lt_of_lt_of_le hi' h.count_le))]
+          exact hi'
+        · rw [hread, toNat_toUInt32_of_lt (u32 h i (Nat.lt_of_lt_of_le hi' h.count_le))]
+          exact heqId.symm
+      rw [hsame]
+      have hspaSame := wordAt_usetWord_ne spa state (wordAt den (4 * i)).toNat count.toUInt32 hspaB
+        hstate30 hid30 hne
+        (slotBytes h spa h.spa_size h.spa_div4 _ hid)
+      rw [hspaSame]
+      exact h.sparse_dense i hi'
+
+/-- The state just inserted is a member at the new top slot. -/
+theorem mem_insert (h : SetInv den spa count n) (state : Nat) (hs : state < n)
+    (hnot : ¬ SetMem den spa count state) :
+    SetMem (den.usetWord count.toUSize state.toUInt32
+        (h.denBound count (lt_of_not_mem h state hs hnot)))
+      (spa.usetWord state.toUSize count.toUInt32 (h.spaBound state hs)) (count + 1) state := by
+  have hroom : count < n := lt_of_not_mem h state hs hnot
+  have hdenB := h.denBound count hroom
+  have hspaB := h.spaBound state hs
+  have hcount30 : count < 2 ^ 30 := Nat.lt_of_lt_of_le hroom h.n_fit
+  have hstate30 : state < 2 ^ 30 := Nat.lt_of_lt_of_le hs h.n_fit
+  have hread : wordAt (spa.usetWord state.toUSize count.toUInt32 hspaB) (4 * state) =
+      count.toUInt32 :=
+    wordAt_usetWord _ _ _ hspaB hstate30
+  refine ⟨?_, ?_⟩
+  · rw [hread, toNat_toUInt32_of_lt (u32 h count hroom)]
+    exact Nat.lt_succ_self count
+  · rw [hread, toNat_toUInt32_of_lt (u32 h count hroom),
+      wordAt_usetWord _ _ _ hdenB hcount30, toNat_toUInt32_of_lt (u32 h state hs)]
+
+end SetInv
 
 /-- After this closure, the filled next-buffer becomes current and stepping starts. -/
 abbrev phaseClosure : UInt32 := 0
