@@ -256,38 +256,47 @@ private def bitmapMem (t : ClassTable) (c : UInt32) : Bool :=
     else t.b3
   ((w >>> bit) &&& 1) == 1
 
+/--
+Linear scan of packed `[lo, hi]` runs.
+
+`@[inline]` exports the erased-proof specialization. The function is recursive, so
+it is not inlined into the match loop; callers are rewritten to that specialization,
+which takes only `runs`, `n`, `c`, and `i`.
+-/
+@[inline]
+def linearScan (runs : ByteArray) (n c i : UInt32)
+    (hpack : n.toNat * 8 ≤ runs.size) (hfits : n.toNat * 8 < 2 ^ 32) : Bool :=
+  if hik : i < n then
+    let off := i.toUSize * 8
+    have hlt : i.toNat < n.toNat := (UInt32.lt_iff_toNat_lt).mp hik
+    have hmul : i.toNat * 8 + 8 < 2 ^ 32 := by omega
+    have hoff : off.toNat = i.toNat * 8 := toNat_u32_mul8 (by omega)
+    have hspan : i.toNat * 8 + 8 ≤ runs.size := by omega
+    have hlo : off.toNat + 4 ≤ runs.size := by omega
+    have hadd : (off + 4).toNat = off.toNat + 4 := by
+      apply toNat_uSize_add off 4 (by decide)
+      rw [hoff]
+      omega
+    have hhi : (off + 4).toNat + 4 ≤ runs.size := by omega
+    let lo := runs.ugetUInt32LE off hlo
+    let hi := runs.ugetUInt32LE (off + 4) hhi
+    if c < lo then
+      false
+    else if c ≤ hi then
+      true
+    else
+      linearScan runs n c (i + 1) hpack hfits
+  else
+    false
+termination_by n.toNat - i.toNat
+decreasing_by
+  rw [toNat_add_one_of_lt hik]
+  exact Nat.sub_succ_lt_self n.toNat i.toNat ((UInt32.lt_iff_toNat_lt).mp hik)
+
 @[inline]
 private def linearMem (runs : ByteArray) (n c : UInt32)
     (hpack : n.toNat * 8 ≤ runs.size) (hfits : n.toNat * 8 < 2 ^ 32) : Bool :=
-  let rec go (i : UInt32) : Bool :=
-    if hik : i < n then
-      let off := i.toUSize * 8
-      have hlt : i.toNat < n.toNat := (UInt32.lt_iff_toNat_lt).mp hik
-      have hstep : i.toNat + 1 ≤ n.toNat := Nat.succ_le_of_lt hlt
-      have hmul : i.toNat * 8 + 8 < 2 ^ 32 := by omega
-      have hoff : off.toNat = i.toNat * 8 := toNat_u32_mul8 (by omega)
-      have hspan : i.toNat * 8 + 8 ≤ runs.size := by omega
-      have hlo : off.toNat + 4 ≤ runs.size := by omega
-      have hadd : (off + 4).toNat = off.toNat + 4 := by
-        apply toNat_uSize_add off 4 (by decide)
-        rw [hoff]
-        omega
-      have hhi : (off + 4).toNat + 4 ≤ runs.size := by omega
-      let lo := runs.ugetUInt32LE off hlo
-      let hi := runs.ugetUInt32LE (off + 4) hhi
-      if c < lo then
-        false
-      else if c ≤ hi then
-        true
-      else
-        go (i + 1)
-    else
-      false
-  termination_by n.toNat - i.toNat
-  decreasing_by
-    rw [toNat_add_one_of_lt hik]
-    exact Nat.sub_succ_lt_self n.toNat i.toNat ((UInt32.lt_iff_toNat_lt).mp hik)
-  go 0
+  linearScan runs n c 0 hpack hfits
 
 /-- Bitmap below 256, then a linear scan of the high runs. -/
 @[inline]
