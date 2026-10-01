@@ -131,14 +131,26 @@ def WordArray.emptyWithCapacity (nWords : Nat) : WordArray :=
   ⟨ByteArray.emptyWithCapacity (nWords * 4)⟩
 
 /-- Number of stored words. -/
+@[expose]
 def WordArray.size (a : WordArray) : Nat :=
   a.data.size / 4
+
+theorem WordArray.size_eq_data_div (a : WordArray) : a.size = a.data.size / 4 := rfl
 
 def WordArray.push (a : WordArray) (v : UInt32) : WordArray :=
   ⟨a.data.push v.toUInt8
       |>.push (v >>> 8).toUInt8
       |>.push (v >>> 16).toUInt8
       |>.push (v >>> 24).toUInt8⟩
+
+theorem WordArray.data_size_push (a : WordArray) (v : UInt32) :
+    (a.push v).data.size = a.data.size + 4 := by
+  simp [push, ByteArray.size_push]
+
+theorem WordArray.emptyWithCapacity_data_size (n : Nat) :
+    (WordArray.emptyWithCapacity n).data.size = 0 := by
+  unfold emptyWithCapacity ByteArray.emptyWithCapacity
+  rfl
 
 /-- `nWords` zeros, one allocation. -/
 def WordArray.zeros (nWords : Nat) : WordArray :=
