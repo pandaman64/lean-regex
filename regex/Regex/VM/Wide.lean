@@ -146,6 +146,23 @@ where
     | i + 1, a => go i (a.push 0)
   termination_by i => i
 
+private theorem zero.go_size (n : Nat) (a : ByteArray) : (zero.go n a).size = a.size + n := by
+  induction n generalizing a with
+  | zero => simp [zero.go]
+  | succ n ih =>
+    unfold zero.go
+    rw [ih, ByteArray.size_push]
+    omega
+
+theorem zero_size (n : USize) : (zero n).size = n.toNat := by
+  unfold zero
+  rw [zero.go_size]
+  simp
+
+theorem usetUInt32LE_size (a : ByteArray) (off : USize) (v : UInt32) (h : off.toNat + 4 ≤ a.size) :
+    (a.usetUInt32LE off v h).size = a.size := by
+  simp [usetUInt32LE, ByteArray.size_set]
+
 end ByteArray
 
 namespace Regex.VM.Wide
@@ -402,6 +419,33 @@ private theorem ByteArray.get_push_eq (a : ByteArray) (b : UInt8) :
 def WordArray.zeros (nWords : Nat) : WordArray :=
   ⟨ByteArray.zero (nWords.toUSize * wordBytes)⟩
 
+theorem WordArray.push_div4 (a : WordArray) (v : UInt32) (h : 4 * a.size = a.data.size) :
+    (a.push v).size = a.size + 1 ∧ 4 * (a.push v).size = (a.push v).data.size := by
+  have hd := data_size_push a v
+  have hs : (a.push v).size = (a.data.size + 4) / 4 := by
+    simp [size, hd]
+  rw [hs, ← h]
+  have hdiv : (4 * a.size + 4) / 4 = a.size + 1 := by omega
+  refine ⟨hdiv, ?_⟩
+  rw [hdiv]
+  omega
+
+/-- `nWords * 4 < 2^32` keeps the allocation length inside `USize` on every platform. -/
+theorem WordArray.zeros_spec (nWords : Nat) (h : nWords * 4 < 2 ^ 32) :
+    (zeros nWords).size = nWords ∧ 4 * (zeros nWords).size = (zeros nWords).data.size := by
+  have hn : nWords < 2 ^ 32 := by omega
+  have h4 : wordBytes.toNat = 4 := by
+    simp [wordBytes, toNat_uSize_ofNat_of_lt 4 (by decide)]
+  have hmul : (nWords.toUSize * wordBytes).toNat = nWords * 4 := by
+    rw [USize.toNat_mul, toNat_toUSize_of_lt_2_pow_32 hn, h4]
+    exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
+  unfold zeros size
+  rw [ByteArray.zero_size, hmul]
+  have hdiv : nWords * 4 / 4 = nWords := by omega
+  refine ⟨hdiv, ?_⟩
+  rw [hdiv]
+  omega
+
 def WordArray.replicate (n : Nat) (v : UInt32) : WordArray :=
   if v == 0 then
     WordArray.zeros n
@@ -414,27 +458,43 @@ where
   termination_by i => i
 
 /-- Read the word at byte offset `off`. `off` is a multiple of 4 and in range. -/
-@[inline]
+@[inline, expose]
 def WordArray.uget (a : WordArray) (off : USize) (h : off.toNat + 4 ≤ a.data.size) : UInt32 :=
   a.data.ugetUInt32LE off h
 
 /-- Write the word at byte offset `off`. -/
-@[inline]
+@[inline, expose]
 def WordArray.uset (a : WordArray) (off : USize) (v : UInt32) (h : off.toNat + 4 ≤ a.data.size) :
     WordArray :=
   ⟨a.data.usetUInt32LE off v h⟩
 
+theorem WordArray.size_uset (a : WordArray) (off : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.data.size) :
+    (a.uset off v h).data.size = a.data.size ∧ (a.uset off v h).size = a.size := by
+  simp [WordArray.uset, WordArray.size, ByteArray.usetUInt32LE_size]
+
 /-- Read word index `i`. -/
-@[inline]
+@[inline, expose]
 def WordArray.ugetWord (a : WordArray) (i : USize) (h : (i * wordBytes).toNat + 4 ≤ a.data.size) :
     UInt32 :=
   a.uget (i * wordBytes) h
 
 /-- Write word index `i`. -/
-@[inline]
+@[inline, expose]
 def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32)
     (h : (i * wordBytes).toNat + 4 ≤ a.data.size) : WordArray :=
   a.uset (i * wordBytes) v h
+
+theorem WordArray.uget_eq (a : WordArray) (off : USize) (h : off.toNat + 4 ≤ a.data.size) :
+    a.uget off h = a.data.ugetUInt32LE off h := rfl
+
+theorem WordArray.uset_data (a : WordArray) (off : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.data.size) :
+    (a.uset off v h).data = a.data.usetUInt32LE off v h := rfl
+
+theorem WordArray.usetWord_eq (a : WordArray) (i : USize) (v : UInt32)
+    (h : (i * wordBytes).toNat + 4 ≤ a.data.size) :
+    a.usetWord i v h = a.uset (i * wordBytes) v h := rfl
 
 private theorem ByteArray.get_push4_lt (a : ByteArray) (b0 b1 b2 b3 : UInt8) (i : Nat)
     (hi : i < a.size) :
@@ -535,6 +595,68 @@ theorem WordArray.uget_push_lt (a : WordArray) (v : UInt32) (off : USize)
 end Regex.VM.Wide
 
 namespace ByteArray
+
+/-- The word just written by `usetUInt32LE` reads back as `v`. -/
+theorem ugetUInt32LE_uset (a : ByteArray) (off : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.size) :
+    (a.usetUInt32LE off v h).ugetUInt32LE off (by rw [usetUInt32LE_size]; exact h) = v := by
+  unfold ugetUInt32LE
+  have b0 : (a.usetUInt32LE off v h)[off.toNat]'(by rw [usetUInt32LE_size]; omega) = v.toUInt8 := by
+    unfold usetUInt32LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b1 : (a.usetUInt32LE off v h)[off.toNat + 1]'(by rw [usetUInt32LE_size]; omega) =
+      (v >>> 8).toUInt8 := by
+    unfold usetUInt32LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b2 : (a.usetUInt32LE off v h)[off.toNat + 2]'(by rw [usetUInt32LE_size]; omega) =
+      (v >>> 16).toUInt8 := by
+    unfold usetUInt32LE
+    exact (get_set_skip _ _ _ _ _).trans <|
+      get_set_self_flex _ _ _ _
+  have b3 : (a.usetUInt32LE off v h)[off.toNat + 3]'(by rw [usetUInt32LE_size]; omega) =
+      (v >>> 24).toUInt8 := by
+    unfold usetUInt32LE
+    exact get_set_self_flex _ _ _ _
+  simp only [b0, b1, b2, b3]
+  exact Regex.VM.Wide.u32_of_le_bytes v
+
+private theorem usetUInt32LE_get_outside (a : ByteArray) (off : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.size) (j : Nat) (hj : j < a.size)
+    (hout : j < off.toNat ∨ off.toNat + 4 ≤ j) :
+    (a.usetUInt32LE off v h)[j]'(by rw [usetUInt32LE_size]; exact hj) = a[j] := by
+  unfold usetUInt32LE
+  exact (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans <|
+    (get_set_skip _ _ _ _ _).trans rfl
+
+/-- A little-endian `UInt32` store leaves a disjoint 4-byte slot unchanged. -/
+theorem ugetUInt32LE_uset_disjoint (a : ByteArray) (off off' : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.size) (h' : off'.toNat + 4 ≤ a.size)
+    (hdisj : off'.toNat + 4 ≤ off.toNat ∨ off.toNat + 4 ≤ off'.toNat) :
+    (a.usetUInt32LE off v h).ugetUInt32LE off' (by rw [usetUInt32LE_size]; exact h') =
+      a.ugetUInt32LE off' h' := by
+  unfold ugetUInt32LE
+  have bout (k : Nat) (_hk : k < 4) :
+      (a.usetUInt32LE off v h)[off'.toNat + k]'(by rw [usetUInt32LE_size]; omega) =
+        a[off'.toNat + k]'(by omega) := by
+    have hout : off'.toNat + k < off.toNat ∨ off.toNat + 4 ≤ off'.toNat + k := by
+      cases hdisj with
+      | inl hle => omega
+      | inr hle => omega
+    exact usetUInt32LE_get_outside a off v h (off'.toNat + k) (by omega) hout
+  have b0 : (a.usetUInt32LE off v h)[off'.toNat]'(by rw [usetUInt32LE_size]; omega) =
+      a[off'.toNat]'(by omega) :=
+    usetUInt32LE_get_outside a off v h off'.toNat (by omega) (by
+      cases hdisj with
+      | inl hle => omega
+      | inr hle => omega)
+  simp only [b0, bout 1 (by decide), bout 2 (by decide), bout 3 (by decide)]
 
 /-- The slot just written by `usetUInt64LE` reads back as `v`. -/
 theorem ugetUInt64LE_uset (a : ByteArray) (off : USize) (v : UInt64)
@@ -642,5 +764,51 @@ theorem ugetUInt64LE_uset_disjoint (a : ByteArray) (off off' : USize) (v : UInt6
     bout 4 (by decide), bout 5 (by decide), bout 6 (by decide), bout 7 (by decide)]
 
 end ByteArray
+
+namespace Regex.VM.Wide
+
+/-- A word store does not depend on which in-bounds proof it is given. -/
+theorem WordArray.uset_proof_irrel (a : WordArray) (off : USize) (v : UInt32)
+    (h₁ h₂ : off.toNat + 4 ≤ a.data.size) :
+    a.uset off v h₁ = a.uset off v h₂ := rfl
+
+/-- Reading at equal byte offsets ignores which in-bounds proof is carried. -/
+theorem WordArray.uget_off_eq (a : WordArray) (off₁ off₂ : USize)
+    (h₁ : off₁.toNat + 4 ≤ a.data.size) (h₂ : off₂.toNat + 4 ≤ a.data.size)
+    (heq : off₁ = off₂) : a.uget off₁ h₁ = a.uget off₂ h₂ := by
+  subst heq
+  exact congrArg (a.uget off₁) (proof_irrel h₁ h₂)
+
+/-- The word just written by `uset` reads back as `v`. -/
+theorem WordArray.uget_uset (a : WordArray) (off : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.data.size)
+    (h' : off.toNat + 4 ≤ (a.uset off v h).data.size) :
+    (a.uset off v h).uget off h' = v := by
+  have hcanon : off.toNat + 4 ≤ (a.uset off v h).data.size := by
+    rw [(size_uset a off v h).1]
+    exact h
+  have base : (a.uset off v h).uget off hcanon = v := by
+    unfold uget uset
+    exact (congrArg (fun p => (a.data.usetUInt32LE off v h).ugetUInt32LE off p) (proof_irrel _ _)).trans
+      (ByteArray.ugetUInt32LE_uset a.data off v h)
+  exact (congrArg (fun p => (a.uset off v h).uget off p) (proof_irrel h' hcanon)).trans base
+
+/-- A word store leaves a disjoint word unchanged. -/
+theorem WordArray.uget_uset_disjoint (a : WordArray) (off off' : USize) (v : UInt32)
+    (h : off.toNat + 4 ≤ a.data.size) (hread : off'.toNat + 4 ≤ a.data.size)
+    (hdisj : off'.toNat + 4 ≤ off.toNat ∨ off.toNat + 4 ≤ off'.toNat)
+    (h' : off'.toNat + 4 ≤ (a.uset off v h).data.size) :
+    (a.uset off v h).uget off' h' = a.uget off' hread := by
+  have hcanon : off'.toNat + 4 ≤ (a.uset off v h).data.size := by
+    rw [(size_uset a off v h).1]
+    exact hread
+  have base : (a.uset off v h).uget off' hcanon = a.uget off' hread := by
+    unfold uget uset
+    exact (congrArg (fun p => (a.data.usetUInt32LE off v h).ugetUInt32LE off' p) (proof_irrel _ _)).trans
+      ((ByteArray.ugetUInt32LE_uset_disjoint a.data off off' v h hread hdisj).trans
+        (congrArg (fun p => a.data.ugetUInt32LE off' p) (proof_irrel _ _)).symm)
+  exact (congrArg (fun p => (a.uset off v h).uget off' p) (proof_irrel h' hcanon)).trans base
+
+end Regex.VM.Wide
 
 end
