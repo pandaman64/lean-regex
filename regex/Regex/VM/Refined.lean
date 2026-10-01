@@ -564,6 +564,257 @@ def anchorTest {s : String} (k : UInt32) (p : Pos s) : Bool :=
     let prev := prevWord p
     if k == 2 then curr != prev else curr == prev
 
+private theorem indexBytes (i : Nat) (hi : i < 2 ^ 30) :
+    (i.toUSize * Regex.VM.Wide.wordBytes).toNat = 4 * i := by
+  have hi32 : i < 2 ^ 32 := by omega
+  have h4 : Regex.VM.Wide.wordBytes.toNat = 4 := by
+    simp [Regex.VM.Wide.wordBytes, Regex.VM.Wide.toNat_uSize_ofNat_of_lt 4 (by decide)]
+  rw [USize.toNat_mul, Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 hi32, h4, Nat.mul_comm i 4]
+  exact Nat.mod_eq_of_lt
+    (Regex.VM.Wide.lt_two_pow_numBits_of_lt_2_pow_32 (by omega : 4 * i < 2 ^ 32))
+
+private theorem wordIndex (i : Nat) (hi : i < 2 ^ 30) :
+    i.toUSize * Regex.VM.Wide.wordBytes = (4 * i).toUSize := by
+  apply USize.toNat_inj.mp
+  rw [indexBytes i hi, Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 (by omega)]
+
+private theorem wordAt_eq (a : WordArray) (off : Nat)
+    (hsize : off + 4 ≤ a.data.size) (h32 : off < 2 ^ 32) :
+    wordAt a off = a.uget off.toUSize (by
+      rw [Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 h32]
+      exact hsize) := by
+  unfold wordAt
+  have hcond : off + 4 ≤ a.data.size ∧ off < 2 ^ 32 := ⟨hsize, h32⟩
+  simp [hcond, ↓reduceDIte]
+
+private theorem wordAt_usetWord (a : WordArray) (i : Nat) (v : UInt32)
+    (h : (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ a.data.size) (hi : i < 2 ^ 30) :
+    wordAt (a.usetWord i.toUSize v h) (4 * i) = v := by
+  have hsize := (WordArray.size_uset a (i.toUSize * Regex.VM.Wide.wordBytes) v h).1
+  have h32 : 4 * i < 2 ^ 32 := by omega
+  have hnat : 4 * i + 4 ≤ a.data.size := by
+    rw [indexBytes i hi] at h
+    exact h
+  have hcond : 4 * i + 4 ≤ (a.usetWord i.toUSize v h).data.size ∧ 4 * i < 2 ^ 32 := by
+    rw [WordArray.usetWord_eq, hsize]
+    exact ⟨hnat, h32⟩
+  unfold wordAt
+  rw [dite_eq_left hcond]
+  have hbound : (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤
+      (a.usetWord i.toUSize v h).data.size := by
+    rw [WordArray.usetWord_eq, hsize]
+    exact h
+  exact (WordArray.uget_off_eq (a.usetWord i.toUSize v h) ((4 * i).toUSize)
+      (i.toUSize * Regex.VM.Wide.wordBytes) _ hbound (wordIndex i hi).symm).trans
+    (WordArray.uget_uset a (i.toUSize * Regex.VM.Wide.wordBytes) v h hbound)
+
+private theorem wordAt_usetWord_ne (a : WordArray) (i j : Nat) (v : UInt32)
+    (h : (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ a.data.size)
+    (hi : i < 2 ^ 30) (hj : j < 2 ^ 30) (hne : i ≠ j)
+    (hjSize : 4 * j + 4 ≤ a.data.size) :
+    wordAt (a.usetWord i.toUSize v h) (4 * j) = wordAt a (4 * j) := by
+  have hsize := (WordArray.size_uset a (i.toUSize * Regex.VM.Wide.wordBytes) v h).1
+  have h32 : 4 * j < 2 ^ 32 := by omega
+  have hcond : 4 * j + 4 ≤ (a.usetWord i.toUSize v h).data.size ∧ 4 * j < 2 ^ 32 := by
+    rw [WordArray.usetWord_eq, hsize]
+    exact ⟨hjSize, h32⟩
+  have hhere : 4 * j + 4 ≤ a.data.size ∧ 4 * j < 2 ^ 32 := ⟨hjSize, h32⟩
+  unfold wordAt
+  rw [dite_eq_left hcond, dite_eq_left hhere]
+  have hread : ((4 * j).toUSize).toNat + 4 ≤ a.data.size := by
+    rw [Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 h32]
+    exact hjSize
+  have h' : ((4 * j).toUSize).toNat + 4 ≤ (a.usetWord i.toUSize v h).data.size := by
+    rw [WordArray.usetWord_eq, hsize]
+    exact hread
+  have hdisj : ((4 * j).toUSize).toNat + 4 ≤ (i.toUSize * Regex.VM.Wide.wordBytes).toNat ∨
+      (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ ((4 * j).toUSize).toNat := by
+    rw [indexBytes i hi, Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 h32]
+    rcases Nat.lt_trichotomy i j with hlt | heq | hgt
+    · right
+      omega
+    · exact absurd heq hne
+    · left
+      omega
+  exact (congrArg
+      (fun p => (a.usetWord i.toUSize v h).uget ((4 * j).toUSize) p) (proof_irrel _ h')).trans
+    ((WordArray.uget_uset_disjoint a (i.toUSize * Regex.VM.Wide.wordBytes) ((4 * j).toUSize) v h
+      hread hdisj h').trans
+      (congrArg (fun p => a.uget ((4 * j).toUSize) p) (proof_irrel hread _)).symm)
+
+/--
+Live prefix of the ε-stack.
+
+`sp ≤ stkS.size` is the stack bound. Each live slot is a state id below `nStates`,
+so it is a `Fin nStates`. `sp ≤ 2^30` keeps every live byte offset strictly below
+`2^32`, which is what makes the `USize` index round-trip on a 32-bit platform.
+-/
+structure StackInv (stkS : WordArray) (sp nStates : Nat) : Prop where
+  sp_le : sp ≤ stkS.size
+  sp_fit : sp ≤ 2 ^ 30
+  div4 : 4 * stkS.size = stkS.data.size
+  id_lt : ∀ i, i < sp → (wordAt stkS (4 * i)).toNat < nStates
+
+namespace StackInv
+
+variable {stkS : WordArray} {sp nStates : Nat}
+
+/-- The state id in live slot `i`. -/
+def state (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp) : Fin nStates :=
+  ⟨(wordAt stkS (4 * i)).toNat, h.id_lt i hi⟩
+
+theorem wordBound (h : StackInv stkS sp nStates) (i : Nat)
+    (hi : i < stkS.size) (hfit : i < 2 ^ 30) :
+    (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ stkS.data.size := by
+  rw [indexBytes i hfit]
+  have hmul : 4 * (i + 1) ≤ 4 * stkS.size := Nat.mul_le_mul_left 4 (Nat.succ_le_of_lt hi)
+  rw [h.div4] at hmul
+  omega
+
+theorem pop (h : StackInv stkS sp nStates) (hsp : 0 < sp) :
+    StackInv stkS (sp - 1) nStates :=
+  have hlt : sp - 1 < sp := Nat.sub_lt hsp (by decide)
+  ⟨Nat.le_trans (Nat.le_of_lt hlt) h.sp_le, Nat.le_trans (Nat.le_of_lt hlt) h.sp_fit, h.div4,
+    fun i hi => h.id_lt i (Nat.lt_trans hi hlt)⟩
+
+theorem write (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp)
+    (v : UInt32) (hv : v.toNat < nStates) :
+    StackInv (stkS.usetWord i.toUSize v
+      (h.wordBound i (Nat.lt_of_lt_of_le hi h.sp_le) (Nat.lt_of_lt_of_le hi h.sp_fit))) sp nStates := by
+  have hw := h.wordBound i (Nat.lt_of_lt_of_le hi h.sp_le) (Nat.lt_of_lt_of_le hi h.sp_fit)
+  have hsz := WordArray.size_uset stkS (i.toUSize * Regex.VM.Wide.wordBytes) v hw
+  refine ⟨?_, h.sp_fit, ?_, ?_⟩
+  · rw [WordArray.usetWord_eq, hsz.2]; exact h.sp_le
+  · rw [WordArray.usetWord_eq, hsz.1, hsz.2]; exact h.div4
+  · intro j hj
+    by_cases hje : j = i
+    · subst j
+      rw [wordAt_usetWord _ _ _ hw (Nat.lt_of_lt_of_le hi h.sp_fit)]
+      exact hv
+    · have hj30 : j < 2 ^ 30 := Nat.lt_of_lt_of_le hj h.sp_fit
+      have hjSize : 4 * j + 4 ≤ stkS.data.size := by
+        have hb := h.wordBound j (Nat.lt_of_lt_of_le hj h.sp_le) hj30
+        rw [indexBytes j hj30] at hb
+        exact hb
+      rw [wordAt_usetWord_ne _ _ _ _ hw (Nat.lt_of_lt_of_le hi h.sp_fit) hj30 (Ne.symm hje) hjSize]
+      exact h.id_lt j hj
+
+theorem push (h : StackInv stkS sp nStates) (hroom : sp < stkS.size) (hfit : sp < 2 ^ 30)
+    (v : UInt32) (hv : v.toNat < nStates) :
+    StackInv (stkS.usetWord sp.toUSize v (h.wordBound sp hroom hfit)) (sp + 1) nStates := by
+  have hw := h.wordBound sp hroom hfit
+  have hsz := WordArray.size_uset stkS (sp.toUSize * Regex.VM.Wide.wordBytes) v hw
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · rw [WordArray.usetWord_eq, hsz.2]; omega
+  · omega
+  · rw [WordArray.usetWord_eq, hsz.1, hsz.2]; exact h.div4
+  · intro j hj
+    by_cases hje : j = sp
+    · subst j
+      rw [wordAt_usetWord _ _ _ hw hfit]
+      exact hv
+    · have hj' : j < sp := by omega
+      have hj30 : j < 2 ^ 30 := Nat.lt_of_lt_of_le hj' h.sp_fit
+      have hjSize : 4 * j + 4 ≤ stkS.data.size := by
+        have hb := h.wordBound j (Nat.lt_of_lt_of_le hj' h.sp_le) hj30
+        rw [indexBytes j hj30] at hb
+        exact hb
+      rw [wordAt_usetWord_ne _ _ _ _ hw hfit hj30 (Ne.symm hje) hjSize]
+      exact h.id_lt j hj'
+
+/-- Pushing two zero words does not change the live prefix. -/
+theorem grow2 (h : StackInv stkS sp nStates) :
+    StackInv ((stkS.push 0).push 0) sp nStates := by
+  have h1 := WordArray.push_div4 stkS 0 h.div4
+  have h2 := WordArray.push_div4 (stkS.push 0) 0 h1.2
+  refine ⟨?_, h.sp_fit, h2.2, ?_⟩
+  · rw [h2.1, h1.1]
+    exact Nat.le_trans h.sp_le (Nat.le_add_right stkS.size (1 + 1))
+  · intro i hi
+    have h30 : i < 2 ^ 30 := Nat.lt_of_lt_of_le hi h.sp_fit
+    have hle : 4 * i + 4 ≤ stkS.data.size := by
+      have hb := h.wordBound i (Nat.lt_of_lt_of_le hi h.sp_le) h30
+      rw [indexBytes i h30] at hb
+      exact hb
+    have h32 : 4 * i < 2 ^ 32 := by omega
+    have hmid : 4 * i + 4 ≤ (stkS.push 0).data.size := by
+      rw [WordArray.data_size_push]
+      omega
+    rw [wordAt_push (stkS.push 0) 0 (4 * i) hmid h32, wordAt_push stkS 0 (4 * i) hle h32]
+    exact h.id_lt i hi
+
+/-- Pop, then push one successor into the same slot. Depth is unchanged. -/
+theorem stepSucc (h : StackInv stkS sp nStates) (hsp : 0 < sp)
+    (v : UInt32) (hv : v.toNat < nStates) :
+    StackInv (stkS.usetWord (sp - 1).toUSize v
+      (h.wordBound (sp - 1)
+        (Nat.lt_of_lt_of_le (Nat.sub_lt hsp (by decide)) h.sp_le)
+        (Nat.lt_of_lt_of_le (Nat.sub_lt hsp (by decide)) h.sp_fit))) sp nStates :=
+  h.write (sp - 1) (Nat.sub_lt hsp (by decide)) v hv
+
+/--
+Write the two successors of a `.split`. `v0` replaces the popped slot and `v1` is
+pushed above it, so the new depth is `sp + 1`. `sp < stkS.size` is the room for
+that push: the closure grows by two words first when the live prefix fills the buffer.
+`sp + 1 ≤ 2^30` keeps the new top inside a 32-bit byte offset.
+-/
+theorem stepSplit (h : StackInv stkS sp nStates) (hsp : 0 < sp)
+    (hroom : sp < stkS.size) (hfit : sp + 1 ≤ 2 ^ 30)
+    (v0 v1 : UInt32) (hv0 : v0.toNat < nStates) (hv1 : v1.toNat < nStates) :
+    let hi : sp - 1 < sp := Nat.sub_lt hsp (by decide)
+    let hw := h.write (sp - 1) hi v0 hv0
+    StackInv
+      ((stkS.usetWord (sp - 1).toUSize v0
+          (h.wordBound (sp - 1) (Nat.lt_of_lt_of_le hi h.sp_le)
+            (Nat.lt_of_lt_of_le hi h.sp_fit))).usetWord
+        sp.toUSize v1
+        (hw.wordBound sp
+          (by
+            rw [WordArray.usetWord_eq,
+              (WordArray.size_uset stkS ((sp - 1).toUSize * Regex.VM.Wide.wordBytes) v0
+                (h.wordBound (sp - 1) (Nat.lt_of_lt_of_le hi h.sp_le)
+                  (Nat.lt_of_lt_of_le hi h.sp_fit))).2]
+            exact hroom)
+          (Nat.lt_of_succ_le hfit)))
+      (sp + 1) nStates :=
+  let hi : sp - 1 < sp := Nat.sub_lt hsp (by decide)
+  let hw := h.write (sp - 1) hi v0 hv0
+  hw.push
+    (by
+      rw [WordArray.usetWord_eq,
+        (WordArray.size_uset stkS ((sp - 1).toUSize * Regex.VM.Wide.wordBytes) v0
+          (h.wordBound (sp - 1) (Nat.lt_of_lt_of_le hi h.sp_le)
+            (Nat.lt_of_lt_of_le hi h.sp_fit))).2]
+      exact hroom)
+    (Nat.lt_of_succ_le hfit) v1 hv1
+
+/-- Two extra words leave a free slot above the live prefix. -/
+theorem grow2_room (h : StackInv stkS sp nStates) :
+    sp < ((stkS.push 0).push 0).size := by
+  have h1 := WordArray.push_div4 stkS 0 h.div4
+  have h2 := WordArray.push_div4 (stkS.push 0) 0 h1.2
+  rw [h2.1, h1.1]
+  exact Nat.lt_of_le_of_lt h.sp_le (Nat.lt_add_of_pos_right (by decide : 0 < 1 + 1))
+
+/-- An empty live prefix on a word-aligned buffer. -/
+theorem empty (stkS : WordArray) (nStates : Nat)
+    (hdiv : 4 * stkS.size = stkS.data.size) : StackInv stkS 0 nStates :=
+  ⟨Nat.zero_le _, Nat.zero_le _, hdiv, fun _ hi => by omega⟩
+
+/-- A zeroed stack with `start` in slot 0. `nWords * 4 < 2^32` is the allocation length. -/
+theorem install (nWords nStates : Nat) (hwords : 0 < nWords)
+    (hbytes : nWords * 4 < 2 ^ 32) (start : UInt32) (hstart : start.toNat < nStates) :
+    StackInv ((WordArray.zeros nWords).usetWord 0 start
+      ((StackInv.empty (WordArray.zeros nWords) nStates
+        (WordArray.zeros_spec nWords hbytes).2).wordBound 0
+        (by rw [(WordArray.zeros_spec nWords hbytes).1]; exact hwords) (by decide)))
+      1 nStates :=
+  StackInv.push (StackInv.empty (WordArray.zeros nWords) nStates
+      (WordArray.zeros_spec nWords hbytes).2)
+    (by rw [(WordArray.zeros_spec nWords hbytes).1]; exact hwords) (by decide) start hstart
+
+end StackInv
+
 /-- After this closure, the filled next-buffer becomes current and stepping starts. -/
 abbrev phaseClosure : UInt32 := 0
 /-- Closure started by a character transition. `i` is the state index to resume. -/
