@@ -23,7 +23,7 @@ public section
 
 namespace Regex.VM.ClassTable
 
-open Regex.VM.Wide (lt_two_pow_numBits_of_lt_2_pow_32 toNat_uSize_ofNat_of_lt)
+open Regex.VM.Wide (toNat_add_nat_of_lt_2_pow_32 toNat_u32_add_one_of_lt toNat_u32_mul_ofNat)
 
 private def univHi : UInt32 := 0x10FFFF
 
@@ -197,25 +197,6 @@ structure ClassTable where
   /-- Those bytes fit in a 32-bit offset, so `USize` index arithmetic does not wrap. -/
   fits : nHigh.toNat * 8 < 2 ^ 32
 
-/-- `i.toNat * 8 < 2^32`, so scaling the run index by 8 does not wrap `USize`. -/
-private theorem toNat_u32_mul8 {i : UInt32} (h : i.toNat * 8 < 2 ^ 32) :
-    (i.toUSize * 8).toNat = i.toNat * 8 := by
-  rw [USize.toNat_mul, UInt32.toNat_toUSize, toNat_uSize_ofNat_of_lt 8 (by decide)]
-  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
-
-private theorem toNat_uSize_add (off : USize) (k : Nat) (hk : k < 2 ^ 32) (h : off.toNat + k < 2 ^ 32) :
-    (off + OfNat.ofNat k).toNat = off.toNat + k := by
-  rw [USize.toNat_add, toNat_uSize_ofNat_of_lt k hk]
-  exact Nat.mod_eq_of_lt (lt_two_pow_numBits_of_lt_2_pow_32 h)
-
-private theorem toNat_add_one_of_lt {i n : UInt32} (h : i < n) : (i + 1).toNat = i.toNat + 1 := by
-  have hlt : i.toNat < n.toNat := (UInt32.lt_iff_toNat_lt).mp h
-  have hone : (1 : UInt32).toNat = 1 := by rw [UInt32.toNat_ofNat]
-  rw [UInt32.toNat_add, hone]
-  apply Nat.mod_eq_of_lt
-  have := UInt32.toNat_lt n
-  omega
-
 /--
 Compile `cs` to a bitmap plus packed high runs.
 
@@ -270,13 +251,11 @@ def linearScan (runs : ByteArray) (n c i : UInt32)
     let off := i.toUSize * 8
     have hlt : i.toNat < n.toNat := (UInt32.lt_iff_toNat_lt).mp hik
     have hmul : i.toNat * 8 + 8 < 2 ^ 32 := by omega
-    have hoff : off.toNat = i.toNat * 8 := toNat_u32_mul8 (by omega)
+    have hoff : off.toNat = i.toNat * 8 := toNat_u32_mul_ofNat i 8 (by decide) (by omega)
     have hspan : i.toNat * 8 + 8 ≤ runs.size := by omega
     have hlo : off.toNat + 4 ≤ runs.size := by omega
-    have hadd : (off + 4).toNat = off.toNat + 4 := by
-      apply toNat_uSize_add off 4 (by decide)
-      rw [hoff]
-      omega
+    have hadd : (off + 4).toNat = off.toNat + 4 :=
+      toNat_add_nat_of_lt_2_pow_32 off 4 (by decide) (by rw [hoff]; omega)
     have hhi : (off + 4).toNat + 4 ≤ runs.size := by omega
     let lo := runs.ugetUInt32LE off hlo
     let hi := runs.ugetUInt32LE (off + 4) hhi
@@ -290,7 +269,7 @@ def linearScan (runs : ByteArray) (n c i : UInt32)
     false
 termination_by n.toNat - i.toNat
 decreasing_by
-  rw [toNat_add_one_of_lt hik]
+  rw [toNat_u32_add_one_of_lt hik]
   exact Nat.sub_succ_lt_self n.toNat i.toNat ((UInt32.lt_iff_toNat_lt).mp hik)
 
 @[inline]
