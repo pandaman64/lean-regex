@@ -74,6 +74,62 @@ theorem toNat_u32_mul_ofNat (i : UInt32) (k : Nat) (hk : k < 2 ^ 32) (h : i.toNa
       exact h),
     UInt32.toNat_toUSize, toNat_uSize_ofNat_of_lt k hk]
 
+namespace UFin
+
+/-- `i < n ≤ 2^32` is a `UFin n`. The value is `i.toUSize`. -/
+@[expose]
+def ofNat {n : Nat} (i : Nat) (hi : i < n) (hn : n ≤ 2 ^ 32) : UFin n where
+  val := i.toUSize
+  isLt := by
+    rw [toNat_toUSize_of_lt_2_pow_32 (Nat.lt_of_lt_of_le hi hn)]
+    exact hi
+
+theorem toNat_ofNat {n : Nat} (i : Nat) (hi : i < n) (hn : n ≤ 2 ^ 32) :
+    (ofNat i hi hn).val.toNat = i := by
+  rw [ofNat]
+  exact toNat_toUSize_of_lt_2_pow_32 (Nat.lt_of_lt_of_le hi hn)
+
+theorem toNat_lt_30 {n : Nat} (i : UFin n) (hn : n ≤ 2 ^ 30) : i.val.toNat < 2 ^ 30 :=
+  Nat.lt_of_lt_of_le i.isLt hn
+
+/-- Four times a word index below `2^30` is still a 32-bit byte offset. -/
+theorem four_mul_lt {k : Nat} (hk : k < 2 ^ 30) : 4 * k < 2 ^ 32 := by
+  calc
+    4 * k ≤ 4 * (2 ^ 30 - 1) := Nat.mul_le_mul_left 4 (Nat.le_pred_of_lt hk)
+    _ < 2 ^ 32 := by decide
+
+/-- The byte offset of word `i` does not wrap when the length fits in `2^30` words. -/
+theorem indexBytes {n : Nat} (i : UFin n) (hn : n ≤ 2 ^ 30) :
+    (i.val * wordBytes).toNat = 4 * i.val.toNat := by
+  have h4 : wordBytes.toNat = 4 := by
+    simp [wordBytes, toNat_uSize_ofNat_of_lt 4 (by decide)]
+  rw [USize.toNat_mul, h4, Nat.mul_comm]
+  exact Nat.mod_eq_of_lt
+    (lt_two_pow_numBits_of_lt_2_pow_32 (four_mul_lt (toNat_lt_30 i hn)))
+
+theorem wordOffset {n : Nat} (i : UFin n) (hn : n ≤ 2 ^ 30) :
+    i.val * wordBytes = (4 * i.val.toNat).toUSize := by
+  apply USize.toNat_inj.mp
+  rw [indexBytes i hn, toNat_toUSize_of_lt_2_pow_32 (four_mul_lt (toNat_lt_30 i hn))]
+
+end UFin
+
+/--
+Word `i` of a `k`-word prefix is in range.
+
+`i : UFin k` is the only index hypothesis. `k ≤ a.size` is the buffer and
+`k ≤ 2^30` is the no-wrap budget; each is independent of the other.
+-/
+theorem WordArray.boundPrefix (a : WordArray) (k : Nat) (hle : k ≤ a.size)
+    (hdiv : 4 * a.size = a.data.size) (hfit : k ≤ 2 ^ 30) (i : UFin k) :
+    (i.val * wordBytes).toNat + 4 ≤ a.data.size := by
+  rw [UFin.indexBytes i hfit]
+  have hstep : i.val.toNat + 1 ≤ k := Nat.succ_le_of_lt i.isLt
+  have hmul : 4 * (i.val.toNat + 1) ≤ 4 * a.size :=
+    Nat.mul_le_mul_left 4 (Nat.le_trans hstep hle)
+  rw [hdiv] at hmul
+  omega
+
 end Regex.VM.Wide
 
 namespace ByteArray
@@ -635,6 +691,47 @@ theorem WordArray.uget_uset_disjoint (a : WordArray) (off off' : USize) (v : UIn
     (a.uset off v h).uget off' h' = a.uget off' hread := by
   unfold WordArray.uget WordArray.uset
   exact ByteArray.ugetUInt32LE_uset_disjoint a.data off off' v h hread hdisj
+
+namespace WordVec
+
+/-- A zeroed buffer whose byte length is strictly below `2^32`. That bound is `n < 2^30`. -/
+@[expose]
+def ofZeros (n : Nat) (hbytes : n * 4 < 2 ^ 32) : WordVec n where
+  buf := WordArray.zeros n
+  size_eq := (WordArray.zeros_spec n hbytes).1
+  aligned := by
+    have hspec := WordArray.zeros_spec n hbytes
+    exact (congrArg (fun k => 4 * k) hspec.1.symm).trans hspec.2
+  fit := by
+    have : n < 2 ^ 30 := by omega
+    exact Nat.le_of_lt this
+
+/-- `i < n` is enough: length, alignment, and `fit` are on the vector. -/
+theorem bound {n : Nat} (v : WordVec n) (i : UFin n) :
+    (i.val * wordBytes).toNat + 4 ≤ v.buf.data.size := by
+  have hdiv : 4 * v.buf.size = v.buf.data.size := by
+    rw [v.size_eq]
+    exact v.aligned
+  exact WordArray.boundPrefix v.buf n (Nat.le_of_eq v.size_eq.symm) hdiv v.fit i
+
+@[expose]
+def get {n : Nat} (v : WordVec n) (i : UFin n) : UInt32 :=
+  v.buf.ugetWord i.val (v.bound i)
+
+@[expose]
+def set {n : Nat} (v : WordVec n) (i : UFin n) (x : UInt32) : WordVec n where
+  buf := v.buf.usetWord i.val x (v.bound i)
+  size_eq := by
+    have hsz := WordArray.size_uset v.buf (i.val * wordBytes) x (v.bound i)
+    rw [WordArray.usetWord_eq]
+    exact hsz.2.trans v.size_eq
+  aligned := by
+    have hsz := WordArray.size_uset v.buf (i.val * wordBytes) x (v.bound i)
+    rw [WordArray.usetWord_eq, hsz.1]
+    exact v.aligned
+  fit := v.fit
+
+end WordVec
 
 end Regex.VM.Wide
 

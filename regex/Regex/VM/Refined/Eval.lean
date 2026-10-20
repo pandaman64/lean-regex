@@ -294,12 +294,10 @@ def eval {s : String}
     have hphase : phase = phaseStep := (beq_iff_eq).mp hstep
     if hp : p = s.endPos then
       SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
-        ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge,
-          h.buf.rows_size, h.buf.rows_fit⟩
+        ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge⟩
     else if i == 0 && cCount == 0 && matched then
       SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
-        ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge,
-          h.buf.rows_size, h.buf.rows_fit⟩
+        ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge⟩
     else if hic : i == cCount then
       if !matched then
         have hroom : 0 < stkS.size := by
@@ -310,7 +308,7 @@ def eval {s : String}
           omega
         have hw := h.buf.window stackRow0 (2 + 2 * nStates.toNat) (Or.inr h.buf.stack_row) hrowLt
         let caps := fillRow caps (rowOff stackRow0 slots) slots sent hw.1 hw.2
-        let stkS := stkS.usetWord 0 start (h.stack.wordBound 0 hroom (by decide))
+        let stkS := stkS.usetWord 0 start (h.stack.wordBoundAt 0 hroom (by decide))
         have hstack : StackInv stkS 1 nStates.toNat := by
           simp only [stkS]
           exact h.stack.reset hroom start h.start_lt
@@ -433,7 +431,7 @@ def eval {s : String}
             simp only [nextW]
             rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
             exact h.words.next_lt state.toNat hs
-          let stkS := stkS.usetWord 0 nextW (h.stack.wordBound 0 hroom (by decide))
+          let stkS := stkS.usetWord 0 nextW (h.stack.wordBoundAt 0 hroom (by decide))
           have hstack : StackInv stkS 1 nStates.toNat := by
             simp only [stkS]
             exact h.stack.reset hroom nextW hnextLt
@@ -496,7 +494,7 @@ def eval {s : String}
             simp only [nextW]
             rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
             exact h.words.next_lt state.toNat hs
-          let stkS := stkS.usetWord 0 nextW (h.stack.wordBound 0 hroom (by decide))
+          let stkS := stkS.usetWord 0 nextW (h.stack.wordBoundAt 0 hroom (by decide))
           have hstack : StackInv stkS 1 nStates.toNat := by
             simp only [stkS]
             exact h.stack.reset hroom nextW hnextLt
@@ -632,7 +630,7 @@ def eval {s : String}
       let sp' := sp - 1
       have hspLt : sp' < sp := Nat.sub_lt hspPos (by decide)
       have hsp30 : sp' < 2 ^ 30 := Nat.lt_of_lt_of_le hspLt h.stack.sp_fit
-      have hstkB := h.stack.wordBound sp' (Nat.lt_of_lt_of_le hspLt h.stack.sp_le) hsp30
+      have hstkB := h.stack.wordBound sp' hspLt
       let stkOff := rowOff (stackRow0 + sp'.toUSize) slots
       let state := stkS.ugetWord sp'.toUSize hstkB
       have hs : state.toNat < nStates.toNat := by
@@ -829,7 +827,7 @@ def eval {s : String}
         if hbad : sp' + 2 > stkS.size then
           False.elim (hno hbad)
         else
-          have hwrite := h.stack.wordBound sp' (Nat.lt_of_lt_of_le hspLt h.stack.sp_le) hsp30
+          have hwrite := h.stack.wordBound sp' hspLt
           have hstkSz (a : WordArray) (i : USize) (v : UInt32)
               (hb : (i * Regex.VM.Wide.wordBytes).toNat + 4 ≤ a.data.size) :
               (a.usetWord i v hb).size = a.size := by
@@ -912,7 +910,7 @@ def eval {s : String}
                 ((sp' + 1).toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ stk1.data.size := by
               simp only [stk1]
               rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).1, hidx]
-              exact h.stack.wordBound sp (by rw [← hback]; exact htop) (Nat.lt_of_succ_le hfit30)
+              exact h.stack.wordBoundAt sp (by rw [← hback]; exact htop) (Nat.lt_of_succ_le hfit30)
             let stk2 := stk1.usetWord (sp' + 1).toUSize nextW hpushB
             have hstack : StackInv stk2 (sp' + 2) nStates.toNat := by
               have hnested := h.stack.splitAt hspPos (by rw [← hback]; exact htop) hfit30
@@ -1152,8 +1150,8 @@ def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt64) (p :
         rows_ne := hne
         stack_row := hstkRow
         stk_ge := hscratch.stk_ge
-        rows_size := hscratch.rows_size
-        rows_fit := hscratch.rows_fit }
+        rows_size := hscratch.caps.size_le
+        rows_fit := hscratch.caps.fit }
     have hroom : 0 < scratch.stkS.size := by
       have := hscratch.stk_ge
       omega
@@ -1165,7 +1163,7 @@ def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt64) (p :
       (Or.inr hbuf0.stack_row) hrowLt
     let caps := fillRow scratch.caps (rowOff stackRow0 slots) slots sent hw.1 hw.2
     let stkS := scratch.stkS.usetWord 0 nfa.start
-      (hscratch.stack.wordBound 0 hroom (by decide))
+      (hscratch.stack.wordBoundAt 0 hroom (by decide))
     have hstack : StackInv stkS 1 scratch.nStates.toNat := by
       simp only [stkS]
       exact hscratch.stack.reset hroom nfa.start (hn.symm ▸ hstart)
