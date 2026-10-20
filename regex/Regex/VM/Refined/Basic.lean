@@ -702,19 +702,13 @@ variable {stkS : WordArray} {sp nStates : Nat}
 def state (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp) : Fin nStates :=
   ⟨(wordAt stkS (4 * i)).toNat, h.id_lt i hi⟩
 
-/--
-`i < sp` covers both `i < stkS.size` (`sp_le`) and `i < 2^30` (`sp_fit`).
-The index is a `UFin sp`.
--/
+/-- `i < sp` covers both `i < stkS.size` and `i < 2^30`. -/
 theorem wordBound (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp) :
     (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ stkS.data.size :=
   Regex.VM.Wide.WordArray.boundPrefix stkS sp h.sp_le h.div4 h.sp_fit
     (Regex.VM.Wide.UFin.ofNat i hi (Nat.le_trans h.sp_fit (by decide)))
 
-/--
-A slot that may sit at `sp` itself, so it is not a `UFin sp`.
-`i < stkS.size` and `i < 2^30` do not imply each other.
--/
+/-- A slot at `sp` itself. Buffer room and `i < 2^30` are independent. -/
 theorem wordBoundAt (h : StackInv stkS sp nStates) (i : Nat)
     (hi : i < stkS.size) (hfit : i < 2 ^ 30) :
     (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ stkS.data.size :=
@@ -723,19 +717,21 @@ theorem wordBoundAt (h : StackInv stkS sp nStates) (i : Nat)
     (Regex.VM.Wide.UFin.ofNat i (Nat.lt_min.mpr ⟨hi, hfit⟩)
       (Nat.le_trans (Nat.min_le_right _ _) (by decide)))
 
+theorem byteEnd (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp) :
+    4 * i + 4 ≤ stkS.data.size := by
+  have hb := h.wordBound i hi
+  rw [indexBytes i (Nat.lt_of_lt_of_le hi h.sp_fit)] at hb
+  exact hb
+
 theorem readWord (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp) :
     stkS.ugetWord i.toUSize (h.wordBound i hi) =
       wordAt stkS (4 * i) := by
   have hfit := Nat.lt_of_lt_of_le hi h.sp_fit
-  have hw := h.wordBound i hi
+  have hnat := h.byteEnd i hi
   rw [WordArray.ugetWord]
   have h32 : 4 * i < 2 ^ 32 := by omega
-  have hnat : 4 * i + 4 ≤ stkS.data.size := by
-    have hb := hw
-    rw [indexBytes i hfit] at hb
-    exact hb
   rw [wordAt_eq stkS (4 * i) hnat h32]
-  exact WordArray.uget_off_eq stkS _ _ hw
+  exact WordArray.uget_off_eq stkS _ _ (h.wordBound i hi)
     (by
       rw [Regex.VM.Wide.toNat_toUSize_of_lt_2_pow_32 h32]
       exact hnat)
@@ -761,11 +757,8 @@ theorem write (h : StackInv stkS sp nStates) (i : Nat) (hi : i < sp)
       rw [wordAt_usetWord _ _ _ hw (Nat.lt_of_lt_of_le hi h.sp_fit)]
       exact hv
     · have hj30 : j < 2 ^ 30 := Nat.lt_of_lt_of_le hj h.sp_fit
-      have hjSize : 4 * j + 4 ≤ stkS.data.size := by
-        have hb := h.wordBound j hj
-        rw [indexBytes j hj30] at hb
-        exact hb
-      rw [wordAt_usetWord_ne _ _ _ _ hw (Nat.lt_of_lt_of_le hi h.sp_fit) hj30 (Ne.symm hje) hjSize]
+      rw [wordAt_usetWord_ne _ _ _ _ hw (Nat.lt_of_lt_of_le hi h.sp_fit) hj30 (Ne.symm hje)
+        (h.byteEnd j hj)]
       exact h.id_lt j hj
 
 theorem push (h : StackInv stkS sp nStates) (hroom : sp < stkS.size) (hfit : sp < 2 ^ 30)
@@ -784,11 +777,7 @@ theorem push (h : StackInv stkS sp nStates) (hroom : sp < stkS.size) (hfit : sp 
       exact hv
     · have hj' : j < sp := by omega
       have hj30 : j < 2 ^ 30 := Nat.lt_of_lt_of_le hj' h.sp_fit
-      have hjSize : 4 * j + 4 ≤ stkS.data.size := by
-        have hb := h.wordBound j hj'
-        rw [indexBytes j hj30] at hb
-        exact hb
-      rw [wordAt_usetWord_ne _ _ _ _ hw hfit hj30 (Ne.symm hje) hjSize]
+      rw [wordAt_usetWord_ne _ _ _ _ hw hfit hj30 (Ne.symm hje) (h.byteEnd j hj')]
       exact h.id_lt j hj'
 
 /-- Pushing two zero words does not change the live prefix. -/
@@ -801,10 +790,7 @@ theorem grow2 (h : StackInv stkS sp nStates) :
     exact Nat.le_trans h.sp_le (Nat.le_add_right stkS.size (1 + 1))
   · intro i hi
     have h30 : i < 2 ^ 30 := Nat.lt_of_lt_of_le hi h.sp_fit
-    have hle : 4 * i + 4 ≤ stkS.data.size := by
-      have hb := h.wordBound i hi
-      rw [indexBytes i h30] at hb
-      exact hb
+    have hle := h.byteEnd i hi
     have h32 : 4 * i < 2 ^ 32 := by omega
     have hmid : 4 * i + 4 ≤ (stkS.push 0).data.size := by
       rw [WordArray.data_size_push]
@@ -982,20 +968,6 @@ private theorem u32 (h : SetInv den spa count n) (i : Nat) (hi : i < n) : i < UI
   simpa [UInt32.size] using
     Nat.lt_trans (Nat.lt_of_lt_of_le hi h.n_fit) (by decide : 2 ^ 30 < 2 ^ 32)
 
-/-- The dense array as a `WordVec n`. Size, alignment, and `n ≤ 2^30` travel together. -/
-def denseVec (h : SetInv den spa count n) : Regex.VM.Wide.WordVec n where
-  buf := den
-  size_eq := h.den_size
-  aligned := h.den_size ▸ h.den_div4
-  fit := h.n_fit
-
-/-- The sparse array as a `WordVec n`. -/
-def sparseVec (h : SetInv den spa count n) : Regex.VM.Wide.WordVec n where
-  buf := spa
-  size_eq := h.spa_size
-  aligned := h.spa_size ▸ h.spa_div4
-  fit := h.n_fit
-
 theorem wordBound (h : SetInv den spa count n) (a : WordArray)
     (hsize : a.size = n) (hdiv : 4 * a.size = a.data.size) (i : Nat) (hi : i < n) :
     (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ a.data.size :=
@@ -1004,11 +976,11 @@ theorem wordBound (h : SetInv den spa count n) (a : WordArray)
 
 theorem denBound (h : SetInv den spa count n) (i : Nat) (hi : i < n) :
     (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ den.data.size :=
-  (h.denseVec).bound (Regex.VM.Wide.UFin.ofNat i hi (Nat.le_trans h.n_fit (by decide)))
+  h.wordBound den h.den_size h.den_div4 i hi
 
 theorem spaBound (h : SetInv den spa count n) (i : Nat) (hi : i < n) :
     (i.toUSize * Regex.VM.Wide.wordBytes).toNat + 4 ≤ spa.data.size :=
-  (h.sparseVec).bound (Regex.VM.Wide.UFin.ofNat i hi (Nat.le_trans h.n_fit (by decide)))
+  h.wordBound spa h.spa_size h.spa_div4 i hi
 
 /-- The state id in dense slot `i`. -/
 def dense (h : SetInv den spa count n) (i : Nat) (hi : i < count) : Fin n :=
@@ -1020,12 +992,7 @@ theorem empty (den spa : WordArray) (n : Nat) (hden : den.size = n) (hspa : spa.
   ⟨Nat.zero_le _, hfit, hden, hspa, hden4, hspa4,
     fun _ hi => by omega, fun _ hi => by omega⟩
 
-/--
-A zeroed pair of `n`-word buffers.
-
-`n * 4 < 2^32` is `n < 2^30`, so the separate `n ≤ 2^30` budget is the
-`WordVec.fit` of `WordVec.ofZeros`.
--/
+/-- `n * 4 < 2^32` already gives `WordVec.fit`, that is `n ≤ 2^30`. -/
 theorem ofZeros (n : Nat) (hbytes : n * 4 < 2 ^ 32) :
     SetInv (WordArray.zeros n) (WordArray.zeros n) 0 n :=
   empty _ _ n (WordArray.zeros_spec n hbytes).1 (WordArray.zeros_spec n hbytes).1
@@ -1208,14 +1175,10 @@ def Scratch.mkFor (nStates nSlots : Nat) : Scratch :=
   }
 
 /--
-Allocation bounds for a scratch block of `n` states and `nSlots` capture slots.
+Allocation bounds for `n` states and `nSlots` capture slots.
 
-`ofNFA` already forces `n * 12 ≤ 2^32`. The stack word array and the capture
-window are tighter, so the allocating entry points return `none` when this fails.
-
-`n ≤ 2^30` and `n * 4 < 2^32` are theorems (`le_30`, `stateBytes`): both follow
-from the stack budget `(max (n * 4) 8) * 4 < 2^32`. The capture window depends
-on `nSlots` and does not follow from the stack budget. `0 < n` is independent.
+`n ≤ 2^30` and `n * 4 < 2^32` follow from the stack budget, so they are
+`le_30` and `stateBytes`. `0 < n` and the capture window do not.
 -/
 abbrev layoutOk (n nSlots : Nat) : Prop :=
   0 < n ∧
@@ -1226,36 +1189,14 @@ namespace layoutOk
 
 variable {n nSlots : Nat}
 
-theorem pos (hl : layoutOk n nSlots) : 0 < n := hl.1
-
-theorem stackBytes (hl : layoutOk n nSlots) : (max (n * 4) 8) * 4 < 2 ^ 32 := hl.2.1
-
-theorem windowBytes (hl : layoutOk n nSlots) :
-    (2 + 2 * n + max (n * 4) 8) * nSlots * 8 < 2 ^ 32 := hl.2.2
-
-/-- The stack budget is below `2^32` and `n * 4 ≤ max (n * 4) 8`, so the state bytes are too. -/
 theorem stateBytes (hl : layoutOk n nSlots) : n * 4 < 2 ^ 32 := by
-  have hcap := stackBytes hl
   have hle : n * 4 ≤ max (n * 4) 8 := Nat.le_max_left _ _
-  have hmax : max (n * 4) 8 < 2 ^ 30 := by
-    cases Nat.lt_or_ge (max (n * 4) 8) (2 ^ 30) with
-    | inl hlt => exact hlt
-    | inr hge =>
-      have : 2 ^ 30 * 4 ≤ max (n * 4) 8 * 4 := Nat.mul_le_mul_right 4 hge
-      have : 2 ^ 32 ≤ max (n * 4) 8 * 4 := by
-        simpa [show (2 : Nat) ^ 30 * 4 = 2 ^ 32 by decide] using this
-      omega
-  exact Nat.lt_of_le_of_lt hle (Nat.lt_trans hmax (by decide : 2 ^ 30 < 2 ^ 32))
+  have hcap : (max (n * 4) 8) * 4 < 2 ^ 32 := hl.2.1
+  omega
 
 theorem le_30 (hl : layoutOk n nSlots) : n ≤ 2 ^ 30 := by
-  have h := stateBytes hl
-  cases Nat.lt_or_ge n (2 ^ 30) with
-  | inl hlt => exact Nat.le_of_lt hlt
-  | inr hge =>
-    have : 2 ^ 30 * 4 ≤ n * 4 := Nat.mul_le_mul_right 4 hge
-    have : 2 ^ 32 ≤ n * 4 := by
-      simpa [show (2 : Nat) ^ 30 * 4 = 2 ^ 32 by decide] using this
-    omega
+  have := stateBytes hl
+  omega
 
 end layoutOk
 
@@ -2199,11 +2140,11 @@ private theorem cap_ge (n : Nat) (hpos : 0 < n) : n + 2 ≤ max (n * 4) 8 := by
 /-- A block from `Scratch.mkFor` is a legal search scratch when `layoutOk` holds. -/
 theorem ScratchInv.ofMkFor {s : String} (n nSlots : Nat) (hl : layoutOk n nSlots) :
     ScratchInv (s := s) (Scratch.mkFor n nSlots) := by
-  have hpos : 0 < n := hl.pos
+  have hpos : 0 < n := hl.1
   have h30 : n ≤ 2 ^ 30 := hl.le_30
   have h4 : n * 4 < 2 ^ 32 := hl.stateBytes
-  have hcap4 : (max (n * 4) 8) * 4 < 2 ^ 32 := hl.stackBytes
-  have hwin : (2 + 2 * n + max (n * 4) 8) * nSlots * 8 < 2 ^ 32 := hl.windowBytes
+  have hcap4 : (max (n * 4) 8) * 4 < 2 ^ 32 := hl.2.1
+  have hwin : (2 + 2 * n + max (n * 4) 8) * nSlots * 8 < 2 ^ 32 := hl.2.2
   have hn32 : n < UInt32.size := by
     simpa [UInt32.size] using Nat.lt_of_le_of_lt h30 (by decide : 2 ^ 30 < 2 ^ 32)
   have hnat : n.toUInt32.toNat = n := toNat_toUInt32_of_lt hn32

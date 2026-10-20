@@ -235,24 +235,12 @@ def WordArray.usetWord (a : WordArray) (i : USize) (v : UInt32)
     (h : (i * wordBytes).toNat + 4 ≤ a.data.size) : WordArray :=
   a.uset (i * wordBytes) v h
 
-/--
-A `USize` strictly below `n`: the unboxed analogue of `Fin n`.
-
-The bound is a proof, so it is erased. Hot-loop signatures stay `USize`.
-This is the index the word-buffer proofs pass around, so one `< n` supplies
-every later `toNat` bound.
--/
+/-- Unboxed `Fin n`: a `USize` whose `toNat` is strictly below `n`. The proof is erased. -/
 structure UFin (n : Nat) where
   val : USize
   isLt : val.toNat < n
 
-/--
-Length-indexed word buffer: the unboxed analogue of `Vector`.
-
-`buf` is the only runtime field. `n ≤ 2^30` is the single budget that makes
-every `i : UFin n` satisfy `i < 2^30`, `4 * i < 2^32`, and
-`4 * (i + 1) ≤ buf.data.size` together.
--/
+/-- Length-indexed `WordArray`. `buf` is the only runtime field; `fit` is `n ≤ 2^30`. -/
 structure WordVec (n : Nat) where
   buf : WordArray
   size_eq : buf.size = n
