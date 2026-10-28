@@ -101,8 +101,7 @@ theorem write_updates_of_mem_next {i k}
     | .inl mem => exact .inl mem
     | .inr ⟨update', cls, write⟩ =>
       have step : nfa.CharStep pos i state' := by
-        grind only [usr Fin.isLt, = CharStep.fail, = Fin.getElem_fin, => CharStep.char,
-          => CharStep.sparse, #6698, #51e9, #8818, #5c18, #c184]
+        grind only [= CharStep.fail, = Fin.getElem_fin, => CharStep.char, => CharStep.sparse]
       exact .inr ⟨state', update', step, cls, write⟩
   next hn =>
     injection h with _ hnext

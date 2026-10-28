@@ -146,7 +146,7 @@ theorem toRegexAux_disjoint (state : ToRegexState) (ast : Ast) : Expr.Disjoint (
   next state ast state' e h ih =>
     simp [h] at ih
     simp [Expr.Disjoint, ih]
-    exact Finset.not_mem_subset (toRegexAux_tags h).2 (by simp)
+    exact Finset.notMem_subset (toRegexAux_tags h).2 (by simp)
   next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
     simp [Expr.Disjoint, ih₁, ih₂]

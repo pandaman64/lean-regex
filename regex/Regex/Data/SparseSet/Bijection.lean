@@ -21,7 +21,10 @@ public theorem surj_of_inj {n} (f : Fin n → Fin n) (h : Injective f) : Surject
         ⟨f ⟨n, by grind⟩, by grind⟩
     have inj' : Injective f' := by
       intro x y eq
-      grind
+      -- NOTE(pszenher): workaround for grind `hom` bug in Lean 4.35.0;
+      --   can revert to plain `grind` once fixed upstream
+      --   see: https://github.com/leanprover/lean4/issues/16059
+      grind -hom [Fin.ext]
     have surj' : Surjective f' := ih f' inj'
 
     intro y
