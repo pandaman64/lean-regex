@@ -2,10 +2,11 @@ module
 
 import Std.Data.HashMap
 import Std.Tactic.Do
+import Std.WP
 
 open Std.Do
 
-set_option mvcgen.warning false
+set_option experimental.vcgen true
 
 namespace Regex.Unicode
 
@@ -58,16 +59,20 @@ def buildCaseFoldInvMap (representatives : Array (Char × Char)) : Std.HashMap C
     table := table.alter p.2 fun arr => (arr.getD #[]).push p.1
   return table
 
+open Std.WP in
 @[grind .]
 theorem mem_buildCaseFoldInvMap_iff {c c' : Char} {rs : Array (Char × Char)} :
   (∃ _ : c' ∈ buildCaseFoldInvMap rs, c ∈ (buildCaseFoldInvMap rs)[c']) ↔ (c, c') ∈ rs := by
   generalize eq : buildCaseFoldInvMap rs = table
-  apply Id.of_wp_run_eq eq; clear eq
-  mvcgen invariants
-  · ⇓⟨cursor, table⟩ =>
-    ⌜(∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ cursor.prefix.toArray⌝
-  case vc1.step pref cur suff eq table inv => grind
-  case vc2.pre => simp
+  apply Id.of_run_eq_wp eq
+  vcgen invariants
+  . fun pref _suff table => (∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ pref
+  case vc1 => grind only [=_ Std.HashMap.contains_iff_mem, ← List.not_mem_nil, = Std.HashMap.contains_empty]
+  case vc2 => grind
+  case vc3 => grind only [= List.mem_append, =_ Std.HashMap.contains_iff_mem, = Std.HashMap.mem_alter, = List.mem_cons,
+    = Std.HashMap.contains_alter, ← List.not_mem_nil, = Std.HashMap.getElem_alter, = Option.get_some, = getElem?_pos,
+    = Array.mem_push, = Option.getD_some, = getElem?_neg, = Option.getD_none, ← Array.not_mem_empty,
+    = Option.isSome_some]
 
 def caseFoldInvMap : Thunk (Std.HashMap Char (Array Char)) :=
   Thunk.mk fun _ => buildCaseFoldInvMap caseFoldRepresentatives.get
