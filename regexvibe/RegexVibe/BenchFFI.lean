@@ -69,12 +69,10 @@ def cases : Array Case := #[
   { name := "curated/bounded-repeat/letters-en"
     pattern := "[A-Za-z]{8,13}"
     file := "opensubtitles/en-sampled.txt" },
-  -- CodSpeed's simulator (exit 139) kills the stock PikeVM on a few hundred
-  -- characters of this haystack. The curated rebar run still uses the full file.
   { name := "curated/cloud-flare-redos/simplified-long"
     pattern := ".*.*=.*"
     file := "cloud-flare-redos.txt"
-    chars := 64 }
+    chars := 512 }
 ]
 
 structure RefinedReady where
