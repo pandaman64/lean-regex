@@ -39,3 +39,11 @@ jobs:
           with:
             build-args: '--wfail'
             lake-package-directory: correctness
+        - name: Build RegexVibe
+          uses: leanprover/lean-action@v1
+          with:
+            build-args: '--wfail'
+            lake-package-directory: regexvibe
+        - name: Check RegexVibe
+          working-directory: regexvibe
+          run: lake exe Bench --check
