@@ -1,9 +1,11 @@
 module
 
 import Std.Data.HashMap
-import Std.Tactic.Do
+import Std.WP
 
-open Std.Do
+open Std.WP
+
+set_option experimental.vcgen true
 
 namespace Regex.Unicode
 
@@ -59,17 +61,12 @@ def buildCaseFoldInvMap (representatives : Array (Char × Char)) : Std.HashMap C
 @[grind .]
 theorem mem_buildCaseFoldInvMap_iff {c c' : Char} {rs : Array (Char × Char)} :
   (∃ _ : c' ∈ buildCaseFoldInvMap rs, c ∈ (buildCaseFoldInvMap rs)[c']) ↔ (c, c') ∈ rs := by
-  generalize eq : buildCaseFoldInvMap rs = table
-  apply Id.of_wp_run_eq eq; clear eq
-  -- `vcgen` does not recognize the `Std.Do` weakest-precondition goal produced by
-  -- `Id.of_wp_run_eq` on v4.36.0 (`could not determine the program type of the goal`).
-  -- `mvcgen` still proves it; the syntax deprecation is the same suppression used in `Std`.
-  set_option linter.deprecated.syntax false in
-  mvcgen invariants
-  · ⇓⟨cursor, table⟩ =>
-    ⌜(∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ cursor.prefix.toArray⌝
-  case vc1.step pref cur suff eq table inv => grind
-  case vc2.pre => simp
+  generalize h : buildCaseFoldInvMap rs = table
+  apply Id.of_run_eq_wp h
+  vcgen invariants
+    · fun pref _suff table =>
+        (∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ pref.toArray
+    with finish
 
 def caseFoldInvMap : Thunk (Std.HashMap Char (Array Char)) :=
   Thunk.mk fun _ => buildCaseFoldInvMap caseFoldRepresentatives.get
