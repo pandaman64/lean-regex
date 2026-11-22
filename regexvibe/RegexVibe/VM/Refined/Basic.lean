@@ -1127,85 +1127,6 @@ theorem mem_insert (h : SetInv den spa count n) (state : Nat) (hs : state < n)
   · rw [hread, toNat_toUInt32_of_lt (u32 h count hroom),
       wordAt_usetWord _ _ _ hdenB hcount30, toNat_toUInt32_of_lt (u32 h state hs)]
 
-theorem not_mem_count_zero {den spa : WordArray} {state : Nat} : ¬ SetMem den spa 0 state := by
-  intro h
-  exact Nat.not_lt_zero _ h.1
-
-/-- Inserting a missing state adds that state and leaves every other member alone. -/
-theorem mem_insert_iff (h : SetInv den spa count n) (state : Nat) (hs : state < n)
-    (hnot : ¬ SetMem den spa count state) (j : Nat) (hj : j < n) :
-    SetMem
-      (den.usetWord count.toUSize state.toUInt32
-        (h.denBound count (lt_of_not_mem h state hs hnot)))
-      (spa.usetWord state.toUSize count.toUInt32 (h.spaBound state hs))
-      (count + 1) j ↔
-    j = state ∨ SetMem den spa count j := by
-  have hroom : count < n := lt_of_not_mem h state hs hnot
-  have hdenB := h.denBound count hroom
-  have hspaB := h.spaBound state hs
-  have hcount30 : count < 2 ^ 30 := Nat.lt_of_lt_of_le hroom h.n_fit
-  have hstate30 : state < 2 ^ 30 := Nat.lt_of_lt_of_le hs h.n_fit
-  let den' := den.usetWord count.toUSize state.toUInt32 hdenB
-  let spa' := spa.usetWord state.toUSize count.toUInt32 hspaB
-  change SetMem den' spa' (count + 1) j ↔ j = state ∨ SetMem den spa count j
-  constructor
-  · intro hmem
-    by_cases hje : j = state
-    · exact Or.inl hje
-    · right
-      have hj30 : j < 2 ^ 30 := Nat.lt_of_lt_of_le hj h.n_fit
-      have hspaSame := wordAt_usetWord_ne spa state j count.toUInt32 hspaB hstate30 hj30
-        (Ne.symm hje) (slotBytes h spa h.spa_size h.spa_div4 j hj)
-      unfold SetMem at hmem
-      rw [hspaSame] at hmem
-      have hsi : (wordAt spa (4 * j)).toNat < count + 1 := hmem.1
-      have hdenJ : (wordAt den' (4 * (wordAt spa (4 * j)).toNat)).toNat = j := hmem.2
-      have hsiLt : (wordAt spa (4 * j)).toNat < count := by
-        rcases Nat.lt_or_eq_of_le (Nat.le_of_lt_succ hsi) with hlt | heq
-        · exact hlt
-        · have htop := wordAt_usetWord den count state.toUInt32 hdenB hcount30
-          have hstateWord : (wordAt den' (4 * count)).toNat = state := by
-            rw [htop, toNat_toUInt32_of_lt (u32 h state hs)]
-          have : state = j := by
-            have := hdenJ
-            rw [heq] at this
-            rw [hstateWord] at this
-            exact this
-          exact absurd this.symm hje
-      have hsi30 : (wordAt spa (4 * j)).toNat < 2 ^ 30 :=
-        Nat.lt_of_lt_of_le hsiLt (Nat.le_trans h.count_le h.n_fit)
-      have hsiN : (wordAt spa (4 * j)).toNat < n := Nat.lt_of_lt_of_le hsiLt h.count_le
-      have hneC : count ≠ (wordAt spa (4 * j)).toNat := by
-        intro heq
-        exact Nat.ne_of_lt hsiLt heq.symm
-      have hdenSame := wordAt_usetWord_ne den count (wordAt spa (4 * j)).toNat state.toUInt32
-        hdenB hcount30 hsi30 hneC (slotBytes h den h.den_size h.den_div4 _ hsiN)
-      refine ⟨hsiLt, ?_⟩
-      rw [← hdenSame]
-      exact hdenJ
-  · intro hmem
-    rcases hmem with hje | hmem
-    · subst j
-      simpa [den', spa'] using mem_insert h state hs hnot
-    · have hje : j ≠ state := by
-        intro heq
-        exact hnot (heq ▸ hmem)
-      have hj30 : j < 2 ^ 30 := Nat.lt_of_lt_of_le hj h.n_fit
-      have hspaSame := wordAt_usetWord_ne spa state j count.toUInt32 hspaB hstate30 hj30
-        (Ne.symm hje) (slotBytes h spa h.spa_size h.spa_div4 j hj)
-      unfold SetMem at hmem ⊢
-      rw [hspaSame]
-      refine ⟨Nat.lt_succ_of_lt hmem.1, ?_⟩
-      have hsi30 : (wordAt spa (4 * j)).toNat < 2 ^ 30 :=
-        Nat.lt_of_lt_of_le hmem.1 (Nat.le_trans h.count_le h.n_fit)
-      have hsiN : (wordAt spa (4 * j)).toNat < n := Nat.lt_of_lt_of_le hmem.1 h.count_le
-      have hneC : count ≠ (wordAt spa (4 * j)).toNat := by
-        intro heq
-        exact Nat.ne_of_lt hmem.1 heq.symm
-      rw [wordAt_usetWord_ne den count (wordAt spa (4 * j)).toNat state.toUInt32
-        hdenB hcount30 hsi30 hneC (slotBytes h den h.den_size h.den_div4 _ hsiN)]
-      exact hmem.2
-
 end SetInv
 
 /-- After this closure, the filled next-buffer becomes current and stepping starts. -/
@@ -1442,225 +1363,12 @@ theorem ScratchInv.slots_lt {s : String} {scratch : Scratch}
     (Nat.le_div_iff_mul_le (by decide : 0 < 8)).mpr h8
   exact Nat.lt_of_le_of_lt hdiv (by decide : 2 ^ 32 / 8 < 2 ^ 32)
 
-/-!
-Membership of the next sparse set, for `n ≤ 128`, as two machine words.
-
-States `0 … 63` live in `m0` and `64 … 127` in `m1`. The dense list is still what
-the stepper walks; the masks only answer “is this state already present?”.
--/
-
-@[inline] def maskBit (m0 m1 : UInt64) (state : UInt32) : Bool :=
-  if state < 64 then
-    ((m0 >>> state.toUInt64) &&& (1 : UInt64)) != 0
-  else
-    ((m1 >>> (state - 64).toUInt64) &&& (1 : UInt64)) != 0
-
-@[inline] def maskSet0 (m0 : UInt64) (state : UInt32) : UInt64 :=
-  if state < 64 then
-    m0 ||| ((1 : UInt64) <<< state.toUInt64)
-  else
-    m0
-
-@[inline] def maskSet1 (m1 : UInt64) (state : UInt32) : UInt64 :=
-  if state < 64 then
-    m1
-  else
-    m1 ||| ((1 : UInt64) <<< (state - 64).toUInt64)
-
-private theorem shift_nat (k : Nat) (hk : k < 64) : k.toUInt64.toNat = k :=
-  UInt64.toNat_ofNat_of_lt (Nat.lt_trans hk (by decide : 64 < UInt64.size))
-
-private theorem one_shift_nat (k : Nat) (hk : k < 64) :
-    ((1 : UInt64) <<< k.toUInt64).toNat = 1 <<< k := by
-  rw [UInt64.toNat_shiftLeft, UInt64.toNat_ofNat_of_lt (by decide : 1 < UInt64.size)]
-  rw [shift_nat k hk, Nat.mod_eq_of_lt hk]
-  have hpow : 1 <<< k < 2 ^ 64 := by
-    rw [Nat.shiftLeft_eq, Nat.one_mul]
-    exact Nat.pow_lt_pow_of_lt (by decide : 1 < 2) hk
-  exact Nat.mod_eq_of_lt hpow
-
-private theorem lo_eq (m : UInt64) (k : Nat) (hk : k < 64) :
-    (((m >>> k.toUInt64) &&& (1 : UInt64)) != 0) = m.toNat.testBit k := by
-  have hsh : (m >>> k.toUInt64).toNat = m.toNat >>> k := by
-    rw [UInt64.toNat_shiftRight, shift_nat k hk, Nat.mod_eq_of_lt hk]
-  have hand : ((m >>> k.toUInt64) &&& (1 : UInt64)).toNat = (m.toNat >>> k) &&& 1 := by
-    rw [UInt64.toNat_and, hsh, UInt64.toNat_ofNat_of_lt (by decide : 1 < UInt64.size)]
-  apply Bool.eq_iff_iff.mpr
-  constructor
-  · intro h
-    have htrue : ((m >>> k.toUInt64) &&& (1 : UInt64)) ≠ 0 := by
-      intro heq
-      simp [bne, heq] at h
-    have hne : (m.toNat >>> k) % 2 ≠ 0 := by
-      intro hz
-      apply htrue
-      apply UInt64.toNat_inj.mp
-      rw [hand, Nat.and_one_is_mod, hz, UInt64.toNat_ofNat_of_lt (by decide : 0 < UInt64.size)]
-    rw [← Nat.add_zero k, ← Nat.testBit_shiftRight, ← Nat.mod_two_eq_one_iff_testBit_zero]
-    rcases Nat.mod_two_eq_zero_or_one (m.toNat >>> k) with h0 | h1
-    · exact absurd h0 hne
-    · exact h1
-  · intro h
-    rw [← Nat.add_zero k, ← Nat.testBit_shiftRight, ← Nat.mod_two_eq_one_iff_testBit_zero] at h
-    have hx : ((m >>> k.toUInt64) &&& (1 : UInt64)) ≠ 0 := by
-      intro heq
-      have : ((m >>> k.toUInt64) &&& (1 : UInt64)).toNat = 0 := by
-        rw [heq, UInt64.toNat_ofNat_of_lt (by decide : 0 < UInt64.size)]
-      rw [hand, Nat.and_one_is_mod, h] at this
-      exact Nat.one_ne_zero this
-    simpa [bne, beq_iff_eq] using hx
-
-private theorem bit_one_shift (k j : Nat) (_hk : k < 64) (_hj : j < 64) :
-    ((1 <<< k).testBit j) = decide (j = k) := by
-  rw [Nat.shiftLeft_eq, Nat.one_mul, Nat.testBit_two_pow]
-  simp [eq_comm]
-
-private theorem lo_or (m : UInt64) (k j : Nat) (hk : k < 64) (hj : j < 64) :
-    ((((m ||| ((1 : UInt64) <<< k.toUInt64)) >>> j.toUInt64) &&& (1 : UInt64)) != 0) =
-      (decide (j = k) || (((m >>> j.toUInt64) &&& (1 : UInt64)) != 0)) := by
-  rw [lo_eq _ j hj, lo_eq m j hj]
-  apply Bool.eq_iff_iff.mpr
-  rw [UInt64.toNat_or, Nat.testBit_or, one_shift_nat k hk, bit_one_shift k j hk hj]
-  simp [Bool.or_eq_true, or_comm]
-
-private theorem u32_as_u64 (x : UInt32) : x.toUInt64 = x.toNat.toUInt64 :=
-  UInt64.toNat_inj.mp (by
-    rw [UInt32.toNat_toUInt64]
-    exact (UInt64.toNat_ofNat_of_lt (Nat.lt_trans (UInt32.toNat_lt x)
-      (by decide : UInt32.size < UInt64.size))).symm)
-
-theorem maskBit_zero (state : UInt32) : maskBit 0 0 state = false := by
-  unfold maskBit
-  split <;> simp [bne]
-
-theorem maskBit_update (m0 m1 : UInt64) (state j : UInt32)
-    (hs : state.toNat < 128) (hj : j.toNat < 128) :
-    (maskBit (maskSet0 m0 state) (maskSet1 m1 state) j = true) ↔
-      j = state ∨ maskBit m0 m1 j = true := by
-  have hje : j = state ↔ j.toNat = state.toNat := by
-    constructor
-    · intro h; exact congrArg UInt32.toNat h
-    · intro h; exact UInt32.toNat_inj.mp h
-  by_cases hs64 : state < 64
-  · have hsn : state.toNat < 64 := (UInt32.lt_iff_toNat_lt).mp hs64
-    by_cases hj64 : j < 64
-    · have hjn : j.toNat < 64 := (UInt32.lt_iff_toNat_lt).mp hj64
-      have hlo := lo_or m0 state.toNat j.toNat hsn hjn
-      unfold maskBit maskSet0 maskSet1
-      simp only [hs64, hj64, ↓reduceIte, u32_as_u64]
-      rw [hlo]
-      simp [Bool.or_eq_true, hje]
-    · have hneq : j ≠ state := by
-        intro heq
-        exact hj64 (heq ▸ hs64)
-      unfold maskBit maskSet0 maskSet1
-      simp only [hs64, hj64, ↓reduceIte]
-      simp [hneq]
-  · have hge : (64 : UInt32) ≤ state := (UInt32.not_lt).mp hs64
-    have hsub : (state - 64).toNat = state.toNat - 64 :=
-      UInt32.toNat_sub_of_le state 64 hge
-    have hsn : state.toNat - 64 < 64 := by
-      have hss : 64 ≤ state.toNat := (UInt32.le_iff_toNat_le).mp hge
-      omega
-    by_cases hj64 : j < 64
-    · have hneq : j ≠ state := by
-        intro heq
-        exact hs64 (heq ▸ hj64)
-      unfold maskBit maskSet0 maskSet1
-      simp only [hs64, hj64, ↓reduceIte]
-      simp [hneq]
-    · have hjge : (64 : UInt32) ≤ j := (UInt32.not_lt).mp hj64
-      have hjsub : (j - 64).toNat = j.toNat - 64 := UInt32.toNat_sub_of_le j 64 hjge
-      have hjn : j.toNat - 64 < 64 := by
-        have hjs : 64 ≤ j.toNat := (UInt32.le_iff_toNat_le).mp hjge
-        omega
-      have hlo := lo_or m1 (state.toNat - 64) (j.toNat - 64) hsn hjn
-      have hsub64 : j.toNat - 64 = state.toNat - 64 ↔ j = state := by
-        constructor
-        · intro h
-          apply UInt32.toNat_inj.mp
-          have hss : 64 ≤ state.toNat := (UInt32.le_iff_toNat_le).mp hge
-          have hjs : 64 ≤ j.toNat := (UInt32.le_iff_toNat_le).mp hjge
-          omega
-        · intro h
-          rw [h]
-      unfold maskBit maskSet0 maskSet1
-      simp only [hs64, hj64, ↓reduceIte, u32_as_u64, hsub, hjsub]
-      rw [hlo]
-      simp [Bool.or_eq_true, hsub64]
-
-/-- `m0` and `m1` agree with `SetMem` whenever the set has at most 128 states. -/
-structure MaskInv (m0 m1 : UInt64) (den spa : WordArray) (count n : Nat) : Prop where
-  bits : n ≤ 128 → ∀ state, state < n →
-    (maskBit m0 m1 state.toUInt32 = true ↔ SetMem den spa count state)
-
-namespace MaskInv
-
-theorem zero {den spa : WordArray} {n : Nat} (_h : SetInv den spa 0 n) :
-    MaskInv 0 0 den spa 0 n := by
-  suffices bits : n ≤ 128 → ∀ st, st < n →
-      (maskBit 0 0 st.toUInt32 = true ↔ SetMem den spa 0 st) by
-    exact ⟨bits⟩
-  intro _ st _
-  refine ⟨?_, ?_⟩
-  · intro hb
-    have : maskBit 0 0 st.toUInt32 = false := maskBit_zero _
-    simp [this] at hb
-  · intro hm
-    exact absurd hm SetInv.not_mem_count_zero
-
-theorem insert {m0 m1 : UInt64} {den spa : WordArray} {count n state : Nat}
-    (hm : MaskInv m0 m1 den spa count n) (h : SetInv den spa count n)
-    (hs : state < n) (hnot : ¬ SetMem den spa count state) :
-    MaskInv (maskSet0 m0 state.toUInt32) (maskSet1 m1 state.toUInt32)
-      (den.usetWord count.toUSize state.toUInt32
-        (h.denBound count (SetInv.lt_of_not_mem h state hs hnot)))
-      (spa.usetWord state.toUSize count.toUInt32 (h.spaBound state hs))
-      (count + 1) n := by
-  suffices bits : n ≤ 128 → ∀ j, j < n →
-      (maskBit (maskSet0 m0 state.toUInt32) (maskSet1 m1 state.toUInt32) j.toUInt32 = true ↔
-        SetMem (den.usetWord count.toUSize state.toUInt32
-          (h.denBound count (SetInv.lt_of_not_mem h state hs hnot)))
-          (spa.usetWord state.toUSize count.toUInt32 (h.spaBound state hs)) (count + 1) j) by
-    exact ⟨bits⟩
-  intro hn j hj
-  have hmem := SetInv.mem_insert_iff h state hs hnot j hj
-  have h32 : n ≤ 2 ^ 30 := h.n_fit
-  have hjs : j < UInt32.size :=
-    Nat.lt_of_le_of_lt (Nat.le_trans (Nat.le_of_lt hj) h32) (by decide : 2 ^ 30 < UInt32.size)
-  have hss : state < UInt32.size :=
-    Nat.lt_of_le_of_lt (Nat.le_trans (Nat.le_of_lt hs) h32) (by decide : 2 ^ 30 < UInt32.size)
-  have hbit := maskBit_update m0 m1 state.toUInt32 j.toUInt32
-    (by rw [toNat_toUInt32_of_lt hss]; exact Nat.lt_of_lt_of_le hs hn)
-    (by rw [toNat_toUInt32_of_lt hjs]; exact Nat.lt_of_lt_of_le hj hn)
-  have hjeq : j.toUInt32 = state.toUInt32 ↔ j = state := by
-    constructor
-    · intro h
-      apply Eq.trans (toNat_toUInt32_of_lt hjs).symm
-      apply Eq.trans (congrArg UInt32.toNat h)
-      exact toNat_toUInt32_of_lt hss
-    · intro h
-      exact congrArg Nat.toUInt32 h
-  have hold := hm.bits hn j hj
-  constructor
-  · intro hb
-    rcases hbit.1 hb with hje | holdb
-    · exact hmem.2 (Or.inl (hjeq.1 hje))
-    · exact hmem.2 (Or.inr (hold.1 holdb))
-  · intro hnew
-    rcases hmem.1 hnew with hje | holdm
-    · exact hbit.2 (Or.inl (hjeq.2 hje))
-    · exact hbit.2 (Or.inr (hold.2 holdm))
-
-end MaskInv
-
 /--
 Invariants of one `eval` iteration.
 
 `sp ≤ nCount + 1` bounds the ε-stack by the states still to be visited, which is
 what makes closure fuel decrease on `.split`. `i ≤ cCount` keeps the step loop
-from walking past the dense prefix. `m0` and `m1` mirror membership of the next
-set when there are at most 128 states.
+from walking past the dense prefix.
 -/
 structure RunInv {s : String}
     (words : WordArray) (classes : Array ClassTable) (start : UInt32)
@@ -1670,7 +1378,7 @@ structure RunInv {s : String}
     (cCount : UInt32) (cDen cSpa : WordArray)
     (nCount : UInt32) (nDen nSpa : WordArray)
     (stkS : WordArray) (caps : ByteArray) (sp : Nat)
-    (phase i : UInt32) (sent m0 m1 : UInt64) : Prop where
+    (phase i : UInt32) (sent : UInt64) : Prop where
   words : WordsWf words classes nStates.toNat
   start_lt : start.toNat < nStates.toNat
   curr : SetInv cDen cSpa cCount.toNat nStates.toNat
@@ -1685,7 +1393,6 @@ structure RunInv {s : String}
   hlen : s.utf8ByteSize + 1 < 2 ^ 64
   sentOk : SlotWord s sent
   capsOk : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size)
-  mask : MaskInv m0 m1 nDen nSpa nCount.toNat nStates.toNat
 
 open RegexVibe.VM.Wide (toNat_u32_add_one toNat_add_of_lt_2_pow_32 toNat_mul_of_lt_2_pow_32
   toNat_u32_mul_ofNat)
@@ -2495,45 +2202,6 @@ theorem insertU32 {den spa : WordArray} {count : UInt32} {n : Nat}
     usetWord_rfl (u32_usize state) (UInt32.ofNat_toNat).symm
   rw [hdenEq, hspaEq, toNat_u32_add_one hcnt]
   exact insert h state.toNat hs hnot
-
-/-- Same insert, seen through the membership masks. The bound proofs are the ones at the call. -/
-theorem insertMask {den spa : WordArray} {count : UInt32} {n : Nat} {m0 m1 : UInt64}
-    (hm : MaskInv m0 m1 den spa count.toNat n)
-    (h : SetInv den spa count.toNat n) (state : UInt32) (hs : state.toNat < n)
-    (hnot : ¬ SetMem den spa count.toNat state.toNat)
-    (hcnt : count.toNat + 1 < 2 ^ 32)
-    (hdenAny : (count.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ den.data.size)
-    (hspaAny : (state.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ spa.data.size) :
-    MaskInv (maskSet0 m0 state) (maskSet1 m1 state)
-      (den.usetWord count.toUSize state hdenAny)
-      (spa.usetWord state.toUSize count hspaAny)
-      (count + 1).toNat n := by
-  have hdenB := h.denBound count.toNat (lt_of_not_mem h state.toNat hs hnot)
-  have hspaB := h.spaBound state.toNat hs
-  have hdenU : (count.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ den.data.size := by
-    rw [u32_usize count]
-    exact hdenB
-  have hspaU : (state.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ spa.data.size := by
-    rw [u32_usize state]
-    exact hspaB
-  have hden0 : den.usetWord count.toUSize state hdenAny =
-      den.usetWord count.toUSize state hdenU :=
-    usetWord_rfl rfl rfl
-  have hspa0 : spa.usetWord state.toUSize count hspaAny =
-      spa.usetWord state.toUSize count hspaU :=
-    usetWord_rfl rfl rfl
-  have hdenEq : den.usetWord count.toUSize state hdenU =
-      den.usetWord count.toNat.toUSize state.toNat.toUInt32 hdenB :=
-    usetWord_rfl (u32_usize count) (UInt32.ofNat_toNat).symm
-  have hspaEq : spa.usetWord state.toUSize count hspaU =
-      spa.usetWord state.toNat.toUSize count.toNat.toUInt32 hspaB :=
-    usetWord_rfl (u32_usize state) (UInt32.ofNat_toNat).symm
-  have hmask := MaskInv.insert hm h hs hnot
-  have hstate : state.toNat.toUInt32 = state := UInt32.ofNat_toNat
-  have hset0 : maskSet0 m0 state = maskSet0 m0 state.toNat.toUInt32 := by rw [hstate]
-  have hset1 : maskSet1 m1 state = maskSet1 m1 state.toNat.toUInt32 := by rw [hstate]
-  rw [hden0, hspa0, hdenEq, hspaEq, toNat_u32_add_one hcnt, hset0, hset1]
-  exact hmask
 
 end SetInv
 
