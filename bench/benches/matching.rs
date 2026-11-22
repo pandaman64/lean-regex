@@ -1,4 +1,4 @@
-use lean_regex_bench::{count, BOUNDED_RECURSOR, PIKEVM, REFINED_PIKEVM};
+use lean_regex_bench::{count, startup, BOUNDED_RECURSOR, PIKEVM, REFINED_PIKEVM};
 use std::fmt;
 
 /// A curated case. `id` is the index in `RegexVibe.BenchFFI.cases`.
@@ -58,6 +58,9 @@ const PIKEVM_CASES: &[Case] = &[
 ];
 
 fn main() {
+    // Loading haystacks and compiling patterns is not part of a match count.
+    // The first bench would otherwise include it.
+    startup();
     divan::main();
 }
 
