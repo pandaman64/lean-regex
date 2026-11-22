@@ -51,6 +51,12 @@ const CASES: &[Case] = &[
     },
 ];
 
+/// The stock PikeVM segfaults under CodSpeed's simulator on `.*.*=.*`.
+/// The other two engines still time that case.
+const PIKEVM_CASES: &[Case] = &[
+    CASES[0], CASES[1], CASES[2], CASES[3], CASES[4], CASES[5],
+];
+
 fn main() {
     divan::main();
 }
@@ -58,7 +64,7 @@ fn main() {
 mod regex {
     use super::*;
 
-    #[divan::bench(args = CASES)]
+    #[divan::bench(args = PIKEVM_CASES)]
     fn pikevm(case: &Case) -> u64 {
         count(case.id, PIKEVM)
     }
