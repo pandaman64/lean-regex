@@ -7,7 +7,9 @@ public import RegexVibe.VM.Refined
 C ABI used by the Rust benchmarks in `/bench`.
 
 The measured call is `regex_bench_count`: it only runs a match count. Parsing,
-the flat-NFA conversion, and haystack clipping happen in `regex_bench_init`.
+the flat-NFA conversion, and haystack clipping happen in `regex_bench_init`,
+which is an `IO` action. The C caller keeps the resulting array and passes it
+back into the pure counting function.
 
 Engines, by the `engine` argument:
 
@@ -173,44 +175,35 @@ def prepare (dir : String) (case : Case) : IO Prepared := do
     else
       throw <| IO.userError s!"{case.name}: haystack does not fit in a capture word"
 
-builtin_initialize ready : IO.Ref (Array Prepared) ← IO.mkRef #[]
+/--
+Read the haystacks and compile every pattern.
 
-def load (dir : String) : IO Unit := do
+The exported C function for this `IO` action drops the dummy world and returns
+an `EIO` result. It consumes `dir`. The C caller keeps the array and
+`lean_inc`s it before each pure call, which consumes that reference.
+-/
+@[export regex_bench_init, noinline]
+def benchInit (dir : String) : IO (Array Prepared) := do
   let mut loaded : Array Prepared := #[]
   for case in cases do
     loaded := loaded.push (← prepare dir case)
-  ready.set loaded
-
-@[export regex_bench_init, noinline]
-unsafe def benchInit (dir : String) : UInt32 :=
-  match unsafeIO (load dir) with
-  | .ok () => 0
-  | .error e => Id.run do
-    discard <| unsafeIO (IO.eprintln e)
-    return 1
+  return loaded
 
 @[export regex_bench_n_cases, noinline]
-unsafe def benchNCases (_token : UInt32) : UInt32 :=
-  match unsafeIO ready.get with
-  | .ok loaded => UInt32.ofNat loaded.size
-  | .error _ => 0
+def benchNCases (loaded : Array Prepared) : UInt32 :=
+  UInt32.ofNat loaded.size
 
+/-- Match count for one prepared case. No `IO`: the caller passes the array from `benchInit`. -/
 @[export regex_bench_count, noinline]
-unsafe def benchCount (caseId engine : UInt32) : UInt64 :=
-  match unsafeIO ready.get with
-  | .ok loaded =>
-    match loaded[caseId.toNat]? with
-    | some prepared => (prepared.run engine).toUInt64
-    | none => 0
-  | .error _ => 0
+def benchCount (loaded : Array Prepared) (caseId engine : UInt32) : UInt64 :=
+  match loaded[caseId.toNat]? with
+  | some prepared => (prepared.run engine).toUInt64
+  | none => 0
 
 @[export regex_bench_case_name, noinline]
-unsafe def benchCaseName (caseId : UInt32) : String :=
-  match unsafeIO ready.get with
-  | .ok loaded =>
-    match loaded[caseId.toNat]? with
-    | some prepared => prepared.name
-    | none => ""
-  | .error _ => ""
+def benchCaseName (loaded : Array Prepared) (caseId : UInt32) : String :=
+  match loaded[caseId.toNat]? with
+  | some prepared => prepared.name
+  | none => ""
 
 end RegexVibe.BenchFFI
