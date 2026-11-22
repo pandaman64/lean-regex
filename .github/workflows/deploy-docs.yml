@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -12,42 +15,84 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment
+# One build per ref, so a pull request does not cancel the deployment on main.
 concurrency:
-  group: "pages"
+  group: pages-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     name: Build Documentation
-    runs-on: ubuntu-latest
+    # doc-gen4 peaks above the standard runner's 16 GB and dies with
+    # "resource exhausted (error code: 12, not enough memory)" when Lake
+    # runs one process per core. Swap covers the remainder at lower parallelism.
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        
+
       - name: Build RegexCorrectness
         uses: leanprover/lean-action@v1
         with:
           build-args: '--wfail'
           lake-package-directory: correctness
 
+      # Own swap, independent of what the runner image ships. /mnt is preferred
+      # when that volume exists; otherwise fall back to the root disk.
+      - name: Add swap for documentation build
+        run: |
+          set -eu
+          SWAP=/mnt/swapfile-docs
+          if ! sudo fallocate -l 16G "$SWAP"; then
+            SWAP=/swapfile-docs
+            sudo fallocate -l 16G "$SWAP"
+          fi
+          sudo chmod 600 "$SWAP"
+          sudo mkswap "$SWAP"
+          sudo swapon "$SWAP"
+          # Log memory.swap.max and make sure this job can use the swapfile.
+          cg=$(awk -F: '$1=="0" {print $3}' /proc/self/cgroup)
+          if [ -z "$cg" ]; then cg=/; fi
+          d="$cg"
+          while :; do
+            f="/sys/fs/cgroup${d}/memory.swap.max"
+            if [ -f "$f" ]; then
+              echo "memory.swap.max before ($d): $(cat "$f")"
+              echo max | sudo tee "$f" >/dev/null || true
+              echo "memory.swap.max after ($d): $(cat "$f")"
+            fi
+            [ "$d" = "/" ] && break
+            d=$(dirname "$d")
+          done
+          # git and lake fork this process. A large address space is refused
+          # with ENOMEM unless overcommit is allowed.
+          sudo sysctl vm.overcommit_memory=1
+          swapon --show
+          free -h
+
       - name: Build Documentation
         working-directory: docbuild
+        # Lake 5 has no `-j`. The Lean thread pool is the build parallelism,
+        # and one doc-gen4 process per core exhausts the 16 GB runner.
+        env:
+          LEAN_NUM_THREADS: "2"
         run: lake build --keep-toolchain Regex:docs RegexCorrectness:docs
-          
+
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'docbuild/.lake/build/doc'
 
   deploy:
     name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
     steps:
       - name: Deploy to GitHub Pages
