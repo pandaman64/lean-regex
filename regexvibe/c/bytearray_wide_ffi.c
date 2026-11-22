@@ -84,6 +84,41 @@ LEAN_EXPORT lean_obj_res lean_regex_uset_u32le(lean_obj_arg a, size_t off, uint3
  * `hay` is a Lean string (length is `size - 1`, excluding the trailing NUL).
  * `needle` is a `ByteArray`.
  */
+/* Byte length of a Lean string, excluding the trailing NUL. */
+LEAN_EXPORT size_t lean_regex_utf8_len(b_lean_obj_arg s) {
+    return lean_string_size(s) - 1;
+}
+
+static size_t regex_utf8_width(unsigned char c) {
+    if ((c & 0x80) == 0) return 1;
+    if ((c & 0xE0) == 0xC0) return 2;
+    if ((c & 0xF0) == 0xE0) return 3;
+    return 4;
+}
+
+/* Next UTF-8 boundary at or after `i`. Staying put means `i` is already the end. */
+LEAN_EXPORT size_t lean_regex_utf8_next_off(b_lean_obj_arg s, size_t i) {
+    size_t sz = lean_string_size(s) - 1;
+    if (i >= sz) return i;
+    const unsigned char *p = (const unsigned char *)lean_string_cstr(s);
+    size_t w = regex_utf8_width(p[i]);
+    if (i > sz - w) return sz;
+    return i + w;
+}
+
+/* Unicode scalar at byte `i`. ASCII is the byte itself. */
+LEAN_EXPORT uint32_t lean_regex_utf8_get_off(b_lean_obj_arg s, size_t i) {
+    const unsigned char *p = (const unsigned char *)lean_string_cstr(s);
+    unsigned char c = p[i];
+    if ((c & 0x80) == 0) return c;
+    if ((c & 0xE0) == 0xC0)
+        return ((uint32_t)(c & 0x1F) << 6) | (p[i + 1] & 0x3F);
+    if ((c & 0xF0) == 0xE0)
+        return ((uint32_t)(c & 0x0F) << 12) | ((uint32_t)(p[i + 1] & 0x3F) << 6) | (p[i + 2] & 0x3F);
+    return ((uint32_t)(c & 0x07) << 18) | ((uint32_t)(p[i + 1] & 0x3F) << 12) |
+        ((uint32_t)(p[i + 2] & 0x3F) << 6) | (p[i + 3] & 0x3F);
+}
+
 LEAN_EXPORT size_t lean_regex_find_bytes(b_lean_obj_arg hay, size_t off, b_lean_obj_arg needle) {
     size_t hsz = lean_string_size(hay) - 1;
     size_t nsz = lean_sarray_size(needle);

@@ -277,11 +277,15 @@ private def linearMem (runs : ByteArray) (n c : UInt32)
     (hpack : n.toNat * 8 ≤ runs.size) (hfits : n.toNat * 8 < 2 ^ 32) : Bool :=
   linearScan runs n c 0 hpack hfits
 
+/-- Bitmap below 256, then a linear scan of the high runs. The argument is the code point. -/
+@[inline]
+def ClassTable.containsVal (t : ClassTable) (v : UInt32) : Bool :=
+  if v < 256 then bitmapMem t v else linearMem t.high t.nHigh v t.packed t.fits
+
 /-- Bitmap below 256, then a linear scan of the high runs. -/
 @[inline]
 def ClassTable.contains (t : ClassTable) (c : Char) : Bool :=
-  let v := c.val
-  if v < 256 then bitmapMem t v else linearMem t.high t.nHigh v t.packed t.fits
+  containsVal t c.val
 
 end RegexVibe.VM.ClassTable
 

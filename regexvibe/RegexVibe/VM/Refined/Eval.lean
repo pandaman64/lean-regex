@@ -33,13 +33,9 @@ private def closureFuel (phase : UInt32) (sp nCount n : Nat) : Nat :=
   else
     sp + 2 * (n - nCount)
 
-private def evalMeasure {s : String} (p : Pos s) (phase : UInt32) (cCount i : UInt32)
+private def evalMeasure (rem : Nat) (phase : UInt32) (cCount i : UInt32)
     (sp nCount n : Nat) : Nat × Nat × Nat × Nat :=
-  (p.remainingBytes, phaseRank phase, cCount.toNat - i.toNat, closureFuel phase sp nCount n)
-
-private theorem rem_next {s : String} {p : Pos s} (h : p ≠ s.endPos) :
-    (p.next h).remainingBytes < p.remainingBytes :=
-  (Pos.lt_iff_remainingBytes_lt p (p.next h)).mp p.lt_next
+  (rem, phaseRank phase, cCount.toNat - i.toNat, closureFuel phase sp nCount n)
 
 private abbrev EvalRel :=
   Prod.Lex (fun a b : Nat => a < b)
@@ -131,45 +127,44 @@ private theorem rank_stepClosure : phaseRank phaseStepClosure = 0 := by
   unfold phaseRank
   decide
 
-private theorem dec_rem {s : String} {p p' : Pos s} {phase phase' : UInt32}
+private theorem dec_rem {phase phase' : UInt32}
     {cCount cCount' i i' : UInt32} {sp sp' nCount nCount' n : Nat}
-    (h : p'.remainingBytes < p.remainingBytes) :
-    EvalRel (evalMeasure p' phase' cCount' i' sp' nCount' n)
-      (evalMeasure p phase cCount i sp nCount n) := by
+    {rem rem' : Nat} (h : rem' < rem) :
+    EvalRel (evalMeasure rem' phase' cCount' i' sp' nCount' n)
+      (evalMeasure rem phase cCount i sp nCount n) := by
   unfold evalMeasure
   exact lex4_1 h
 
-private theorem dec_rank {s : String} {p q : Pos s} {phase phase' : UInt32}
+private theorem dec_rank {phase phase' : UInt32}
     {cCount cCount' i i' : UInt32} {sp sp' nCount nCount' n : Nat}
-    (hq : q = p) (h : phaseRank phase' < phaseRank phase) :
-    EvalRel (evalMeasure q phase' cCount' i' sp' nCount' n)
-      (evalMeasure p phase cCount i sp nCount n) := by
-  subst hq
+    {rem : Nat} (h : phaseRank phase' < phaseRank phase) :
+    EvalRel (evalMeasure rem phase' cCount' i' sp' nCount' n)
+      (evalMeasure rem phase cCount i sp nCount n) := by
   unfold evalMeasure
   exact lex4_2 h
 
-private theorem dec_step {s : String} {p : Pos s} {phase : UInt32}
+private theorem dec_step {phase : UInt32}
     {cCount i i' : UInt32} {sp sp' nCount nCount' n : Nat}
-    (h : cCount.toNat - i'.toNat < cCount.toNat - i.toNat) :
-    EvalRel (evalMeasure p phase cCount i' sp' nCount' n)
-      (evalMeasure p phase cCount i sp nCount n) := by
+    {rem : Nat} (h : cCount.toNat - i'.toNat < cCount.toNat - i.toNat) :
+    EvalRel (evalMeasure rem phase cCount i' sp' nCount' n)
+      (evalMeasure rem phase cCount i sp nCount n) := by
   unfold evalMeasure
   exact lex4_3 h
 
 /-- Step-closure gave up: `i` advances and the phase returns to stepping. Both ranks are `0`. -/
-private theorem dec_resume {s : String} {p : Pos s} {cCount i : UInt32}
-    {sp sp' nCount nCount' n : Nat}
+private theorem dec_resume {cCount i : UInt32}
+    {sp sp' nCount nCount' n : Nat} {rem : Nat}
     (h : cCount.toNat - (i + 1).toNat < cCount.toNat - i.toNat) :
-    EvalRel (evalMeasure p phaseStep cCount (i + 1) sp' nCount' n)
-      (evalMeasure p phaseStepClosure cCount i sp nCount n) := by
+    EvalRel (evalMeasure rem phaseStep cCount (i + 1) sp' nCount' n)
+      (evalMeasure rem phaseStepClosure cCount i sp nCount n) := by
   unfold evalMeasure phaseRank
   exact lex4_3 h
 
-private theorem dec_fuel {s : String} {p : Pos s} {phase : UInt32} {cCount i : UInt32}
-    {sp sp' nCount nCount' n : Nat}
+private theorem dec_fuel {phase : UInt32} {cCount i : UInt32}
+    {sp sp' nCount nCount' n : Nat} {rem : Nat}
     (h : closureFuel phase sp' nCount' n < closureFuel phase sp nCount n) :
-    EvalRel (evalMeasure p phase cCount i sp' nCount' n)
-      (evalMeasure p phase cCount i sp nCount n) := by
+    EvalRel (evalMeasure rem phase cCount i sp' nCount' n)
+      (evalMeasure rem phase cCount i sp nCount n) := by
   unfold evalMeasure
   exact lex4_4 h
 
@@ -194,16 +189,16 @@ private theorem phase_stepClosure_of (phase : UInt32)
   · exact h
   · exact absurd h hnot
 
-private theorem CpRel.closure {s : String} (p : Pos s) : CpRel phaseClosure p p :=
+private theorem CpRel.closure (p : USize) : CpRel phaseClosure p p :=
   ⟨fun _ => rfl, fun h => absurd h (by decide : phaseClosure ≠ phaseStepClosure)⟩
 
-private theorem CpRel.step {s : String} (p cp : Pos s) : CpRel phaseStep p cp :=
+private theorem CpRel.step (p cp : USize) : CpRel phaseStep p cp :=
   ⟨fun h => absurd h (by decide : phaseStep ≠ phaseClosure),
     fun h => absurd h (by decide : phaseStep ≠ phaseStepClosure)⟩
 
-private theorem CpRel.stepHit {s : String} {p : Pos s} (hp : p ≠ s.endPos) :
-    CpRel phaseStepClosure p (p.next hp) :=
-  ⟨fun h => absurd h (by decide : phaseStepClosure ≠ phaseClosure), fun _ => rem_next hp⟩
+private theorem CpRel.stepHit {p cp : USize} (h : p.toNat < cp.toNat) :
+    CpRel phaseStepClosure p cp :=
+  ⟨fun hc => absurd hc (by decide : phaseStepClosure ≠ phaseClosure), fun _ => h⟩
 
 private theorem SetInv.not_mem_of_miss {den spa : WordArray} {count state si : Nat}
     (hsi : wordAt spa (4 * state) = si.toUInt32) (hsiLt : si < UInt32.size)
@@ -217,16 +212,63 @@ private theorem SetInv.not_mem_of_miss {den spa : WordArray} {count state si : N
   exact hmiss hmem
 
 /-- Return to the stepping phase at `p`, with the step cursor set to `i'`. -/
+private theorem oneNat : ((1 : USize)).toNat = 1 :=
+  RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 1 (by decide)
+
+private theorem uget_idx {a : WordArray} {i j : USize} {hi hj} (h : i = j) :
+    a.ugetWord i hi = a.ugetWord j hj := by
+  cases h
+  rfl
+
+private theorem uset_idx {a : WordArray} {i j : USize} {v : UInt32} {hi hj} (h : i = j) :
+    a.usetWord i v hi = a.usetWord j v hj := by
+  cases h
+  rfl
+
+private theorem uset2_idx {a : WordArray} {i j k l : USize} {v w : UInt32} {hi hj hk hl}
+    (hij : i = j) (hkl : k = l) :
+    (a.usetWord i v hi).usetWord k w hk = (a.usetWord j v hj).usetWord l w hl := by
+  cases hij
+  cases hkl
+  rfl
+
+private theorem slotWord_of_off {s : String} (off : USize)
+    (hp : ∃ p : Pos s, p.offset.byteIdx = off.toNat)
+    (h : s.utf8ByteSize + 1 < 2 ^ 64) : SlotWord s off.toUInt64 := by
+  obtain ⟨p, hp⟩ := hp
+  have hle : p.offset.byteIdx ≤ s.utf8ByteSize := by
+    rw [← String.byteIdx_rawEndPos, ← String.Pos.Raw.le_iff]
+    exact p.isValid.le_rawEndPos
+  have hlt : off.toNat < 2 ^ 64 := by omega
+  have hnat : off.toUInt64.toNat = off.toNat := by
+    unfold USize.toUInt64
+    simp [USize.toNat_toBitVec]
+  exact Or.inr ⟨p, by rw [hnat, hp]⟩
+
+/-- Anchor test at a byte offset. The position is rebuilt only for this instruction. -/
+@[inline]
+def anchorOff {s : String} (k : UInt32) (off : USize) : Bool :=
+  if off == utf8Len s then
+    anchorTest k s.endPos
+  else
+    match posOfByte s off with
+    | some p => anchorTest k p
+    | none => false
+
+private def atOff (s : String) (p : USize) (phase : UInt32) (cCount i : UInt32)
+    (sp : USize) (nCount n : Nat) :=
+  evalMeasure (s.utf8ByteSize - p.toNat) phase cCount i sp.toNat nCount n
+
 private theorem RunInv.toStep {s : String}
     {words : WordArray} {classes : Array ClassTable} {start : UInt32}
     {nSlots : Nat} {nStates : UInt32} {slots cRow0 nRow0 stackRow0 : USize}
-    {p cp : Pos s} {cCount : UInt32} {cDen cSpa : WordArray}
+    {p cp : USize} {cCount : UInt32} {cDen cSpa : WordArray}
     {nCount : UInt32} {nDen nSpa stkS : WordArray} {caps : ByteArray}
-    {sp : Nat} {phase i : UInt32} {sent m0 m1 : UInt64}
-    (h : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    {sp : USize} {phase i : UInt32} {sent m0 m1 : UInt64}
+    (h : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p cp cCount cDen cSpa nCount nDen nSpa stkS caps sp phase i sent m0 m1)
     (i' : UInt32) (hi : i'.toNat ≤ cCount.toNat) :
-    RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p p cCount cDen cSpa nCount nDen nSpa stkS caps sp phaseStep i' sent m0 m1 where
   words := h.words
   start_lt := h.start_lt
@@ -243,29 +285,33 @@ private theorem RunInv.toStep {s : String}
   sentOk := h.sentOk
   capsOk := h.capsOk
   mask := h.mask
+  p_le := h.p_le
+  cp_le := h.p_le
+  p_pos := h.p_pos
+  cp_pos := h.p_pos
 
 private theorem RunInv.advance {s : String}
     {words : WordArray} {classes : Array ClassTable} {start : UInt32}
     {nSlots : Nat} {nStates : UInt32} {slots cRow0 nRow0 stackRow0 : USize}
-    {p cp : Pos s} {cCount : UInt32} {cDen cSpa : WordArray}
+    {p cp : USize} {cCount : UInt32} {cDen cSpa : WordArray}
     {nCount : UInt32} {nDen nSpa stkS : WordArray} {caps : ByteArray}
-    {sp : Nat} {phase i : UInt32} {sent m0 m1 : UInt64}
-    (h : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    {sp : USize} {phase i : UInt32} {sent m0 m1 : UInt64}
+    (h : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p cp cCount cDen cSpa nCount nDen nSpa stkS caps sp phase i sent m0 m1)
     (hi : (i + 1).toNat ≤ cCount.toNat) :
-    RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p p cCount cDen cSpa nCount nDen nSpa stkS caps sp phaseStep (i + 1) sent m0 m1 :=
   toStep h (i + 1) hi
 
 private theorem RunInv.giveUp {s : String}
     {words : WordArray} {classes : Array ClassTable} {start : UInt32}
     {nSlots : Nat} {nStates : UInt32} {slots cRow0 nRow0 stackRow0 : USize}
-    {p cp : Pos s} {cCount : UInt32} {cDen cSpa : WordArray}
+    {p cp : USize} {cCount : UInt32} {cDen cSpa : WordArray}
     {nCount : UInt32} {nDen nSpa stkS : WordArray} {caps : ByteArray}
-    {sp : Nat} {phase i : UInt32} {sent m0 m1 : UInt64}
-    (h : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    {sp : USize} {phase i : UInt32} {sent m0 m1 : UInt64}
+    (h : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p cp cCount cDen cSpa nCount nDen nSpa stkS caps sp phase i sent m0 m1) :
-    RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p p cCount cDen cSpa nCount nDen nSpa stkS caps sp phaseStep cCount sent m0 m1 :=
   toStep h cCount (Nat.le_refl _)
 
@@ -285,191 +331,283 @@ def eval {s : String}
     (words : WordArray) (classes : Array ClassTable) (start : UInt32)
     (nSlots : Nat) (nStates : UInt32) (slots : USize) (sent : UInt64)
     (cRow0 nRow0 stackRow0 : USize)
-    (p cp : Pos s) (matched clos : Bool)
+    (p cp : USize) (matched clos : Bool)
     (cCount : UInt32) (cDen cSpa : WordArray)
     (nCount : UInt32) (nDen nSpa : WordArray)
-    (stkS : WordArray) (caps : ByteArray) (sp : Nat)
+    (stkS : WordArray) (caps : ByteArray) (sp : USize)
     (phase i : UInt32) (m0 m1 : UInt64)
-    (h : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+    (h : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
       p cp cCount cDen cSpa nCount nDen nSpa stkS caps sp phase i sent m0 m1) :
     SearchRun (s := s) nSlots nStates :=
   if hstep : phase == phaseStep then
     have hphase : phase = phaseStep := (beq_iff_eq).mp hstep
-    if hp : p = s.endPos then
+    if hp : p == utf8Len s then
       SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
         ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge⟩
-    else if i == 0 && cCount == 0 && matched then
-      SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
-        ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge⟩
-    else if hic : i == cCount then
-      if !matched then
+    else
+      have hsz : s.utf8ByteSize < USize.size := byteSize_lt_usize h.hlen
+      have hlenNat : (utf8Len s).toNat = s.utf8ByteSize := by
+        simp [utf8Len]
+        exact Nat.mod_eq_of_lt (by simpa [USize.size_eq_two_pow] using hsz)
+      have hltp : p.toNat < s.utf8ByteSize := by
+        have hne : p ≠ utf8Len s := fun heq => hp ((beq_iff_eq).mpr heq)
+        rcases Nat.lt_or_eq_of_le h.p_le with hlt | heq
+        · exact hlt
+        · exact absurd (USize.toNat_inj.mp (by rw [heq, hlenNat])) hne
+      let p' := nextOff s p
+      have hprog := nextOff_progress s p hltp hsz
+      have hp'pos := nextOff_pos h.p_pos hltp hsz
+      have hdec : s.utf8ByteSize - p'.toNat < s.utf8ByteSize - p.toNat :=
+        Nat.sub_lt_sub_left hltp hprog.1
+      if i == 0 && cCount == 0 && matched then
+        SearchRun.pack matched nSlots nStates cDen cSpa nDen nSpa stkS caps
+          ⟨h.capsOk, h.curr.clear, h.next.clear, h.stack.clear, h.buf.stk_ge⟩
+      else if hic : i == cCount then
+        if !matched then
+          have hroom : 0 < stkS.size := by
+            have := h.buf.stk_ge
+            omega
+          have hrowLt : 2 + 2 * nStates.toNat < 2 + 2 * nStates.toNat + stkS.size := by
+            have := h.buf.stk_ge
+            omega
+          have hw := h.buf.window stackRow0 (2 + 2 * nStates.toNat) (Or.inr h.buf.stack_row) hrowLt
+          let caps := fillRow caps (rowOff stackRow0 slots) slots sent hw.1 hw.2
+          let stkS := stkS.usetWord 0 start (h.stack.wordBoundAt 0 hroom (by decide))
+          have hstack : StackInv stkS (1 : USize).toNat nStates.toNat := by
+            simp only [stkS]
+            rw [oneNat]
+            exact h.stack.reset hroom start h.start_lt
+          have hbuf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
+            simp only [caps, stkS]
+            exact (h.buf.of_size (fillRow_size _ _ _ _ hw.1 hw.2) rfl).of_size rfl (by
+              rw [WordArray.usetWord_eq]
+              exact (WordArray.size_uset _ _ _ _).2)
+          have hcaps : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size) := by
+            simp only [caps, stkS]
+            rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
+            exact CapsWf.fillAt h.capsOk h.buf rfl stackRow0 (2 + 2 * nStates.toNat)
+              (Or.inr h.buf.stack_row) hrowLt sent h.sentOk hw.1 hw.2
+          have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+              p' p' cCount cDen cSpa nCount nDen nSpa stkS caps 1
+              phaseClosure 0 sent m0 m1 :=
+            ⟨h.words, h.start_lt, h.curr, h.next, hstack, hbuf,
+              by
+                rw [UInt32.toNat_ofNat_of_lt (by decide : 0 < UInt32.size)]
+                exact Nat.zero_le _,
+              by rw [oneNat]; exact Nat.le_add_left 1 _,
+              Or.inl rfl, CpRel.closure p',
+              fun hc => absurd hc (by decide : phaseClosure ≠ phaseStepClosure),
+              h.hlen, h.sentOk, hcaps, h.mask, hprog.2, hprog.2, hp'pos, hp'pos⟩
+          have hlt : EvalRel
+              (atOff s p' phaseClosure cCount 0 1 nCount.toNat nStates.toNat)
+              (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
+            dec_rem hdec
+          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+            p' p' false false
+            cCount cDen cSpa
+            nCount nDen nSpa
+            stkS caps 1
+            phaseClosure 0 m0 m1 h'
+        else
+          have hz : (0 : UInt32).toNat = 0 :=
+            UInt32.toNat_ofNat_of_lt (by decide : 0 < UInt32.size)
+          have h' : RunInv s words classes start nSlots nStates slots nRow0 cRow0 stackRow0
+              p' p' nCount nDen nSpa 0 cDen cSpa stkS caps 0
+              phaseStep 0 sent (0 : UInt64) (0 : UInt64) :=
+            ⟨h.words, h.start_lt, h.next,
+              by rw [hz]; exact h.curr.clear,
+              by rw [USize.toNat_zero]; exact h.stack.clear,
+              h.buf.swap,
+              by rw [hz]; exact Nat.zero_le _,
+              by rw [USize.toNat_zero]; exact Nat.zero_le _,
+              Or.inr (Or.inr rfl), CpRel.step p' p',
+              fun hc => absurd hc (by decide : phaseStep ≠ phaseStepClosure),
+              h.hlen, h.sentOk, h.capsOk, by rw [hz]; exact MaskInv.zero h.curr.clear,
+              hprog.2, hprog.2, hp'pos, hp'pos⟩
+          have hlt : EvalRel
+              (atOff s p' phaseStep nCount 0 0 (0 : UInt32).toNat nStates.toNat)
+              (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
+            dec_rem hdec
+          eval words classes start nSlots nStates slots sent nRow0 cRow0 stackRow0
+            p' p' matched false
+            nCount nDen nSpa
+            (0 : UInt32) cDen cSpa
+            stkS caps 0
+            phaseStep 0 (0 : UInt64) (0 : UInt64) h'
+      else
+        have hne : ¬ i = cCount := fun heq => hic ((beq_iff_eq).mpr heq)
+        have hltI : i.toNat < cCount.toNat := Nat.lt_of_le_of_ne h.i_le (u32_toNat_ne hne)
+        have hi1 : (i + 1).toNat ≤ cCount.toNat := by
+          rw [toNat_u32_add_one (by
+            have := hltI
+            have := h.curr.count_le
+            have := h.words.le_30
+            omega)]
+          exact Nat.succ_le_of_lt hltI
+        have hlt : EvalRel
+            (atOff s p phaseStep cCount (i + 1) sp nCount.toNat nStates.toNat)
+            (atOff s p phase cCount i sp nCount.toNat nStates.toNat) := by
+          rw [hphase]
+          exact dec_step (step_sub_succ hltI)
+        have hstateB : (i.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ cDen.data.size := by
+          rw [u32_usize i]
+          exact h.curr.denBound i.toNat (Nat.lt_of_lt_of_le hltI h.curr.count_le)
+        let state := cDen.ugetWord i.toUSize hstateB
+        have hs : state.toNat < nStates.toNat := by
+          simp only [state]
+          rw [ugetWord_wordAt cDen i hstateB
+            (Nat.lt_of_lt_of_le (Nat.lt_of_lt_of_le hltI h.curr.count_le) h.curr.n_fit)]
+          exact h.curr.dense_lt i.toNat hltI
+        have htagB := h.words.tagBound state hs
+        have h4n : ((4 : USize)).toNat = 4 :=
+          RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 4 (by decide)
+        have h8n : ((8 : USize)).toNat = 8 :=
+          RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 8 (by decide)
+        have hoff4 := h.words.offBound state hs 4 (by rw [h4n]; decide)
+        have hoff8 := h.words.offBound state hs 8 (by rw [h8n]; decide)
         have hroom : 0 < stkS.size := by
           have := h.buf.stk_ge
           omega
         have hrowLt : 2 + 2 * nStates.toNat < 2 + 2 * nStates.toNat + stkS.size := by
           have := h.buf.stk_ge
           omega
-        have hw := h.buf.window stackRow0 (2 + 2 * nStates.toNat) (Or.inr h.buf.stack_row) hrowLt
-        let caps := fillRow caps (rowOff stackRow0 slots) slots sent hw.1 hw.2
-        let stkS := stkS.usetWord 0 start (h.stack.wordBoundAt 0 hroom (by decide))
-        have hstack : StackInv stkS 1 nStates.toNat := by
-          simp only [stkS]
-          exact h.stack.reset hroom start h.start_lt
-        have hbuf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
-          simp only [caps, stkS]
-          exact (h.buf.of_size (fillRow_size _ _ _ _ hw.1 hw.2) rfl).of_size rfl (by
-            rw [WordArray.usetWord_eq]
-            exact (WordArray.size_uset _ _ _ _).2)
-        have hcaps : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size) := by
-          simp only [caps, stkS]
-          rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
-          exact CapsWf.fillAt h.capsOk h.buf rfl stackRow0 (2 + 2 * nStates.toNat)
-            (Or.inr h.buf.stack_row) hrowLt sent h.sentOk hw.1 hw.2
-        have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
-            (p.next hp) (p.next hp) cCount cDen cSpa nCount nDen nSpa stkS caps 1
-            phaseClosure 0 sent m0 m1 :=
-          ⟨h.words, h.start_lt, h.curr, h.next, hstack, hbuf,
-            by
-              rw [UInt32.toNat_ofNat_of_lt (by decide : 0 < UInt32.size)]
-              exact Nat.zero_le _,
-            Nat.le_add_left 1 _, Or.inl rfl, CpRel.closure (p.next hp),
-            fun hc => absurd hc (by decide : phaseClosure ≠ phaseStepClosure),
-            h.hlen, h.sentOk, hcaps, h.mask⟩
-        have hlt : EvalRel
-            (evalMeasure (p.next hp) phaseClosure cCount 0 1 nCount.toNat nStates.toNat)
-            (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
-          dec_rem (rem_next hp)
-        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
-          (p.next hp) (p.next hp) false false
-          cCount cDen cSpa
-          nCount nDen nSpa
-          stkS caps 1
-          phaseClosure 0 m0 m1 h'
-      else
-        have hz : (0 : UInt32).toNat = 0 :=
-          UInt32.toNat_ofNat_of_lt (by decide : 0 < UInt32.size)
-        have h' : RunInv words classes start nSlots nStates slots nRow0 cRow0 stackRow0
-            (p.next hp) (p.next hp) nCount nDen nSpa 0 cDen cSpa stkS caps 0
-            phaseStep 0 sent (0 : UInt64) (0 : UInt64) :=
-          ⟨h.words, h.start_lt, h.next,
-            by rw [hz]; exact h.curr.clear,
-            h.stack.clear,
-            h.buf.swap,
-            by rw [hz]; exact Nat.zero_le _,
-            by rw [hz]; exact Nat.zero_le _,
-            Or.inr (Or.inr rfl), CpRel.step (p.next hp) (p.next hp),
-            fun hc => absurd hc (by decide : phaseStep ≠ phaseStepClosure),
-            h.hlen, h.sentOk, h.capsOk, by rw [hz]; exact MaskInv.zero h.curr.clear⟩
-        have hlt : EvalRel
-            (evalMeasure (p.next hp) phaseStep nCount 0 0 (0 : UInt32).toNat nStates.toNat)
-            (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
-          dec_rem (rem_next hp)
-        eval words classes start nSlots nStates slots sent nRow0 cRow0 stackRow0
-          (p.next hp) (p.next hp) matched false
-          nCount nDen nSpa
-          (0 : UInt32) cDen cSpa
-          stkS caps 0
-          phaseStep 0 (0 : UInt64) (0 : UInt64) h'
-    else
-      have hne : ¬ i = cCount := fun heq => hic ((beq_iff_eq).mpr heq)
-      have hltI : i.toNat < cCount.toNat := Nat.lt_of_le_of_ne h.i_le (u32_toNat_ne hne)
-      have hi1 : (i + 1).toNat ≤ cCount.toNat := by
-        rw [toNat_u32_add_one (by
-          have := hltI
-          have := h.curr.count_le
-          have := h.words.le_30
-          omega)]
-        exact Nat.succ_le_of_lt hltI
-      have hlt : EvalRel
-          (evalMeasure p phaseStep cCount (i + 1) sp nCount.toNat nStates.toNat)
-          (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) := by
-        rw [hphase]
-        exact dec_step (step_sub_succ hltI)
-      have hstateB : (i.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ cDen.data.size := by
-        rw [u32_usize i]
-        exact h.curr.denBound i.toNat (Nat.lt_of_lt_of_le hltI h.curr.count_le)
-      let state := cDen.ugetWord i.toUSize hstateB
-      have hs : state.toNat < nStates.toNat := by
-        simp only [state]
-        rw [ugetWord_wordAt cDen i hstateB
-          (Nat.lt_of_lt_of_le (Nat.lt_of_lt_of_le hltI h.curr.count_le) h.curr.n_fit)]
-        exact h.curr.dense_lt i.toNat hltI
-      have htagB := h.words.tagBound state hs
-      have h4n : ((4 : USize)).toNat = 4 :=
-        RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 4 (by decide)
-      have h8n : ((8 : USize)).toNat = 8 :=
-        RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 8 (by decide)
-      have hoff4 := h.words.offBound state hs 4 (by rw [h4n]; decide)
-      have hoff8 := h.words.offBound state hs 8 (by rw [h8n]; decide)
-      have hroom : 0 < stkS.size := by
-        have := h.buf.stk_ge
-        omega
-      have hrowLt : 2 + 2 * nStates.toNat < 2 + 2 * nStates.toNat + stkS.size := by
-        have := h.buf.stk_ge
-        omega
-      have hdstW := h.buf.window stackRow0 (2 + 2 * nStates.toNat) (Or.inr h.buf.stack_row) hrowLt
-      have haddC := h.buf.addU32 cRow0 h.buf.c_row state hs
-      have hsrcW := h.buf.window (cRow0 + state.toUSize) (cRow0.toNat + state.toNat) haddC.1 haddC.2
-      let base := state.toUSize * strideBytes
-      let tag := words.uget base htagB
-      if tag == tagDone then
-        have hlt : EvalRel
-            (evalMeasure p phaseStep cCount cCount sp nCount.toNat nStates.toNat)
-            (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) := by
-          rw [hphase]
-          exact dec_step (by rw [Nat.sub_self]; exact Nat.sub_pos_of_lt hltI)
-        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
-          p p matched false
-          cCount cDen cSpa
-          nCount nDen nSpa
-          stkS caps sp
-          phaseStep cCount m0 m1 h.giveUp
-      else if tag == tagChar then
-        let extra := words.uget (base + 8) hoff8.1
-        if (p.get hp).val == extra then
-          let nextW := words.uget (base + 4) hoff4.1
-          let caps := copyRow caps (rowOff stackRow0 slots)
-            (rowOff (cRow0 + state.toUSize) slots) slots hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
-          have hnextLt : nextW.toNat < nStates.toNat := by
-            simp only [nextW]
-            rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
-            exact h.words.next_lt state.toNat hs
-          let stkS := stkS.usetWord 0 nextW (h.stack.wordBoundAt 0 hroom (by decide))
-          have hstack : StackInv stkS 1 nStates.toNat := by
-            simp only [stkS]
-            exact h.stack.reset hroom nextW hnextLt
-          have hbuf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
-            simp only [caps, stkS]
-            exact (h.buf.of_size (copyRow_size _ _ _ _ hdstW.1 hsrcW.1 hdstW.2 hsrcW.2) rfl).of_size
-              rfl (by
-                rw [WordArray.usetWord_eq]
-                exact (WordArray.size_uset _ _ _ _).2)
-          have hcaps : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size) := by
-            simp only [caps, stkS]
-            rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
-            exact CapsWf.copyAt h.capsOk h.buf rfl stackRow0 (cRow0 + state.toUSize)
-              (2 + 2 * nStates.toNat) (cRow0.toNat + state.toNat)
-              (Or.inr h.buf.stack_row) haddC.1 hrowLt haddC.2
-              hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
-          have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
-              p (p.next hp) cCount cDen cSpa nCount nDen nSpa stkS caps 1
-              phaseStepClosure i sent m0 m1 :=
-            ⟨h.words, h.start_lt, h.curr, h.next, hstack, hbuf, h.i_le,
-              Nat.le_add_left 1 _, Or.inr (Or.inl rfl), CpRel.stepHit hp, fun _ => hltI,
-              h.hlen, h.sentOk, hcaps, h.mask⟩
+        have hdstW := h.buf.window stackRow0 (2 + 2 * nStates.toNat) (Or.inr h.buf.stack_row) hrowLt
+        have haddC := h.buf.addU32 cRow0 h.buf.c_row state hs
+        have hsrcW := h.buf.window (cRow0 + state.toUSize) (cRow0.toNat + state.toNat) haddC.1 haddC.2
+        let base := state.toUSize * strideBytes
+        let tag := words.uget base htagB
+        if tag == tagDone then
           have hlt : EvalRel
-              (evalMeasure p phaseStepClosure cCount i 1 nCount.toNat nStates.toNat)
-              (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) := by
-            unfold evalMeasure
+              (atOff s p phaseStep cCount cCount sp nCount.toNat nStates.toNat)
+              (atOff s p phase cCount i sp nCount.toNat nStates.toNat) := by
             rw [hphase]
-            unfold phaseRank
-            exact lex4_4 (fuel_enter_at sp nCount.toNat nStates.toNat h.next.count_le)
+            exact dec_step (by rw [Nat.sub_self]; exact Nat.sub_pos_of_lt hltI)
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
-            p (p.next hp) matched false
+            p p matched false
             cCount cDen cSpa
             nCount nDen nSpa
-            stkS caps 1
-            phaseStepClosure i m0 m1 h'
+            stkS caps sp
+            phaseStep cCount m0 m1 h.giveUp
+        else if tag == tagChar then
+          let extra := words.uget (base + 8) hoff8.1
+          if getOff s p == extra then
+            let nextW := words.uget (base + 4) hoff4.1
+            let caps := copyRow caps (rowOff stackRow0 slots)
+              (rowOff (cRow0 + state.toUSize) slots) slots hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
+            have hnextLt : nextW.toNat < nStates.toNat := by
+              simp only [nextW]
+              rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
+              exact h.words.next_lt state.toNat hs
+            let stkS := stkS.usetWord 0 nextW (h.stack.wordBoundAt 0 hroom (by decide))
+            have hstack : StackInv stkS (1 : USize).toNat nStates.toNat := by
+              simp only [stkS]
+              rw [oneNat]
+              exact h.stack.reset hroom nextW hnextLt
+            have hbuf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
+              simp only [caps, stkS]
+              exact (h.buf.of_size (copyRow_size _ _ _ _ hdstW.1 hsrcW.1 hdstW.2 hsrcW.2) rfl).of_size
+                rfl (by
+                  rw [WordArray.usetWord_eq]
+                  exact (WordArray.size_uset _ _ _ _).2)
+            have hcaps : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size) := by
+              simp only [caps, stkS]
+              rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
+              exact CapsWf.copyAt h.capsOk h.buf rfl stackRow0 (cRow0 + state.toUSize)
+                (2 + 2 * nStates.toNat) (cRow0.toNat + state.toNat)
+                (Or.inr h.buf.stack_row) haddC.1 hrowLt haddC.2
+                hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
+            have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+                p p' cCount cDen cSpa nCount nDen nSpa stkS caps 1
+                phaseStepClosure i sent m0 m1 :=
+              ⟨h.words, h.start_lt, h.curr, h.next, hstack, hbuf, h.i_le,
+                by rw [oneNat]; exact Nat.le_add_left 1 _,
+                Or.inr (Or.inl rfl), CpRel.stepHit hprog.1, fun _ => hltI,
+                h.hlen, h.sentOk, hcaps, h.mask, h.p_le, hprog.2, h.p_pos, hp'pos⟩
+            have hlt : EvalRel
+                (atOff s p phaseStepClosure cCount i 1 nCount.toNat nStates.toNat)
+                (atOff s p phase cCount i sp nCount.toNat nStates.toNat) := by
+              unfold atOff evalMeasure
+              rw [hphase, oneNat]
+              unfold phaseRank
+              exact lex4_4 (fuel_enter_at sp.toNat nCount.toNat nStates.toNat h.next.count_le)
+            eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+              p p' matched false
+              cCount cDen cSpa
+              nCount nDen nSpa
+              stkS caps 1
+              phaseStepClosure i m0 m1 h'
+          else
+            eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+              p p matched false
+              cCount cDen cSpa
+              nCount nDen nSpa
+              stkS caps sp
+              phaseStep (i + 1) m0 m1 (h.advance hi1)
+        else if hsparse : tag == tagSparse then
+          let extra := words.uget (base + 8) hoff8.1
+          have hcls : extra.toNat < classes.size := by
+            simp only [extra]
+            rw [h.words.word_eq state hs 8 (Or.inr h8n) hoff8.1, h8n]
+            exact h.words.sparse_lt state.toNat hs (by
+              have htag : tag = wordAt words (12 * state.toNat) := by
+                simp only [tag, base]
+                exact h.words.tag_eq state hs htagB
+              rw [← htag]
+              exact (beq_iff_eq).mp hsparse)
+          let cs := classes.uget extra.toUSize (by rw [UInt32.toNat_toUSize]; exact hcls)
+          if cs.containsVal (getOff s p) then
+            let nextW := words.uget (base + 4) hoff4.1
+            let caps := copyRow caps (rowOff stackRow0 slots)
+              (rowOff (cRow0 + state.toUSize) slots) slots hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
+            have hnextLt : nextW.toNat < nStates.toNat := by
+              simp only [nextW]
+              rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
+              exact h.words.next_lt state.toNat hs
+            let stkS := stkS.usetWord 0 nextW (h.stack.wordBoundAt 0 hroom (by decide))
+            have hstack : StackInv stkS (1 : USize).toNat nStates.toNat := by
+              simp only [stkS]
+              rw [oneNat]
+              exact h.stack.reset hroom nextW hnextLt
+            have hbuf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
+              simp only [caps, stkS]
+              exact (h.buf.of_size (copyRow_size _ _ _ _ hdstW.1 hsrcW.1 hdstW.2 hsrcW.2) rfl).of_size
+                rfl (by
+                  rw [WordArray.usetWord_eq]
+                  exact (WordArray.size_uset _ _ _ _).2)
+            have hcaps : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size) := by
+              simp only [caps, stkS]
+              rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
+              exact CapsWf.copyAt h.capsOk h.buf rfl stackRow0 (cRow0 + state.toUSize)
+                (2 + 2 * nStates.toNat) (cRow0.toNat + state.toNat)
+                (Or.inr h.buf.stack_row) haddC.1 hrowLt haddC.2
+                hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
+            have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+                p p' cCount cDen cSpa nCount nDen nSpa stkS caps 1
+                phaseStepClosure i sent m0 m1 :=
+              ⟨h.words, h.start_lt, h.curr, h.next, hstack, hbuf, h.i_le,
+                by rw [oneNat]; exact Nat.le_add_left 1 _,
+                Or.inr (Or.inl rfl), CpRel.stepHit hprog.1, fun _ => hltI,
+                h.hlen, h.sentOk, hcaps, h.mask, h.p_le, hprog.2, h.p_pos, hp'pos⟩
+            have hlt : EvalRel
+                (atOff s p phaseStepClosure cCount i 1 nCount.toNat nStates.toNat)
+                (atOff s p phase cCount i sp nCount.toNat nStates.toNat) := by
+              unfold atOff evalMeasure
+              rw [hphase, oneNat]
+              unfold phaseRank
+              exact lex4_4 (fuel_enter_at sp.toNat nCount.toNat nStates.toNat h.next.count_le)
+            eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+              p p' matched false
+              cCount cDen cSpa
+              nCount nDen nSpa
+              stkS caps 1
+              phaseStepClosure i m0 m1 h'
+          else
+            eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
+              p p matched false
+              cCount cDen cSpa
+              nCount nDen nSpa
+              stkS caps sp
+              phaseStep (i + 1) m0 m1 (h.advance hi1)
         else
           eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
             p p matched false
@@ -477,76 +615,6 @@ def eval {s : String}
             nCount nDen nSpa
             stkS caps sp
             phaseStep (i + 1) m0 m1 (h.advance hi1)
-      else if hsparse : tag == tagSparse then
-        let extra := words.uget (base + 8) hoff8.1
-        have hcls : extra.toNat < classes.size := by
-          simp only [extra]
-          rw [h.words.word_eq state hs 8 (Or.inr h8n) hoff8.1, h8n]
-          exact h.words.sparse_lt state.toNat hs (by
-            have htag : tag = wordAt words (12 * state.toNat) := by
-              simp only [tag, base]
-              exact h.words.tag_eq state hs htagB
-            rw [← htag]
-            exact (beq_iff_eq).mp hsparse)
-        let cs := classes.uget extra.toUSize (by rw [UInt32.toNat_toUSize]; exact hcls)
-        if cs.contains (p.get hp) then
-          let nextW := words.uget (base + 4) hoff4.1
-          let caps := copyRow caps (rowOff stackRow0 slots)
-            (rowOff (cRow0 + state.toUSize) slots) slots hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
-          have hnextLt : nextW.toNat < nStates.toNat := by
-            simp only [nextW]
-            rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
-            exact h.words.next_lt state.toNat hs
-          let stkS := stkS.usetWord 0 nextW (h.stack.wordBoundAt 0 hroom (by decide))
-          have hstack : StackInv stkS 1 nStates.toNat := by
-            simp only [stkS]
-            exact h.stack.reset hroom nextW hnextLt
-          have hbuf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
-            simp only [caps, stkS]
-            exact (h.buf.of_size (copyRow_size _ _ _ _ hdstW.1 hsrcW.1 hdstW.2 hsrcW.2) rfl).of_size
-              rfl (by
-                rw [WordArray.usetWord_eq]
-                exact (WordArray.size_uset _ _ _ _).2)
-          have hcaps : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size) := by
-            simp only [caps, stkS]
-            rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
-            exact CapsWf.copyAt h.capsOk h.buf rfl stackRow0 (cRow0 + state.toUSize)
-              (2 + 2 * nStates.toNat) (cRow0.toNat + state.toNat)
-              (Or.inr h.buf.stack_row) haddC.1 hrowLt haddC.2
-              hdstW.1 hsrcW.1 hdstW.2 hsrcW.2
-          have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
-              p (p.next hp) cCount cDen cSpa nCount nDen nSpa stkS caps 1
-              phaseStepClosure i sent m0 m1 :=
-            ⟨h.words, h.start_lt, h.curr, h.next, hstack, hbuf, h.i_le,
-              Nat.le_add_left 1 _, Or.inr (Or.inl rfl), CpRel.stepHit hp, fun _ => hltI,
-              h.hlen, h.sentOk, hcaps, h.mask⟩
-          have hlt : EvalRel
-              (evalMeasure p phaseStepClosure cCount i 1 nCount.toNat nStates.toNat)
-              (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) := by
-            unfold evalMeasure
-            rw [hphase]
-            unfold phaseRank
-            exact lex4_4 (fuel_enter_at sp nCount.toNat nStates.toNat h.next.count_le)
-          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
-            p (p.next hp) matched false
-            cCount cDen cSpa
-            nCount nDen nSpa
-            stkS caps 1
-            phaseStepClosure i m0 m1 h'
-        else
-          eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
-            p p matched false
-            cCount cDen cSpa
-            nCount nDen nSpa
-            stkS caps sp
-            phaseStep (i + 1) m0 m1 (h.advance hi1)
-      else
-        eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
-          p p matched false
-          cCount cDen cSpa
-          nCount nDen nSpa
-          stkS caps sp
-          phaseStep (i + 1) m0 m1 (h.advance hi1)
   else
     have hnotStep : ¬ phase = phaseStep := fun heq => hstep ((beq_iff_eq).mpr heq)
     if hsp0 : sp == 0 then
@@ -577,23 +645,30 @@ def eval {s : String}
           · exact CapsWf.copyAt h.capsOk h.buf rfl 0 1 0 1 (Or.inr h0n) (Or.inr h1n)
               hlt0 hlt1 hw0.1 hw1.1 hw0.2 hw1.2
           · exact h.capsOk
-        have h' : RunInv words classes start nSlots nStates slots nRow0 cRow0 stackRow0
+        have h' : RunInv s words classes start nSlots nStates slots nRow0 cRow0 stackRow0
             cp cp nCount nDen nSpa 0 cDen cSpa stkS caps 0 phaseStep 0 sent (0 : UInt64) (0 : UInt64) :=
           ⟨h.words, h.start_lt, h.next,
             by rw [hz]; exact h.curr.clear,
             hspZ ▸ h.stack,
             hbuf,
             by rw [hz]; exact Nat.zero_le _,
-            by rw [hz]; exact Nat.zero_le _,
+            by rw [USize.toNat_zero, hz]; exact Nat.zero_le _,
             Or.inr (Or.inr rfl), CpRel.step cp cp,
             fun hc => absurd hc (by decide : phaseStep ≠ phaseStepClosure),
-            h.hlen, h.sentOk, hcaps, by rw [hz]; exact MaskInv.zero h.curr.clear⟩
+            h.hlen, h.sentOk, hcaps, by rw [hz]; exact MaskInv.zero h.curr.clear,
+            h.cp_le, h.cp_le, h.cp_pos, h.cp_pos⟩
         have hlt : EvalRel
-            (evalMeasure cp phaseStep nCount 0 0 (0 : UInt32).toNat nStates.toNat)
-            (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) := by
+            (atOff s cp phaseStep nCount 0 0 (0 : UInt32).toNat nStates.toNat)
+            (atOff s p phase cCount i sp nCount.toNat nStates.toNat) := by
           by_cases hph : phase = phaseClosure
-          · exact dec_rank (h.cp_rel.1 hph) (by rw [hph, rank_step, rank_closure]; decide)
-          · exact dec_rem (h.cp_rel.2 (phase_stepClosure_of phase h.phase_ok hnotStep hph))
+          · have hcp : cp = p := h.cp_rel.1 hph
+            rw [hcp]
+            exact dec_rank (by rw [hph, rank_step, rank_closure]; decide)
+          · have hltcp := h.cp_rel.2 (phase_stepClosure_of phase h.phase_ok hnotStep hph)
+            exact dec_rem (by
+              have := h.p_le
+              have := h.cp_le
+              omega)
         eval words classes start nSlots nStates slots sent nRow0 cRow0 stackRow0
           cp cp clos false
           nCount nDen nSpa
@@ -616,8 +691,8 @@ def eval {s : String}
             omega)]
           exact Nat.succ_le_of_lt hltI
         have hlt : EvalRel
-            (evalMeasure p phaseStep cCount (i + 1) 0 nCount.toNat nStates.toNat)
-            (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) := by
+            (atOff s p phaseStep cCount (i + 1) 0 nCount.toNat nStates.toNat)
+            (atOff s p phase cCount i sp nCount.toNat nStates.toNat) := by
           rw [hsc]
           exact dec_resume (step_sub_succ hltI)
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
@@ -627,19 +702,36 @@ def eval {s : String}
           stkS caps 0
           phaseStep (i + 1) m0 m1 (hspZ ▸ h.advance hi1)
     else
-      have hspPos : 0 < sp := by
+      have hspN : 0 < sp.toNat := by
         have hnez : sp ≠ 0 := fun h0 => hsp0 ((beq_iff_eq).mpr h0)
+        have hnz : sp.toNat ≠ 0 := by
+          intro hz
+          exact hnez (USize.toNat_inj.mp (by rw [hz, USize.toNat_zero]))
         omega
+      have hspGe : (1 : USize) ≤ sp := by
+        rw [USize.le_iff_toNat_le, oneNat]
+        exact Nat.succ_le_of_lt hspN
       let sp' := sp - 1
-      have hspLt : sp' < sp := Nat.sub_lt hspPos (by decide)
-      have hsp30 : sp' < 2 ^ 30 := Nat.lt_of_lt_of_le hspLt h.stack.sp_fit
-      have hstkB := h.stack.wordBound sp' hspLt
-      let stkOff := rowOff (stackRow0 + sp'.toUSize) slots
-      let state := stkS.ugetWord sp'.toUSize hstkB
+      have hsub : sp'.toNat = sp.toNat - 1 := by
+        rw [USize.toNat_sub_of_le sp 1 hspGe, oneNat]
+      have hspLt : sp'.toNat < sp.toNat := by
+        rw [hsub]
+        exact Nat.sub_lt hspN (by decide)
+      have hsp30 : sp'.toNat < 2 ^ 30 := Nat.lt_of_lt_of_le hspLt h.stack.sp_fit
+      have hround : sp'.toNat.toUSize = sp' := by
+        apply USize.toNat_inj.mp
+        rw [RegexVibe.VM.Wide.toNat_toUSize_of_lt_2_pow_32 (Nat.lt_trans hsp30 (by decide))]
+      have hstkB : (sp' * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ stkS.data.size := by
+        simpa [hround] using h.stack.wordBound sp'.toNat hspLt
+      let stkOff := rowOff (stackRow0 + sp') slots
+      let state := stkS.ugetWord sp' hstkB
       have hs : state.toNat < nStates.toNat := by
-        simp only [state]
-        rw [h.stack.readWord sp' hspLt]
-        exact h.stack.id_lt sp' hspLt
+        have hread := h.stack.readWord sp'.toNat hspLt
+        have heq : state = stkS.ugetWord sp'.toNat.toUSize (h.stack.wordBound sp'.toNat hspLt) := by
+          simp only [state]
+          exact uget_idx (hround.symm)
+        rw [heq, hread]
+        exact h.stack.id_lt sp'.toNat hspLt
       have hspaB : (state.toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ nSpa.data.size := by
         rw [u32_usize state]
         exact h.next.spaBound state.toNat hs
@@ -656,17 +748,21 @@ def eval {s : String}
           else
             false
       if hseenB : seen = true then
-        have hstack : StackInv stkS sp' nStates.toNat := by
-          simpa [sp'] using h.stack.pop hspPos
-        have hspLe : sp' ≤ nCount.toNat + 1 := Nat.le_trans (Nat.le_of_lt hspLt) h.sp_le
-        have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+        have hstack : StackInv stkS sp'.toNat nStates.toNat := by
+          rw [hsub]
+          exact h.stack.pop hspN
+        have hspLe : sp'.toNat ≤ nCount.toNat + 1 := Nat.le_trans (Nat.le_of_lt hspLt) h.sp_le
+        have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
             p cp cCount cDen cSpa nCount nDen nSpa stkS caps sp' phase i sent m0 m1 :=
           ⟨h.words, h.start_lt, h.curr, h.next, hstack, h.buf, h.i_le, hspLe,
-            h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, h.capsOk, h.mask⟩
+            h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, h.capsOk, h.mask,
+            h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
         have hlt : EvalRel
-            (evalMeasure p phase cCount i (sp - 1) nCount.toNat nStates.toNat)
-            (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
-          dec_fuel (fuel_pop hnotStep hspPos)
+            (atOff s p phase cCount i (sp - 1) nCount.toNat nStates.toNat)
+            (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
+          dec_fuel (by
+            rw [hsub]
+            exact fuel_pop hnotStep hspN)
         eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
           p cp matched clos
           cCount cDen cSpa
@@ -742,10 +838,12 @@ def eval {s : String}
           RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 1 (by decide)
         have hlt1 : 1 < 2 + 2 * nStates.toNat + stkS.size := by omega
         have hw1 := h.buf.window 1 1 (Or.inr h1n) hlt1
-        have hslot := h.buf.stackSlot sp' (Nat.lt_of_lt_of_le hspLt h.stack.sp_le)
+        have hslot := h.buf.stackSlot sp'.toNat (Nat.lt_of_lt_of_le hspLt h.stack.sp_le)
           (Nat.lt_trans hsp30 (by decide : 2 ^ 30 < 2 ^ 32))
-        have hstkW := h.buf.window (stackRow0 + sp'.toUSize) (2 + 2 * nStates.toNat + sp')
-          hslot.1 hslot.2
+        have hslotU : nSlots = 0 ∨ (stackRow0 + sp').toNat = 2 + 2 * nStates.toNat + sp'.toNat := by
+          simpa [hround] using hslot.1
+        have hstkW := h.buf.window (stackRow0 + sp') (2 + 2 * nStates.toNat + sp'.toNat)
+          hslotU hslot.2
         have haddN := h.buf.addU32 nRow0 h.buf.n_row state hs
         have hnextW := h.buf.window (nRow0 + state.toUSize) (nRow0.toNat + state.toNat)
           haddN.1 haddN.2
@@ -782,19 +880,19 @@ def eval {s : String}
         have hcaps1 : CapsWf (s := s) caps1 nSlots (2 + 2 * nStates.toNat + stkS.size) := by
           simp only [caps1]
           split
-          · exact CapsWf.copyAt h.capsOk h.buf rfl 1 (stackRow0 + sp'.toUSize) 1
-              (2 + 2 * nStates.toNat + sp') (Or.inr h1n) hslot.1 hlt1 hslot.2
+          · exact CapsWf.copyAt h.capsOk h.buf rfl 1 (stackRow0 + sp') 1
+              (2 + 2 * nStates.toNat + sp'.toNat) (Or.inr h1n) hslotU hlt1 hslot.2
               hw1.1 hstkW.1 hw1.2 hstkW.2
           · exact h.capsOk
-        have hsrcNat : stkOff.toNat = (2 + 2 * nStates.toNat + sp') * nSlots * 8 := by
+        have hsrcNat : stkOff.toNat = (2 + 2 * nStates.toNat + sp'.toNat) * nSlots * 8 := by
           simp only [stkOff]
-          exact h.buf.rowOff_eq (stackRow0 + sp'.toUSize) (2 + 2 * nStates.toNat + sp')
-            hslot.1 hslot.2
+          exact h.buf.rowOff_eq (stackRow0 + sp') (2 + 2 * nStates.toNat + sp'.toNat)
+            hslotU hslot.2
         have hcaps2 : CapsWf (s := s) caps2 nSlots (2 + 2 * nStates.toNat + stkS.size) := by
           simp only [caps2]
           split
           · exact CapsWf.copyRow hcaps1 (rowOff (nRow0 + state.toUSize) slots) stkOff slots
-              (nRow0.toNat + state.toNat) (2 + 2 * nStates.toNat + sp')
+              (nRow0.toNat + state.toNat) (2 + 2 * nStates.toNat + sp'.toNat)
               (h.buf.rowOff_eq (nRow0 + state.toUSize) (nRow0.toNat + state.toNat) haddN.1 haddN.2)
               hsrcNat h.buf.slots_eq haddN.2 hslot.2 hnext1 hstk1 hnextW.2 hstkW.2
           · exact hcaps1
@@ -826,7 +924,16 @@ def eval {s : String}
             split
             · exact h.buf.of_size (copyRow_size _ _ _ _ hw1.1 hstkW.1 hw1.2 hstkW.2) rfl
             · exact h.buf
-        have hno : ¬ sp' + 2 > stkS.size := by
+        have hadd1 : (sp' + 1).toNat = sp'.toNat + 1 := by
+          rw [RegexVibe.VM.Wide.toNat_add_of_lt_2_pow_32 (by
+            rw [oneNat]
+            exact Nat.lt_trans (Nat.add_lt_add_right hsp30 1) (by decide)), oneNat]
+        have hadd2 : (sp' + 2).toNat = sp'.toNat + 2 := by
+          have h2 : ((2 : USize)).toNat = 2 :=
+            RegexVibe.VM.Wide.toNat_uSize_ofNat_of_lt 2 (by decide)
+          rw [RegexVibe.VM.Wide.toNat_add_of_lt_2_pow_32 (by rw [h2]; omega), h2]
+        have hbackN : sp'.toNat + 1 = sp.toNat := by rw [hsub]; omega
+        have hno : ¬ sp'.toNat + 2 > stkS.size := by
           have := h.sp_le
           have := h.buf.stk_ge
           have := h.next.count_le
@@ -835,17 +942,16 @@ def eval {s : String}
           simp only [nextW]
           rw [h.words.word_eq state hs 4 (Or.inl h4n) hoff4.1, h4n]
           exact h.words.next_lt state.toNat hs
-        have hback : sp' + 1 = sp := by omega
-        have hspEq : sp' = sp - 1 := by simp only [sp']
-        have htop : sp' + 1 < stkS.size := by
+        have hspEq : sp'.toNat = sp.toNat - 1 := hsub
+        have htop : sp'.toNat + 1 < stkS.size := by
           have := h.sp_le
           have := h.buf.stk_ge
           have := h.next.count_le
           omega
-        have htop32 : sp' + 1 < 2 ^ 32 := by
+        have htop32 : sp'.toNat + 1 < 2 ^ 32 := by
           have := h.stack.sp_fit
           omega
-        have hfit30 : sp + 1 ≤ 2 ^ 30 := by
+        have hfit30 : sp.toNat + 1 ≤ 2 ^ 30 := by
           have hdiv : nStates.toNat ≤ 2 ^ 32 / 12 :=
             (Nat.le_div_iff_mul_le (by decide : 0 < 12)).mpr h.words.n_bytes
           have : 2 ^ 32 / 12 + 1 ≤ 2 ^ 30 := by decide
@@ -855,40 +961,45 @@ def eval {s : String}
         -- The live prefix never fills the buffer: `sp ≤ nCount + 1` and the stack
         -- was allocated with at least `n + 2` words. The check stays so the schedule
         -- is unchanged; the growing branch does not return.
-        if hbad : sp' + 2 > stkS.size then
+        if hbad : sp'.toNat + 2 > stkS.size then
           False.elim (hno hbad)
         else
-          have hwrite := h.stack.wordBound sp' hspLt
+          have hwrite := h.stack.wordBound sp'.toNat hspLt
+          have hwriteU : (sp' * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ stkS.data.size := by
+            rw [hround.symm]
+            exact hwrite
           have hstkSz (a : WordArray) (i : USize) (v : UInt32)
               (hb : (i * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ a.data.size) :
               (a.usetWord i v hb).size = a.size := by
             rw [WordArray.usetWord_eq]
             exact (WordArray.size_uset _ _ _ _).2
           if tag == tagEpsilon then
-            let stk1 := stkS.usetWord sp'.toUSize nextW hwrite
-            have hstack : StackInv stk1 (sp' + 1) nStates.toNat := by
+            let stk1 := stkS.usetWord sp' nextW hwriteU
+            have hstack : StackInv stk1 (sp' + 1).toNat nStates.toNat := by
               simp only [stk1]
               exact StackInv.cast
-                (h.stack.succAt hspPos nextW hnextLt sp' hspEq hwrite) rfl hback
+                (h.stack.succAt hspN nextW hnextLt sp'.toNat hspEq hwrite)
+                (uset_idx hround.symm)
+                (by rw [hadd1, hbackN])
             have hbuf1 : EvalBuf caps2 stk1 slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
               simp only [stk1]
               exact hbuf.of_size rfl (hstkSz _ _ _ _)
-            have hspLe : sp' + 1 ≤ nCount'.toNat + 1 := by
-              rw [hback, toNat_u32_add_one hcnt]
+            have hspLe : (sp' + 1).toNat ≤ nCount'.toNat + 1 := by
+              rw [hadd1, hbackN, toNat_u32_add_one hcnt]
               exact Nat.le_trans h.sp_le (Nat.le_succ _)
             have hcaps : CapsWf (s := s) caps2 nSlots (2 + 2 * nStates.toNat + stk1.size) := by
               simp only [stk1]
               rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
               exact hcaps2
-            have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+            have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
                 p cp cCount cDen cSpa nCount' nDen nSpa stk1 caps2 (sp' + 1) phase i sent m0' m1' :=
               ⟨h.words, h.start_lt, h.curr, hnext, hstack, hbuf1, h.i_le, hspLe,
-                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask⟩
+                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask, h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
             have hlt : EvalRel
-                (evalMeasure p phase cCount i ((sp - 1) + 1) (nCount + 1).toNat nStates.toNat)
-                (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
+                (atOff s p phase cCount i ((sp - 1) + 1) (nCount + 1).toNat nStates.toNat)
+                (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
               dec_fuel (by
-                rw [show (sp - 1) + 1 = sp by omega, toNat_u32_add_one hcnt]
+                rw [hadd1, hbackN, toNat_u32_add_one hcnt]
                 exact fuel_keep hnotStep hcountLt)
             eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
               p cp matched clos
@@ -906,11 +1017,18 @@ def eval {s : String}
                   exact h.words.tag_eq state hs htagB
                 rw [← htag]
                 exact (beq_iff_eq).mp hsplit)
-            have hslot2 := h.buf.stackSlot (sp' + 1) htop htop32
-            have htopW := h.buf.window (stackRow0 + (sp' + 1).toUSize)
-              (2 + 2 * nStates.toNat + (sp' + 1)) hslot2.1 hslot2.2
+            have hround1 : (sp' + 1).toNat.toUSize = sp' + 1 := by
+              apply USize.toNat_inj.mp
+              rw [RegexVibe.VM.Wide.toNat_toUSize_of_lt_2_pow_32 (by rw [hadd1]; exact htop32)]
+            have hslot2 := h.buf.stackSlot (sp' + 1).toNat
+              (by rw [hadd1]; exact htop) (by rw [hadd1]; exact htop32)
+            have hslot2U : nSlots = 0 ∨ (stackRow0 + (sp' + 1)).toNat =
+                2 + 2 * nStates.toNat + (sp' + 1).toNat := by
+              simpa [hround1] using hslot2.1
+            have htopW := h.buf.window (stackRow0 + (sp' + 1))
+              (2 + 2 * nStates.toNat + (sp' + 1).toNat) hslot2U hslot2.2
             have htopDst :
-                (rowOff (stackRow0 + (sp' + 1).toUSize) slots).toNat + slots.toNat * 8 ≤
+                (rowOff (stackRow0 + (sp' + 1)) slots).toNat + slots.toNat * 8 ≤
                   caps2.size := by
               rw [hsz2]
               exact htopW.1
@@ -918,59 +1036,69 @@ def eval {s : String}
               rw [hsz2]
               simp only [stkOff]
               exact hstkW.1
-            let caps3 := copyRow caps2 (rowOff (stackRow0 + (sp' + 1).toUSize) slots) stkOff slots
+            let caps3 := copyRow caps2 (rowOff (stackRow0 + (sp' + 1)) slots) stkOff slots
               htopDst htopSrc htopW.2 hstkW.2
             have hcaps3 : CapsWf (s := s) caps3 nSlots (2 + 2 * nStates.toNat + stkS.size) := by
               simp only [caps3]
-              exact CapsWf.copyRow hcaps2 (rowOff (stackRow0 + (sp' + 1).toUSize) slots) stkOff
-                slots (2 + 2 * nStates.toNat + (sp' + 1)) (2 + 2 * nStates.toNat + sp')
-                (h.buf.rowOff_eq (stackRow0 + (sp' + 1).toUSize)
-                  (2 + 2 * nStates.toNat + (sp' + 1)) hslot2.1 hslot2.2)
+              exact CapsWf.copyRow hcaps2 (rowOff (stackRow0 + (sp' + 1)) slots) stkOff
+                slots (2 + 2 * nStates.toNat + (sp' + 1).toNat) (2 + 2 * nStates.toNat + sp'.toNat)
+                (h.buf.rowOff_eq (stackRow0 + (sp' + 1))
+                  (2 + 2 * nStates.toNat + (sp' + 1).toNat) hslot2U hslot2.2)
                 hsrcNat h.buf.slots_eq hslot2.2 hslot.2 htopDst htopSrc htopW.2 hstkW.2
             have hbuf3 : EvalBuf caps3 stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat :=
               hbuf.of_size (copyRow_size _ _ _ _ htopDst htopSrc htopW.2 hstkW.2) rfl
-            let stk1 := stkS.usetWord sp'.toUSize extra hwrite
-            have hidx : (sp' + 1).toUSize = sp.toUSize := by
+            let stk1 := stkS.usetWord sp' extra hwriteU
+            have hidx : (sp'.toNat + 1).toUSize = sp.toNat.toUSize := by
               apply USize.toNat_inj.mp
               rw [RegexVibe.VM.Wide.toNat_toUSize_of_lt_2_pow_32 htop32,
                 RegexVibe.VM.Wide.toNat_toUSize_of_lt_2_pow_32 (by
                   have := h.stack.sp_fit
-                  omega : sp < 2 ^ 32)]
-              exact hback
-            have hpushB :
-                ((sp' + 1).toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ stk1.data.size := by
-              simp only [stk1]
+                  omega)]
+              exact hbackN
+            have hpushN :
+                ((sp'.toNat + 1).toUSize * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤
+                  (stkS.usetWord sp'.toNat.toUSize extra hwrite).data.size := by
               rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).1, hidx]
-              exact h.stack.wordBoundAt sp (by rw [← hback]; exact htop) (Nat.lt_of_succ_le hfit30)
-            let stk2 := stk1.usetWord (sp' + 1).toUSize nextW hpushB
-            have hstack : StackInv stk2 (sp' + 2) nStates.toNat := by
-              have hnested := h.stack.splitAt hspPos (by rw [← hback]; exact htop) hfit30
-                extra nextW hextraLt hnextLt sp' hspEq hwrite hpushB hidx
+              exact h.stack.wordBoundAt sp.toNat (by rw [← hbackN]; exact htop)
+                (Nat.lt_of_succ_le hfit30)
+            have hpushB :
+                ((sp' + 1) * RegexVibe.VM.Wide.wordBytes).toNat + 4 ≤ stk1.data.size := by
+              rw [hround1.symm]
+              simpa [stk1, uset_idx hround.symm] using hpushN
+            let stk2 := stk1.usetWord (sp' + 1) nextW hpushB
+            have hstack : StackInv stk2 (sp' + 2).toNat nStates.toNat := by
+              have hnested := h.stack.splitAt hspN (by rw [← hbackN]; exact htop) hfit30
+                extra nextW hextraLt hnextLt sp'.toNat hspEq hwrite hpushN hidx
               simp only [stk2, stk1]
-              exact StackInv.cast hnested rfl (by omega)
+              exact StackInv.cast hnested
+                (uset2_idx hround.symm (by rw [← hadd1]; exact hround1.symm))
+                (by rw [hadd2, hsub]; omega)
             have hbuf2 : EvalBuf caps3 stk2 slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
               simp only [stk2, stk1]
               exact hbuf3.of_size rfl (by
-                rw [hstkSz (stkS.usetWord sp'.toUSize extra hwrite) (sp' + 1).toUSize nextW hpushB,
-                  hstkSz stkS sp'.toUSize extra hwrite])
-            have hspLe : sp' + 2 ≤ nCount'.toNat + 1 := by
-              have h2 : sp' + 2 = sp + 1 := by omega
-              rw [h2, toNat_u32_add_one hcnt]
+                rw [hstkSz (stkS.usetWord sp' extra hwriteU) (sp' + 1) nextW hpushB,
+                  hstkSz stkS sp' extra hwriteU])
+            have hspLe : (sp' + 2).toNat ≤ nCount'.toNat + 1 := by
+              rw [hadd2, toNat_u32_add_one hcnt]
+              have : sp'.toNat + 2 = sp.toNat + 1 := by rw [hsub]; omega
+              rw [this]
               exact Nat.add_le_add_right h.sp_le 1
             have hcaps : CapsWf (s := s) caps3 nSlots (2 + 2 * nStates.toNat + stk2.size) := by
               simp only [stk2, stk1]
               rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2,
                 WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
               exact hcaps3
-            have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+            have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
                 p cp cCount cDen cSpa nCount' nDen nSpa stk2 caps3 (sp' + 2) phase i sent m0' m1' :=
               ⟨h.words, h.start_lt, h.curr, hnext, hstack, hbuf2, h.i_le, hspLe,
-                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask⟩
+                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask, h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
             have hlt : EvalRel
-                (evalMeasure p phase cCount i ((sp - 1) + 2) (nCount + 1).toNat nStates.toNat)
-                (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
+                (atOff s p phase cCount i ((sp - 1) + 2) (nCount + 1).toNat nStates.toNat)
+                (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
               dec_fuel (by
-                rw [show (sp - 1) + 2 = sp + 1 by omega, toNat_u32_add_one hcnt]
+                rw [hadd2, toNat_u32_add_one hcnt]
+                have : sp'.toNat + 2 = sp.toNat + 1 := by rw [hsub]; omega
+                rw [this]
                 exact fuel_split hnotStep hcountLt)
             eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
               p cp matched clos
@@ -981,11 +1109,11 @@ def eval {s : String}
           else if tag == tagSave then
             let caps3 :=
               if hex : extra.toNat < nSlots then
-                uset caps2 (stkOff + extra.toUSize * slotBytes) (encodePos cp) (by
+                uset caps2 (stkOff + extra.toUSize * slotBytes) (cp.toUInt64) (by
                   rw [hsz2]
                   simp only [stkOff]
-                  exact h.buf.slotBound (stackRow0 + sp'.toUSize)
-                    (2 + 2 * nStates.toNat + sp') hslot.1 hslot.2 extra hex)
+                  exact h.buf.slotBound (stackRow0 + sp')
+                    (2 + 2 * nStates.toNat + sp'.toNat) hslotU hslot.2 extra hex)
               else
                 caps2
             have hbuf3 : EvalBuf caps3 stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
@@ -997,49 +1125,51 @@ def eval {s : String}
               simp only [caps3]
               split
               · rename_i hex
-                have hoff := h.buf.slotOff_eq (stackRow0 + sp'.toUSize)
-                  (2 + 2 * nStates.toNat + sp') hslot.1 hslot.2 extra hex
+                have hoff := h.buf.slotOff_eq (stackRow0 + sp')
+                  (2 + 2 * nStates.toNat + sp'.toNat) hslotU hslot.2 extra hex
                 have hb : (stkOff + extra.toUSize * slotBytes).toNat + 8 ≤ caps2.size := by
                   rw [hsz2]
                   simp only [stkOff]
-                  exact h.buf.slotBound (stackRow0 + sp'.toUSize)
-                    (2 + 2 * nStates.toNat + sp') hslot.1 hslot.2 extra hex
+                  exact h.buf.slotBound (stackRow0 + sp')
+                    (2 + 2 * nStates.toNat + sp'.toNat) hslotU hslot.2 extra hex
                 have hwritten := CapsWf.writeSlot hcaps2
-                  (stkOff + extra.toUSize * slotBytes) (encodePos cp)
-                  (2 + 2 * nStates.toNat + sp') extra.toNat
+                  (stkOff + extra.toUSize * slotBytes) (cp.toUInt64)
+                  (2 + 2 * nStates.toNat + sp'.toNat) extra.toNat
                   (by simp only [stkOff]; exact hoff) hslot.2 hex
-                  (SlotWord.of_pos cp h.hlen) hb
-                exact uset_irrel caps2 (stkOff + extra.toUSize * slotBytes) (encodePos cp) hb
+                  (slotWord_of_off cp h.cp_pos h.hlen) hb
+                exact uset_irrel caps2 (stkOff + extra.toUSize * slotBytes) (cp.toUInt64) hb
                   (by
                     rw [hsz2]
                     simp only [stkOff]
-                    exact h.buf.slotBound (stackRow0 + sp'.toUSize)
-                      (2 + 2 * nStates.toNat + sp') hslot.1 hslot.2 extra hex) ▸ hwritten
+                    exact h.buf.slotBound (stackRow0 + sp')
+                      (2 + 2 * nStates.toNat + sp'.toNat) hslotU hslot.2 extra hex) ▸ hwritten
               · exact hcaps2
-            let stk1 := stkS.usetWord sp'.toUSize nextW hwrite
-            have hstack : StackInv stk1 (sp' + 1) nStates.toNat := by
+            let stk1 := stkS.usetWord sp' nextW hwriteU
+            have hstack : StackInv stk1 (sp' + 1).toNat nStates.toNat := by
               simp only [stk1]
               exact StackInv.cast
-                (h.stack.succAt hspPos nextW hnextLt sp' hspEq hwrite) rfl hback
+                (h.stack.succAt hspN nextW hnextLt sp'.toNat hspEq hwrite)
+                (uset_idx hround.symm)
+                (by rw [hadd1, hbackN])
             have hbuf1 : EvalBuf caps3 stk1 slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
               simp only [stk1]
               exact hbuf3.of_size rfl (hstkSz _ _ _ _)
-            have hspLe : sp' + 1 ≤ nCount'.toNat + 1 := by
-              rw [hback, toNat_u32_add_one hcnt]
+            have hspLe : (sp' + 1).toNat ≤ nCount'.toNat + 1 := by
+              rw [hadd1, hbackN, toNat_u32_add_one hcnt]
               exact Nat.le_trans h.sp_le (Nat.le_succ _)
             have hcaps : CapsWf (s := s) caps3 nSlots (2 + 2 * nStates.toNat + stk1.size) := by
               simp only [stk1]
               rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
               exact hcaps3
-            have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+            have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
                 p cp cCount cDen cSpa nCount' nDen nSpa stk1 caps3 (sp' + 1) phase i sent m0' m1' :=
               ⟨h.words, h.start_lt, h.curr, hnext, hstack, hbuf1, h.i_le, hspLe,
-                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask⟩
+                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask, h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
             have hlt : EvalRel
-                (evalMeasure p phase cCount i ((sp - 1) + 1) (nCount + 1).toNat nStates.toNat)
-                (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
+                (atOff s p phase cCount i ((sp - 1) + 1) (nCount + 1).toNat nStates.toNat)
+                (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
               dec_fuel (by
-                rw [show (sp - 1) + 1 = sp by omega, toNat_u32_add_one hcnt]
+                rw [hadd1, hbackN, toNat_u32_add_one hcnt]
                 exact fuel_keep hnotStep hcountLt)
             eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
               p cp matched clos
@@ -1048,31 +1178,33 @@ def eval {s : String}
               stk1 caps3 (sp' + 1)
               phase i m0' m1' h'
           else if tag == tagAnchor then
-            if anchorTest extra cp then
-              let stk1 := stkS.usetWord sp'.toUSize nextW hwrite
-              have hstack : StackInv stk1 (sp' + 1) nStates.toNat := by
+            if anchorOff (s := s) extra cp then
+              let stk1 := stkS.usetWord sp' nextW hwriteU
+              have hstack : StackInv stk1 (sp' + 1).toNat nStates.toNat := by
                 simp only [stk1]
                 exact StackInv.cast
-                  (h.stack.succAt hspPos nextW hnextLt sp' hspEq hwrite) rfl hback
+                  (h.stack.succAt hspN nextW hnextLt sp'.toNat hspEq hwrite)
+                  (uset_idx hround.symm)
+                  (by rw [hadd1, hbackN])
               have hbuf1 : EvalBuf caps2 stk1 slots cRow0 nRow0 stackRow0 nSlots nStates.toNat := by
                 simp only [stk1]
                 exact hbuf.of_size rfl (hstkSz _ _ _ _)
-              have hspLe : sp' + 1 ≤ nCount'.toNat + 1 := by
-                rw [hback, toNat_u32_add_one hcnt]
+              have hspLe : (sp' + 1).toNat ≤ nCount'.toNat + 1 := by
+                rw [hadd1, hbackN, toNat_u32_add_one hcnt]
                 exact Nat.le_trans h.sp_le (Nat.le_succ _)
               have hcaps : CapsWf (s := s) caps2 nSlots (2 + 2 * nStates.toNat + stk1.size) := by
                 simp only [stk1]
                 rw [WordArray.usetWord_eq, (WordArray.size_uset _ _ _ _).2]
                 exact hcaps2
-              have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+              have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
                   p cp cCount cDen cSpa nCount' nDen nSpa stk1 caps2 (sp' + 1) phase i sent m0' m1' :=
                 ⟨h.words, h.start_lt, h.curr, hnext, hstack, hbuf1, h.i_le, hspLe,
-                  h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask⟩
+                  h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps, hmask, h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
               have hlt : EvalRel
-                  (evalMeasure p phase cCount i ((sp - 1) + 1) (nCount + 1).toNat nStates.toNat)
-                  (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
+                  (atOff s p phase cCount i ((sp - 1) + 1) (nCount + 1).toNat nStates.toNat)
+                  (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
                 dec_fuel (by
-                  rw [show (sp - 1) + 1 = sp by omega, toNat_u32_add_one hcnt]
+                  rw [hadd1, hbackN, toNat_u32_add_one hcnt]
                   exact fuel_keep hnotStep hcountLt)
               eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
                 p cp matched clos
@@ -1081,21 +1213,22 @@ def eval {s : String}
                 stk1 caps2 (sp' + 1)
                 phase i m0' m1' h'
             else
-              have hstack : StackInv stkS sp' nStates.toNat := by
-                simpa [sp'] using h.stack.pop hspPos
-              have hspLe : sp' ≤ nCount'.toNat + 1 := by
+              have hstack : StackInv stkS sp'.toNat nStates.toNat := by
+                rw [hsub]
+                exact h.stack.pop hspN
+              have hspLe : sp'.toNat ≤ nCount'.toNat + 1 := by
                 rw [toNat_u32_add_one hcnt]
                 exact Nat.le_trans (Nat.le_of_lt hspLt) (Nat.le_trans h.sp_le (Nat.le_succ _))
-              have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+              have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
                   p cp cCount cDen cSpa nCount' nDen nSpa stkS caps2 sp' phase i sent m0' m1' :=
                 ⟨h.words, h.start_lt, h.curr, hnext, hstack, hbuf, h.i_le, hspLe,
-                  h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps2, hmask⟩
+                  h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps2, hmask, h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
               have hlt : EvalRel
-                  (evalMeasure p phase cCount i (sp - 1) (nCount + 1).toNat nStates.toNat)
-                  (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
+                  (atOff s p phase cCount i (sp - 1) (nCount + 1).toNat nStates.toNat)
+                  (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
                 dec_fuel (by
-                  rw [toNat_u32_add_one hcnt]
-                  exact fuel_discard hnotStep hspPos hcountLt)
+                  rw [hsub, toNat_u32_add_one hcnt]
+                  exact fuel_discard hnotStep hspN hcountLt)
               eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
                 p cp matched clos
                 cCount cDen cSpa
@@ -1103,28 +1236,29 @@ def eval {s : String}
                 stkS caps2 sp'
                 phase i m0' m1' h'
           else
-            have hstack : StackInv stkS sp' nStates.toNat := by
-              simpa [sp'] using h.stack.pop hspPos
-            have hspLe : sp' ≤ nCount'.toNat + 1 := by
+            have hstack : StackInv stkS sp'.toNat nStates.toNat := by
+              rw [hsub]
+              exact h.stack.pop hspN
+            have hspLe : sp'.toNat ≤ nCount'.toNat + 1 := by
               rw [toNat_u32_add_one hcnt]
               exact Nat.le_trans (Nat.le_of_lt hspLt) (Nat.le_trans h.sp_le (Nat.le_succ _))
-            have h' : RunInv words classes start nSlots nStates slots cRow0 nRow0 stackRow0
+            have h' : RunInv s words classes start nSlots nStates slots cRow0 nRow0 stackRow0
                 p cp cCount cDen cSpa nCount' nDen nSpa stkS caps2 sp' phase i sent m0' m1' :=
               ⟨h.words, h.start_lt, h.curr, hnext, hstack, hbuf, h.i_le, hspLe,
-                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps2, hmask⟩
+                h.phase_ok, h.cp_rel, h.step_i, h.hlen, h.sentOk, hcaps2, hmask, h.p_le, h.cp_le, h.p_pos, h.cp_pos⟩
             have hlt : EvalRel
-                (evalMeasure p phase cCount i (sp - 1) (nCount + 1).toNat nStates.toNat)
-                (evalMeasure p phase cCount i sp nCount.toNat nStates.toNat) :=
+                (atOff s p phase cCount i (sp - 1) (nCount + 1).toNat nStates.toNat)
+                (atOff s p phase cCount i sp nCount.toNat nStates.toNat) :=
               dec_fuel (by
-                rw [toNat_u32_add_one hcnt]
-                exact fuel_discard hnotStep hspPos hcountLt)
+                rw [hsub, toNat_u32_add_one hcnt]
+                exact fuel_discard hnotStep hspN hcountLt)
             eval words classes start nSlots nStates slots sent cRow0 nRow0 stackRow0
               p cp matched clos
               cCount cDen cSpa
               nCount' nDen nSpa
               stkS caps2 sp'
               phase i m0' m1' h'
-termination_by evalMeasure p phase cCount i sp nCount.toNat nStates.toNat
+termination_by atOff s p phase cCount i sp nCount.toNat nStates.toNat
 decreasing_by
   all_goals
     unfold EvalRel at hlt
@@ -1212,18 +1346,30 @@ def search {s : String} (nfa : FlatNFA) (scratch : Scratch) (sent : UInt64) (p :
         (Or.inr hbuf0.stack_row) hrowLt sent hsent hw.1 hw.2
     have hz : (0 : UInt32).toNat = 0 :=
       UInt32.toNat_ofNat_of_lt (by decide : 0 < UInt32.size)
-    have h' : RunInv nfa.words nfa.classes nfa.start scratch.nSlots scratch.nStates slots
-        cRow0 nRow0 stackRow0 p p (0 : UInt32) scratch.cDen scratch.cSpa
+    let off := p.offset.byteIdx.toUSize
+    have hsz : s.utf8ByteSize < USize.size := byteSize_lt_usize hlen
+    have hposLe : p.offset.byteIdx ≤ s.utf8ByteSize := by
+      rw [← String.byteIdx_rawEndPos, ← String.Pos.Raw.le_iff]
+      exact p.isValid.le_rawEndPos
+    have hoff : off.toNat = p.offset.byteIdx :=
+      USize.toNat_ofNat_of_lt (Nat.lt_of_le_of_lt hposLe hsz)
+    have hstack1 : StackInv stkS (1 : USize).toNat scratch.nStates.toNat := by
+      rw [oneNat]
+      exact hstack
+    have h' : RunInv s nfa.words nfa.classes nfa.start scratch.nSlots scratch.nStates slots
+        cRow0 nRow0 stackRow0 off off (0 : UInt32) scratch.cDen scratch.cSpa
         (0 : UInt32) scratch.nDen scratch.nSpa stkS caps 1 phaseClosure 0 sent (0 : UInt64) (0 : UInt64) :=
-      ⟨hn.symm ▸ hwords, hn.symm ▸ hstart, hscratch.curr, hscratch.next, hstack, hbuf,
+      ⟨hn.symm ▸ hwords, hn.symm ▸ hstart, hscratch.curr, hscratch.next, hstack1, hbuf,
         by rw [hz]; exact Nat.zero_le _,
-        by rw [hz]; exact Nat.le_refl _,
-        Or.inl rfl, CpRel.closure p,
+        by rw [hz, oneNat]; exact Nat.le_refl _,
+        Or.inl rfl, CpRel.closure off,
         fun hc => absurd hc (by decide : phaseClosure ≠ phaseStepClosure),
-        hlen, hsent, hcaps, by rw [hz]; exact MaskInv.zero hscratch.next⟩
+        hlen, hsent, hcaps, by rw [hz]; exact MaskInv.zero hscratch.next,
+        by rw [hoff]; exact hposLe, by rw [hoff]; exact hposLe,
+        ⟨p, hoff.symm⟩, ⟨p, hoff.symm⟩⟩
     eval nfa.words nfa.classes nfa.start scratch.nSlots scratch.nStates slots sent
       cRow0 nRow0 stackRow0
-      p p false false
+      off off false false
       (0 : UInt32) scratch.cDen scratch.cSpa
       (0 : UInt32) scratch.nDen scratch.nSpa
       stkS caps 1
