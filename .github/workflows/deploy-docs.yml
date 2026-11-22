@@ -24,9 +24,8 @@ jobs:
   build:
     name: Build Documentation
     # doc-gen4 peaks above the standard runner's 16 GB and dies with
-    # "resource exhausted (error code: 12, not enough memory)".
-    # Ubuntu 26.04's cgroup can also leave memory.swap.max at 0, so a swapfile
-    # alone is not usable by the job.
+    # "resource exhausted (error code: 12, not enough memory)" when Lake
+    # runs one process per core. Swap covers the remainder at lower parallelism.
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
@@ -53,8 +52,7 @@ jobs:
           sudo chmod 600 "$SWAP"
           sudo mkswap "$SWAP"
           sudo swapon "$SWAP"
-          # A swapfile does nothing while memory.swap.max is 0. Open it up for
-          # this job's cgroup and each ancestor.
+          # Log memory.swap.max and make sure this job can use the swapfile.
           cg=$(awk -F: '$1=="0" {print $3}' /proc/self/cgroup)
           if [ -z "$cg" ]; then cg=/; fi
           d="$cg"
@@ -76,9 +74,11 @@ jobs:
 
       - name: Build Documentation
         working-directory: docbuild
-        # Two doc-gen4 processes stay within 16 GB. The default of one job per
-        # core is what exhausts the runner.
-        run: lake build --keep-toolchain -j 2 Regex:docs RegexCorrectness:docs
+        # Lake 5 has no `-j`. The Lean thread pool is the build parallelism,
+        # and one doc-gen4 process per core exhausts the 16 GB runner.
+        env:
+          LEAN_NUM_THREADS: "2"
+        run: lake build --keep-toolchain Regex:docs RegexCorrectness:docs
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'
