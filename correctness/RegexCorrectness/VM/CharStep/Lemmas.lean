@@ -101,8 +101,25 @@ theorem write_updates_of_mem_next {i k}
     | .inl mem => exact .inl mem
     | .inr ⟨update', cls, write⟩ =>
       have step : nfa.CharStep pos i state' := by
-        grind only [usr Fin.isLt, = CharStep.fail, = Fin.getElem_fin, => CharStep.char,
-          => CharStep.sparse, #6698, #51e9, #8818, #5c18, #c184]
+        -- `grind` no longer closes this match on v4.36.0.
+        split at hn
+        next c next hn' =>
+          split at hn
+          · injection hn with heq
+            have hc : pos.get ne = c := by
+              simp_all
+            have hj : state' = ⟨next, wf.inBounds' i i.isLt hn'⟩ := heq.symm
+            simpa [hj] using (NFA.CharStep.char hn').mpr ⟨ne, rfl, hc⟩
+          · contradiction
+        next cs next hn' =>
+          split at hn
+          · injection hn with heq
+            have hc : pos.get ne ∈ cs := by
+              simp_all
+            have hj : state' = ⟨next, wf.inBounds' i i.isLt hn'⟩ := heq.symm
+            simpa [hj] using (NFA.CharStep.sparse hn').mpr ⟨ne, rfl, hc⟩
+          · contradiction
+        next => contradiction
       exact .inr ⟨state', update', step, cls, write⟩
   next hn =>
     injection h with _ hnext

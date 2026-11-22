@@ -31,16 +31,24 @@ theorem eq_or_ge_of_step_pushRegex {nfa next e result} {i j : Nat} (eq : pushReg
     simp [pd.eq_result eq, pd.size_eq] at step h₂
     have : i = pd.nfa.size := Nat.eq_of_le_of_lt_succ h₁ h₂
     simp [this, Node.charStep, Node.εStep, pd.get_eq] at step
-  | epsilon | anchor a | char c | classes cs =>
+  | epsilon | char c =>
     try let pd := Epsilon.intro eq
-    try let pd := Anchor.intro eq
     try let pd := Char.intro eq
-    try let pd := Classes.intro eq
     simp [pd.eq_result eq, pd.size_eq] at step h₂
     have : i = pd.nfa.size := Nat.eq_of_le_of_lt_succ h₁ h₂
     simp [this, Node.charStep, Node.εStep, pd.get_eq] at step
-    try exact .inl step
-    try exact .inl (And.right step)
+    exact .inl step
+  | anchor a =>
+    let pd := Anchor.intro eq
+    simp [pd.eq_result eq, pd.size_eq] at step h₂
+    have : i = pd.nfa.size := Nat.eq_of_le_of_lt_succ h₁ h₂
+    simp [this, Node.charStep, Node.εStep, pd.get_eq] at step
+  | classes cs =>
+    let pd := Classes.intro eq
+    simp [pd.eq_result eq, pd.size_eq] at step h₂
+    have : i = pd.nfa.size := Nat.eq_of_le_of_lt_succ h₁ h₂
+    simp [this, Node.charStep, Node.εStep, pd.get_eq] at step
+    exact .inl step.2
   | group _ e ih =>
     let pd := Group.intro eq
     simp [pd.eq_result eq] at step h₂

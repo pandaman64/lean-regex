@@ -98,13 +98,17 @@ theorem toRegexAux_tags {index index' : ToRegexState} {ast : Ast} {e : Expr}
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
     simp [←h, Expr.tags]
-    exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
+    exact ⟨Nat.le_trans le₁ le₂,
+      Finset.union_subset_iff.mp
+        (Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂)⟩
   next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp at h
     have ⟨le₁, ih₁⟩ := ih₁ h₁
     have ⟨le₂, ih₂⟩ := ih₂ h₂
     simp [←h, Expr.tags]
-    exact ⟨Nat.le_trans le₁ le₂, Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂⟩
+    exact ⟨Nat.le_trans le₁ le₂,
+      Finset.union_subset_iff.mp
+        (Finset.Ico_union_Ico_eq_Ico le₁ le₂ ▸ Finset.union_subset_union ih₁ ih₂)⟩
   next state min max greedy ast state' e' h' ih =>
     simp at h
     have ⟨le, ih⟩ := ih h'
@@ -146,7 +150,7 @@ theorem toRegexAux_disjoint (state : ToRegexState) (ast : Ast) : Expr.Disjoint (
   next state ast state' e h ih =>
     simp [h] at ih
     simp [Expr.Disjoint, ih]
-    exact Finset.not_mem_subset (toRegexAux_tags h).2 (by simp)
+    exact Finset.notMem_subset (toRegexAux_tags h).2 (by simp)
   next state ast₁ ast₂ state₁ e₁ h₁ state₂ e₂ h₂ ih₁ ih₂ =>
     simp [h₁, h₂] at ih₁ ih₂
     simp [Expr.Disjoint, ih₁, ih₂]

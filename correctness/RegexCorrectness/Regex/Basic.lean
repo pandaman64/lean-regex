@@ -51,7 +51,8 @@ theorem of_parse {s : String} {re : Regex} (h : Regex.parse s = .ok re) :
     have disj : Expr.Disjoint (.group 0 e) :=
       eq ▸ Regex.Syntax.Parser.Ast.toRegex_disjoint (.group ast)
     simp only [Regex.Syntax.Parser.Ast.toRegex] at eq
-    rw [←h, eq]
+    -- `simp` orients `h` as `re = fromExpr …` on v4.36.0.
+    rw [h, eq]
     exact of_fromExpr disj
   | .error e => simp [Except.map] at h
 

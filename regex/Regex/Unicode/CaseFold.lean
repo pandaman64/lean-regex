@@ -5,8 +5,6 @@ import Std.Tactic.Do
 
 open Std.Do
 
-set_option mvcgen.warning false
-
 namespace Regex.Unicode
 
 @[specialize]
@@ -63,6 +61,10 @@ theorem mem_buildCaseFoldInvMap_iff {c c' : Char} {rs : Array (Char × Char)} :
   (∃ _ : c' ∈ buildCaseFoldInvMap rs, c ∈ (buildCaseFoldInvMap rs)[c']) ↔ (c, c') ∈ rs := by
   generalize eq : buildCaseFoldInvMap rs = table
   apply Id.of_wp_run_eq eq; clear eq
+  -- `vcgen` does not recognize the `Std.Do` weakest-precondition goal produced by
+  -- `Id.of_wp_run_eq` on v4.36.0 (`could not determine the program type of the goal`).
+  -- `mvcgen` still proves it; the syntax deprecation is the same suppression used in `Std`.
+  set_option linter.deprecated.syntax false in
   mvcgen invariants
   · ⇓⟨cursor, table⟩ =>
     ⌜(∃ _ : c' ∈ table, c ∈ table[c']) ↔ (c, c') ∈ cursor.prefix.toArray⌝
