@@ -23,9 +23,10 @@ concurrency:
 jobs:
   build:
     name: Build Documentation
-    # doc-gen4 peaks near the standard runner's 16 GB. Ubuntu 26.04 does not
-    # ship enough swap, so the build dies with
+    # doc-gen4 peaks above the standard runner's 16 GB and dies with
     # "resource exhausted (error code: 12, not enough memory)".
+    # Ubuntu 26.04's cgroup can also leave memory.swap.max at 0, so a swapfile
+    # alone is not usable by the job.
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
@@ -43,17 +44,41 @@ jobs:
       # when that volume exists; otherwise fall back to the root disk.
       - name: Add swap for documentation build
         run: |
+          set -eu
           SWAP=/mnt/swapfile-docs
-          sudo fallocate -l 8G "$SWAP" 2>/dev/null || { SWAP=/swapfile-docs; sudo fallocate -l 8G "$SWAP"; }
+          if ! sudo fallocate -l 16G "$SWAP"; then
+            SWAP=/swapfile-docs
+            sudo fallocate -l 16G "$SWAP"
+          fi
           sudo chmod 600 "$SWAP"
           sudo mkswap "$SWAP"
           sudo swapon "$SWAP"
+          # A swapfile does nothing while memory.swap.max is 0. Open it up for
+          # this job's cgroup and each ancestor.
+          cg=$(awk -F: '$1=="0" {print $3}' /proc/self/cgroup)
+          if [ -z "$cg" ]; then cg=/; fi
+          d="$cg"
+          while :; do
+            f="/sys/fs/cgroup${d}/memory.swap.max"
+            if [ -f "$f" ]; then
+              echo "memory.swap.max before ($d): $(cat "$f")"
+              echo max | sudo tee "$f" >/dev/null || true
+              echo "memory.swap.max after ($d): $(cat "$f")"
+            fi
+            [ "$d" = "/" ] && break
+            d=$(dirname "$d")
+          done
+          # git and lake fork this process. A large address space is refused
+          # with ENOMEM unless overcommit is allowed.
+          sudo sysctl vm.overcommit_memory=1
           swapon --show
           free -h
 
       - name: Build Documentation
         working-directory: docbuild
-        run: lake build --keep-toolchain Regex:docs RegexCorrectness:docs
+        # Two doc-gen4 processes stay within 16 GB. The default of one job per
+        # core is what exhausts the runner.
+        run: lake build --keep-toolchain -j 2 Regex:docs RegexCorrectness:docs
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'
