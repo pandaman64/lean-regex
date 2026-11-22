@@ -35,6 +35,11 @@ require Regex from ".." / "regex"
 lean_lib RegexVibe where
   buildType := .relWithDebInfo
 
+/-- C ABI for the Rust benchmarks. Not part of the default library. -/
+lean_lib RegexBench where
+  roots := #[`RegexVibe.BenchFFI]
+  buildType := .relWithDebInfo
+
 -- Little-endian UInt32 load/store on ByteArray. No external library.
 input_file bytearray_wide_ffi.c where
   path := "c" / "bytearray_wide_ffi.c"

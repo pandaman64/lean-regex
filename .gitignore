@@ -1,3 +1,4 @@
 .lake
 /.vscode
 *.json.gz
+bench/target

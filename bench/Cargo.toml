@@ -1,0 +1,17 @@
+[package]
+name = "lean-regex-bench"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+cc = "1"
+
+[dependencies]
+
+[dev-dependencies]
+divan = { package = "codspeed-divan-compat", version = "4" }
+
+[[bench]]
+name = "matching"
+harness = false
