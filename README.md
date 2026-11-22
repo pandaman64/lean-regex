@@ -1,5 +1,7 @@
 # lean-regex
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/pandaman64/lean-regex?utm_source=badge)
+
 A formally verified regular expression engine for the Lean programming language.
 
 ## Overview
@@ -142,6 +144,17 @@ The repository contains precomputed Unicode tables used for Unicode-aware matchi
 proofs do **not** depend on `native_decide`, we use `native_decide` in a few isolated places to validate that these tables
 satisfy simple, concrete invariants (e.g. sortedness) via native evaluation. For example, see
 `correctness/RegexCorrectness/Unicode/CaseFold/Data.lean`.
+
+## Benchmarks
+
+Performance is tracked with [CodSpeed](https://app.codspeed.io/pandaman64/lean-regex) on every pull request. The benchmarks
+are the rebar curated tasks in `regexvibe/bench/rebar`, run with both the verified PikeVM and the flat PikeVM. They are
+listed in `codspeed.yml`. To run them locally with the [CodSpeed CLI](https://codspeed.io/docs/cli):
+
+```sh
+cd regexvibe && lake build Bench && cd ..
+codspeed run -m simulation
+```
 
 ## Contributing
 

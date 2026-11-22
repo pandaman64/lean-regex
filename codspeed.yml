@@ -1,0 +1,46 @@
+$schema: https://raw.githubusercontent.com/CodSpeedHQ/codspeed/refs/heads/main/schemas/codspeed.schema.json
+
+# CodSpeed benchmarks: the rebar curated tasks of `lake exe Bench --rebar`
+# (see regexvibe/bench/rebar/README.md), one benchmark per task and engine.
+#   vm:      the verified PikeVM of the `Regex` package (`Regex.count`)
+#   refined: the flat PikeVM of the `RegexVibe` package
+#
+# Each benchmark measures the whole process, so it includes Lean runtime
+# initialization. The short tasks run several iterations (`-n`) so that the
+# search dominates.
+#
+# Build: cd regexvibe && lake build Bench
+# Run:   codspeed run -m simulation
+
+options:
+  working-directory: regexvibe
+
+benchmarks:
+  - name: "curated/literal/sherlock-en [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal/sherlock-en -E vm -n 1
+  - name: "curated/literal/sherlock-casei-en [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal/sherlock-casei-en -E vm -n 1
+  - name: "curated/literal/sherlock-zh [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal/sherlock-zh -E vm -n 5
+  - name: "curated/literal-alternate/sherlock-en [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal-alternate/sherlock-en -E vm -n 1
+  - name: "curated/words/all-english [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/words/all-english -E vm -n 5
+  - name: "curated/bounded-repeat/letters-en [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/bounded-repeat/letters-en -E vm -n 1
+  - name: "curated/cloud-flare-redos/simplified-long [vm]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/cloud-flare-redos/simplified-long -E vm -n 10
+  - name: "curated/literal/sherlock-en [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal/sherlock-en -E refined -n 1
+  - name: "curated/literal/sherlock-casei-en [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal/sherlock-casei-en -E refined -n 1
+  - name: "curated/literal/sherlock-zh [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal/sherlock-zh -E refined -n 5
+  - name: "curated/literal-alternate/sherlock-en [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/literal-alternate/sherlock-en -E refined -n 1
+  - name: "curated/words/all-english [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/words/all-english -E refined -n 5
+  - name: "curated/bounded-repeat/letters-en [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/bounded-repeat/letters-en -E refined -n 1
+  - name: "curated/cloud-flare-redos/simplified-long [refined]"
+    exec: .lake/build/bin/Bench --rebar --rebar-only curated/cloud-flare-redos/simplified-long -E refined -n 10

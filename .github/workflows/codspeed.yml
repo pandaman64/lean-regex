@@ -1,0 +1,34 @@
+name: CodSpeed
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # `workflow_dispatch` allows CodSpeed to trigger backtest
+  # performance analysis in order to generate initial data.
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for actions/checkout
+      id-token: write # required for OIDC authentication with CodSpeed
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Bench
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: true
+          build-args: 'Bench'
+          lake-package-directory: regexvibe
+      # Runs the benchmarks listed in codspeed.yml.
+      - name: Run the benchmarks
+        uses: CodSpeedHQ/action@v5
+        with:
+          mode: simulation
