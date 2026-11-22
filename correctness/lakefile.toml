@@ -6,11 +6,15 @@ defaultTargets = ["RegexCorrectness"]
 [leanOptions]
 autoImplicit = false
 backward.isDefEq.respectTransparency = false
+# `ProofData` classes (`Group`, `Star`, …) are parameterless and instantiated
+# at each use site. Mathlib's `concreteInstances` linter rejects that pattern.
+# `weak.` is required because the option is declared by Mathlib, not by the compiler.
+weak.linter.concreteInstances = false
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.34.0-rc1"
+rev = "v4.36.0"
 
 [[require]]
 name = "Regex"
