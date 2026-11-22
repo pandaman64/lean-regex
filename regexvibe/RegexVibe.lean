@@ -1,5 +1,7 @@
 module
 
+public import RegexVibe.VM.Refined
+
 /-!
 Flat PikeVM for `Regex`.
 
@@ -9,5 +11,3 @@ PikeVM whose NFA, ε-stack, and capture slots live in flat `ByteArray`s.
 The stock NFA and the stock VM stay the specification. `lake exe Bench --check`
 compares the two on the built-in cases.
 -/
-
-public import RegexVibe.VM.Refined
