@@ -7,15 +7,23 @@
  * (`initialize_…BenchFFI`), passed by build.rs.
  */
 extern lean_object *REGEX_BENCH_INIT(uint8_t builtin);
-extern uint32_t regex_bench_init(b_lean_obj_arg dir);
-extern uint32_t regex_bench_n_cases(uint32_t token);
-extern uint64_t regex_bench_count(uint32_t case_id, uint32_t engine);
-extern lean_obj_res regex_bench_case_name(uint32_t case_id);
+/*
+ * `regex_bench_init` is an `IO` action. The exported C function drops the
+ * dummy world and returns an `EIO` result. It consumes the string.
+ * The pure queries consume `loaded`, so each call increments the array this
+ * file keeps.
+ */
+extern lean_obj_res regex_bench_init(lean_obj_arg dir);
+extern uint32_t regex_bench_n_cases(lean_obj_arg loaded);
+extern uint64_t regex_bench_count(lean_obj_arg loaded, uint32_t case_id, uint32_t engine);
+extern lean_obj_res regex_bench_case_name(lean_obj_arg loaded, uint32_t case_id);
 
-static int started = 0;
+static int runtime_ready = 0;
+/* Owned array returned by `regex_bench_init`. */
+static lean_object *loaded = 0;
 
 int regex_bench_startup(const char *dir) {
-    if (!started) {
+    if (!runtime_ready) {
         lean_object *res = REGEX_BENCH_INIT(1);
         if (lean_io_result_is_error(res)) {
             lean_io_result_show_error(res);
@@ -24,25 +32,36 @@ int regex_bench_startup(const char *dir) {
         }
         lean_dec(res);
         lean_io_mark_end_initialization();
-        started = 1;
+        runtime_ready = 1;
+    }
+    if (loaded) {
+        return 0;
     }
     lean_object *s = lean_mk_string(dir);
-    uint32_t rc = regex_bench_init(s);
-    lean_dec(s);
-    return (int)rc;
+    lean_object *res = regex_bench_init(s);
+    if (lean_io_result_is_error(res)) {
+        lean_io_result_show_error(res);
+        lean_dec(res);
+        return 1;
+    }
+    loaded = lean_io_result_take_value(res);
+    return 0;
 }
 
 uint32_t regex_bench_cases(void) {
-    return regex_bench_n_cases(0);
+    lean_inc(loaded);
+    return regex_bench_n_cases(loaded);
 }
 
 uint64_t regex_bench_matches(uint32_t case_id, uint32_t engine) {
-    return regex_bench_count(case_id, engine);
+    lean_inc(loaded);
+    return regex_bench_count(loaded, case_id, engine);
 }
 
 const char *regex_bench_name(uint32_t case_id) {
     static char buf[512];
-    lean_object *s = regex_bench_case_name(case_id);
+    lean_inc(loaded);
+    lean_object *s = regex_bench_case_name(loaded, case_id);
     char const *cstr = lean_string_cstr(s);
     strncpy(buf, cstr, sizeof(buf) - 1);
     buf[sizeof(buf) - 1] = '\0';
