@@ -20,7 +20,10 @@ concurrency:
 jobs:
   build:
     name: Build Documentation
-    runs-on: ubuntu-latest
+    # doc-gen4 peaks near the standard runner's 16 GB. ubuntu-latest is Ubuntu 26.04,
+    # which does not provide the swap the 24.04 image did, so this job dies with
+    # "resource exhausted (error code: 12, not enough memory)" on *:srcUri.github.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       
@@ -32,6 +35,18 @@ jobs:
         with:
           build-args: '--wfail'
           lake-package-directory: correctness
+
+      # Own swap, independent of what the runner image ships. /mnt is preferred
+      # when that volume exists; otherwise fall back to the root disk.
+      - name: Add swap for documentation build
+        run: |
+          SWAP=/mnt/swapfile-docs
+          sudo fallocate -l 8G "$SWAP" 2>/dev/null || { SWAP=/swapfile-docs; sudo fallocate -l 8G "$SWAP"; }
+          sudo chmod 600 "$SWAP"
+          sudo mkswap "$SWAP"
+          sudo swapon "$SWAP"
+          swapon --show
+          free -h
 
       - name: Build Documentation
         working-directory: docbuild
