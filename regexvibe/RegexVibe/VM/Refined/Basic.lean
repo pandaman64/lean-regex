@@ -1354,15 +1354,11 @@ structure EvalBuf (caps : ByteArray) (stkS : WordArray) (slots cRow0 nRow0 stack
   rows_size : (2 + 2 * n + stkS.size) * nSlots * 8 ≤ caps.size
   rows_fit : (2 + 2 * n + stkS.size) * nSlots * 8 ≤ 2 ^ 32
 
-/-- Where saves and anchors read the input, relative to the stepping position.
-
-Offsets are byte indexes. A closure reads `p`; a step-closure reads the character
-just consumed, which starts strictly after `p`.
--/
+/-- Where saves and anchors read the input, relative to the stepping position. -/
 @[expose]
-def CpRel (phase : UInt32) (p cp : USize) : Prop :=
+def CpRel {s : String} (phase : UInt32) (p cp : Pos s) : Prop :=
   (phase = phaseClosure → cp = p) ∧
-  (phase = phaseStepClosure → p.toNat < cp.toNat)
+  (phase = phaseStepClosure → cp.remainingBytes < p.remainingBytes)
 
 
 /-- Slot `j` of row `row` ends at or before the end of the `rows` window. -/
@@ -1666,23 +1662,23 @@ what makes closure fuel decrease on `.split`. `i ≤ cCount` keeps the step loop
 from walking past the dense prefix. `m0` and `m1` mirror membership of the next
 set when there are at most 128 states.
 -/
-structure RunInv (s : String)
+structure RunInv {s : String}
     (words : WordArray) (classes : Array ClassTable) (start : UInt32)
     (nSlots : Nat) (nStates : UInt32) (slots : USize)
     (cRow0 nRow0 stackRow0 : USize)
-    (p cp : USize)
+    (p cp : Pos s)
     (cCount : UInt32) (cDen cSpa : WordArray)
     (nCount : UInt32) (nDen nSpa : WordArray)
-    (stkS : WordArray) (caps : ByteArray) (sp : USize)
+    (stkS : WordArray) (caps : ByteArray) (sp : Nat)
     (phase i : UInt32) (sent m0 m1 : UInt64) : Prop where
   words : WordsWf words classes nStates.toNat
   start_lt : start.toNat < nStates.toNat
   curr : SetInv cDen cSpa cCount.toNat nStates.toNat
   next : SetInv nDen nSpa nCount.toNat nStates.toNat
-  stack : StackInv stkS sp.toNat nStates.toNat
+  stack : StackInv stkS sp nStates.toNat
   buf : EvalBuf caps stkS slots cRow0 nRow0 stackRow0 nSlots nStates.toNat
   i_le : i.toNat ≤ cCount.toNat
-  sp_le : sp.toNat ≤ nCount.toNat + 1
+  sp_le : sp ≤ nCount.toNat + 1
   phase_ok : phase = phaseClosure ∨ phase = phaseStepClosure ∨ phase = phaseStep
   cp_rel : CpRel phase p cp
   step_i : phase = phaseStepClosure → i.toNat < cCount.toNat
@@ -1690,10 +1686,6 @@ structure RunInv (s : String)
   sentOk : SlotWord s sent
   capsOk : CapsWf (s := s) caps nSlots (2 + 2 * nStates.toNat + stkS.size)
   mask : MaskInv m0 m1 nDen nSpa nCount.toNat nStates.toNat
-  p_le : p.toNat ≤ s.utf8ByteSize
-  cp_le : cp.toNat ≤ s.utf8ByteSize
-  p_pos : ∃ q : Pos s, q.offset.byteIdx = p.toNat
-  cp_pos : ∃ q : Pos s, q.offset.byteIdx = cp.toNat
 
 open RegexVibe.VM.Wide (toNat_u32_add_one toNat_add_of_lt_2_pow_32 toNat_mul_of_lt_2_pow_32
   toNat_u32_mul_ofNat)
