@@ -78,6 +78,81 @@ LEAN_EXPORT lean_obj_res lean_regex_uset_u32le(lean_obj_arg a, size_t off, uint3
  * payload, so the bytes are written here. Filling the block with
  * `ByteArray.push` made scratch setup dominate `\w+`.
  */
+/*
+ * First byte offset at or after `off` where `needle` occurs in `hay`.
+ * Returns the haystack byte length when there is no such offset.
+ * `hay` is a Lean string (length is `size - 1`, excluding the trailing NUL).
+ * `needle` is a `ByteArray`.
+ */
+LEAN_EXPORT size_t lean_regex_find_bytes(b_lean_obj_arg hay, size_t off, b_lean_obj_arg needle) {
+    size_t hsz = lean_string_size(hay) - 1;
+    size_t nsz = lean_sarray_size(needle);
+    if (nsz == 0 || off > hsz || hsz - off < nsz)
+        return hsz;
+    const uint8_t *h = (const uint8_t *)lean_string_cstr(hay);
+    const uint8_t *n = lean_sarray_cptr(needle);
+    uint8_t c0 = n[0];
+    size_t last = hsz - nsz;
+    for (size_t i = off; i <= last; i++) {
+        if (h[i] != c0) continue;
+        size_t k = 1;
+        while (k < nsz && h[i + k] == n[k]) k++;
+        if (k == nsz) return i;
+    }
+    return hsz;
+}
+
+/*
+ * Earliest offset at or after `off` of any needle in the `Array ByteArray`.
+ * One pass over the gap, so an alternation does not rescan the tail once per needle.
+ * Returns the haystack byte length when none occur.
+ */
+LEAN_EXPORT size_t lean_regex_find_earliest(b_lean_obj_arg hay, size_t off, b_lean_obj_arg needles) {
+    size_t hsz = lean_string_size(hay) - 1;
+    size_t nn = lean_array_size(needles);
+    if (off >= hsz || nn == 0) return hsz;
+    const uint8_t *h = (const uint8_t *)lean_string_cstr(hay);
+    lean_object **ns = lean_array_cptr(needles);
+    const uint8_t *np[32];
+    size_t nlen[32];
+    uint8_t accept[256];
+    for (int b = 0; b < 256; b++) accept[b] = 0;
+    size_t used = nn < 32 ? nn : 32;
+    for (size_t k = 0; k < nn; k++) {
+        lean_object *nd = ns[k];
+        size_t nsz = lean_sarray_size(nd);
+        const uint8_t *p = nsz == 0 ? 0 : lean_sarray_cptr(nd);
+        if (k < used) {
+            nlen[k] = nsz;
+            np[k] = p;
+        }
+        if (nsz != 0) accept[p[0]] = 1;
+    }
+    for (size_t i = off; i < hsz; i++) {
+        if (!accept[h[i]]) continue;
+        for (size_t k = 0; k < used; k++) {
+            size_t nsz = nlen[k];
+            if (nsz == 0 || i + nsz > hsz || np[k][0] != h[i]) continue;
+            size_t j = 1;
+            const uint8_t *p = np[k];
+            while (j < nsz && h[i + j] == p[j]) j++;
+            if (j == nsz) return i;
+        }
+        /* More than 32 needles: check the tail directly. */
+        for (size_t k = used; k < nn; k++) {
+            lean_object *nd = ns[k];
+            size_t nsz = lean_sarray_size(nd);
+            if (nsz == 0 || i + nsz > hsz) continue;
+            const uint8_t *p = lean_sarray_cptr(nd);
+            if (p[0] != h[i]) continue;
+            size_t j = 1;
+            while (j < nsz && h[i + j] == p[j]) j++;
+            if (j == nsz) return i;
+        }
+    }
+    return hsz;
+}
+
 LEAN_EXPORT lean_obj_res lean_regex_zero_byte_array(size_t n) {
     lean_obj_res a = lean_alloc_sarray(1, n, n);
     uint8_t *p = lean_sarray_cptr(a);

@@ -1,6 +1,7 @@
 module
 
 public import RegexVibe.VM.Refined.Basic
+public import RegexVibe.VM.Refined.Literal
 
 /-!
 The tail-recursive PikeVM and the search built on it.
@@ -1238,12 +1239,30 @@ def findAll.go (flat : FlatNFA) (info : OptimizationInfo) (haystack : String)
     (hwords : WordsWf flat.words flat.classes flat.size.toNat)
     (hstart : flat.start.toNat < flat.size.toNat)
     (sent : UInt64) (hsent : SlotWord haystack sent)
+    (needles : Option (Array ByteArray))
     (pos : PosPlusOne haystack) (accum : Array Slice) (scratch : Scratch)
     (hscratch : ScratchInv (s := haystack) scratch)
     (hn : scratch.nStates.toNat = flat.size.toNat)
     (h2 : scratch.nSlots = 2) : Array Slice :=
   if h : pos.isValid then
-    let start := info.findStart (pos.asPos h)
+    let base := pos.asPos h
+    let start? : Option (Pos haystack) :=
+      match needles with
+      | none => some (info.findStart base)
+      | some ns =>
+        match earliestPos haystack base ns with
+        | some p => some p
+        | none =>
+          -- No needle, or the hit was not a character boundary. A missing
+          -- boundary falls back to the scalar scan; no needle ends the search.
+          if (findEarliest haystack base.offset.byteIdx.toUSize ns).toNat <
+              haystack.utf8ByteSize then
+            some (info.findStart base)
+          else
+            none
+    match start? with
+    | none => accum
+    | some start =>
     let run := search flat scratch sent start hwords hstart hscratch hn hlen hsent
     if run.matched then
       have hrows : 0 < 2 + 2 * run.scratch.nStates.toNat + run.scratch.stkS.size := by
@@ -1275,12 +1294,12 @@ def findAll.go (flat : FlatNFA) (info : OptimizationInfo) (haystack : String)
         if hlt : pos < nextPos then
           have hdec : nextPos.remainingBytes < pos.remainingBytes :=
             (PosPlusOne.lt_iff_remainingBytes_lt).mp hlt
-          findAll.go flat info haystack hlen hwords hstart sent hsent nextPos
+          findAll.go flat info haystack hlen hwords hstart sent hsent needles nextPos
             (accum.push slice) scratch' hscratch' hn' h2'
         else
           have hdec : (pos.next h).remainingBytes < pos.remainingBytes :=
             (PosPlusOne.lt_iff_remainingBytes_lt).mp (PosPlusOne.lt_next pos h)
-          findAll.go flat info haystack hlen hwords hstart sent hsent (pos.next h)
+          findAll.go flat info haystack hlen hwords hstart sent hsent needles (pos.next h)
             (accum.push slice) scratch' hscratch' hn' h2'
       else
         accum
@@ -1313,7 +1332,7 @@ def findAll (nfa : NFA) (wf : nfa.WellFormed) (flat : FlatNFA)
   have h2 : scratch.nSlots = 2 := by
     simp only [scratch, Scratch.mkFor]
   findAll.go flat info haystack hlen hwords hstart (sentinelWord haystack)
-    (SlotWord.sentinel hlen) haystack.startPosPlusOne #[] scratch hscratch hn h2
+    (SlotWord.sentinel hlen) (literalNeedles nfa) haystack.startPosPlusOne #[] scratch hscratch hn h2
 
 def count (nfa : NFA) (wf : nfa.WellFormed) (flat : FlatNFA)
     (hflat : ofNFA nfa = some flat) (info : OptimizationInfo) (haystack : String)
